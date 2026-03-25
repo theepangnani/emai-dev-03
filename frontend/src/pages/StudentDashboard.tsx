@@ -24,6 +24,7 @@ import { XpDashboardSection } from '../components/xp/XpDashboardSection';
 import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { gradesApi } from '../api/grades';
 import { studyRequestsApi, type StudyRequestData } from '../api/studyRequests';
+import { xpApi } from '../api/xp';
 import { StudyRequestCard } from '../components/StudyRequestCard';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
@@ -109,6 +110,7 @@ export function StudentDashboard() {
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [pendingStudyRequests, setPendingStudyRequests] = useState<StudyRequestData[]>([]);
+  const [streakDays, setStreakDays] = useState(0);
   const [faqCode, setFaqCode] = useState<string | null>(null);
 
   // Upload / study material generation (shared with Parent experience)
@@ -159,21 +161,13 @@ export function StudentDashboard() {
     return `Good evening, ${firstName}`;
   }, [user?.full_name]);
 
-  const calculateStreak = (guides: StudyGuide[]): number => {
-    if (!guides.length) return 0;
-    const uniqueDates = Array.from(
-      new Set(guides.map(g => new Date(g.created_at).toDateString()))
-    ).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let streak = 0;
-    for (let i = 0; i < uniqueDates.length; i++) {
-      const expected = new Date(today);
-      expected.setDate(expected.getDate() - i);
-      if (new Date(uniqueDates[i]).toDateString() !== expected.toDateString()) break;
-      streak++;
+  const loadStreak = async () => {
+    try {
+      const data = await xpApi.getStreak();
+      setStreakDays(data.current_streak);
+    } catch {
+      // Streak not loaded — fallback to 0
     }
-    return streak;
   };
 
   // Build unified timeline from assignments + tasks
@@ -244,7 +238,7 @@ export function StudentDashboard() {
     ).slice(0, 5);
   }, [notifications]);
 
-  const streak = useMemo(() => calculateStreak(studyGuides), [studyGuides]);
+  const streak = streakDays;
 
   // ── Data Loading ──────────────────────────────────────────────
   useEffect(() => {
@@ -283,6 +277,7 @@ export function StudentDashboard() {
       loadNotifications(),
       loadGradeSummary(),
       loadStudyRequests(),
+      loadStreak(),
     ]).finally(() => setInitialLoading(false));
   }, [searchParams, setSearchParams]);
 

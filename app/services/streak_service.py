@@ -1,6 +1,10 @@
 """
 Streak Service — manages daily study streaks with freeze tokens and school
 calendar awareness (#2002).
+
+Milestone notifications (#2224): when a student hits a streak milestone
+(3, 7, 14, 30 days), an in-app notification is created for the student
+and their linked parent(s) are also notified.
 """
 import logging
 from datetime import date, datetime, timedelta
@@ -12,6 +16,9 @@ from app.models.xp import StreakLog, XpSummary
 from app.models.holiday import HolidayDate
 
 logger = logging.getLogger(__name__)
+
+# Streak milestones that trigger notifications (#2224)
+STREAK_MILESTONES = [3, 7, 14, 30]
 
 
 class StreakService:
@@ -91,7 +98,64 @@ class StreakService:
             "Streak recorded: student=%d action=%s streak=%d tier=%s",
             student_id, action_type, summary.current_streak, tier["tier"],
         )
+
+        # Check for milestone notifications (#2224)
+        if summary.current_streak in STREAK_MILESTONES:
+            try:
+                StreakService._send_milestone_notifications(
+                    db, student_id, summary.current_streak,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to send streak milestone notification: student=%d streak=%d",
+                    student_id, summary.current_streak,
+                )
+
         return log_entry
+
+    @staticmethod
+    def _send_milestone_notifications(
+        db: Session, student_id: int, streak_days: int,
+    ) -> None:
+        """Create in-app notification for the student and notify parent(s) (#2224)."""
+        from app.models.user import User
+        from app.models.notification import Notification, NotificationType
+        from app.services.notification_service import notify_parents_of_student
+
+        student_user = db.query(User).filter(User.id == student_id).first()
+        if not student_user:
+            return
+
+        student_name = student_user.full_name or "Your child"
+
+        # Notify the student
+        db.add(Notification(
+            user_id=student_id,
+            type=NotificationType.SYSTEM,
+            title=f"{streak_days}-Day Study Streak!",
+            content=f"Amazing! You've studied for {streak_days} days in a row. Keep it up!",
+            link="/study",
+        ))
+        db.flush()
+
+        # Notify parent(s)
+        notify_parents_of_student(
+            db=db,
+            student_user=student_user,
+            title=f"{student_name} hit a {streak_days}-day study streak!",
+            content=(
+                f"{student_name} has studied for {streak_days} consecutive days. "
+                f"Great consistency!"
+            ),
+            notification_type=NotificationType.SYSTEM,
+            link="/my-kids",
+        )
+        db.commit()
+
+        logger.info(
+            "Streak milestone notification sent: student=%d streak=%d",
+            student_id, streak_days,
+        )
 
     @staticmethod
     def evaluate_streak(db: Session, student_id: int) -> str:

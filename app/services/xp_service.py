@@ -352,6 +352,13 @@ def award_xp(
         except Exception:
             logger.exception("Badge check failed (non-blocking) | student_id=%s", student_id)
 
+        # Record streak qualifying action + milestone notifications (#2224)
+        try:
+            from app.services.streak_service import StreakService
+            StreakService.record_qualifying_action(db, student_id, action_type)
+        except Exception:
+            logger.exception("Streak record failed (non-blocking) | student_id=%s", student_id)
+
         return entry
 
     except Exception:
