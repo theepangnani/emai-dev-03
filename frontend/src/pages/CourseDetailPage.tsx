@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
-import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem } from '../api/client';
+import { coursesApi, courseContentsApi, studyApi, assignmentsApi, announcementsApi } from '../api/client';
+import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem, CourseAnnouncementItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -78,6 +78,10 @@ export function CourseDetailPage() {
   const [enrollmentRequests, setEnrollmentRequests] = useState<Array<{ id: number; course_id: number; student_id: number; student_name: string | null; student_email: string | null; status: string; created_at: string }>>([]);
   const [enrollReqExpanded, setEnrollReqExpanded] = useState(true);
   const [resolvingReqId, setResolvingReqId] = useState<number | null>(null);
+
+  // Announcements (#2279)
+  const [announcements, setAnnouncements] = useState<CourseAnnouncementItem[]>([]);
+  const [announcementsExpanded, setAnnouncementsExpanded] = useState(true);
 
   // Assignments
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
@@ -208,6 +212,15 @@ export function CourseDetailPage() {
         setStudents(roster);
       } catch {
         setStudents([]);
+      }
+      // Load announcements for Google Classroom courses (#2279)
+      if (courseData.google_classroom_id) {
+        try {
+          const ann = await announcementsApi.list(courseId);
+          setAnnouncements(ann);
+        } catch {
+          setAnnouncements([]);
+        }
       }
       // Load enrollment requests if course requires approval
       if (courseData.require_approval) {
@@ -834,6 +847,78 @@ export function CourseDetailPage() {
           </>
         )}
       </div>
+
+      {/* Announcements (#2279) — only for Google Classroom courses */}
+      {course.google_classroom_id && (
+        <div className="course-section-panel">
+          <div className="course-section-header">
+            <button className="collapse-toggle" onClick={() => setAnnouncementsExpanded(v => !v)}>
+              <span className={`section-chevron${announcementsExpanded ? ' expanded' : ''}`}>&#9654;</span>
+              <h3>Announcements ({announcements.length})</h3>
+            </button>
+          </div>
+          {announcementsExpanded && (
+            <>
+              {announcements.length === 0 ? (
+                <p className="course-roster-empty">No announcements synced yet.</p>
+              ) : (
+                <div className="course-announcements-list">
+                  {announcements.map(a => {
+                    let materials: Array<Record<string, unknown>> = [];
+                    if (a.materials_json) {
+                      try { materials = JSON.parse(a.materials_json); } catch { /* ignore */ }
+                    }
+                    return (
+                      <div key={a.id} className="course-announcement-row">
+                        <div className="course-announcement-text">{a.text || '(No text)'}</div>
+                        <div className="course-announcement-meta">
+                          {a.creator_name && <span className="announcement-author">{a.creator_name}</span>}
+                          {a.creation_time && (
+                            <span className="announcement-date">
+                              {new Date(a.creation_time).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                          {a.alternate_link && (
+                            <a href={a.alternate_link} target="_blank" rel="noopener noreferrer" className="announcement-link">
+                              View in Google Classroom
+                            </a>
+                          )}
+                        </div>
+                        {materials.length > 0 && (
+                          <div className="announcement-materials">
+                            {materials.map((mat, idx) => {
+                              const link = (mat as Record<string, Record<string, string>>).link;
+                              const driveFile = (mat as Record<string, Record<string, Record<string, string>>>).driveFile;
+                              const youtubeVideo = (mat as Record<string, Record<string, string>>).youtubeVideo;
+                              let url = '';
+                              let label = 'Attachment';
+                              if (link) {
+                                url = link.url || '';
+                                label = link.title || link.url || 'Link';
+                              } else if (driveFile?.driveFile) {
+                                url = driveFile.driveFile.alternateLink || '';
+                                label = driveFile.driveFile.title || 'Drive File';
+                              } else if (youtubeVideo) {
+                                url = youtubeVideo.alternateLink || '';
+                                label = youtubeVideo.title || 'YouTube Video';
+                              }
+                              return url ? (
+                                <a key={idx} href={url} target="_blank" rel="noopener noreferrer" className="announcement-material-link">
+                                  {label}
+                                </a>
+                              ) : null;
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Assignments */}
       <div className="course-section-panel">

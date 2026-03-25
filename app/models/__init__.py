@@ -10,6 +10,7 @@ from app.models.teacher_communication import TeacherCommunication
 from app.models.invite import Invite, InviteType
 from app.models.task import Task, TaskPriority
 from app.models.course_content import CourseContent, ContentType
+from app.models.course_announcement import CourseAnnouncement
 from app.models.audit_log import AuditLog, AuditAction
 from app.models.inspiration_message import InspirationMessage
 from app.models.broadcast import Broadcast
@@ -66,6 +67,7 @@ __all__ = [
     "TaskPriority",
     "CourseContent",
     "ContentType",
+    "CourseAnnouncement",
     "AuditLog",
     "AuditAction",
     "InspirationMessage",
