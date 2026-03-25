@@ -17,7 +17,7 @@ from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user, can_access_course
+from app.api.deps import get_current_user, can_access_course, can_access_material
 from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
@@ -154,10 +154,8 @@ def _strip_urls_for_school(
 
 def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool:
     """Check if user can modify (edit/delete) a content item.
-    Allowed for: the creator, admins, and parents of the creator."""
+    Allowed for: the creator and parents of the creator."""
     if content.created_by_user_id == user.id:
-        return True
-    if user.has_role(UserRole.ADMIN):
         return True
     if user.role == UserRole.PARENT:
         child_student_ids = [
@@ -1100,7 +1098,14 @@ def list_course_contents(
         if school_ids:
             return _strip_urls_for_school(items, school_ids, db)
 
-    return [_to_response(item, db) for item in items]
+    results = [_to_response(item, db) for item in items]
+
+    # Strip text_content for non-trust-circle users (e.g. admins)
+    if items and current_user.has_role(UserRole.ADMIN):
+        for resp in results:
+            resp.text_content = None
+
+    return results
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
@@ -1196,8 +1201,8 @@ def get_course_content(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     now = datetime.now(timezone.utc)
 
@@ -1254,8 +1259,8 @@ def download_course_content_file(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     # Restrict downloads for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
@@ -1759,8 +1764,8 @@ def list_source_files(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     if content.material_group_id:
         # Get source files from master + all sub-materials in the group
@@ -1800,8 +1805,8 @@ def download_source_file(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     # Restrict downloads for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
@@ -1853,8 +1858,8 @@ def get_linked_materials_endpoint(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     linked = get_linked_materials(db, content_id)
     # Convert to response with has_file computed
@@ -1996,8 +2001,8 @@ def list_content_images(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     images = (
         db.query(ContentImage)
@@ -2022,8 +2027,8 @@ def get_content_image(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     image = (
         db.query(ContentImage)
