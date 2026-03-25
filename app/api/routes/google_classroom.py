@@ -18,6 +18,7 @@ from app.models.student import Student
 from app.models.teacher import Teacher
 from app.models.teacher_google_account import TeacherGoogleAccount
 from app.models.course_content import CourseContent
+from app.models.course_announcement import CourseAnnouncement
 from app.models.invite import Invite, InviteType
 from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
@@ -44,6 +45,7 @@ from app.services.google_classroom import (
     get_course_work,
     get_course_work_materials,
     list_course_teachers,
+    list_course_announcements,
     GMAIL_READONLY_SCOPE,
 )
 
@@ -677,19 +679,22 @@ def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None =
 
     db.commit()
 
-    # Sync courseWorkMaterials and assignments for each synced course
+    # Sync courseWorkMaterials, assignments, and announcements for each synced course
     total_materials = 0
     total_assignments = 0
+    total_announcements = 0
     for course in synced_courses:
         if not course.google_classroom_id:
             continue
         total_materials += _sync_materials_for_course(course, user, db)
         total_assignments += _sync_assignments_for_course(course, user, db)
+        total_announcements += _sync_announcements_for_course(course, user, db)
 
     return {
         "courses": [{"id": c.id, "name": c.name, "google_id": c.google_classroom_id} for c in synced_courses],
         "materials_synced": total_materials,
         "assignments_synced": total_assignments,
+        "announcements_synced": total_announcements,
     }
 
 
@@ -806,6 +811,89 @@ def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int
     return count
 
 
+def _sync_announcements_for_course(course: Course, user: User, db: Session) -> int:
+    """Sync announcements from Google Classroom into CourseAnnouncement. Returns count of new announcements."""
+    import json
+
+    try:
+        google_announcements, credentials = list_course_announcements(
+            user.google_access_token,
+            course.google_classroom_id,
+            user.google_refresh_token,
+        )
+        update_user_tokens(user, credentials, db)
+    except Exception as e:
+        logger.warning(f"Failed to fetch announcements for course {course.google_classroom_id}: {e}")
+        return 0
+
+    count = 0
+    for ga in google_announcements:
+        # Skip non-published announcements
+        if ga.get("state") in ("DRAFT", "DELETED"):
+            continue
+
+        announcement_id = ga.get("id")
+        if not announcement_id:
+            continue
+
+        existing = db.query(CourseAnnouncement).filter(
+            CourseAnnouncement.google_announcement_id == announcement_id,
+        ).first()
+
+        text = ga.get("text", "")
+        creator_name = None
+        creator_email = None
+        creator_profile = ga.get("creatorUserId")
+        # The API returns creatorUserId but not name directly; we store what we can
+        alternate_link = ga.get("alternateLink", "")
+
+        # Parse creation/update times
+        creation_time = None
+        update_time = None
+        if ga.get("creationTime"):
+            try:
+                creation_time = datetime.fromisoformat(ga["creationTime"].replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                pass
+        if ga.get("updateTime"):
+            try:
+                update_time = datetime.fromisoformat(ga["updateTime"].replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                pass
+
+        # Serialize materials array to JSON
+        materials_json = None
+        if ga.get("materials"):
+            try:
+                materials_json = json.dumps(ga["materials"])
+            except (TypeError, ValueError):
+                pass
+
+        if existing:
+            existing.text = text
+            existing.creation_time = creation_time or existing.creation_time
+            existing.update_time = update_time
+            existing.materials_json = materials_json
+            existing.alternate_link = alternate_link
+        else:
+            announcement = CourseAnnouncement(
+                course_id=course.id,
+                google_announcement_id=announcement_id,
+                text=text,
+                creator_name=creator_name,
+                creator_email=creator_email,
+                creation_time=creation_time,
+                update_time=update_time,
+                materials_json=materials_json,
+                alternate_link=alternate_link,
+            )
+            db.add(announcement)
+            count += 1
+
+    db.commit()
+    return count
+
+
 @router.post("/courses/sync")
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def sync_google_courses(
@@ -838,18 +926,22 @@ def sync_google_courses(
     courses = result["courses"]
     materials = result["materials_synced"]
     assignments = result["assignments_synced"]
+    announcements = result["announcements_synced"]
 
     parts = [f"Synced {len(courses)} course{'s' if len(courses) != 1 else ''}"]
     if materials:
         parts.append(f"{materials} new material{'s' if materials != 1 else ''}")
     if assignments:
         parts.append(f"{assignments} new assignment{'s' if assignments != 1 else ''}")
+    if announcements:
+        parts.append(f"{announcements} new announcement{'s' if announcements != 1 else ''}")
 
     return {
         "message": ", ".join(parts),
         "courses": courses,
         "materials_synced": materials,
         "assignments_synced": assignments,
+        "announcements_synced": announcements,
     }
 
 
@@ -995,6 +1087,71 @@ def sync_google_materials(
         "message": f"Synced materials for {course.name}",
         "materials_count": materials_count,
     }
+
+
+# ── Course Announcements (#2279) ─────────────────────────────────────
+
+@router.get("/courses/{course_id}/announcements")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_course_announcements(
+    request: Request,
+    course_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    after: str | None = Query(None, description="Filter announcements after this ISO date"),
+    before: str | None = Query(None, description="Filter announcements before this ISO date"),
+    _gc=Depends(_require_google_classroom),
+):
+    """Get synced announcements for a course.
+
+    Returns locally-stored announcements that were synced from Google Classroom.
+    Supports optional date-range filtering via `after` and `before` query params.
+    """
+    from app.api.deps import can_access_course
+
+    # Verify user can access this course
+    if not can_access_course(db, current_user, course_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this course",
+        )
+
+    query = db.query(CourseAnnouncement).filter(
+        CourseAnnouncement.course_id == course_id,
+    )
+
+    if after:
+        try:
+            after_dt = datetime.fromisoformat(after)
+            query = query.filter(CourseAnnouncement.creation_time >= after_dt)
+        except ValueError:
+            pass
+
+    if before:
+        try:
+            before_dt = datetime.fromisoformat(before)
+            query = query.filter(CourseAnnouncement.creation_time <= before_dt)
+        except ValueError:
+            pass
+
+    announcements = query.order_by(CourseAnnouncement.creation_time.desc()).all()
+
+    return [
+        {
+            "id": a.id,
+            "course_id": a.course_id,
+            "google_announcement_id": a.google_announcement_id,
+            "text": a.text,
+            "creator_name": a.creator_name,
+            "creator_email": a.creator_email,
+            "creation_time": a.creation_time.isoformat() if a.creation_time else None,
+            "update_time": a.update_time.isoformat() if a.update_time else None,
+            "materials_json": a.materials_json,
+            "alternate_link": a.alternate_link,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in announcements
+    ]
 
 
 # ── Teacher Google Accounts ──────────────────────────────────────────

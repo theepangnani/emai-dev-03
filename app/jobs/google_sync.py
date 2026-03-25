@@ -49,12 +49,13 @@ async def sync_google_classrooms():
                 courses = result["courses"]
                 materials = result["materials_synced"]
                 assignments = result["assignments_synced"]
+                announcements = result.get("announcements_synced", 0)
                 synced_users += 1
-                if courses or materials or assignments:
+                if courses or materials or assignments or announcements:
                     logger.info(
                         f"Background sync for user {user.id}: "
                         f"{len(courses)} courses, {materials} new materials, "
-                        f"{assignments} new assignments"
+                        f"{assignments} new assignments, {announcements} new announcements"
                     )
             except Exception as e:
                 failed_users += 1
