@@ -209,6 +209,8 @@ export { linkRequestsApi } from './linkRequests';
 export type { LinkRequestItem, LinkRequestUser } from './linkRequests';
 export { gradesApi } from './grades';
 export { waitlistApi } from './waitlist';
+export { csvImportApi } from './csvImport';
+export type { CSVTemplateType, CSVImportResult } from './csvImport';
 export { adminAIUsageApi } from './adminAIUsage';
 export type { AIUsageUser, AIUsageUserList, AILimitRequest, AILimitRequestList, AIUsageSummary } from './adminAIUsage';
 export type {

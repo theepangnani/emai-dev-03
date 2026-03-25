@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(~/.claude/skills/dev/**)",
+      "Edit(~/.claude/skills/defect/**)",
+      "Edit(~/.claude/skills/review-pr/**)"
+    ]
+  }
+}
