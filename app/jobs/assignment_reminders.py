@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.notification import Notification, NotificationType
 from app.core.config import settings
 from app.services.email_service import send_email, add_inspiration_to_email
-from app.services.notification_service import send_multi_channel_notification
+from app.services.notification_service import send_multi_channel_notification, resolve_deep_link
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +184,7 @@ async def check_assignment_reminders():
                             days_remaining=str(days),
                             due_date=due_date_str,
                             app_url=settings.frontend_url,
+                            deep_link=resolve_deep_link("/dashboard", "parent"),
                         )
                         html = add_inspiration_to_email(html, db, "parent")
                         sent = await send_email(

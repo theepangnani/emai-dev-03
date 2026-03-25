@@ -10,6 +10,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.models.notification import Notification, NotificationType
 from app.services.email_service import send_email, add_inspiration_to_email
+from app.services.notification_service import resolve_deep_link
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ async def check_task_reminders():
                             task_title=task.title,
                             days_remaining=str(days),
                             due_date=due_date_str,
-                            task_url=f"{settings.frontend_url}/tasks/{task.id}",
+                            task_url=f"{settings.frontend_url}{resolve_deep_link(f'/tasks/{task.id}', user.role.value if hasattr(user.role, 'value') else str(user.role))}",
                         )
                         html = add_inspiration_to_email(html, db, user.role)
                         sent = await send_email(

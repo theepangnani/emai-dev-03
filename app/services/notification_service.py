@@ -23,6 +23,41 @@ from app.services.email_service import send_email_sync
 logger = logging.getLogger(__name__)
 
 
+def resolve_deep_link(
+    link: str | None,
+    role: str | None,
+) -> str:
+    """Return a role-appropriate deep-link path for email CTA buttons.
+
+    Rules:
+    - Message notifications → /messages (all roles)
+    - Study guide links → kept for students, /dashboard for parents
+    - Course / task / link-request / admin links → kept as-is
+    - Fallback → /dashboard
+    """
+    if not link:
+        return "/dashboard"
+
+    # Messages: same for all roles
+    if link == "/messages":
+        return "/messages"
+
+    # Study material: students see the material; others see dashboard
+    if link.startswith("/study/"):
+        if role == "student":
+            return link
+        return "/dashboard"
+
+    # Course, task, link-request, admin links: pass through
+    if link.startswith(("/courses/", "/tasks/", "/admin")):
+        return link
+
+    if link == "/link-requests":
+        return "/link-requests"
+
+    return link
+
+
 def send_multi_channel_notification(
     db: Session,
     recipient: User,
@@ -98,7 +133,8 @@ def send_multi_channel_notification(
     # Channel 2: Email
     if "email" in channels and recipient.email and recipient.email_notifications and recipient.should_notify(notif_type_value, "email"):
         try:
-            email_html = _build_notification_email(title, content, link)
+            recipient_role = recipient.role.value if hasattr(recipient.role, 'value') else str(recipient.role)
+            email_html = _build_notification_email(title, content, link, recipient_role)
             send_email_sync(recipient.email, title, email_html)
         except Exception as e:
             logger.warning(f"Failed to send notification email to {recipient.email}: {e}")
@@ -180,14 +216,23 @@ def notify_parents_of_student(
     return notifications
 
 
-def _build_notification_email(title: str, content: str, link: str | None) -> str:
-    """Build a branded HTML email for notifications."""
+def _build_notification_email(
+    title: str,
+    content: str,
+    link: str | None,
+    recipient_role: str | None = None,
+) -> str:
+    """Build a branded HTML email for notifications.
+
+    Uses resolve_deep_link to choose a role-appropriate CTA URL.
+    """
     from app.core.config import settings
     from app.services.email_service import wrap_branded_email
 
     link_html = ""
     if link:
-        full_url = f"{settings.frontend_url}{link}"
+        deep_link = resolve_deep_link(link, recipient_role)
+        full_url = f"{settings.frontend_url}{deep_link}"
         link_html = (
             f'<p style="margin:24px 0 0 0;"><a href="{full_url}" '
             f'style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;'
