@@ -31,6 +31,7 @@ from app.services.link_extraction_service import extract_and_enrich_links
 from app.services import gcs_service
 
 
+from app.services.audit_service import log_action
 from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials, generate_sub_title
 from app.schemas.course_content import (
     BulkArchiveRequest,
@@ -258,6 +259,16 @@ def create_course_content(
         source_type="local_upload",
     )
     db.add(content)
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_upload",
+        resource_type="course_content",
+        resource_id=None,
+        details={"course_id": data.course_id, "title": data.title},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     db.commit()
     db.refresh(content)
 
@@ -526,6 +537,20 @@ async def upload_course_content_file(
     )
     db.add(content)
     record_upload(db, current_user, len(file_content))
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_upload",
+        resource_type="course_content",
+        resource_id=None,
+        details={
+            "course_id": course_id,
+            "filename": filename,
+            "file_size": len(file_content),
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     db.commit()
     db.refresh(content)
 
@@ -831,6 +856,21 @@ async def upload_multi_files(
         content = master  # Return master as the response
 
     record_upload(db, current_user, total_size)
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_upload",
+        resource_type="course_content",
+        resource_id=None,
+        details={
+            "course_id": course_id,
+            "filename": file_entries[0][0],
+            "file_size": total_size,
+            "file_count": len(file_entries),
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     db.commit()
     db.refresh(content)
 
@@ -1226,6 +1266,16 @@ def get_course_content(
 
     # Update last viewed
     content.last_viewed_at = now
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_view",
+        resource_type="course_content",
+        resource_id=content.id,
+        details={"course_id": content.course_id, "filename": content.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
     db.commit()
     db.refresh(content)
 
@@ -1271,6 +1321,22 @@ def download_course_content_file(
                 detail="Downloads are restricted for school classroom content. "
                        "You can view assignment details but cannot download documents.",
             )
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_download",
+        resource_type="course_content",
+        resource_id=content.id,
+        details={
+            "course_id": content.course_id,
+            "filename": content.original_filename,
+            "file_size": content.file_size,
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     # Try disk file first, fall back to SourceFile in DB (#1557)
     if content.file_path:
@@ -1824,6 +1890,23 @@ def download_source_file(
     )
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file not found")
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="material_download",
+        resource_type="source_file",
+        resource_id=file_id,
+        details={
+            "course_id": content.course_id,
+            "filename": source.filename,
+            "file_size": source.file_size,
+            "content_id": content_id,
+        },
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     media_type = source.file_type
     if not media_type:
