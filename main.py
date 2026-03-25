@@ -21,6 +21,7 @@ from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions, report_card, bug_reports
 from app.api.routes import school_report_cards  # §6.121
+from app.api.routes import weekly_report
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -2042,6 +2043,7 @@ app.include_router(timeline.router, prefix="/api")
 app.include_router(report_card.router, prefix="/api")
 app.include_router(bug_reports.router, prefix="/api")
 app.include_router(school_report_cards.router, prefix="/api")
+app.include_router(weekly_report.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

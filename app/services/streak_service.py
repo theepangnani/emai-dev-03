@@ -122,7 +122,11 @@ class StreakService:
         from app.models.notification import Notification, NotificationType
         from app.services.notification_service import notify_parents_of_student
 
-        student_user = db.query(User).filter(User.id == student_id).first()
+        from app.models.student import Student
+        student = db.query(Student).filter(Student.id == student_id).first()
+        if not student:
+            return
+        student_user = db.query(User).filter(User.id == student.user_id).first()
         if not student_user:
             return
 
@@ -130,7 +134,7 @@ class StreakService:
 
         # Notify the student
         db.add(Notification(
-            user_id=student_id,
+            user_id=student_user.id,
             type=NotificationType.SYSTEM,
             title=f"{streak_days}-Day Study Streak!",
             content=f"Amazing! You've studied for {streak_days} days in a row. Keep it up!",
