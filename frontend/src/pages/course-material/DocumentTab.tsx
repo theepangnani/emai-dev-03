@@ -97,6 +97,7 @@ export function DocumentTab({
   const [editSaving, setEditSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [addingFiles, setAddingFiles] = useState(false);
+  const [textExpanded, setTextExpanded] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const sourceFilesRef = useRef<SourceFilesSectionHandle>(null);
   const addFilesInputRef = useRef<HTMLInputElement>(null);
@@ -238,9 +239,22 @@ export function DocumentTab({
                   <p className="cm-file-info-hint">Original document available for download.</p>
                 </div>
               ) : content.text_content ? (
-                <ContentCard ocrCheckText={content.text_content}>
-                  <FormattedContent textContent={content.text_content} courseContentId={content.id} />
-                </ContentCard>
+                <div className="cm-text-content-collapsible">
+                  <button
+                    className="cm-text-content-toggle"
+                    onClick={() => setTextExpanded(!textExpanded)}
+                    aria-expanded={textExpanded}
+                  >
+                    <span>{'\uD83D\uDCC4'}</span>
+                    <span>Text Content</span>
+                    <span className={`cm-source-files-chevron${textExpanded ? ' open' : ''}`}>{'\u25B6'}</span>
+                  </button>
+                  {textExpanded && (
+                    <ContentCard ocrCheckText={content.text_content}>
+                      <FormattedContent textContent={content.text_content} courseContentId={content.id} />
+                    </ContentCard>
+                  )}
+                </div>
               ) : content.description ? (
                 <p className="cm-document-desc">{content.description}</p>
               ) : (

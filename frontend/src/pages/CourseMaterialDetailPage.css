@@ -1413,6 +1413,32 @@
   .cm-tab-label-short { display: inline; }
 }
 
+/* ── Collapsible Text Content (#2267) ────────── */
+.cm-text-content-collapsible {
+  margin-bottom: 0.5rem;
+}
+
+.cm-text-content-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--color-surface-alt, #f8f9fa);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.cm-text-content-toggle:hover {
+  background: var(--color-surface);
+  border-color: var(--color-accent-light, #9ed0d4);
+}
+
 /* ── Source Files Section (#1005) ────────────── */
 .cm-source-files {
   margin-top: 1rem;
