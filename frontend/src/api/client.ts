@@ -197,8 +197,8 @@ export type {
   BroadcastResponse,
   BroadcastItem,
 } from './admin';
-export { tasksApi } from './tasks';
-export type { TaskItem, AssignableUser } from './tasks';
+export { tasksApi, icsImportApi } from './tasks';
+export type { TaskItem, AssignableUser, ICSEventPreview, ICSParseResponse, ICSImportResponse } from './tasks';
 export { inspirationApi } from './inspiration';
 export type { InspirationMessage, InspirationMessageFull } from './inspiration';
 export { faqApi } from './faq';
@@ -239,3 +239,5 @@ export { weeklyDigestApi } from './weeklyDigest';
 export type { WeeklyDigestResponse, ChildDigest, WeeklyDigestSendResponse } from './weeklyDigest';
 export { dailyDigestApi } from './dailyDigest';
 export type { DigestSettings, DailyDigestPreview, DigestSendResponse } from './dailyDigest';
+export { dailyQuizApi } from './dailyQuiz';
+export type { DailyQuizQuestion, DailyQuizResponse, DailyQuizSubmitResponse } from './dailyQuiz';

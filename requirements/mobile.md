@@ -1,6 +1,8 @@
 ## 9. Mobile App Development
 
-> **Status:** Parent-only MVP complete (8 screens). Device testing pending for March 6 pilot.
+> **Status:** Parent-only MVP complete (16 screens). Phase 2 comprehensive plan created (2026-03-25).
+> **Plan Document:** `docs/mobile-completion-plan.md`
+> **Epic Issue:** #2287
 
 ---
 
@@ -247,6 +249,201 @@ ClassBridgeMobile/
 - Student + teacher mobile screens
 - App Store + Google Play submission
 - < 1% crash rate, 4.0+ star rating
+
+### 9.10 Phase 2: Complete Mobile App (April-June 2026)
+
+> **Comprehensive plan created 2026-03-25.** See `docs/mobile-completion-plan.md` for full details.
+> **Epic:** #2287 | **Recommendations:** #2314
+
+#### 9.10.1 Phase 2A: Brand Polish + Parent Completion (~10 days)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| Branded app icon, adaptive icon, splash screen | #2288 | 0.5d |
+| Align mobile theme with full web design system | #2289 | 1d |
+| Add custom fonts (Space Grotesk + Source Sans 3) | #2290 | 0.5d |
+| Dark mode + Focus mode | #2291 | 1d |
+| Daily briefing screen (parent) | #2292 | 1d |
+| Grade trends/analytics screen (parent) | #2293 | 1d |
+| Study guide viewer (read-only) | #2294 | 1.5d |
+| Flashcard viewer (read-only) | #2295 | 1d |
+| Activity history screen (parent) | #2296 | 0.5d |
+| Notification preferences screen | #2297 | 0.5d |
+| Google OAuth login | #2298 | 1d |
+
+#### 9.10.2 Phase 2B: Push Notifications + Infrastructure (~9 days)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| Firebase Admin SDK (backend) | #314 | 1d |
+| DeviceToken model + endpoints | #315 | 1d |
+| Push notification service | #316 | 1d |
+| Integrate with key events | #317 | 2d |
+| Firebase in mobile app | #334 | 1d |
+| Deep linking for notifications | #335 | 1d |
+| Crash reporting (Sentry/Expo) | #2310 | 0.5d |
+| Analytics integration | #2311 | 0.5d |
+| CI/CD pipeline (EAS Build) | #352 | 1d |
+
+#### 9.10.3 Phase 2C: Student Mobile (~12 days)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| Role-based navigation router | #2299 | 1d |
+| Student dashboard screen | #2300 | 1.5d |
+| Student course list + enrollment | #2301 | 1d |
+| Quiz taking screen | #2302 | 2d |
+| XP / streak / badges screen | #2303 | 1d |
+| Student assignment list + detail | #2304 | 1.5d |
+| Flashcard study mode | #2305 | 1.5d |
+| Student grade summary | #2306 | 0.5d |
+
+#### 9.10.4 Phase 2D: Teacher Mobile (~7.5 days)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| Teacher dashboard screen | #2307 | 1.5d |
+| Teacher course & student list | #2308 | 1d |
+| Teacher assignment list & grade viewer | #2309 | 1d |
+| (Messages/notifications shared from parent) | — | 0d |
+
+#### 9.10.5 Phase 2E: Store Submission + Offline (~8.5 days)
+
+| Task | Issue | Est. |
+|------|-------|------|
+| React Query offline caching | #378 | 1d |
+| OTA update mechanism (expo-updates) | #2312 | 0.5d |
+| Biometric authentication | #2313 | 1d |
+| Beta testing (TestFlight) | #342 | 1d |
+| Beta testing (Google Play Internal) | #343 | 1d |
+| App Store submission | #344 | 2d |
+| Google Play submission | #345 | 2d |
+
+### 9.11 Features Explicitly NOT Building for Mobile
+
+> **Recommendation Issue:** #2314
+
+The following remain **web-only** based on analysis of user value vs. development cost:
+
+| Feature | Reason |
+|---------|--------|
+| All admin screens | Low frequency, 1-3 users, keyboard-heavy |
+| Study guide generation | File upload + streaming, desktop workflow |
+| Google Classroom OAuth setup | Complex redirect, one-time setup |
+| Course/assignment creation | Form-heavy, teacher desktop workflow |
+| Teacher email monitoring setup | Gmail OAuth, power-user feature |
+| Data export (GDPR) | One-time, large file download |
+| Print/PDF export | Niche mobile use case |
+| Registration/onboarding | One-time event, link to web |
+| Account deletion | One-time, deep-link to web |
+| Wallet purchase flow | Stripe checkout requires web |
+| ICS calendar import | Setup-once operation |
+
+### 9.12 Updated Project Structure (Phase 2 Target)
+
+```
+ClassBridgeMobile/
+  src/
+    api/
+      client.ts              # Axios + AsyncStorage token management
+      auth.ts                # Login, logout, getMe, Google OAuth
+      parent.ts              # Parent dashboard/children
+      courses.ts             # Courses (all roles)
+      courseContents.ts       # Study guides, quizzes, flashcards
+      messages.ts            # Conversations, messages
+      notifications.ts       # Notifications
+      tasks.ts               # Tasks
+      assignments.ts         # Assignments (student + teacher)
+      grades.ts              # Grades & analytics
+      xp.ts                  # XP, streak, badges (student)
+      briefing.ts            # Daily briefing (parent)
+      quizResults.ts         # Quiz results
+    context/
+      AuthContext.tsx         # Auth state provider
+      ThemeContext.tsx        # Light/dark/focus theme
+    navigation/
+      AppNavigator.tsx        # Root stack + role router
+      ParentTabNavigator.tsx  # Parent bottom tabs
+      StudentTabNavigator.tsx # Student bottom tabs
+      TeacherTabNavigator.tsx # Teacher bottom tabs
+    screens/
+      auth/
+        LoginScreen.tsx
+      parent/
+        ParentDashboardScreen.tsx
+        ChildOverviewScreen.tsx
+        MyKidsScreen.tsx
+        CoursesScreen.tsx
+        ClassMaterialsScreen.tsx
+        TasksScreen.tsx
+        CalendarScreen.tsx
+        QuizHistoryScreen.tsx
+        AddChildScreen.tsx
+        HelpScreen.tsx
+        DailyBriefingScreen.tsx      # NEW
+        GradeTrendsScreen.tsx         # NEW
+        ActivityHistoryScreen.tsx     # NEW
+      student/
+        StudentDashboardScreen.tsx    # NEW
+        CourseListScreen.tsx          # NEW
+        AssignmentListScreen.tsx      # NEW
+        AssignmentDetailScreen.tsx    # NEW
+        QuizTakingScreen.tsx          # NEW
+        XpBadgesScreen.tsx            # NEW
+        GradeSummaryScreen.tsx        # NEW
+      teacher/
+        TeacherDashboardScreen.tsx    # NEW
+        TeachingCoursesScreen.tsx     # NEW
+        StudentListScreen.tsx         # NEW
+        TeacherAssignmentsScreen.tsx  # NEW
+        GradeViewerScreen.tsx         # NEW
+      shared/
+        StudyGuideViewerScreen.tsx    # NEW (parent + student)
+        FlashcardViewerScreen.tsx     # NEW (parent + student)
+        FlashcardStudyScreen.tsx      # NEW (student interactive)
+        NotificationPrefsScreen.tsx   # NEW
+      messages/
+        MessagesListScreen.tsx
+        ChatScreen.tsx
+      notifications/
+        NotificationsScreen.tsx
+      profile/
+        ProfileScreen.tsx
+      common/
+        PlaceholderScreen.tsx
+    components/
+      ChildCard.tsx
+      EmptyState.tsx
+      LoadingSpinner.tsx
+      HeaderIcons.tsx
+    theme/
+      index.ts               # Full design system (colors, fonts, shadows)
+      dark.ts                # Dark theme overrides
+      focus.ts               # Focus theme overrides
+    types/
+      user.ts
+  __tests__/
+  assets/
+    icon.png                 # ClassBridge branded
+    adaptive-icon.png        # ClassBridge branded
+    splash-icon.png          # ClassBridge branded
+    classbridge-logo.png
+    logo-icon.png
+  app.json
+  eas.json
+  package.json
+```
+
+### 9.13 Success Criteria (Phase 2)
+
+- [ ] All 3 roles (parent, student, teacher) functional on mobile
+- [ ] ClassBridge branding throughout (icons, splash, fonts, theme)
+- [ ] Push notifications delivered for key events
+- [ ] Dark mode + Focus mode working
+- [ ] Crash reporting capturing errors
+- [ ] App Store + Google Play published
+- [ ] < 1% crash rate
+- [ ] Offline data caching for "last seen" data
 
 ---
 

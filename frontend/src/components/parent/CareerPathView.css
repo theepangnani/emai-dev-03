@@ -1,0 +1,250 @@
+/* ── CareerPathView ───────────────────────────────────────── */
+
+.cpv-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+
+.cpv-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.cpv-header-text h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.4rem;
+}
+
+.cpv-header-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-ink-muted, #666);
+}
+
+.cpv-close-btn {
+  background: none;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--color-ink-muted, #666);
+  transition: background 0.15s;
+}
+
+.cpv-close-btn:hover {
+  background: var(--color-surface-alt, #f5f5f5);
+}
+
+/* ── Section titles ──────────────────────────────────────── */
+
+.cpv-section {
+  margin-bottom: 1.5rem;
+}
+
+.cpv-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+
+/* ── Strength badges ─────────────────────────────────────── */
+
+.cpv-strengths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cpv-strength-badge {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .cpv-strength-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+}
+
+/* ── Grade trends ────────────────────────────────────────── */
+
+.cpv-trends {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cpv-trend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.cpv-trend-indicator {
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.cpv-trend-indicator.declining {
+  color: #dc2626;
+}
+
+.cpv-trend-indicator.improving {
+  color: #16a34a;
+}
+
+.cpv-trend-indicator.stable {
+  color: #2563eb;
+}
+
+.cpv-trend-subject {
+  font-weight: 600;
+  min-width: 120px;
+}
+
+.cpv-trend-data {
+  color: var(--color-ink-muted, #666);
+  font-family: monospace;
+  font-size: 0.8rem;
+}
+
+.cpv-trend-note {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--color-ink-muted, #888);
+  font-style: italic;
+}
+
+/* ── Career suggestion cards ─────────────────────────────── */
+
+.cpv-careers-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .cpv-careers-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.cpv-career-card {
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: var(--color-surface, #fff);
+  transition: box-shadow 0.2s;
+}
+
+.cpv-career-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.cpv-career-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--color-accent-strong, #2563eb);
+}
+
+.cpv-career-reasoning {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--color-ink, #333);
+  margin: 0 0 0.75rem;
+}
+
+.cpv-career-subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.cpv-subject-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: var(--color-accent-subtle, #eff6ff);
+  color: var(--color-accent-strong, #1d4ed8);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .cpv-subject-tag {
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+.cpv-career-next-steps {
+  padding: 0.6rem 0.75rem;
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #92400e;
+}
+
+[data-theme="dark"] .cpv-career-next-steps {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fcd34d;
+}
+
+.cpv-career-next-steps-label {
+  font-weight: 700;
+  margin-right: 0.25rem;
+}
+
+/* ── Overall assessment ──────────────────────────────────── */
+
+.cpv-assessment {
+  padding: 1rem 1.25rem;
+  background: var(--color-surface-alt, #f9fafb);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-ink, #333);
+}
+
+/* ── Mobile ──────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .cpv-header-text h2 {
+    font-size: 1.2rem;
+  }
+
+  .cpv-trend-item {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .cpv-trend-subject {
+    min-width: unset;
+  }
+
+  .cpv-trend-note {
+    margin-left: 0;
+    width: 100%;
+  }
+}

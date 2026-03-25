@@ -13,6 +13,7 @@ import { TutorialOverlay, triggerTutorial } from './tutorial/TutorialOverlay';
 import { TUTORIAL_KEYS, PARENT_TUTORIAL_STEPS, STUDENT_TUTORIAL_STEPS, TEACHER_TUTORIAL_STEPS } from './tutorial/tutorialSteps';
 import { SpeedDialFAB } from './SpeedDialFAB';
 import { BugReportModal } from './BugReportModal';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import '../pages/Dashboard.css';
 
 interface SidebarAction {
@@ -180,6 +181,13 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"/>
     </svg>
   ),
+  'Install App': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -216,6 +224,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [reconnecting, setReconnecting] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  const { canInstall, installApp } = usePWAInstall();
 
   useEffect(() => {
     const onReconnecting = () => setReconnecting(true);
@@ -541,6 +550,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
             </span>
             <span className="sidebar-link-label">Show Tutorial</span>
           </button>
+          {canInstall && (
+            <button
+              className="sidebar-link"
+              onClick={() => {
+                setMenuOpen(false);
+                installApp();
+              }}
+            >
+              <span className="sidebar-link-icon"><NavIcon name="Install App" /></span>
+              <span className="sidebar-link-label">Install App</span>
+            </button>
+          )}
         </nav>
         {sidebarActions && sidebarActions.length > 0 && (
           <>
@@ -596,6 +617,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               <span className="ps-nav-icon"><NavIcon name="Report a Bug" /></span>
               <span className="ps-nav-label">Report a Bug</span>
             </button>
+            {canInstall && (
+              <button
+                className="ps-nav-item"
+                onClick={() => installApp()}
+                title="Install App"
+                aria-label="Install App"
+              >
+                <span className="ps-nav-icon"><NavIcon name="Install App" /></span>
+                <span className="ps-nav-label">Install App</span>
+              </button>
+            )}
           </nav>
 
           {persistentQuickActions.length > 0 && (

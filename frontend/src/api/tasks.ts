@@ -79,3 +79,50 @@ export const tasksApi = {
     return response.data as { success: boolean; reminded_at: string; assignee_name: string };
   },
 };
+
+// ICS Import Types
+export interface ICSEventPreview {
+  index: number;
+  summary: string;
+  dtstart: string;
+  dtend: string | null;
+  description: string | null;
+  location: string | null;
+}
+
+export interface ICSParseResponse {
+  events: ICSEventPreview[];
+  total: number;
+}
+
+export interface ICSImportResponse {
+  created_count: number;
+  skipped_count: number;
+  errors: string[];
+}
+
+// ICS Import API
+export const icsImportApi = {
+  parse: async (file: File): Promise<ICSParseResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/api/import/ics/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  import: async (file: File, selectedIndices?: number[]): Promise<ICSImportResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const params: Record<string, string> = {};
+    if (selectedIndices && selectedIndices.length > 0) {
+      params.selected_indices = selectedIndices.join(',');
+    }
+    const response = await api.post('/api/import/ics', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params,
+    });
+    return response.data;
+  },
+};

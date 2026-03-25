@@ -23,6 +23,7 @@ import { ChildXpStats } from '../components/xp/ChildXpStats';
 import { OnTrackBadge } from '../components/OnTrackBadge';
 import { StudyRequestModal } from '../components/StudyRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
+import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -925,6 +926,9 @@ export function MyKidsPage() {
           </div>
 
           <div className="dashboard-redesign">
+          {/* ── Best Study Times ──────────────────── */}
+          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
+
           {/* ── Class Materials ───────────────────── */}
           <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)}>
               <div className="mykids-list">
