@@ -32,3 +32,34 @@ class CalendarEventResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ── ICS File Upload schemas ──────────────────────────────────
+
+
+class ICSEventPreview(BaseModel):
+    """A single parsed event from an uploaded .ics file."""
+    index: int
+    summary: str
+    dtstart: datetime
+    dtend: Optional[datetime] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+
+
+class ICSParseResponse(BaseModel):
+    """Response from parsing an uploaded .ics file (preview before import)."""
+    events: list[ICSEventPreview]
+    total: int
+
+
+class ICSImportRequest(BaseModel):
+    """Request to import selected events from a previously parsed .ics file."""
+    selected_indices: Optional[list[int]] = None
+
+
+class ICSImportResponse(BaseModel):
+    """Result of importing ICS events as tasks."""
+    created_count: int
+    skipped_count: int
+    errors: list[str]
