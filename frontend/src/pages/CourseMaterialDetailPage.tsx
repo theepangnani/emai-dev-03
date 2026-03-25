@@ -224,6 +224,7 @@ export function CourseMaterialDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showNotesPanel, setShowNotesPanel] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showTasksPopover, setShowTasksPopover] = useState(false);
   const [showHelpStudyMenu, setShowHelpStudyMenu] = useState(false);
   const [appendText, setAppendText] = useState<string | null>(null);
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
@@ -794,7 +795,11 @@ export function CourseMaterialDetailPage() {
                 </button>
               </div>
               <div className="cm-detail-meta">
-                {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
+                {content.course_name && (
+                  <Link to={`/courses/${content.course_id}`} className="cm-type-badge cm-type-badge--link" title="View class details">
+                    {content.course_name}
+                  </Link>
+                )}
                 {(content.course_is_private || content.course_classroom_type === 'private') && (
                   <span className="cm-privacy-badge" title="This material is shared only within your trust circle (linked parents, students, and teachers).">
                     <ShieldIcon /> IP Protected
@@ -804,6 +809,41 @@ export function CourseMaterialDetailPage() {
                   <CalendarIcon />
                   {new Date(content.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
+                {(() => {
+                  const allTasks = Object.values(linkedTasks).flat();
+                  return allTasks.length > 0 ? (
+                    <span className="cm-meta-tasks-wrap">
+                      <button
+                        className="cm-meta-tasks-btn"
+                        onClick={() => setShowTasksPopover(v => !v)}
+                        title="View linked tasks"
+                      >
+                        {allTasks.length} {allTasks.length === 1 ? 'task' : 'tasks'} linked
+                      </button>
+                      {showTasksPopover && (
+                        <div className="cm-meta-tasks-popover">
+                          <div className="cm-meta-tasks-popover-header">
+                            <span>Linked Tasks</span>
+                            <button className="cm-meta-tasks-popover-close" onClick={() => setShowTasksPopover(false)} aria-label="Close">&times;</button>
+                          </div>
+                          {allTasks.map(task => (
+                            <Link key={task.id} to={`/tasks/${task.id}`} className="cm-meta-tasks-popover-item" onClick={() => setShowTasksPopover(false)}>
+                              <span className="cm-meta-tasks-popover-title">{task.title}</span>
+                              {task.due_date && (
+                                <span className="cm-meta-tasks-popover-due">
+                                  Due: {new Date(task.due_date.substring(0, 10) + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.is_completed && <span className="cm-meta-tasks-popover-done">Done</span>}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="cm-meta-tasks-muted">No tasks linked</span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -972,8 +1012,6 @@ export function CourseMaterialDetailPage() {
               streamingContent={stream.content}
               isStreaming={stream.isStreaming}
               streamStatus={stream.status}
-              courseName={content?.course_name}
-              createdAt={studyGuide?.created_at}
             />
           )}
 

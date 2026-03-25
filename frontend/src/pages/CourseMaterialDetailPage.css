@@ -297,6 +297,131 @@
 .access-log-role.teacher { background: var(--color-info-bg); color: var(--color-info); }
 .access-log-role.admin { background: var(--priority-high-light, #fde8e8); color: var(--priority-high, #c53030); }
 
+
+.cm-type-badge--link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cm-type-badge--link:hover {
+  background: var(--color-accent-strong);
+  color: #fff;
+}
+
+/* ── Tasks count in header meta ── */
+.cm-meta-tasks-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cm-meta-tasks-btn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.cm-meta-tasks-btn:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent-strong);
+}
+
+.cm-meta-tasks-muted {
+  font-size: 0.78rem;
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.cm-meta-tasks-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12));
+  overflow: hidden;
+  animation: cm-popover-in 0.15s ease-out;
+}
+
+@keyframes cm-popover-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cm-meta-tasks-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.cm-meta-tasks-popover-close {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.cm-meta-tasks-popover-close:hover {
+  color: var(--color-ink);
+}
+
+.cm-meta-tasks-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: var(--color-ink);
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--color-border-light, var(--color-border));
+  transition: background 0.1s;
+}
+.cm-meta-tasks-popover-item:last-child {
+  border-bottom: none;
+}
+.cm-meta-tasks-popover-item:hover {
+  background: var(--color-surface-alt);
+}
+
+.cm-meta-tasks-popover-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cm-meta-tasks-popover-due {
+  font-size: 0.72rem;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.cm-meta-tasks-popover-done {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-success-text, #16a34a);
+  background: var(--color-success-bg, #f0fdf4);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
 /* ── Header toolbar — matches dashboard section footer ── */
 .cm-header-toolbar {
   display: flex;
