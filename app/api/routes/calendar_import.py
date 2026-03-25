@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -10,8 +10,12 @@ from app.models.calendar_feed import CalendarFeed
 from app.models.calendar_event import CalendarEvent
 from app.api.deps import get_current_user
 from app.core.rate_limit import limiter, get_user_id_or_ip
-from app.schemas.calendar_import import CalendarFeedCreate, CalendarFeedResponse, CalendarEventResponse
+from app.schemas.calendar_import import (
+    CalendarFeedCreate, CalendarFeedResponse, CalendarEventResponse,
+    ICSParseResponse, ICSEventPreview, ICSImportResponse,
+)
 from app.services.calendar_import_service import sync_calendar_feed, fetch_and_parse_ics
+from app.services.ics_import_service import parse_ics_file, import_events_as_tasks
 
 router = APIRouter(tags=["Calendar Import"])
 
@@ -155,3 +159,78 @@ async def list_calendar_events(
 
     events = query.order_by(CalendarEvent.start_date.asc()).all()
     return events
+
+
+# ── ICS File Upload endpoints ────────────────────────────────
+
+
+@router.post("/import/ics/parse", response_model=ICSParseResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def parse_ics_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload an .ics file and return parsed events for preview."""
+    if not file.filename or not file.filename.lower().endswith(".ics"):
+        raise HTTPException(status_code=400, detail="Only .ics files are accepted")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5 MB limit
+        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+
+    try:
+        events = parse_ics_file(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    previews = [
+        ICSEventPreview(
+            index=i,
+            summary=e["summary"],
+            dtstart=e["dtstart"],
+            dtend=e.get("dtend"),
+            description=e.get("description"),
+            location=e.get("location"),
+        )
+        for i, e in enumerate(events)
+    ]
+    return ICSParseResponse(events=previews, total=len(previews))
+
+
+@router.post("/import/ics", response_model=ICSImportResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def import_ics_upload(
+    request: Request,
+    file: UploadFile = File(...),
+    selected_indices: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload an .ics file and import events as tasks.
+
+    Optionally pass selected_indices as a comma-separated string of
+    event indices to import (e.g. "0,2,5"). If omitted, all events
+    are imported.
+    """
+    if not file.filename or not file.filename.lower().endswith(".ics"):
+        raise HTTPException(status_code=400, detail="Only .ics files are accepted")
+
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5 MB)")
+
+    try:
+        events = parse_ics_file(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    indices = None
+    if selected_indices:
+        try:
+            indices = [int(x.strip()) for x in selected_indices.split(",")]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid selected_indices format")
+
+    result = import_events_as_tasks(db, current_user, events, indices)
+    return ICSImportResponse(**result)
