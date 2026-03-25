@@ -4435,3 +4435,62 @@ Requires new `visibility` column on `course_contents` table.
 - Time-limited signed URLs for file downloads (15-min expiration)
 - Customer-Managed Encryption Keys (CMEK) via GCP KMS at bucket level
 - No direct file serving — all downloads via signed URL redirect
+
+---
+
+### 6.120 School Board Announcements (§6.120) - PLANNED
+
+**Status:** Research complete, deferred to phased approach
+**Issues:** #2276 (research & analysis), #2279 (Google Classroom announcements), #113 (School Board model)
+
+Parents want visibility into school board announcements (closures, events, policy changes) without manually checking each board's website.
+
+#### §6.120.1 API Research Findings (2026-03-24)
+
+No public API exists for Ontario school board announcements. Key findings:
+
+| Source | API Available | Announcement Data | Ontario Coverage |
+|--------|:---:|:---:|:---:|
+| Google Classroom | Yes | Course-level only | TDSB, PDSB, DDSB, HDSB |
+| D2L Brightspace | Yes | Org-unit news | Some boards (partnership required) |
+| SchoolMessenger | No | — | TDSB, PDSB, DDSB, HDSB (closed platform) |
+| Edsby | No | — | YRDSB (closed platform) |
+| Ontario Open Data | Yes | Demographics only | All boards |
+| Board website RSS | No | — | None of 5 boards offer RSS |
+
+#### §6.120.2 Phase 1: Google Classroom Announcements Sync (#2279)
+
+Extend existing Google Classroom integration to sync course announcements via [`courses.announcements`](https://developers.google.com/workspace/classroom/reference/rest/v1/courses.announcements) API.
+
+**Scope:**
+- Sync announcements during existing Google Classroom sync job
+- New `classroom_announcements` table (google_announcement_id, course_id, text, creator_name, source_url, published_at)
+- `GET /api/classroom-announcements` endpoint for parents (filtered by children's courses)
+- Notify parents on new announcements via existing notification system
+- Frontend: Announcements section on Parent Dashboard or My Kids page
+- OAuth scope: `classroom.announcements.readonly`
+- Covers 4/5 target boards (TDSB, PDSB, DDSB, HDSB use Google Classroom)
+- **Estimate:** 3-5 days
+
+#### §6.120.3 Phase 2: Board-Level Announcements (Deferred — requires partnerships)
+
+When ClassBridge establishes formal school board partnerships (DTAP/VASP path — #803, #942):
+- Build `school_boards` table (#113) with subscription model
+- Negotiate API access to SchoolMessenger or board data feeds
+- Explore D2L Brightspace API for boards using that LMS
+- Admin-managed board directory; parents subscribe to their boards
+
+#### §6.120.4 Web Scraping (Not Recommended)
+
+Web scraping was evaluated and **deferred** due to:
+- **Brittle** — Board websites redesign yearly, breaking parsers
+- **No RSS feeds** — All 5 target Ontario boards lack RSS
+- **Legal risk** — No explicit permission for scraping
+- **Redundant** — Parents already receive SchoolMessenger emails/texts
+- **Maintenance burden** — 5 bespoke parsers for marginal value
+
+If scraping is reconsidered in future: httpx + BeautifulSoup4, APScheduler cron at 5:30 AM UTC, content-hash dedup, batch notifications. Cost: ~$0.00/month. Full architecture in #2276.
+
+#### §6.120.5 MCP Integration (Phase 2, pairs with #2192-#2199)
+
+Once MCP is ported to emai-dev-03, expose announcements as an MCP resource so the AI tutor can answer questions like "When is March Break?" using board announcement data. Not suitable for the scraping pipeline itself (adds unnecessary LLM cost to a deterministic task).
