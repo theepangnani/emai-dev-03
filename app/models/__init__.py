@@ -44,6 +44,7 @@ from app.models.translated_summary import TranslatedSummary
 from app.models.study_session import StudySession
 from app.models.bug_report import BugReport
 from app.models.school_report_card import SchoolReportCard, SchoolReportCardAnalysis
+from app.models.course_announcement import CourseAnnouncement
 
 
 __all__ = [
@@ -115,4 +116,5 @@ __all__ = [
     "BugReport",
     "SchoolReportCard",
     "SchoolReportCardAnalysis",
+    "CourseAnnouncement",
 ]

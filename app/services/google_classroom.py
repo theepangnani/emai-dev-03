@@ -320,8 +320,8 @@ def list_course_announcements(
             page_token = response.get("nextPageToken")
             if not page_token:
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to list announcements for course %s: %s", course_id, e)
     return announcements, credentials
 
 

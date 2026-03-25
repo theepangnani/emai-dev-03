@@ -1100,6 +1100,8 @@ def get_course_announcements(
     db: Session = Depends(get_db),
     after: str | None = Query(None, description="Filter announcements after this ISO date"),
     before: str | None = Query(None, description="Filter announcements before this ISO date"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum results to return"),
+    offset: int = Query(0, ge=0, description="Number of results to skip"),
     _gc=Depends(_require_google_classroom),
 ):
     """Get synced announcements for a course.
@@ -1125,16 +1127,16 @@ def get_course_announcements(
             after_dt = datetime.fromisoformat(after)
             query = query.filter(CourseAnnouncement.creation_time >= after_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail="Invalid 'after' date format. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).")
 
     if before:
         try:
             before_dt = datetime.fromisoformat(before)
             query = query.filter(CourseAnnouncement.creation_time <= before_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=400, detail="Invalid 'before' date format. Use ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).")
 
-    announcements = query.order_by(CourseAnnouncement.creation_time.desc()).all()
+    announcements = query.order_by(CourseAnnouncement.creation_time.desc()).offset(offset).limit(limit).all()
 
     return [
         {

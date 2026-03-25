@@ -35,9 +35,9 @@ from app.schemas.weekly_report import (
 logger = logging.getLogger(__name__)
 
 
-def _aware(dt: datetime) -> datetime:
+def _aware(dt: datetime | None) -> datetime | None:
     if dt is None:
-        return dt
+        return None
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
 
 
@@ -85,7 +85,7 @@ def generate_share_token(parent_user_id: int, week_start: str) -> str:
 
     key = (settings.secret_key or "classbridge").encode()
     msg = f"weekly-report:{parent_user_id}:{week_start}".encode()
-    return hmac.new(key, msg, hashlib.sha256).hexdigest()[:16]
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()[:32]
 
 
 def generate_weekly_report(db: Session, parent_user_id: int) -> WeeklyFamilyReportResponse:
