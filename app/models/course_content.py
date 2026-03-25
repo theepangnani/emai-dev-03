@@ -72,6 +72,14 @@ class CourseContent(Base):
     def course_name(self) -> str | None:
         return self.course.name if self.course else None
 
+    @property
+    def course_is_private(self) -> bool:
+        return self.course.is_private if self.course else False
+
+    @property
+    def course_classroom_type(self) -> str | None:
+        return self.course.classroom_type if self.course else None
+
     __table_args__ = (
         Index("ix_course_contents_course", "course_id"),
         Index("ix_course_contents_type", "course_id", "content_type"),

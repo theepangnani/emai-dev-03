@@ -74,6 +74,14 @@
   color: var(--color-success);
 }
 
+.course-detail-badge.ip-protected {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  cursor: help;
+}
+
 .dtap-disclaimer {
   margin-top: 10px;
   padding: 10px 14px;

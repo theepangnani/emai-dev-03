@@ -125,6 +125,8 @@ class CourseContentResponse(BaseModel):
     id: int
     course_id: int
     course_name: Optional[str] = None
+    course_is_private: bool = False
+    course_classroom_type: Optional[str] = None
     title: str
     description: Optional[str]
     text_content: Optional[str] = None

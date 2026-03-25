@@ -31,6 +31,8 @@ const mockCourseContent = {
   id: 1,
   course_id: 10,
   course_name: 'Main Class',
+  course_is_private: false,
+  course_classroom_type: 'manual',
   title: 't.math.set2.8',
   description: 'Test description',
   text_content: 'Some content',
@@ -183,6 +185,10 @@ vi.mock('./course-material/VideosLinksTab', () => ({
 
 vi.mock('./course-material/ReplaceDocumentModal', () => ({
   ReplaceDocumentModal: () => null,
+}))
+
+vi.mock('./course-material/AccessLogTab', () => ({
+  AccessLogTab: () => <div>Access Log Tab</div>,
 }))
 
 import { CourseMaterialDetailPage } from './CourseMaterialDetailPage'

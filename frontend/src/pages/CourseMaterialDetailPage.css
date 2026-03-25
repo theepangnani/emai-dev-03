@@ -186,6 +186,117 @@
   text-transform: capitalize;
 }
 
+/* Privacy badge (#2274) */
+.cm-privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: help;
+}
+
+/* ── Access Log Tab (#2274) ── */
+.access-log-tab {
+  padding: 0.5rem 0;
+}
+
+.access-log-loading,
+.access-log-error,
+.access-log-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+.access-log-summary {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 10px);
+}
+
+.access-log-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.access-log-stat-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.access-log-stat-label {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.access-log-filters {
+  margin-bottom: 0.75rem;
+}
+
+.access-log-select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.access-log-table-wrap {
+  overflow-x: auto;
+}
+
+.access-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.access-log-table th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--color-border);
+  color: var(--color-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.access-log-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.access-log-role {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.access-log-role.parent { background: var(--badge-notes-light, #e8f4e8); color: var(--badge-notes, #2d7d2d); }
+.access-log-role.student { background: var(--color-accent-light); color: var(--color-accent-strong); }
+.access-log-role.teacher { background: var(--color-info-bg); color: var(--color-info); }
+.access-log-role.admin { background: var(--priority-high-light, #fde8e8); color: var(--priority-high, #c53030); }
+
 /* ── Header toolbar — matches dashboard section footer ── */
 .cm-header-toolbar {
   display: flex;

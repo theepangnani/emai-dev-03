@@ -20,6 +20,7 @@ import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { MindMapTab } from './course-material/MindMapTab';
 import { VideosLinksTab } from './course-material/VideosLinksTab';
 import { BriefingTab } from './course-material/BriefingTab';
+import { AccessLogTab } from './course-material/AccessLogTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -42,8 +43,8 @@ import { LinkedMaterialsPanel } from '../components/LinkedMaterialsPanel';
 import { useLinkedMaterials } from '../hooks/useLinkedMaterials';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos', 'briefing'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing' | 'accesslog';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos', 'briefing', 'accesslog'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -112,6 +113,24 @@ function BriefingTabIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M11 1H5a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M6 5h4M6 7.5h4M6 10h2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function AccessLogIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3 2h10a1.5 1.5 0 011.5 1.5v9a1.5 1.5 0 01-1.5 1.5H3a1.5 1.5 0 01-1.5-1.5v-9A1.5 1.5 0 013 2z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5 5.5h6M5 8h6M5 10.5h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5 3-1 5.5-3 5.5-6.5V4L8 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M6 8l1.5 1.5L10.5 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
@@ -747,6 +766,7 @@ export function CourseMaterialDetailPage() {
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
     { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
+    ...(content.created_by_user_id === user?.id ? [{ key: 'accesslog' as TabKey, label: 'Access Log', shortLabel: 'Log', hasContent: true, icon: <AccessLogIcon /> }] : []),
   ];
 
   return (
@@ -775,6 +795,11 @@ export function CourseMaterialDetailPage() {
               </div>
               <div className="cm-detail-meta">
                 {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
+                {(content.course_is_private || content.course_classroom_type === 'private') && (
+                  <span className="cm-privacy-badge" title="This material is shared only within your trust circle (linked parents, students, and teachers).">
+                    <ShieldIcon /> IP Protected
+                  </span>
+                )}
                 <span className="cm-meta-date">
                   <CalendarIcon />
                   {new Date(content.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1016,6 +1041,9 @@ export function CourseMaterialDetailPage() {
               studentName={resolvedStudent?.student_name}
               courseContentId={contentId}
             />
+          )}
+          {activeTab === 'accesslog' && content.created_by_user_id === user?.id && (
+            <AccessLogTab contentId={contentId} />
           )}
 
         </div>
