@@ -1,0 +1,225 @@
+/* Study Time Suggestions widget (#2227) */
+
+.sts-widget {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.sts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sts-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sts-title-icon {
+  font-size: 18px;
+}
+
+.sts-chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.sts-chevron--collapsed {
+  transform: rotate(-90deg);
+}
+
+.sts-body {
+  padding: 0 16px 16px;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  max-height: 600px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.sts-body--collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 16px;
+}
+
+/* Slots */
+.sts-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sts-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-surface-alt, #f9fafb);
+}
+
+.sts-slot--morning {
+  border-left: 3px solid #f59e0b;
+}
+
+.sts-slot--afternoon {
+  border-left: 3px solid #3b82f6;
+}
+
+.sts-slot--evening {
+  border-left: 3px solid #8b5cf6;
+}
+
+.sts-slot-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.sts-slot-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sts-slot-time {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, #111827);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.sts-slot-bar-track {
+  height: 4px;
+  background: var(--color-border, #e5e7eb);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sts-slot-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.sts-slot--morning .sts-slot-bar-fill {
+  background: #f59e0b;
+}
+
+.sts-slot--afternoon .sts-slot-bar-fill {
+  background: #3b82f6;
+}
+
+.sts-slot--evening .sts-slot-bar-fill {
+  background: #8b5cf6;
+}
+
+/* Next session */
+.sts-next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--color-surface-alt, #f0fdf4);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.sts-next-label {
+  color: var(--color-text-muted, #6b7280);
+}
+
+.sts-next-time {
+  font-weight: 600;
+  color: var(--color-text, #111827);
+}
+
+/* Empty state */
+.sts-empty {
+  font-size: 13px;
+  color: var(--color-text-muted, #9ca3af);
+  text-align: center;
+  padding: 16px 0;
+  margin: 0;
+}
+
+/* Bar chart */
+.sts-chart {
+  margin-top: 4px;
+}
+
+.sts-chart-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sts-trend {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.sts-trend.trend-up {
+  color: #16a34a;
+}
+
+.sts-trend.trend-down {
+  color: #dc2626;
+}
+
+.sts-trend.trend-steady {
+  color: var(--color-text-muted, #6b7280);
+}
+
+.sts-bars {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  height: 64px;
+}
+
+.sts-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sts-bar-track {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.sts-bar {
+  width: 100%;
+  min-height: 2px;
+  background: linear-gradient(to top, #8b5cf6, #a78bfa);
+  border-radius: 3px 3px 0 0;
+  transition: height 0.5s ease;
+}
+
+.sts-bar-label {
+  font-size: 10px;
+  color: var(--color-text-muted, #9ca3af);
+  font-weight: 500;
+}
