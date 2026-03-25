@@ -300,7 +300,7 @@
 
 #### Phase 2 — New Feature Requirements (#668)
 
-- [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663)
+- [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663). **Expanded in §6.121 (#2286):** Parent uploads school report cards (PDF/image), AI analyzes per-card (teacher feedback, grade analysis with median comparison, learning skills, improvement areas, parent tips) + cross-card career path suggestions. Analysis cached in DB.
 - [x] **Quiz difficulty levels (Easy/Medium/Hard)** — Difficulty selector on QuizTab with AI prompt engineering per level (#664, PR #1064) (IMPLEMENTED — generation side; parent-assigned quizzes with notification + tracking deferred)
 - [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
 - [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
@@ -618,6 +618,21 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 | 4 | — | **Tests** for timeline, Pomodoro, report card | 1.5d |
 
 **Verification:** View timeline → see full semester activity. Start Pomodoro → complete 25 min → AI recap → XP awarded. Generate report card PDF.
+
+---
+
+#### Batch 6b — School Report Card Upload & AI Analysis (can run in parallel)
+**Theme:** Parent intelligence — actionable insights from real school report cards.
+**Duration:** 3-4 days | **Risk:** Low | **Deploy:** Yes
+
+| # | Issue | Work | Est |
+|---|-------|------|-----|
+| 1 | #2286 | **DB models** — `school_report_cards` + `school_report_card_analyses` tables, import in `__init__.py` | 0.5d |
+| 2 | #2286 | **Backend API + service** — upload (multi-file), list, analyze, career-path, delete endpoints; AI service with Ontario curriculum-aware prompts; caching; usage tracking | 2d |
+| 3 | #2286 | **Frontend** — Report Cards page (`/parent/report-cards`), upload modal, analysis view, career path view, nav link | 1.5d |
+| 4 | #2286 | **Requirements + tests** — §6.121 docs (done), backend tests, lint/build | 0.5d |
+
+**Verification:** Upload YRDSB PDF → text extracted → Analyze → see teacher feedback, grades, tips. Upload 5+ cards → Career Path → see trends + career suggestions. Re-open analysis → cached (instant).
 
 ---
 

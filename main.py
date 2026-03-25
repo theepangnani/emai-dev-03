@@ -15,12 +15,12 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging, get_logger, RequestLogger
-from app.core.correlation import CorrelationIDMiddleware
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions, report_card, bug_reports, weekly_report
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, study_sessions, report_card, bug_reports
+from app.api.routes import school_report_cards  # §6.121
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -47,7 +47,6 @@ from app.models.detected_event import DetectedEvent  # noqa: F401
 from app.models.translated_summary import TranslatedSummary  # noqa: F401
 from app.models.study_session import StudySession  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
-from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1633,14 +1632,6 @@ def _run_migrations_inner(engine):
                 "CREATE INDEX IF NOT EXISTS ix_token_blacklist_user_id ON token_blacklist (user_id)",
                 "CREATE INDEX IF NOT EXISTS ix_study_guides_guide_type ON study_guides (guide_type)",
                 "CREATE INDEX IF NOT EXISTS ix_help_articles_role ON help_articles (role)",
-                # #2220: indexes for N+1 query fixes and frequently-queried FKs
-                "CREATE INDEX IF NOT EXISTS ix_study_guides_course ON study_guides (course_id)",
-                "CREATE INDEX IF NOT EXISTS ix_study_guides_assignment ON study_guides (assignment_id)",
-                "CREATE INDEX IF NOT EXISTS ix_study_guides_shared_with ON study_guides (shared_with_user_id)",
-                "CREATE INDEX IF NOT EXISTS ix_course_contents_created_by ON course_contents (created_by_user_id)",
-                "CREATE INDEX IF NOT EXISTS ix_invites_type_accepted ON invites (invite_type, accepted_at)",
-                "CREATE INDEX IF NOT EXISTS ix_enrollment_requests_requested_by ON enrollment_requests (requested_by_user_id)",
-                "CREATE INDEX IF NOT EXISTS ix_study_sessions_course ON study_sessions (course_id)",
             ]
             for stmt in _index_statements:
                 try:
@@ -1976,7 +1967,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["Content-Disposition", "X-Request-ID"],
+    expose_headers=["Content-Disposition"],
 )
 
 # Security headers middleware
@@ -1988,10 +1979,6 @@ app.add_middleware(DomainRedirectMiddleware)
 
 # GZip compression — compress responses > 500 bytes (#516)
 app.add_middleware(GZipMiddleware, minimum_size=500)
-
-# Correlation ID middleware — generates a UUID per request for log tracing (#2219)
-# Added last so it runs first (Starlette middleware is LIFO).
-app.add_middleware(CorrelationIDMiddleware)
 
 # Include all API routers at /api prefix
 # NOTE: Mobile apps will use these same endpoints initially.
@@ -2054,7 +2041,7 @@ app.include_router(events.router, prefix="/api")
 app.include_router(timeline.router, prefix="/api")
 app.include_router(report_card.router, prefix="/api")
 app.include_router(bug_reports.router, prefix="/api")
-app.include_router(weekly_report.router, prefix="/api")
+app.include_router(school_report_cards.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -2298,15 +2285,6 @@ async def startup_event():
         send_weekly_digests,
         CronTrigger(day_of_week="sun", hour=19, minute=0),
         id="weekly_digest",
-        replace_existing=True,
-    )
-
-    # Weekly family report card email — every Sunday at 8 PM UTC (#2228)
-    from app.jobs.weekly_report import send_weekly_reports
-    scheduler.add_job(
-        send_weekly_reports,
-        CronTrigger(day_of_week="sun", hour=20, minute=0),
-        id="weekly_family_report",
         replace_existing=True,
     )
 

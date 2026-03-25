@@ -1080,6 +1080,7 @@ Current feature issues are tracked in GitHub:
 - Issue #945: Phase 1.5: Multi-Google account support for teachers
 - Issue #959: Epic: AI Exam & Assessment Engine
 - Issue #960: Epic: Student Progress & Report Card Analysis
+- Issue #2286: feat: School Report Card Upload & AI Analysis (§6.121) — parent uploads school report cards, AI analysis with grade feedback + career path
 - Issue #963: Epic: Mobile App Build & Distribution
 - Issue #967: Epic: Phase 4 — LMS Integration Hub
 - Issue #968: Epic: Phase 5 — Marketplace & Community Features
