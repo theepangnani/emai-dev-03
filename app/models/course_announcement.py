@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Index
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
@@ -9,7 +9,7 @@ class CourseAnnouncement(Base):
     __tablename__ = "course_announcements"
 
     id = Column(Integer, primary_key=True, index=True)
-    course_id = Column(Integer, nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     google_announcement_id = Column(String(255), unique=True, nullable=False)
     text = Column(Text, nullable=True)
     creator_name = Column(String(255), nullable=True)
