@@ -57,7 +57,9 @@ jobs:
       # Browser web UI at all.
       # CVE-2026-33231: nltk WordNet Browser unauthenticated remote shutdown — same
       # component we don't use.
-      - run: pip-audit --desc --ignore-vuln CVE-2024-23342 --ignore-vuln GHSA-rf74-v2fm-23pw --ignore-vuln CVE-2026-33230 --ignore-vuln CVE-2026-33231
+      # CVE-2026-4539: pygments ReDoS in lexer — local-only, low severity, no fix
+      # available from pygments maintainers yet.
+      - run: pip-audit --desc --ignore-vuln CVE-2024-23342 --ignore-vuln GHSA-rf74-v2fm-23pw --ignore-vuln CVE-2026-33230 --ignore-vuln CVE-2026-33231 --ignore-vuln CVE-2026-4539
       - uses: actions/upload-artifact@v4
         if: always()
         with:
