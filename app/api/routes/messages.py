@@ -28,6 +28,7 @@ from app.core.utils import escape_like
 from app.api.deps import get_current_user
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
+from app.services.notification_service import resolve_deep_link
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -101,12 +102,14 @@ def _notify_message_recipient(
     if recipient.email_notifications:
         template = _load_template("message_notification.html")
         if template:
+            recipient_role = recipient.role.value if hasattr(recipient.role, 'value') else str(recipient.role)
             html = _render_template(
                 template,
                 recipient_name=recipient.full_name,
                 sender_name=sender.full_name,
                 message_preview=preview,
                 app_url=settings.frontend_url,
+                deep_link=resolve_deep_link("/messages", recipient_role),
             )
             html = add_inspiration_to_email(html, db, recipient.role)
             sent = send_email_sync(
