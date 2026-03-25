@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { tasksApi, parentApi, icsImportApi } from '../api/client';
-import type { TaskItem, AssignableUser, ChildSummary, ICSEventPreview, ICSImportResponse } from '../api/client';
+import { tasksApi, parentApi } from '../api/client';
+import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
 import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -94,17 +94,6 @@ export function TasksPage() {
   });
   const [overviews, setOverviews] = useState<ChildOverview[]>([]);
 
-  // ICS import state
-  const icsFileRef = useRef<HTMLInputElement>(null);
-  const [icsEvents, setIcsEvents] = useState<ICSEventPreview[]>([]);
-  const [icsSelected, setIcsSelected] = useState<Set<number>>(new Set());
-  const [icsFile, setIcsFile] = useState<File | null>(null);
-  const [icsParsing, setIcsParsing] = useState(false);
-  const [icsImporting, setIcsImporting] = useState(false);
-  const [icsResult, setIcsResult] = useState<ICSImportResponse | null>(null);
-  const [icsError, setIcsError] = useState<string | null>(null);
-  const showIcsPreview = icsEvents.length > 0 || icsParsing;
-  const icsModalRef = useFocusTrap<HTMLDivElement>(showIcsPreview || !!icsResult, () => { closeIcsModal(); });
 
   useEffect(() => {
     loadTasks();
