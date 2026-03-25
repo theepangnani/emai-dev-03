@@ -267,7 +267,8 @@ class TestAnalyzeEndpoint:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["analysis_type"] == "full"
-        assert data["teacher_feedback_summary"] != ""
+        assert "content" in data
+        assert data["content"]["teacher_feedback_summary"] != ""
 
     def test_analyze_no_text(self, client, db_session, src_users):
         headers = _auth(client, "src_parent@test.com")

@@ -141,7 +141,7 @@ class TestWeeklyReportService:
         token1 = generate_share_token(1, "2026-03-17")
         token2 = generate_share_token(1, "2026-03-17")
         assert token1 == token2
-        assert len(token1) == 16
+        assert len(token1) == 32
 
         # Different week = different token
         token3 = generate_share_token(1, "2026-03-24")
