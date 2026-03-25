@@ -4494,3 +4494,137 @@ If scraping is reconsidered in future: httpx + BeautifulSoup4, APScheduler cron 
 #### §6.120.5 MCP Integration (Phase 2, pairs with #2192-#2199)
 
 Once MCP is ported to emai-dev-03, expose announcements as an MCP resource so the AI tutor can answer questions like "When is March Break?" using board announcement data. Not suitable for the scraping pipeline itself (adds unnecessary LLM cost to a deterministic task).
+
+### 6.121 School Report Card Upload & AI Analysis (Phase 2)
+
+Parents upload their children's school-issued report cards (PDF/image) and receive AI-powered analysis including teacher feedback summary, per-subject grade analysis with feedback, improvement areas, parent tips, and longitudinal career path suggestions. All AI analysis is cached in the database — generated once, returned instantly on subsequent views.
+
+**GitHub Epic:** #960 | **Issue:** #2286
+
+**User Stories:**
+1. As a parent, I upload report cards (PDF) for my children so they're all in one place
+2. As a parent, I trigger AI analysis on any report card to get: teacher feedback summary, per-subject grade analysis, improvement areas, and tips for how I can help
+3. As a parent, I view all report cards for a child chronologically and see which ones have been analyzed
+4. As a parent, I request a career path analysis that looks across ALL my child's report cards to identify strengths and suggest career directions
+5. AI analysis is saved permanently — no re-generation on subsequent views
+
+**Supported Formats:**
+- PDF (primary — Ontario report cards from YRDSB, TDSB, etc. are text-based PDFs)
+- Images (JPG/PNG — for photographed paper report cards, uses existing OCR pipeline)
+
+#### §6.121.1 Report Card Upload
+
+- Parent uploads 1-10 report cards per batch (multipart form)
+- Reuses existing file processor (`file_processor.py`) for PDF text extraction
+- AI auto-extracts metadata from report card text: student name, grade level, school name, term/reporting period, date
+- File stored locally (dev) and GCS (prod) following existing `storage_service.py` pattern
+- Storage quota enforced via `storage_limits.py`
+- GCS path: `report-cards/{report_card_id}/{filename}`
+
+**Sub-tasks:**
+- [ ] `POST /api/school-report-cards/upload` — multipart upload with student_id
+- [ ] Auto-metadata extraction from extracted text
+- [ ] `GET /api/school-report-cards/{student_id}` — list all report cards for a child
+- [ ] `DELETE /api/school-report-cards/{report_card_id}` — soft-delete (set archived_at)
+
+#### §6.121.2 Per-Report-Card AI Analysis
+
+On-demand analysis triggered by parent. Returns structured JSON with:
+
+| Section | Description |
+|---------|-------------|
+| **Teacher Feedback Summary** | Consolidated narrative from all subject teachers |
+| **Grade Analysis** | Per-subject: grade/percentage, median, achievement level, teacher comment, AI feedback on performance relative to median |
+| **Learning Skills Assessment** | E/G/S/N ratings summary with patterns (Ontario Learning Skills: Responsibility, Organization, Independent Work, Collaboration, Initiative, Self-Regulation) |
+| **Improvement Areas** | Prioritized list (high/medium/low) with specific, actionable suggestions |
+| **Parent Tips** | Concrete things the parent can do at home, organized by subject |
+| **Overall Summary** | Holistic assessment of the reporting period |
+
+**AI Prompt Design:**
+- System prompt understands Ontario curriculum: Achievement Levels 1-4 → 50-59%, 60-69%, 70-79%, 80-100%
+- Understands Learning Skills scale: E (Excellent), G (Good), S (Satisfactory), N (Needs Improvement)
+- Handles elementary (Grades 1-8) and secondary (Grades 9-12) format differences
+- For secondary interim reports (achievement levels only, no comments): provides analysis based on available data with appropriate caveats
+
+**Caching:** Analysis stored in `school_report_card_analyses` table. Cache key: `report_card_id` + `analysis_type="full"`. Once generated, never regenerated.
+
+**Sub-tasks:**
+- [ ] `POST /api/school-report-cards/{report_card_id}/analyze` — trigger analysis
+- [ ] `GET /api/school-report-cards/{report_card_id}/analysis` — get cached result (or null)
+- [ ] AI service: `analyze_report_card()` in `school_report_card_service.py`
+- [ ] AI usage tracking via `increment_ai_usage(generation_type="report_card_analysis")`
+
+#### §6.121.3 Career Path Analysis (Cross-Card)
+
+Aggregates ALL report cards for a student to identify longitudinal academic patterns and suggest career directions.
+
+| Section | Description |
+|---------|-------------|
+| **Academic Strengths** | Subjects consistently strong across years |
+| **Grade Trends** | Per-subject trajectory over time (improving/declining/stable) with data points |
+| **Career Suggestions** | 3-5 career paths with reasoning, related strong subjects, and actionable next steps (e.g., recommended Grade 9/10 course selections) |
+| **Overall Assessment** | Holistic academic profile based on years of data |
+
+**Caching:** Cache key = SHA-256 hash of all report card texts combined (sorted). Automatically invalidates when a new report card is uploaded (hash changes).
+
+**Sub-tasks:**
+- [ ] `POST /api/school-report-cards/{student_id}/career-path` — trigger career path analysis
+- [ ] AI service: `generate_career_path()` in `school_report_card_service.py`
+- [ ] Requires ≥1 report card with extracted text
+
+#### §6.121.4 Database Design
+
+**New tables (created via `create_all()`):**
+
+```
+school_report_cards
+├── id (PK)
+├── student_id (FK → students.id)
+├── uploaded_by_user_id (FK → users.id)
+├── original_filename, file_path, gcs_path, file_size, mime_type
+├── text_content (extracted text)
+├── term, grade_level (String), school_name, report_date, school_year
+├── created_at, archived_at
+└── Indexes: student_id, uploaded_by_user_id
+
+school_report_card_analyses
+├── id (PK)
+├── report_card_id (FK, nullable — NULL for career_path type)
+├── student_id (FK → students.id)
+├── analysis_type ("full" | "career_path")
+├── content (JSON string — structured analysis)
+├── content_hash (SHA-256 for cache dedup)
+├── ai_model, prompt_tokens, completion_tokens, estimated_cost_usd
+├── created_at
+└── Indexes: report_card_id, (student_id + analysis_type)
+```
+
+#### §6.121.5 Frontend
+
+- **Page:** `/parent/report-cards` — child tabs, report card list, upload button, career path button
+- **Upload Modal:** Drag-drop (multi-file), child selector, optional metadata fields (auto-extracted)
+- **Analysis View:** Expandable sections for each analysis component, grade table with color-coded median comparison
+- **Career Path View:** Strengths list, grade trends, career suggestion cards with reasoning
+- **Navigation:** "Report Cards" link in parent sidebar
+
+#### §6.121.6 Access Control & Security
+
+- All endpoints verify parent-child relationship via `parent_students` table
+- Admin bypasses for support access
+- Report cards contain PII (OEN, school addresses, teacher names) — stored encrypted at rest in GCS
+- Rate limits: Upload 10/min, Analysis 5/min, List 60/min
+- AI usage tracked and debited from wallet
+
+#### §6.121.7 Acceptance Criteria
+
+- [ ] Parent can upload PDF report cards for their children (1-10 per batch)
+- [ ] Text extraction works for Ontario elementary and secondary report card formats
+- [ ] AI auto-extracts metadata (term, grade, school, date) from report card text
+- [ ] On-demand analysis returns structured JSON with all 6 sections (teacher feedback, grade analysis, learning skills, improvement areas, parent tips, summary)
+- [ ] Grade analysis includes per-subject feedback with median comparison
+- [ ] Career path aggregates data across all uploaded report cards for longitudinal insights
+- [ ] Analysis is cached in DB — second request returns stored result (no AI call)
+- [ ] Only the uploading parent (and admin) can access report cards
+- [ ] AI usage tracked and debited from wallet
+- [ ] Frontend displays analysis in clean, expandable sections
+- [ ] Lint, build, and tests pass
