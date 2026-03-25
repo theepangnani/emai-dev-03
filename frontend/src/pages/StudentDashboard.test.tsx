@@ -101,6 +101,16 @@ vi.mock('../api/invites', () => ({
   },
 }))
 
+vi.mock('../api/dailyQuiz', () => ({
+  dailyQuizApi: {
+    getQuiz: vi.fn().mockResolvedValue({
+      id: 1, user_id: 1, quiz_date: '2026-03-24', questions: [], total_questions: 5,
+      score: null, percentage: null, completed_at: null,
+    }),
+    submit: vi.fn().mockResolvedValue({ score: 3, total_questions: 5, percentage: 60, xp_awarded: 15 }),
+  },
+}))
+
 vi.mock('../components/NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }))

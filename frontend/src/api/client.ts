@@ -239,3 +239,5 @@ export { weeklyDigestApi } from './weeklyDigest';
 export type { WeeklyDigestResponse, ChildDigest, WeeklyDigestSendResponse } from './weeklyDigest';
 export { dailyDigestApi } from './dailyDigest';
 export type { DigestSettings, DailyDigestPreview, DigestSendResponse } from './dailyDigest';
+export { dailyQuizApi } from './dailyQuiz';
+export type { DailyQuizQuestion, DailyQuizResponse, DailyQuizSubmitResponse } from './dailyQuiz';

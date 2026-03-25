@@ -28,6 +28,7 @@ import { StudyRequestCard } from '../components/StudyRequestCard';
 import type { ChildGradeSummary } from '../api/grades';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import { ReportBugLink } from '../components/ReportBugLink';
+import { QuizOfTheDay } from '../components/QuizOfTheDay';
 import './StudentDashboard.css';
 import './DashboardGrid.css';
 
@@ -559,6 +560,9 @@ export function StudentDashboard() {
 
       {/* ── XP Progress ────────────────────────────────── */}
       <XpDashboardSection />
+
+      {/* ── Quiz of the Day (#2225) ────────────────────── */}
+      <QuizOfTheDay />
 
       {/* ── Assessment Countdown ──────────────────────── */}
       <AssessmentCountdown />
