@@ -127,7 +127,7 @@ api.interceptors.response.use(
 // Re-export all API modules and types for backward compatibility
 export { authApi } from './auth';
 export { coursesApi, courseContentsApi, assignmentsApi, announcementsApi } from './courses';
-export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement, SourceFileItem, LinkedMaterialItem, CourseAnnouncementItem } from './courses';
+export type { CourseContentItem, CourseContentUpdateResponse, LinkedCourseIdsResponse, LinkedCourseChild, AssignmentItem, SubmissionResponse, SubmissionListItem, TeacherCourseManagement, SourceFileItem, LinkedMaterialItem, CourseAnnouncementItem, AccessLogEvent, AccessLogResponse } from './courses';
 export { googleApi } from './google';
 export type { GoogleAccount } from './google';
 export { studyApi } from './study';

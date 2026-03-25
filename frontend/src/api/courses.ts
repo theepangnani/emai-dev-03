@@ -12,6 +12,8 @@ export interface CourseContentItem {
   reference_url: string | null;
   google_classroom_url: string | null;
   created_by_user_id: number | null;
+  course_is_private: boolean;
+  course_classroom_type: string | null;
   google_classroom_material_id: string | null;
   has_file: boolean;
   original_filename: string | null;
@@ -39,6 +41,22 @@ export interface SourceFileItem {
   file_type: string | null;
   file_size: number | null;
   created_at: string;
+}
+
+export interface AccessLogEvent {
+  user_name: string;
+  role: string;
+  action: string;
+  timestamp: string | null;
+}
+
+export interface AccessLogResponse {
+  events: AccessLogEvent[];
+  summary: {
+    total_views: number;
+    total_downloads: number;
+    unique_viewers: number;
+  };
 }
 
 export interface CourseContentUpdateResponse extends CourseContentItem {
@@ -458,6 +476,11 @@ export const courseContentsApi = {
   listCategories: async () => {
     const response = await api.get('/api/course-contents/categories');
     return response.data as string[];
+  },
+
+  getAccessLog: async (contentId: number, params?: { days?: number; action?: string }): Promise<AccessLogResponse> => {
+    const response = await api.get(`/api/course-contents/${contentId}/access-log`, { params: params || {} });
+    return response.data;
   },
 
   download: async (id: number, originalFilename?: string) => {
