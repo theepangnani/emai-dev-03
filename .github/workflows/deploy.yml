@@ -109,7 +109,7 @@ jobs:
             --min-instances 1 \
             --max-instances 3 \
             --cpu-boost \
-            --startup-probe httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,failureThreshold=12,timeoutSeconds=3 \
+            --startup-probe httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,failureThreshold=24,timeoutSeconds=5 \
             --timeout 300
 
       - name: Show deployment URL
