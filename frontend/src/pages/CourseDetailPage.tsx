@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { coursesApi, courseContentsApi, studyApi, assignmentsApi } from '../api/client';
+import { coursesApi, courseContentsApi, studyApi, assignmentsApi, teacherThanksApi } from '../api/client';
 import type { CourseContentItem, AssignmentItem, SubmissionResponse, SubmissionListItem } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -149,6 +149,13 @@ export function CourseDetailPage() {
   const [rosterExpanded, setRosterExpanded] = useState(true);
   const [awardXpStudent, setAwardXpStudent] = useState<{ userId: number; name: string } | null>(null);
 
+  // Teacher thanks (#2226)
+  const [thankedToday, setThankedToday] = useState(false);
+  const [thankSending, setThankSending] = useState(false);
+  const [thankPulse, setThankPulse] = useState(false);
+  const [thankMessage, setThankMessage] = useState('');
+  const [showThankInput, setShowThankInput] = useState(false);
+
   // Focus traps for modals
   const addStudentModalRef = useFocusTrap<HTMLDivElement>(showAddStudentModal, () => setShowAddStudentModal(false));
   const editCourseModalRef = useFocusTrap<HTMLDivElement>(showEditModal, () => setShowEditModal(false));
@@ -216,6 +223,13 @@ export function CourseDetailPage() {
           setEnrollmentRequests(reqs);
         } catch { /* ignore */ }
       }
+      // Load thank-teacher status for students/parents (#2226)
+      if ((user?.role === 'student' || user?.role === 'parent') && courseData.teacher_id) {
+        try {
+          const thanksStatus = await teacherThanksApi.getThanksStatus(courseData.teacher_id);
+          setThankedToday(thanksStatus.thanked_today);
+        } catch { /* ignore */ }
+      }
     } catch {
       setCourse(null);
     } finally {
@@ -231,6 +245,23 @@ export function CourseDetailPage() {
     } catch { /* ignore */ } finally {
       setContentsLoading(false);
     }
+  };
+
+  const handleThankTeacher = async () => {
+    if (!course?.teacher_id || thankedToday || thankSending) return;
+    setThankSending(true);
+    try {
+      await teacherThanksApi.sendThanks(course.teacher_id, {
+        course_id: course.id,
+        message: thankMessage.trim() || undefined,
+      });
+      setThankedToday(true);
+      setThankPulse(true);
+      setShowThankInput(false);
+      setThankMessage('');
+      setTimeout(() => setThankPulse(false), 1000);
+    } catch { /* ignore */ }
+    finally { setThankSending(false); }
   };
 
   const isCreator = course?.created_by_user_id === user?.id;
@@ -683,9 +714,43 @@ export function CourseDetailPage() {
             )}
             {course.description && <p className="course-detail-desc">{course.description}</p>}
             {course.teacher_name && (
-              <span className="course-detail-teacher">
-                Teacher: {course.teacher_name}{course.teacher_email ? ` (${course.teacher_email})` : ''}
-              </span>
+              <div className="course-detail-teacher-row">
+                <span className="course-detail-teacher">
+                  Teacher: {course.teacher_name}{course.teacher_email ? ` (${course.teacher_email})` : ''}
+                </span>
+                {(user?.role === 'student' || user?.role === 'parent') && course.teacher_id && (
+                  <span className="thank-teacher-inline">
+                    <button
+                      className={`thank-teacher-btn${thankedToday ? ' thanked' : ''}${thankPulse ? ' pulse' : ''}`}
+                      onClick={() => {
+                        if (thankedToday) return;
+                        if (!showThankInput) { setShowThankInput(true); return; }
+                        handleThankTeacher();
+                      }}
+                      disabled={thankedToday || thankSending}
+                      title={thankedToday ? 'Already thanked today' : 'Thank this teacher'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={thankedToday ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {thankedToday ? ' Thanked' : ' Thank'}
+                    </button>
+                    {showThankInput && !thankedToday && (
+                      <span className="thank-message-input">
+                        <input
+                          type="text"
+                          placeholder="Optional message (100 chars)"
+                          maxLength={100}
+                          value={thankMessage}
+                          onChange={(e) => setThankMessage(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleThankTeacher(); }}
+                        />
+                        <button className="thank-send-btn" onClick={handleThankTeacher} disabled={thankSending}>
+                          {thankSending ? 'Sending...' : 'Send'}
+                        </button>
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
             )}
             <span className="course-detail-date">
               Created {new Date(course.created_at).toLocaleDateString()}

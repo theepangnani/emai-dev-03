@@ -967,3 +967,87 @@
 .course-detail-page .bulk-archive-btn {
   margin-left: auto;
 }
+
+/* Teacher Thanks (#2226) */
+.course-detail-teacher-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.thank-teacher-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.thank-teacher-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.thank-teacher-btn:hover:not(:disabled) {
+  border-color: #e74c7a;
+  color: #e74c7a;
+}
+
+.thank-teacher-btn.thanked {
+  border-color: #e74c7a;
+  color: #e74c7a;
+  cursor: default;
+}
+
+.thank-teacher-btn:disabled {
+  opacity: 0.7;
+}
+
+.thank-teacher-btn.pulse {
+  animation: thank-pulse 0.6s ease;
+}
+
+@keyframes thank-pulse {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.thank-message-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.thank-message-input input {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  width: 200px;
+}
+
+.thank-send-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.thank-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

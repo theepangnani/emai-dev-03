@@ -167,11 +167,14 @@ export type {
 } from './messages';
 export { notificationsApi } from './notifications';
 export type { NotificationResponse, NotificationPreferences } from './notifications';
-export { teacherCommsApi } from './teachers';
+export { teacherCommsApi, teacherThanksApi } from './teachers';
 export type {
   TeacherCommunication,
   TeacherCommunicationList,
   EmailMonitoringStatus,
+  TeacherThanksCount,
+  TeacherThanksStatus,
+  TeacherThanksResponse,
 } from './teachers';
 export { parentApi } from './parent';
 export type {
