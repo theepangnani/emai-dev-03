@@ -2049,19 +2049,11 @@ logger.info("All routers registered")
 @app.get("/health")
 def health_check():
     logger.debug("Health check requested")
-    if not _app_ready:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "starting",
-                "version": os.environ.get("APP_VERSION", "dev"),
-                "environment": settings.environment,
-            },
-        )
     return {
         "status": "healthy",
         "version": os.environ.get("APP_VERSION", "dev"),
         "environment": settings.environment,
+        "migrations_complete": _app_ready,
     }
 
 
@@ -2144,9 +2136,23 @@ def seed_wallet_data(db):
 
 @app.on_event("startup")
 async def startup_event():
-    # Run DB schema migrations before anything else — readiness middleware
-    # returns 503 while this runs, so Cloud Run won't route traffic yet (#2067).
-    run_migrations(engine)
+    # Run DB schema migrations in a background thread so the /health endpoint
+    # responds immediately for Cloud Run startup probes (#2282).
+    # The readiness middleware still blocks normal traffic until _app_ready is set.
+    import threading
+
+    def _run_migrations_background():
+        global _app_ready
+        try:
+            run_migrations(engine)
+            logger.info("Background migrations completed successfully")
+        except Exception as e:
+            logger.error("Background migrations failed: %s", e)
+        finally:
+            _app_ready = True
+
+    migration_thread = threading.Thread(target=_run_migrations_background, daemon=True)
+    migration_thread.start()
 
     from apscheduler.triggers.cron import CronTrigger
     from app.services.scheduler import scheduler, start_scheduler
@@ -2308,12 +2314,7 @@ async def startup_event():
     except Exception as e:
         logger.warning("Could not initialize intent embedding service: %s", e)
 
-    # Signal that the app is fully initialized — readiness middleware will
-    # start allowing traffic through (#2034).
-    global _app_ready
-    _app_ready = True
-
-    logger.info("EMAI application started successfully")
+    logger.info("EMAI application started — migrations running in background")
 
 
 @app.on_event("shutdown")
