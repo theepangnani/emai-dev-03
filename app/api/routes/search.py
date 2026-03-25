@@ -58,16 +58,17 @@ def _get_accessible_course_ids(db: Session, user: User, user_ids: list[int]) -> 
     created = db.query(Course.id).filter(Course.created_by_user_id.in_(user_ids)).all()
     course_ids.update(cid for (cid,) in created)
 
-    # Courses enrolled via student_courses
-    for uid in user_ids:
-        student = db.query(Student).filter(Student.user_id == uid).first()
-        if student:
-            enrolled = (
-                db.query(student_courses.c.course_id)
-                .filter(student_courses.c.student_id == student.id)
-                .all()
-            )
-            course_ids.update(cid for (cid,) in enrolled)
+    # Courses enrolled via student_courses — batch query for all user_ids at once
+    student_ids = [
+        sid for (sid,) in db.query(Student.id).filter(Student.user_id.in_(user_ids)).all()
+    ]
+    if student_ids:
+        enrolled = (
+            db.query(student_courses.c.course_id)
+            .filter(student_courses.c.student_id.in_(student_ids))
+            .all()
+        )
+        course_ids.update(cid for (cid,) in enrolled)
 
     # Teacher's courses
     if user.role == UserRole.TEACHER:

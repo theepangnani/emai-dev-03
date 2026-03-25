@@ -125,29 +125,52 @@ def search_teachers(
     current_user: User = Depends(get_current_user),
 ):
     """Search teachers by name or email. Returns both platform and shadow teachers."""
-    results = []
-    query = db.query(Teacher)
-    teachers = query.all()
+    from app.core.utils import escape_like
+    from sqlalchemy import or_
+
     q_lower = q.strip().lower()
-    for t in teachers:
-        name = None
-        email = None
-        if t.is_shadow:
-            name = t.full_name
-            email = t.google_email
-        elif t.user:
-            name = t.user.full_name
-            email = t.user.email
-        if not name:
-            continue
-        if q_lower and q_lower not in (name or "").lower() and q_lower not in (email or "").lower():
+    results = []
+
+    # Shadow teachers: filter by full_name / google_email in DB
+    shadow_query = db.query(Teacher).filter(Teacher.is_shadow == True)  # noqa: E712
+    if q_lower:
+        shadow_query = shadow_query.filter(
+            or_(
+                Teacher.full_name.ilike(f"%{escape_like(q_lower)}%"),
+                Teacher.google_email.ilike(f"%{escape_like(q_lower)}%"),
+            )
+        )
+    for t in shadow_query.limit(20).all():
+        if not t.full_name:
             continue
         results.append({
             "id": t.id,
-            "name": name,
-            "email": email,
-            "is_shadow": t.is_shadow,
+            "name": t.full_name,
+            "email": t.google_email,
+            "is_shadow": True,
         })
+
+    # Platform teachers: join with User to filter by name/email in DB
+    platform_query = (
+        db.query(Teacher, User)
+        .join(User, Teacher.user_id == User.id)
+        .filter(Teacher.is_shadow == False)  # noqa: E712
+    )
+    if q_lower:
+        platform_query = platform_query.filter(
+            or_(
+                User.full_name.ilike(f"%{escape_like(q_lower)}%"),
+                User.email.ilike(f"%{escape_like(q_lower)}%"),
+            )
+        )
+    for t, u in platform_query.limit(20).all():
+        results.append({
+            "id": t.id,
+            "name": u.full_name,
+            "email": u.email,
+            "is_shadow": False,
+        })
+
     return results[:20]
 
 
@@ -160,25 +183,31 @@ def search_students_for_course(
     current_user: User = Depends(get_current_user),
 ):
     """Search students by name or email for course enrollment."""
-    from app.models.user import User as UserModel
-    results = []
-    students = db.query(Student).all()
+    from app.core.utils import escape_like
+    from sqlalchemy import or_
+
     q_lower = q.strip().lower()
-    for s in students:
-        user = db.query(UserModel).filter(UserModel.id == s.user_id).first()
-        if not user:
-            continue
-        name = user.full_name or ""
-        email = user.email or ""
-        if q_lower and q_lower not in name.lower() and q_lower not in email.lower():
-            continue
-        results.append({
+    query = (
+        db.query(Student, User)
+        .join(User, Student.user_id == User.id)
+    )
+    if q_lower:
+        query = query.filter(
+            or_(
+                User.full_name.ilike(f"%{escape_like(q_lower)}%"),
+                User.email.ilike(f"%{escape_like(q_lower)}%"),
+            )
+        )
+    rows = query.limit(20).all()
+    return [
+        {
             "id": s.id,
-            "user_id": user.id,
-            "name": name,
-            "email": email,
-        })
-    return results[:20]
+            "user_id": u.id,
+            "name": u.full_name or "",
+            "email": u.email or "",
+        }
+        for s, u in rows
+    ]
 
 
 @router.post("/", response_model=CourseResponse)
