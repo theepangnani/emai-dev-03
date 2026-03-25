@@ -54,4 +54,7 @@ class StudyGuide(Base):
     __table_args__ = (
         Index("ix_study_guides_user", "user_id"),
         Index("ix_study_guides_course_content", "course_content_id"),
+        Index("ix_study_guides_course", "course_id"),
+        Index("ix_study_guides_assignment", "assignment_id"),
+        Index("ix_study_guides_shared_with", "shared_with_user_id"),
     )

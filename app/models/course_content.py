@@ -76,4 +76,5 @@ class CourseContent(Base):
         Index("ix_course_contents_course", "course_id"),
         Index("ix_course_contents_type", "course_id", "content_type"),
         Index("ix_course_contents_material_group", "material_group_id"),
+        Index("ix_course_contents_created_by", "created_by_user_id"),
     )

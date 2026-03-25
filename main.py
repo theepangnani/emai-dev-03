@@ -1632,6 +1632,14 @@ def _run_migrations_inner(engine):
                 "CREATE INDEX IF NOT EXISTS ix_token_blacklist_user_id ON token_blacklist (user_id)",
                 "CREATE INDEX IF NOT EXISTS ix_study_guides_guide_type ON study_guides (guide_type)",
                 "CREATE INDEX IF NOT EXISTS ix_help_articles_role ON help_articles (role)",
+                # #2220: indexes for N+1 query fixes and frequently-queried FKs
+                "CREATE INDEX IF NOT EXISTS ix_study_guides_course ON study_guides (course_id)",
+                "CREATE INDEX IF NOT EXISTS ix_study_guides_assignment ON study_guides (assignment_id)",
+                "CREATE INDEX IF NOT EXISTS ix_study_guides_shared_with ON study_guides (shared_with_user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_course_contents_created_by ON course_contents (created_by_user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_invites_type_accepted ON invites (invite_type, accepted_at)",
+                "CREATE INDEX IF NOT EXISTS ix_enrollment_requests_requested_by ON enrollment_requests (requested_by_user_id)",
+                "CREATE INDEX IF NOT EXISTS ix_study_sessions_course ON study_sessions (course_id)",
             ]
             for stmt in _index_statements:
                 try:
