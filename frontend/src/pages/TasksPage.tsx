@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { tasksApi, parentApi } from '../api/client';
-import type { TaskItem, AssignableUser, ChildSummary } from '../api/client';
+import { tasksApi, parentApi, icsImportApi as _icsImportApi } from '../api/client';
+import type { TaskItem, AssignableUser, ChildSummary, ICSEventPreview, ICSImportResponse } from '../api/client';
 import type { ChildOverview } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -93,6 +93,19 @@ export function TasksPage() {
     } catch { return true; }
   });
   const [overviews, setOverviews] = useState<ChildOverview[]>([]);
+
+  // ICS import state (WIP — UI not yet connected, see #2166)
+  const _icsFileRef = useRef<HTMLInputElement>(null);
+  const [_icsEvents, _setIcsEvents] = useState<ICSEventPreview[]>([]);
+  const [_icsSelected, _setIcsSelected] = useState<Set<number>>(new Set());
+  const [_icsFile, _setIcsFile] = useState<File | null>(null);
+  const [_icsParsing, _setIcsParsing] = useState(false);
+  const [_icsImporting, _setIcsImporting] = useState(false);
+  const [_icsResult, _setIcsResult] = useState<ICSImportResponse | null>(null);
+  const [_icsError, _setIcsError] = useState<string | null>(null);
+  void _icsFileRef; void _icsEvents; void _setIcsEvents; void _icsSelected; void _setIcsSelected;
+  void _icsFile; void _setIcsFile; void _icsParsing; void _setIcsParsing; void _icsImporting; void _setIcsImporting;
+  void _icsResult; void _setIcsResult; void _icsError; void _setIcsError;
 
   useEffect(() => {
     loadTasks();
