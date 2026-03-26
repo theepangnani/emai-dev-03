@@ -154,10 +154,8 @@ def _strip_urls_for_school(
 
 def _can_modify_content(db: Session, user: User, content: CourseContent) -> bool:
     """Check if user can modify (edit/delete) a content item.
-    Allowed for: the creator, admins, and parents of the creator."""
+    Allowed for: the creator and parents of the creator."""
     if content.created_by_user_id == user.id:
-        return True
-    if user.has_role(UserRole.ADMIN):
         return True
     if user.role == UserRole.PARENT:
         child_student_ids = [
