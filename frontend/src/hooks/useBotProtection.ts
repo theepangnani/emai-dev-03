@@ -41,7 +41,7 @@ export function useBotProtection(): BotProtection {
     },
     getFields: () => ({
       website: honeypot,
-      started_at: startedAt.current,
+      started_at: startedAt.current > 0 ? (Date.now() / 1000) - startedAt.current : 0,
     }),
     resetTimer: () => {
       startedAt.current = Date.now() / 1000;
