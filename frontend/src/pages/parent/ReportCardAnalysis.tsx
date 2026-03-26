@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '../../components/DashboardLayout';
+import { useConfirm } from '../../components/ConfirmModal';
 import { parentApi } from '../../api/parent';
 import type { ChildSummary } from '../../api/parent';
 import { schoolReportCardsApi } from '../../api/schoolReportCards';
@@ -18,6 +19,7 @@ import { PageSkeleton } from '../../components/Skeleton';
 import './ReportCardAnalysis.css';
 
 export function ReportCardAnalysis() {
+  const { confirm, confirmModal } = useConfirm();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [reportCards, setReportCards] = useState<SchoolReportCard[]>([]);
@@ -192,6 +194,24 @@ export function ReportCardAnalysis() {
     }
   }, [selectedChildId, uploadFile, loadReportCards]);
 
+  // Delete handler
+  const handleDelete = useCallback(async (cardId: number) => {
+    const confirmed = await confirm({
+      title: 'Delete Report Card',
+      message: 'Delete this report card? This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await schoolReportCardsApi.delete(cardId);
+      if (selectedChildId) loadReportCards(selectedChildId);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e.response?.data?.detail || 'Failed to delete report card.');
+    }
+  }, [confirm, selectedChildId, loadReportCards]);
+
   // Toggle analysis section
   const toggleSection = useCallback((section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -311,6 +331,13 @@ export function ReportCardAnalysis() {
                             {analyzeLoadingId === card.id ? 'Analyzing...' : 'Analyze Now'}
                           </button>
                         )}
+                        <button
+                          className="rca-action-btn rca-action-btn-outline"
+                          style={{ color: 'var(--danger, #e74c3c)', borderColor: 'var(--danger, #e74c3c)' }}
+                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(card.id); }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </button>
 
@@ -523,6 +550,7 @@ export function ReportCardAnalysis() {
           </div>
         )}
       </div>
+      {confirmModal}
     </DashboardLayout>
   );
 }
