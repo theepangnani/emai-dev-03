@@ -214,7 +214,7 @@ The mobile theme (`ClassBridgeMobile/src/theme/index.ts`) is **missing** several
 **Recommendation:** Do not build AI study guide generation on mobile. Build read-only viewer instead.
 
 **Why:**
-- Generation requires file upload (PDF, DOCX, PPTX — up to 20MB)
+- Generation requires file upload (PDF, DOCX, PPTX — up to 30MB)
 - Multi-step wizard (select file → extract text → choose options → generate → stream response)
 - Streaming generation takes 30-90 seconds with real-time markdown rendering
 - File picking on mobile is friction-heavy and error-prone

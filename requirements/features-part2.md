@@ -523,7 +523,7 @@ Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a sin
 #### 6.28.1 Step 1 — Add Your Material
 - [x] File drop zone as hero element (large, prominent, first thing visible)
 - [x] Drag-and-drop + click-to-browse (same file types: PDF, Word, Excel, PPT, Images, Text, ZIP)
-- [x] Multi-file support (up to 10 files, 20 MB each) — same limits as current
+- [x] Multi-file support (up to 10 files, 30 MB each) — same limits as current
 - [x] "or paste text below" divider with textarea
 - [x] Clipboard paste support (files + images) — same as current
 - [x] Class selector dropdown (only if `courses` prop provided)

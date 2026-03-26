@@ -206,7 +206,7 @@ This gives users data ownership, reduces platform storage costs, and makes class
 ## Technical Constraints
 
 ### Performance
-- Cloud file upload (save to drive): <5 seconds for files under 20MB
+- Cloud file upload (save to drive): <5 seconds for files under 30MB
 - On-demand download from cloud: <3 seconds average, 30-second timeout
 - Folder listing/creation: <2 seconds (cached folder IDs after first lookup)
 - Upload pipeline: Cloud save runs in parallel with text extraction — no added latency to user-facing flow
