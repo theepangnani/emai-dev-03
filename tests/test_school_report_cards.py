@@ -669,3 +669,64 @@ class TestParseReportDate:
 
     def test_invalid_string(self):
         assert self._fn()("not-a-date") is None
+
+
+# ── extract_date_from_filename unit tests ──
+
+
+class TestExtractDateFromFilename:
+    """Unit tests for extract_date_from_filename helper (#2368)."""
+
+    @staticmethod
+    def _fn():
+        from app.services.school_report_card_service import extract_date_from_filename
+        return extract_date_from_filename
+
+    def test_month_year_at_start(self):
+        assert self._fn()("March 2026 YRDSB Report Card.pdf") == "March 1, 2026"
+
+    def test_month_year_with_dash_separator(self):
+        assert self._fn()("February 2026 - Progress Report.pdf") == "February 1, 2026"
+
+    def test_month_year_anywhere(self):
+        assert self._fn()("Report Card January 2025.pdf") == "January 1, 2025"
+
+    def test_no_date_in_filename(self):
+        assert self._fn()("report_card_final.pdf") is None
+
+    def test_none_input(self):
+        assert self._fn()(None) is None
+
+    def test_empty_string(self):
+        assert self._fn()("") is None
+
+    def test_month_year_no_extension(self):
+        assert self._fn()("June 2024 Report") == "June 1, 2024"
+
+    def test_case_insensitive(self):
+        result = self._fn()("NOVEMBER 2025 report.pdf")
+        assert result == "November 1, 2025"
+        # Verify the output parses through _parse_report_date successfully
+        from app.api.routes.school_report_cards import _parse_report_date
+        parsed = _parse_report_date(result)
+        assert parsed is not None
+        assert parsed == date(2025, 11, 1)
+
+
+# ── extract_metadata broadened date fallback tests ──
+
+
+class TestMetadataDateFallback:
+    """Tests for the broadened OCR date extraction fallback (#2368)."""
+
+    def test_standalone_month_year_in_text(self):
+        from app.services.school_report_card_service import extract_metadata
+        text = "Semester Two Interim Progress Report\nMarch 2026\nBill Hogarth Secondary School"
+        result = extract_metadata(text)
+        assert result["report_date"] == "March 1, 2026"
+
+    def test_labeled_date_takes_priority(self):
+        from app.services.school_report_card_service import extract_metadata
+        text = "Date: 02/19/2026\nSome text about January 2025"
+        result = extract_metadata(text)
+        assert result["report_date"] == "02/19/2026"
