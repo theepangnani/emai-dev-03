@@ -2,6 +2,7 @@
 
 import csv
 import io
+import secrets
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -103,12 +104,13 @@ def _import_students(db: Session, rows: list[dict], user: User) -> dict:
             errors.append(f"Row {i}: user with email {email} already exists")
             continue
 
-        # Create user with student role
+        # Create user with student role and unique random password
+        temp_password = secrets.token_urlsafe(16)
         new_user = User(
             email=email,
             full_name=name,
             role=UserRole.STUDENT,
-            hashed_password=get_password_hash("TempPassword123!"),
+            hashed_password=get_password_hash(temp_password),
             needs_onboarding=True,
         )
         db.add(new_user)
