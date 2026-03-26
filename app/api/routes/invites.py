@@ -17,6 +17,7 @@ from app.models.notification import Notification, NotificationType
 from app.api.deps import get_current_user, require_role
 from app.schemas.invite import InviteCreate, InviteResponse
 from app.services.email_service import send_email_sync, add_inspiration_to_email, wrap_branded_email
+from app.services.notification_service import get_role_aware_link
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -94,11 +95,13 @@ def _send_message_to_existing_user(
             tpl_path = os.path.join(_TEMPLATE_DIR, "message_notification.html")
             with open(tpl_path, "r") as f:
                 html = f.read()
+            role_link = get_role_aware_link("/messages", recipient.role)
+            action_url = f"{settings.frontend_url}{role_link}"
             html = (html
                 .replace("{{recipient_name}}", recipient.full_name)
                 .replace("{{sender_name}}", sender.full_name)
                 .replace("{{message_preview}}", preview)
-                .replace("{{app_url}}", settings.frontend_url))
+                .replace("{{action_url}}", action_url))
             html = add_inspiration_to_email(html, db, recipient.role)
             send_email_sync(
                 to_email=recipient.email,

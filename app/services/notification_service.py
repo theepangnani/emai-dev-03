@@ -23,6 +23,43 @@ from app.services.email_service import send_email_sync
 logger = logging.getLogger(__name__)
 
 
+# Role-based deep link mappings: generic link → role-specific link
+_ROLE_LINK_OVERRIDES: dict[str, dict[str, str]] = {
+    "/messages": {
+        UserRole.PARENT: "/messages",
+        UserRole.STUDENT: "/messages",
+        UserRole.TEACHER: "/messages",
+        UserRole.ADMIN: "/messages",
+    },
+    "/dashboard": {
+        UserRole.PARENT: "/dashboard",
+        UserRole.STUDENT: "/dashboard",
+        UserRole.TEACHER: "/teacher-communications",
+        UserRole.ADMIN: "/admin/waitlist",
+    },
+    "/link-requests": {
+        UserRole.PARENT: "/link-requests",
+        UserRole.STUDENT: "/dashboard",
+        UserRole.TEACHER: "/dashboard",
+        UserRole.ADMIN: "/dashboard",
+    },
+}
+
+
+def get_role_aware_link(link: str | None, role: str | None) -> str | None:
+    """Return a role-appropriate deep link for email notifications.
+
+    Falls back to the original link if no role-specific override exists.
+    """
+    if not link or not role:
+        return link
+
+    overrides = _ROLE_LINK_OVERRIDES.get(link)
+    if overrides:
+        return overrides.get(role, link)
+    return link
+
+
 def send_multi_channel_notification(
     db: Session,
     recipient: User,
@@ -98,7 +135,7 @@ def send_multi_channel_notification(
     # Channel 2: Email
     if "email" in channels and recipient.email and recipient.email_notifications and recipient.should_notify(notif_type_value, "email"):
         try:
-            email_html = _build_notification_email(title, content, link)
+            email_html = _build_notification_email(title, content, link, recipient.role)
             send_email_sync(recipient.email, title, email_html)
         except Exception as e:
             logger.warning(f"Failed to send notification email to {recipient.email}: {e}")
@@ -180,14 +217,15 @@ def notify_parents_of_student(
     return notifications
 
 
-def _build_notification_email(title: str, content: str, link: str | None) -> str:
+def _build_notification_email(title: str, content: str, link: str | None, recipient_role: str | None = None) -> str:
     """Build a branded HTML email for notifications."""
     from app.core.config import settings
     from app.services.email_service import wrap_branded_email
 
     link_html = ""
     if link:
-        full_url = f"{settings.frontend_url}{link}"
+        role_link = get_role_aware_link(link, recipient_role)
+        full_url = f"{settings.frontend_url}{role_link}"
         link_html = (
             f'<p style="margin:24px 0 0 0;"><a href="{full_url}" '
             f'style="display:inline-block;background:#4f46e5;color:white;text-decoration:none;'
