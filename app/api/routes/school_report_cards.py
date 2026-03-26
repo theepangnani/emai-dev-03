@@ -5,7 +5,6 @@ import json
 from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from sqlalchemy import nullslast
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
@@ -264,7 +263,7 @@ def list_report_cards(
             SchoolReportCard.student_id == student_id,
             SchoolReportCard.archived_at.is_(None),
         )
-        .order_by(nullslast(SchoolReportCard.report_date.desc()), SchoolReportCard.created_at.desc())
+        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
         .all()
     )
 
