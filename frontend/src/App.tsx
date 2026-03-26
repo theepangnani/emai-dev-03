@@ -89,6 +89,7 @@ const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage'
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
+const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
 const SurveyPage = lazyRetry(() => import('./pages/SurveyPage').then((m) => ({ default: m.SurveyPage })));
@@ -178,6 +179,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent']}>
                     <ParentAITools />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/school-report-cards"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ReportCardAnalysis />
                   </ProtectedRoute>
                 }
               />
