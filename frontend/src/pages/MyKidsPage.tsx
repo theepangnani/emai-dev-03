@@ -923,6 +923,10 @@ export function MyKidsPage() {
               <span className="dash-quick-action-icon" aria-hidden="true">&#128172;</span>
               <span>Request Study</span>
             </button>
+            <button className="dash-quick-action" onClick={() => navigate('/school-report-cards')}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
+              <span>Report Cards</span>
+            </button>
           </div>
 
           <div className="dashboard-redesign">
