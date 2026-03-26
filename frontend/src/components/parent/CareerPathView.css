@@ -253,7 +253,7 @@
 
   .cpv-trend-data {
     font-size: 0.75rem;
-    word-break: break-all;
+    overflow-wrap: break-word;
   }
 
   .cpv-trend-note {
