@@ -595,8 +595,8 @@ class TestRecipientSearch:
 # ── Relaxed conversation creation (#956) ──────────────────
 
 class TestCreateConversationRelaxed:
-    def test_can_message_any_active_user(self, client, msg_users, db_session):
-        """Any active user should be a valid conversation recipient."""
+    def test_cannot_message_unlinked_user(self, client, msg_users, db_session):
+        """Parent cannot message an unlinked parent (role-based restriction #2408)."""
         from app.core.security import get_password_hash
         from app.models.user import User, UserRole
 
@@ -615,7 +615,7 @@ class TestCreateConversationRelaxed:
             "recipient_id": unlinked.id,
             "initial_message": "Hello unlinked user",
         }, headers=headers)
-        assert resp.status_code == 200
+        assert resp.status_code == 403
 
     def test_cannot_message_self(self, client, msg_users):
         """Users should not be able to message themselves."""
