@@ -518,3 +518,40 @@ class TestFileValidation:
         )
         assert resp.status_code == 400
         assert "Maximum 10 files" in resp.json()["detail"]
+
+
+# ── _parse_report_date unit tests ──
+
+from app.api.routes.school_report_cards import _parse_report_date
+from datetime import date
+
+
+class TestParseReportDate:
+    """Unit tests for _parse_report_date helper."""
+
+    def test_iso_date_format(self):
+        assert _parse_report_date("2024-01-15") == date(2024, 1, 15)
+
+    def test_iso_datetime_format(self):
+        assert _parse_report_date("2024-01-15T10:30:00") == date(2024, 1, 15)
+
+    def test_iso_date_with_whitespace(self):
+        assert _parse_report_date("  2024-06-30  ") == date(2024, 6, 30)
+
+    def test_mm_dd_yyyy(self):
+        assert _parse_report_date("02/19/2026") == date(2026, 2, 19)
+
+    def test_long_month_format(self):
+        assert _parse_report_date("March 9, 2026") == date(2026, 3, 9)
+
+    def test_short_month_format(self):
+        assert _parse_report_date("Mar 9, 2026") == date(2026, 3, 9)
+
+    def test_none_input(self):
+        assert _parse_report_date(None) is None
+
+    def test_empty_string(self):
+        assert _parse_report_date("") is None
+
+    def test_invalid_string(self):
+        assert _parse_report_date("not-a-date") is None
