@@ -1,4 +1,4 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
@@ -9,7 +9,6 @@ import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
-import { ContentMetaBar } from './ContentMetaBar';
 import ParentSummaryCard from '../../components/ParentSummaryCard';
 
 interface StudyGuideTabProps {
@@ -31,6 +30,7 @@ interface StudyGuideTabProps {
   streamStatus?: string;
   courseName?: string | null;
   createdAt?: string | null;
+  courseId?: number;
 }
 
 function FocusIcon() {
@@ -71,10 +71,41 @@ export function StudyGuideTab({
   streamStatus,
   courseName,
   createdAt,
+  courseId,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [classPopover, setClassPopover] = useState(false);
+  const [tasksPopover, setTasksPopover] = useState(false);
+  const classPopoverRef = useRef<HTMLSpanElement>(null);
+  const tasksPopoverRef = useRef<HTMLSpanElement>(null);
+
+  const closePopovers = useCallback(() => {
+    setClassPopover(false);
+    setTasksPopover(false);
+  }, []);
+
+  useEffect(() => {
+    if (!classPopover && !tasksPopover) return;
+    const handleClick = (e: MouseEvent) => {
+      if (classPopover && classPopoverRef.current && !classPopoverRef.current.contains(e.target as Node)) {
+        setClassPopover(false);
+      }
+      if (tasksPopover && tasksPopoverRef.current && !tasksPopoverRef.current.contains(e.target as Node)) {
+        setTasksPopover(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePopovers();
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [classPopover, tasksPopover, closePopovers]);
 
   const handlePrint = () => {
     if (printRef.current) printElement(printRef.current, studyGuide?.title || 'Study Guide');
@@ -135,11 +166,87 @@ export function StudyGuideTab({
               <Link to={`/study/guide/${studyGuide.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
             </div>
           )}
-          <ContentMetaBar
-            courseName={courseName}
-            createdAt={createdAt || studyGuide.created_at}
-            linkedTasks={linkedTasks}
-          />
+          <div className="cm-guide-meta">
+            {courseName && (
+              <span className="cm-guide-meta-item cm-guide-meta-item--popover-anchor" ref={classPopoverRef}>
+                <button
+                  type="button"
+                  className="cm-guide-meta-link"
+                  onClick={() => { setClassPopover(!classPopover); setTasksPopover(false); }}
+                  aria-expanded={classPopover}
+                >
+                  <span className="cm-guide-meta-label">Class:</span> {courseName}
+                </button>
+                {classPopover && (
+                  <div className="cm-meta-popover">
+                    <div className="cm-meta-popover-header">Class Details</div>
+                    <div className="cm-meta-popover-row">
+                      <span className="cm-meta-popover-label">Name</span>
+                      <span>{courseName}</span>
+                    </div>
+                    {courseId && (
+                      <div className="cm-meta-popover-actions">
+                        <Link to={`/courses/${courseId}`} className="cm-meta-popover-btn" onClick={closePopovers}>
+                          View Course
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </span>
+            )}
+            {(createdAt || studyGuide.created_at) && (
+              <span className="cm-guide-meta-item">
+                <span className="cm-guide-meta-label">Created:</span>{' '}
+                {new Date(createdAt || studyGuide.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
+            <span className={`cm-guide-meta-item cm-guide-meta-item--popover-anchor${linkedTasks.length === 0 ? ' cm-guide-meta-item--muted' : ''}`} ref={tasksPopoverRef}>
+              <button
+                type="button"
+                className="cm-guide-meta-link"
+                onClick={() => { setTasksPopover(!tasksPopover); setClassPopover(false); }}
+                aria-expanded={tasksPopover}
+              >
+                <span className="cm-guide-meta-label">Tasks:</span>{' '}
+                {linkedTasks.length > 0 ? `${linkedTasks.length} linked` : 'No tasks linked'}
+              </button>
+              {tasksPopover && (
+                <div className="cm-meta-popover cm-meta-popover--tasks">
+                  <div className="cm-meta-popover-header">Linked Tasks</div>
+                  {linkedTasks.length > 0 ? (
+                    <div className="cm-meta-popover-task-list">
+                      {linkedTasks.map(task => {
+                        const dateOnly = task.due_date?.substring(0, 10);
+                        const d = dateOnly ? new Date(dateOnly + 'T00:00:00') : null;
+                        const isOverdue = d ? d < new Date() && !task.is_completed : false;
+                        return (
+                          <Link
+                            key={task.id}
+                            to={`/tasks/${task.id}`}
+                            className="cm-meta-popover-task"
+                            onClick={closePopovers}
+                          >
+                            <span className={`cm-meta-popover-task-status${task.is_completed ? ' done' : ''}`}>
+                              {task.is_completed ? '\u2713' : '\u25CB'}
+                            </span>
+                            <span className="cm-meta-popover-task-title">{task.title}</span>
+                            {d && (
+                              <span className={`cm-meta-popover-task-due${isOverdue ? ' overdue' : ''}`}>
+                                {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="cm-meta-popover-empty">No tasks are linked to this study guide.</div>
+                  )}
+                </div>
+              )}
+            </span>
+          </div>
           <LinkedTasksBanner tasks={linkedTasks} />
           {studyGuide.parent_summary && (
             <ParentSummaryCard summary={studyGuide.parent_summary} />

@@ -1248,6 +1248,177 @@
   color: var(--color-ink);
 }
 
+.cm-guide-meta-item--popover-anchor {
+  position: relative;
+}
+
+.cm-guide-meta-link {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px dashed var(--color-ink-muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.cm-guide-meta-link:hover,
+.cm-guide-meta-link[aria-expanded="true"] {
+  color: var(--color-accent-strong);
+  border-bottom-color: var(--color-accent-strong);
+}
+
+.cm-guide-meta-link:hover .cm-guide-meta-label,
+.cm-guide-meta-link[aria-expanded="true"] .cm-guide-meta-label {
+  color: var(--color-accent-strong);
+}
+
+/* ── Metadata popovers ───────────────────────── */
+.cm-meta-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 220px;
+  max-width: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.12));
+  font-size: 0.82rem;
+  color: var(--color-ink);
+  overflow: hidden;
+}
+
+.cm-meta-popover--tasks {
+  min-width: 260px;
+  max-width: 380px;
+}
+
+.cm-meta-popover-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.cm-meta-popover-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+}
+
+.cm-meta-popover-label {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.cm-meta-popover-actions {
+  padding: 8px 14px 10px;
+  border-top: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.cm-meta-popover-btn {
+  display: inline-block;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-accent-strong);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-sm, 4px);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cm-meta-popover-btn:hover {
+  background: var(--color-accent-strong);
+  color: #fff;
+}
+
+.cm-meta-popover-task-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.cm-meta-popover-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: background 0.12s;
+}
+
+.cm-meta-popover-task:hover {
+  background: var(--color-surface-hover, rgba(0,0,0,0.04));
+}
+
+.cm-meta-popover-task + .cm-meta-popover-task {
+  border-top: 1px solid var(--color-border-light, var(--color-border));
+}
+
+.cm-meta-popover-task-status {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  color: var(--color-ink-muted);
+}
+
+.cm-meta-popover-task-status.done {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.cm-meta-popover-task-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.cm-meta-popover-task-due {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.cm-meta-popover-task-due.overdue {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.cm-meta-popover-empty {
+  padding: 16px 14px;
+  text-align: center;
+  color: var(--color-ink-muted);
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .cm-meta-popover {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 100%;
+    min-width: 100%;
+    border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
 /* ── Linked task banner ───────────────────────── */
 .cm-linked-tasks {
   display: flex;
