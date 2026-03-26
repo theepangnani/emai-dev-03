@@ -26,6 +26,10 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('../api/client', () => ({
+  api: {
+    get: vi.fn().mockRejectedValue(new Error('not mocked')),
+    post: vi.fn().mockRejectedValue(new Error('not mocked')),
+  },
   parentApi: {
     getChildren: (...args: any[]) => mockGetChildren(...args),
     createChild: (...args: any[]) => mockCreateChild(...args),
