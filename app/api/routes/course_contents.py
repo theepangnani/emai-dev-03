@@ -2207,9 +2207,9 @@ def get_content_access_log(
         })
         if log_entry.user_id:
             unique_viewers.add(log_entry.user_id)
-        if log_entry.action == "read":
+        if log_entry.action == "material_view":
             total_views += 1
-        elif log_entry.action == "download":
+        elif log_entry.action == "material_download":
             total_downloads += 1
 
     return {
