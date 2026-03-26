@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useConfirm } from '../../components/ConfirmModal';
+import { useAuth } from '../../context/AuthContext';
 import { parentApi } from '../../api/parent';
 import type { ChildSummary } from '../../api/parent';
 import { schoolReportCardsApi } from '../../api/schoolReportCards';
@@ -17,6 +18,8 @@ import { CareerPathView } from '../../components/parent/CareerPathView';
 import './ReportCardAnalysis.css';
 
 export function ReportCardAnalysis() {
+  const { user } = useAuth();
+  const isStudent = user?.role === 'student';
   const { confirm, confirmModal } = useConfirm();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
@@ -37,25 +40,48 @@ export function ReportCardAnalysis() {
   const [error, setError] = useState<string | null>(null);
   const [careerError, setCareerError] = useState<string | null>(null);
 
-
-  // Load children on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        const kids = await parentApi.getChildren();
-        setChildren(kids);
-        if (kids.length === 1) {
-          setSelectedChildId(kids[0].student_id);
-        }
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    })();
+  // Load student's own report cards
+  const loadMyReportCards = useCallback(async () => {
+    setListLoading(true);
+    setError(null);
+    setReportCards([]);
+    setExpandedCardId(null);
+    setSelectedAnalysis(null);
+    setCareerPath(null);
+    setShowCareerPath(false);
+    try {
+      const resp = await schoolReportCardsApi.listMy();
+      setReportCards(resp.data);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      setError(e.response?.data?.detail || 'Failed to load report cards.');
+    } finally {
+      setListLoading(false);
+    }
   }, []);
 
-  // Load report cards when child changes
+  // Load children on mount (parent only)
+  useEffect(() => {
+    if (isStudent) {
+      loadMyReportCards().finally(() => setLoading(false));
+    } else {
+      (async () => {
+        try {
+          const kids = await parentApi.getChildren();
+          setChildren(kids);
+          if (kids.length === 1) {
+            setSelectedChildId(kids[0].student_id);
+          }
+        } catch {
+          // ignore
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [isStudent, loadMyReportCards]);
+
+  // Load report cards when child changes (parent only)
   const loadReportCards = useCallback(async (studentId: number) => {
     setListLoading(true);
     setError(null);
@@ -76,6 +102,7 @@ export function ReportCardAnalysis() {
   }, []);
 
   useEffect(() => {
+    if (isStudent) return; // student loads via loadMyReportCards
     if (selectedChildId) {
       loadReportCards(selectedChildId);
     } else {
@@ -85,7 +112,7 @@ export function ReportCardAnalysis() {
       setCareerPath(null);
       setShowCareerPath(false);
     }
-  }, [selectedChildId, loadReportCards]);
+  }, [isStudent, selectedChildId, loadReportCards]);
 
   // Select child handler — ChildSelectorTabs can pass null for "all"
   const handleSelectChild = useCallback((studentId: number | null) => {
@@ -96,7 +123,7 @@ export function ReportCardAnalysis() {
     }
   }, [children]);
 
-  // Analyze a report card
+  // Analyze a report card (parent only)
   const handleAnalyze = useCallback(async (card: SchoolReportCard) => {
     setAnalyzeLoadingIds(prev => new Set(prev).add(card.id));
     setError(null);
@@ -137,7 +164,7 @@ export function ReportCardAnalysis() {
     }
   }, [expandedCardId]);
 
-  // Career path analysis
+  // Career path analysis (parent only)
   const handleCareerPath = useCallback(async () => {
     if (!selectedChildId) return;
     if (showCareerPath && careerPath) {
@@ -158,7 +185,7 @@ export function ReportCardAnalysis() {
     }
   }, [selectedChildId, showCareerPath, careerPath]);
 
-  // Delete handler
+  // Delete handler (parent only)
   const handleDelete = useCallback(async (cardId: number) => {
     const confirmed = await confirm({
       title: 'Delete Report Card',
@@ -184,7 +211,8 @@ export function ReportCardAnalysis() {
     );
   }
 
-  if (children.length === 0) {
+  // Parent with no children linked
+  if (!isStudent && children.length === 0) {
     return (
       <DashboardLayout>
         <div className="rca-empty">
@@ -196,41 +224,50 @@ export function ReportCardAnalysis() {
   }
 
   const emptyOverdueMap = new Map<number, number>();
+  const showCards = isStudent || !!selectedChildId;
 
   return (
     <DashboardLayout>
       <div className="rca-container">
         <div className="rca-header">
           <h1>School Report Cards</h1>
-          <p className="rca-subtitle">Upload, analyze, and track your child's school report cards.</p>
+          <p className="rca-subtitle">
+            {isStudent
+              ? 'View your school report cards and analysis.'
+              : "Upload, analyze, and track your child's school report cards."}
+          </p>
         </div>
 
-        {/* Child selector tabs */}
-        <ChildSelectorTabs
-          children={children}
-          selectedChild={selectedChildId}
-          onSelectChild={handleSelectChild}
-          childOverdueCounts={emptyOverdueMap}
-        />
+        {/* Child selector tabs (parent only) */}
+        {!isStudent && (
+          <ChildSelectorTabs
+            children={children}
+            selectedChild={selectedChildId}
+            onSelectChild={handleSelectChild}
+            childOverdueCounts={emptyOverdueMap}
+          />
+        )}
 
-        {selectedChildId && (
+        {showCards && (
           <>
-            {/* Action bar */}
-            <div className="rca-action-bar">
-              <button
-                className="rca-btn"
-                onClick={() => setShowUploadModal(true)}
-              >
-                Upload Report Card
-              </button>
-              <button
-                className="rca-btn rca-btn-secondary"
-                onClick={handleCareerPath}
-                disabled={reportCards.length === 0 || careerLoading}
-              >
-                {careerLoading ? 'Generating...' : 'Career Path Analysis'}
-              </button>
-            </div>
+            {/* Action bar (parent only) */}
+            {!isStudent && (
+              <div className="rca-action-bar">
+                <button
+                  className="rca-btn"
+                  onClick={() => setShowUploadModal(true)}
+                >
+                  Upload Report Card
+                </button>
+                <button
+                  className="rca-btn rca-btn-secondary"
+                  onClick={handleCareerPath}
+                  disabled={reportCards.length === 0 || careerLoading}
+                >
+                  {careerLoading ? 'Generating...' : 'Career Path Analysis'}
+                </button>
+              </div>
+            )}
 
             {error && <div className="rca-error">{error}</div>}
             {careerError && <div className="rca-error">{careerError}</div>}
@@ -240,7 +277,11 @@ export function ReportCardAnalysis() {
               <div className="rca-spinner">Loading report cards...</div>
             ) : reportCards.length === 0 ? (
               <div className="rca-no-cards">
-                <p>No report cards uploaded yet. Click "Upload Report Card" to get started.</p>
+                <p>
+                  {isStudent
+                    ? 'No report cards available yet. Your parent can upload report cards for you.'
+                    : 'No report cards uploaded yet. Click "Upload Report Card" to get started.'}
+                </p>
               </div>
             ) : (
               <div className="rca-list">
@@ -275,7 +316,7 @@ export function ReportCardAnalysis() {
                           >
                             {analyzeLoadingIds.has(card.id) ? 'Loading...' : expandedCardId === card.id ? 'Hide' : 'View Analysis'}
                           </button>
-                        ) : (
+                        ) : !isStudent ? (
                           <button
                             className="rca-action-btn"
                             onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleAnalyze(card); }}
@@ -283,14 +324,16 @@ export function ReportCardAnalysis() {
                           >
                             {analyzeLoadingIds.has(card.id) ? 'Analyzing...' : 'Analyze Now'}
                           </button>
+                        ) : null}
+                        {!isStudent && (
+                          <button
+                            className="rca-action-btn rca-action-btn-outline"
+                            style={{ color: 'var(--danger, #e74c3c)', borderColor: 'var(--danger, #e74c3c)' }}
+                            onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(card.id); }}
+                          >
+                            Delete
+                          </button>
                         )}
-                        <button
-                          className="rca-action-btn rca-action-btn-outline"
-                          style={{ color: 'var(--danger, #e74c3c)', borderColor: 'var(--danger, #e74c3c)' }}
-                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(card.id); }}
-                        >
-                          Delete
-                        </button>
                       </div>
                     </button>
 
@@ -307,15 +350,15 @@ export function ReportCardAnalysis() {
               </div>
             )}
 
-            {/* Career Path Analysis */}
-            {showCareerPath && careerPath && (
+            {/* Career Path Analysis (parent only) */}
+            {!isStudent && showCareerPath && careerPath && (
               <CareerPathView careerPath={careerPath} onClose={() => setShowCareerPath(false)} />
             )}
           </>
         )}
 
-        {/* Upload Modal */}
-        {showUploadModal && selectedChildId && (
+        {/* Upload Modal (parent only) */}
+        {!isStudent && showUploadModal && selectedChildId && (
           <ReportCardUploadModal
             isOpen={showUploadModal}
             onClose={() => setShowUploadModal(false)}

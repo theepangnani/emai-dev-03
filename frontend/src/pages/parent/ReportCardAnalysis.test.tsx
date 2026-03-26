@@ -7,11 +7,14 @@ import { ReportCardAnalysis } from './ReportCardAnalysis';
 // Mock fns
 const mockGetChildren = vi.fn();
 const mockList = vi.fn();
+const mockListMy = vi.fn();
 const mockAnalyze = vi.fn();
 const mockGetAnalysis = vi.fn();
 const mockCareerPath = vi.fn();
 const mockUpload = vi.fn();
 const mockDelete = vi.fn();
+
+const mockUseAuth = vi.fn();
 
 vi.mock('../../api/parent', () => ({
   parentApi: {
@@ -22,6 +25,7 @@ vi.mock('../../api/parent', () => ({
 vi.mock('../../api/schoolReportCards', () => ({
   schoolReportCardsApi: {
     list: (...args: unknown[]) => mockList(...args),
+    listMy: (...args: unknown[]) => mockListMy(...args),
     analyze: (...args: unknown[]) => mockAnalyze(...args),
     getAnalysis: (...args: unknown[]) => mockGetAnalysis(...args),
     careerPath: (...args: unknown[]) => mockCareerPath(...args),
@@ -31,11 +35,7 @@ vi.mock('../../api/schoolReportCards', () => ({
 }));
 
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({
-    user: { id: 1, full_name: 'Test Parent', role: 'parent', roles: ['parent'] },
-    logout: vi.fn(),
-    switchRole: vi.fn(),
-  }),
+  useAuth: () => mockUseAuth(),
 }));
 
 vi.mock('../../api/client', () => ({
@@ -97,8 +97,14 @@ const mockReportCards = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUseAuth.mockReturnValue({
+    user: { id: 1, full_name: 'Test Parent', role: 'parent', roles: ['parent'] },
+    logout: vi.fn(),
+    switchRole: vi.fn(),
+  });
   mockGetChildren.mockResolvedValue([child1, child2]);
   mockList.mockResolvedValue({ data: mockReportCards });
+  mockListMy.mockResolvedValue({ data: mockReportCards });
 });
 
 describe('ReportCardAnalysis', () => {
@@ -167,6 +173,65 @@ describe('ReportCardAnalysis', () => {
     renderWithProviders(<ReportCardAnalysis />);
     await waitFor(() => {
       expect(screen.getByText('School Report Cards')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('ReportCardAnalysis — Student view', () => {
+  beforeEach(() => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 5, full_name: 'Test Student', role: 'student', roles: ['student'] },
+      logout: vi.fn(),
+      switchRole: vi.fn(),
+    });
+  });
+
+  it('loads report cards via listMy for students', async () => {
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(mockListMy).toHaveBeenCalled();
+    });
+    expect(mockGetChildren).not.toHaveBeenCalled();
+    expect(screen.getByText('report_term1.pdf')).toBeInTheDocument();
+  });
+
+  it('shows student-specific subtitle', async () => {
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(screen.getByText('View your school report cards and analysis.')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show upload or career path buttons for students', async () => {
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(screen.getByText('report_term1.pdf')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Upload Report Card')).not.toBeInTheDocument();
+    expect(screen.queryByText('Career Path Analysis')).not.toBeInTheDocument();
+  });
+
+  it('does not show delete buttons for students', async () => {
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(screen.getByText('report_term1.pdf')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+  });
+
+  it('does not show child selector tabs for students', async () => {
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(screen.getByText('report_term1.pdf')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('child-selector')).not.toBeInTheDocument();
+  });
+
+  it('shows empty state message for students with no report cards', async () => {
+    mockListMy.mockResolvedValue({ data: [] });
+    renderWithProviders(<ReportCardAnalysis />);
+    await waitFor(() => {
+      expect(screen.getByText(/Your parent can upload report cards for you/)).toBeInTheDocument();
     });
   });
 });
