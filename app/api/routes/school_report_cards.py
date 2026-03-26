@@ -24,6 +24,7 @@ from app.schemas.school_report_card import (
 )
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.file_processor import process_file
+from app.services.school_report_card_service import extract_date_from_filename, extract_metadata
 from app.services.storage_limits import check_upload_allowed, record_upload
 from app.services.storage_service import save_file
 
@@ -185,7 +186,6 @@ async def upload_report_cards(
         extracted_meta: dict = {}
         if text_content:
             try:
-                from app.services.school_report_card_service import extract_metadata
                 extracted_meta = extract_metadata(text_content) or {}
             except Exception as e:
                 logger.warning("Metadata extraction failed for %s: %s", filename, e)
@@ -193,7 +193,6 @@ async def upload_report_cards(
         # Determine report_date: prefer OCR-extracted, fallback to filename
         report_date_raw = extracted_meta.get("report_date")
         if not report_date_raw:
-            from app.services.school_report_card_service import extract_date_from_filename
             report_date_raw = extract_date_from_filename(filename)
 
         rc = SchoolReportCard(

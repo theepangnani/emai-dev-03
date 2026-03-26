@@ -705,8 +705,12 @@ class TestExtractDateFromFilename:
 
     def test_case_insensitive(self):
         result = self._fn()("NOVEMBER 2025 report.pdf")
-        assert result is not None
-        assert "2025" in result
+        assert result == "November 1, 2025"
+        # Verify the output parses through _parse_report_date successfully
+        from app.api.routes.school_report_cards import _parse_report_date
+        parsed = _parse_report_date(result)
+        assert parsed is not None
+        assert parsed == date(2025, 11, 1)
 
 
 # ── extract_metadata broadened date fallback tests ──

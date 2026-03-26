@@ -370,7 +370,7 @@ def extract_metadata(text_content: str) -> dict:
         if standalone_match:
             month = standalone_match.group(1)
             year = standalone_match.group(2)
-            result["report_date"] = f"{month} 1, {year}"
+            result["report_date"] = f"{month.title()} 1, {year}"
 
     # Term: "Term 1", "Midterm", "Progress Report", "Semester Two Interim"
     term_match = re.search(
@@ -472,7 +472,7 @@ def extract_date_from_filename(filename: str) -> str | None:
         re.IGNORECASE,
     )
     if start_match:
-        return f"{start_match.group(1)} 1, {start_match.group(2)}"
+        return f"{start_match.group(1).title()} 1, {start_match.group(2)}"
 
     # Fallback: "Month Year" anywhere in the filename
     anywhere_match = re.search(
@@ -481,7 +481,7 @@ def extract_date_from_filename(filename: str) -> str | None:
         re.IGNORECASE,
     )
     if anywhere_match:
-        return f"{anywhere_match.group(1)} 1, {anywhere_match.group(2)}"
+        return f"{anywhere_match.group(1).title()} 1, {anywhere_match.group(2)}"
 
     return None
 
