@@ -261,6 +261,48 @@ async def upload_report_cards(
 # ── 2. List Report Cards ────────────────────────────────────
 
 
+def _list_cards_for_student(db: Session, student_id: int) -> list[SchoolReportCardListItem]:
+    """Shared helper: query report cards + analysis flags for a student."""
+    cards = (
+        db.query(SchoolReportCard)
+        .filter(
+            SchoolReportCard.student_id == student_id,
+            SchoolReportCard.archived_at.is_(None),
+        )
+        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
+        .all()
+    )
+
+    analysis_card_ids = set()
+    if cards:
+        card_ids = [c.id for c in cards]
+        rows = (
+            db.query(SchoolReportCardAnalysis.report_card_id)
+            .filter(
+                SchoolReportCardAnalysis.report_card_id.in_(card_ids),
+                SchoolReportCardAnalysis.analysis_type == "full",
+            )
+            .all()
+        )
+        analysis_card_ids = {r[0] for r in rows}
+
+    return [
+        SchoolReportCardListItem(
+            id=c.id,
+            original_filename=c.original_filename,
+            school_name=c.school_name,
+            grade_level=c.grade_level,
+            term=c.term,
+            report_date=str(c.report_date) if c.report_date else None,
+            school_year=c.school_year,
+            has_analysis=c.id in analysis_card_ids,
+            created_at=c.created_at.isoformat() if c.created_at else "",
+        )
+        for c in cards
+    ]
+
+
+# NOTE: /my MUST be declared before /{student_id} to avoid path parameter shadowing
 @router.get("/my", response_model=list[SchoolReportCardListItem])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_my_report_cards(
@@ -272,44 +314,7 @@ def list_my_report_cards(
     student = db.query(Student).filter(Student.user_id == current_user.id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student profile not found")
-
-    cards = (
-        db.query(SchoolReportCard)
-        .filter(
-            SchoolReportCard.student_id == student.id,
-            SchoolReportCard.archived_at.is_(None),
-        )
-        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
-        .all()
-    )
-
-    analysis_card_ids = set()
-    if cards:
-        card_ids = [c.id for c in cards]
-        rows = (
-            db.query(SchoolReportCardAnalysis.report_card_id)
-            .filter(
-                SchoolReportCardAnalysis.report_card_id.in_(card_ids),
-                SchoolReportCardAnalysis.analysis_type == "full",
-            )
-            .all()
-        )
-        analysis_card_ids = {r[0] for r in rows}
-
-    return [
-        SchoolReportCardListItem(
-            id=c.id,
-            original_filename=c.original_filename,
-            school_name=c.school_name,
-            grade_level=c.grade_level,
-            term=c.term,
-            report_date=str(c.report_date) if c.report_date else None,
-            school_year=c.school_year,
-            has_analysis=c.id in analysis_card_ids,
-            created_at=c.created_at.isoformat() if c.created_at else "",
-        )
-        for c in cards
-    ]
+    return _list_cards_for_student(db, student.id)
 
 
 @router.get("/{student_id}", response_model=list[SchoolReportCardListItem])
@@ -318,52 +323,12 @@ def list_report_cards(
     request: Request,
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN, UserRole.STUDENT)),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
 ):
-    """List all report cards for a student."""
-    if current_user.role == UserRole.STUDENT:
-        _verify_student_self(db, current_user.id, student_id)
-    elif current_user.role != UserRole.ADMIN:
+    """List all report cards for a student (parent/admin only)."""
+    if current_user.role != UserRole.ADMIN:
         _verify_parent_child(db, current_user.id, student_id)
-
-    cards = (
-        db.query(SchoolReportCard)
-        .filter(
-            SchoolReportCard.student_id == student_id,
-            SchoolReportCard.archived_at.is_(None),
-        )
-        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
-        .all()
-    )
-
-    # Check which cards have analyses
-    analysis_card_ids = set()
-    if cards:
-        card_ids = [c.id for c in cards]
-        rows = (
-            db.query(SchoolReportCardAnalysis.report_card_id)
-            .filter(
-                SchoolReportCardAnalysis.report_card_id.in_(card_ids),
-                SchoolReportCardAnalysis.analysis_type == "full",
-            )
-            .all()
-        )
-        analysis_card_ids = {r[0] for r in rows}
-
-    return [
-        SchoolReportCardListItem(
-            id=c.id,
-            original_filename=c.original_filename,
-            school_name=c.school_name,
-            grade_level=c.grade_level,
-            term=c.term,
-            report_date=str(c.report_date) if c.report_date else None,
-            school_year=c.school_year,
-            has_analysis=c.id in analysis_card_ids,
-            created_at=c.created_at.isoformat() if c.created_at else "",
-        )
-        for c in cards
-    ]
+    return _list_cards_for_student(db, student_id)
 
 
 # ── 3. Get Cached Analysis ──────────────────────────────────

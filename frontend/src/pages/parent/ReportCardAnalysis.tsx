@@ -47,6 +47,8 @@ export function ReportCardAnalysis() {
     setReportCards([]);
     setExpandedCardId(null);
     setSelectedAnalysis(null);
+    setCareerPath(null);
+    setShowCareerPath(false);
     try {
       const resp = await schoolReportCardsApi.listMy();
       setReportCards(resp.data);

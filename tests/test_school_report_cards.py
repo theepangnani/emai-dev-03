@@ -730,3 +730,143 @@ class TestMetadataDateFallback:
         text = "Date: 02/19/2026\nSome text about January 2025"
         result = extract_metadata(text)
         assert result["report_date"] == "02/19/2026"
+
+
+# ── Student Self-Access Tests (#2401) ──
+
+
+class TestStudentMyEndpoint:
+    """Tests for GET /api/school-report-cards/my (student self-access)."""
+
+    def test_student_can_list_own_report_cards(self, client, db_session, src_users):
+        headers = _auth(client, "src_student@test.com")
+        student = src_users["student"]
+
+        from app.models.school_report_card import SchoolReportCard
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="student_my_test.pdf",
+            text_content="Some text",
+            term="Winter 2026",
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        resp = client.get("/api/school-report-cards/my", headers=headers)
+        assert resp.status_code == 200
+        cards = resp.json()
+        assert any(c["original_filename"] == "student_my_test.pdf" for c in cards)
+
+    def test_parent_cannot_use_my_endpoint(self, client, src_users):
+        headers = _auth(client, "src_parent@test.com")
+        resp = client.get("/api/school-report-cards/my", headers=headers)
+        assert resp.status_code == 403
+
+    def test_student_no_profile_gets_404(self, client, db_session):
+        """Student user without a Student record gets 404."""
+        from app.models.user import User
+
+        # Register a student user without creating a Student record
+        resp = client.post("/api/auth/register", json={
+            "email": "src_orphan_student@test.com", "password": PASSWORD,
+            "full_name": "Orphan Student", "role": "student",
+        })
+        assert resp.status_code in (200, 201, 409)
+
+        # Remove the auto-created student record if any
+        from app.models.student import Student
+        orphan_user = db_session.query(User).filter(User.email == "src_orphan_student@test.com").first()
+        orphan_student = db_session.query(Student).filter(Student.user_id == orphan_user.id).first()
+        if orphan_student:
+            db_session.delete(orphan_student)
+            db_session.commit()
+
+        headers = _auth(client, "src_orphan_student@test.com")
+        resp = client.get("/api/school-report-cards/my", headers=headers)
+        assert resp.status_code == 404
+        assert "Student profile not found" in resp.json()["detail"]
+
+    def test_student_can_view_own_analysis(self, client, db_session, src_users):
+        """Student can GET analysis for their own report card."""
+        headers = _auth(client, "src_student@test.com")
+        student = src_users["student"]
+
+        from app.models.school_report_card import SchoolReportCard, SchoolReportCardAnalysis
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="student_analysis_test.pdf",
+            text_content="A" * 100,
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.flush()
+
+        analysis = SchoolReportCardAnalysis(
+            report_card_id=rc.id,
+            student_id=student.id,
+            analysis_type="full",
+            content=json.dumps(SAMPLE_ANALYSIS),
+            content_hash="test_hash",
+        )
+        db_session.add(analysis)
+        db_session.commit()
+
+        resp = client.get(
+            f"/api/school-report-cards/{rc.id}/analysis",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["analysis_type"] == "full"
+        assert data["teacher_feedback_summary"] != ""
+
+    def test_student_cannot_view_other_students_analysis(self, client, db_session, src_users):
+        """Student cannot view analysis for another student's report card."""
+        # Create another student
+        from app.models.user import User
+        from app.models.student import Student
+        from app.models.school_report_card import SchoolReportCard
+
+        resp = client.post("/api/auth/register", json={
+            "email": "src_other_student@test.com", "password": PASSWORD,
+            "full_name": "Other Student", "role": "student",
+        })
+        assert resp.status_code in (200, 201, 409)
+        other_user = db_session.query(User).filter(User.email == "src_other_student@test.com").first()
+        other_student = db_session.query(Student).filter(Student.user_id == other_user.id).first()
+        if not other_student:
+            other_student = Student(user_id=other_user.id, grade_level="09")
+            db_session.add(other_student)
+            db_session.commit()
+
+        # Create a report card for the other student
+        rc = SchoolReportCard(
+            student_id=other_student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="other_student_card.pdf",
+            text_content="Text",
+            grade_level="09",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        # Try to view it as src_student
+        headers = _auth(client, "src_student@test.com")
+        resp = client.get(
+            f"/api/school-report-cards/{rc.id}/analysis",
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_student_cannot_list_via_student_id_path(self, client, src_users):
+        """Student cannot use GET /{student_id} — that's parent/admin only."""
+        headers = _auth(client, "src_student@test.com")
+        student = src_users["student"]
+        resp = client.get(
+            f"/api/school-report-cards/{student.id}",
+            headers=headers,
+        )
+        assert resp.status_code == 403
