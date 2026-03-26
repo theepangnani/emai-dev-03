@@ -15,6 +15,7 @@ import type {
 } from '../../api/schoolReportCards';
 import { ChildSelectorTabs } from '../../components/ChildSelectorTabs';
 import { PageSkeleton } from '../../components/Skeleton';
+import ReportCardUploadModal from '../../components/parent/ReportCardUploadModal';
 import './ReportCardAnalysis.css';
 
 export function ReportCardAnalysis() {
@@ -30,17 +31,12 @@ export function ReportCardAnalysis() {
   const [listLoading, setListLoading] = useState(false);
   const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null);
   const [careerLoading, setCareerLoading] = useState(false);
-  const [uploadLoading, setUploadLoading] = useState(false);
 
   // Modal + errors
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCareerPath, setShowCareerPath] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [careerError, setCareerError] = useState<string | null>(null);
-
-  // Upload form
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   // Expandable analysis sections
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -170,28 +166,6 @@ export function ReportCardAnalysis() {
     }
   }, [selectedChildId, showCareerPath, careerPath]);
 
-  // Upload handler
-  const handleUpload = useCallback(async () => {
-    if (!selectedChildId || !uploadFile) return;
-    setUploadLoading(true);
-    setUploadError(null);
-    try {
-      const formData = new FormData();
-      formData.append('files', uploadFile);
-      formData.append('student_id', String(selectedChildId));
-      await schoolReportCardsApi.upload(formData);
-      setShowUploadModal(false);
-      setUploadFile(null);
-      // Reload list
-      await loadReportCards(selectedChildId);
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string } } };
-      setUploadError(e.response?.data?.detail || 'Failed to upload report card.');
-    } finally {
-      setUploadLoading(false);
-    }
-  }, [selectedChildId, uploadFile, loadReportCards]);
-
   // Toggle analysis section
   const toggleSection = useCallback((section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -246,7 +220,7 @@ export function ReportCardAnalysis() {
             <div className="rca-action-bar">
               <button
                 className="rca-btn"
-                onClick={() => { setShowUploadModal(true); setUploadError(null); setUploadFile(null); }}
+                onClick={() => setShowUploadModal(true)}
               >
                 Upload Report Card
               </button>
@@ -486,41 +460,14 @@ export function ReportCardAnalysis() {
         )}
 
         {/* Upload Modal */}
-        {showUploadModal && (
-          <div className="rca-modal-overlay" onClick={() => setShowUploadModal(false)}>
-            <div className="rca-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <h2>Upload Report Card</h2>
-              <div className="rca-modal-form">
-                <div className="rca-file-input">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #888)', margin: 0 }}>
-                  Accepted formats: PDF, JPG, PNG
-                </p>
-                {uploadError && <div className="rca-error">{uploadError}</div>}
-                <div className="rca-modal-actions">
-                  <button
-                    className="rca-btn rca-btn-secondary"
-                    onClick={() => setShowUploadModal(false)}
-                    disabled={uploadLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="rca-btn"
-                    onClick={handleUpload}
-                    disabled={!uploadFile || uploadLoading}
-                  >
-                    {uploadLoading ? 'Uploading...' : 'Upload'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {showUploadModal && selectedChildId && (
+          <ReportCardUploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            studentId={selectedChildId}
+            studentName={children.find(c => c.student_id === selectedChildId)?.full_name || ''}
+            onUploadComplete={() => { setShowUploadModal(false); loadReportCards(selectedChildId); }}
+          />
         )}
       </div>
     </DashboardLayout>
