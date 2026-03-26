@@ -2072,6 +2072,7 @@ app.include_router(report_card.router, prefix="/api")
 app.include_router(bug_reports.router, prefix="/api")
 app.include_router(school_report_cards.router, prefix="/api")
 app.include_router(study_suggestions.router, prefix="/api")
+app.include_router(daily_quiz.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
