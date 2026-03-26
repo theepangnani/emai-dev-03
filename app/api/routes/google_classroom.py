@@ -823,7 +823,7 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
-        logger.warning(f"Failed to fetch announcements for course {course.google_classroom_id}: {e}")
+        logger.warning("Failed to fetch announcements for course %s: %s", course.google_classroom_id, e)
         return 0
 
     count = 0
