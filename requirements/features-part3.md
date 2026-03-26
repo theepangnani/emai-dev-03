@@ -2609,6 +2609,35 @@ Weekly email digest summarizing the past week and previewing the next. Sent Sund
 - [ ] One-click unsubscribe link
 - [ ] Multilingual support — translate digest into parent's preferred language (#2016)
 
+### 6.63.1 Weekly Family Report Card Email with Gamification - IMPLEMENTED
+
+**Status:** IMPLEMENTED (2026-03-25, PR #2369)
+**GitHub Issue:** #2228 | **Related:** §6.63, §6.107 (XP/streaks)
+
+Beautiful HTML email sent weekly with gamification data: streak flame, XP earned, quizzes completed, study time, and AI-generated encouragement. Designed to be shareable (parents forward to grandparents) for viral growth.
+
+**Enhancements over §6.63 base digest:**
+- [x] Gamification stats: XP earned, study streaks, level progress
+- [x] Visual badges and achievement highlights
+- [x] AI-generated encouragement messages per child
+- [x] Shareable format optimized for forwarding
+
+**Sub-tasks:**
+- [x] Backend: family report card email service with gamification data aggregation
+- [x] Email template: branded HTML with streak/XP visuals
+- [x] Integration with weekly digest pipeline
+
+### 6.63.2 Role-Based Deep Linking in Email Buttons - IMPLEMENTED
+
+**Status:** IMPLEMENTED (2026-03-25, PR #2371)
+**GitHub Issue:** #2237
+
+Email notification buttons now deep-link to the correct page based on the recipient's role. Parents see links to My Kids/parent dashboard, students to their study tools, and teachers to course management.
+
+**Sub-tasks:**
+- [x] Backend: role-aware URL generation in email templates
+- [x] All email notification types updated with role-based CTAs
+
 ### 6.64 Parent-Child Study Link — Feedback Loop (Phase 2) - IMPLEMENTED
 
 When a parent generates study material (§6.62), a feedback loop tracks completion and reports back.
@@ -4319,12 +4348,13 @@ Features to port from class-bridge-phase-2:
 
 ---
 
-## §6.119 Document Privacy & IP Protection (Phase 1)
+## §6.119 Document Privacy & IP Protection (Phase 1) - IMPLEMENTED
 
-**Status:** PLANNED | **Priority:** CRITICAL | **Value Score:** 9/10
+**Status:** IMPLEMENTED (2026-03-25) | **Priority:** CRITICAL | **Value Score:** 9/10
 **Epic:** #2268 | **Issues:** #2269, #2270, #2272, #2273, #2274
 **Related:** #61 (content privacy), #50 (FERPA/PIPEDA), #114 (GCS storage)
 **Target:** Phase 1 (access control) before April 14, 2026 launch
+**PRs:** #2376 (trust circle), #2367 (admin override removal), #2375 (audit logging), #2372 (access log endpoint), #2370 (frontend privacy UI)
 
 Class materials uploaded by private tutors and teachers must be protected from unauthorized access — including platform administrators. This feature implements a "trust circle" access model where materials are visible only to users directly connected to the course.
 
@@ -4344,15 +4374,15 @@ This is a **platform trust gate** — private tutors will not upload proprietary
 
 | Phase | Scope | Priority | Target | Effort |
 |-------|-------|----------|--------|--------|
-| **Phase 1** | Backend access control (#2269, #2270) | CRITICAL | Before Apr 14 launch | ~1 day |
-| **Phase 2** | Audit logging (#2272) | HIGH | Within 2 weeks of Phase 1 | ~1 day |
-| **Phase 3** | Frontend UI + access log (#2273, #2274) | MEDIUM | Next frontend release | ~2 days |
+| **Phase 1** | Backend access control (#2269, #2270) | CRITICAL | DONE (PR #2376, #2367) | ~1 day |
+| **Phase 2** | Audit logging (#2272) | HIGH | DONE (PR #2375) | ~1 day |
+| **Phase 3** | Frontend UI + access log (#2273, #2274) | MEDIUM | DONE (PR #2372, #2370) | ~2 days |
 | **Phase 4** | Signed URLs + encryption (§6.93) | LOW | With GCS migration | TBD |
 | **Phase 5** | Per-material visibility | LOW | When tutor marketplace launches | TBD |
 
 **Key insight:** Phase 1 alone delivers ~80% of total value. It's a small, atomic backend change with no schema migration required.
 
-### §6.119.1 Trust Circle Access Model
+### §6.119.1 Trust Circle Access Model - IMPLEMENTED (PR #2376, #2367)
 
 Materials are accessible ONLY to the course's trust circle:
 
@@ -4375,7 +4405,7 @@ Materials are accessible ONLY to the course's trust circle:
 - Replace `can_access_course()` with `can_access_material()` in all content read/download endpoints
 - Strip `text_content` from API responses for non-trust-circle users
 
-### §6.119.2 Material Access Audit Logging
+### §6.119.2 Material Access Audit Logging - IMPLEMENTED (PR #2375)
 
 Every material access event is logged for compliance (FERPA/PIPEDA) and owner transparency.
 
@@ -4391,7 +4421,7 @@ Every material access event is logged for compliance (FERPA/PIPEDA) and owner tr
 - Instrument content endpoints in `app/api/routes/course_contents.py`
 - Uses existing `audit_service.log_action()` infrastructure with savepoints
 
-### §6.119.3 Owner Access Log Endpoint
+### §6.119.3 Owner Access Log Endpoint - IMPLEMENTED (PR #2372)
 
 Material owners can view who has accessed their content.
 
@@ -4404,7 +4434,7 @@ Material owners can view who has accessed their content.
 - Summary stats: total views, total downloads, unique viewers
 - Filterable by date range (`?days=30`) and action type (`?action=download`)
 
-### §6.119.4 Frontend Privacy UI
+### §6.119.4 Frontend Privacy UI - IMPLEMENTED (PR #2370)
 
 **Privacy Indicators:** (#2274)
 - Lock/shield icon on materials in course detail page
@@ -4472,6 +4502,9 @@ Extend existing Google Classroom integration to sync course announcements via [`
 - Covers 4/5 target boards (TDSB, PDSB, DDSB, HDSB use Google Classroom)
 - **Estimate:** 3-5 days
 
+**Bug Fixes:**
+- [x] Fix: populate `creator_name` and `creator_email` in announcement sync — were always None (#2350, PR #2374, 2026-03-25)
+
 #### §6.120.3 Phase 2: Board-Level Announcements (Deferred — requires partnerships)
 
 When ClassBridge establishes formal school board partnerships (DTAP/VASP path — #803, #942):
@@ -4494,3 +4527,45 @@ If scraping is reconsidered in future: httpx + BeautifulSoup4, APScheduler cron 
 #### §6.120.5 MCP Integration (Phase 2, pairs with #2192-#2199)
 
 Once MCP is ported to emai-dev-03, expose announcements as an MCP resource so the AI tutor can answer questions like "When is March Break?" using board announcement data. Not suitable for the scraping pipeline itself (adds unnecessary LLM cost to a deterministic task).
+
+---
+
+### 6.121 School Report Card Upload & AI Analysis (Phase 1) - IMPLEMENTED
+
+**Status:** IMPLEMENTED (2026-03-24, PR #2362)
+**GitHub Issue:** #2286
+
+Parents upload physical school report cards (photos/scans). AI (GPT-4o-mini vision) extracts structured data: grades per subject, teacher comments, trends. Career path analysis suggests career directions based on academic strengths.
+
+**Sub-features:**
+- [x] Report card upload with drag-drop, multi-file, school name (PR #2362)
+- [x] AI-powered grade extraction and analysis view with color-coded grade table (#2356)
+- [x] Career path analysis with sorted trends, strength badges, career cards (#2357)
+- [x] Delete confirmation with `useConfirm` dialog (#2358)
+- [x] Frontend tests: 14 tests for ReportCardAnalysis + CareerPathView (#2359)
+- [x] Backend tests: 7 tests for career path, cache, file validation (#2360)
+- [x] Integration links on My Kids + ParentAITools pages (#2361)
+- [x] Route `/school-report-cards` + sidebar nav link for parents (#2352)
+
+**Key files:**
+- `app/api/routes/report_cards.py` — upload and analysis endpoints
+- `app/services/report_card_service.py` — AI extraction service
+- `frontend/src/pages/parent/ReportCardAnalysis.tsx` — analysis view
+- `frontend/src/pages/parent/CareerPathView.tsx` — career path view
+
+**Bug Fixes:**
+- [x] Fix: ISO date format fallback in `_parse_report_date` (#2349, PR #2364, 2026-03-25)
+- [x] Test: career path analysis test coverage (#2329, PR #2363, 2026-03-25)
+
+---
+
+### 6.122 Bug Fixes & Quality (March 24-26, 2026)
+
+**Bug fixes deployed in this period:**
+
+| PR | Issue | Description | Date |
+|----|-------|-------------|------|
+| #2365 | #2354 | Fix: expand class material section by default | 2026-03-25 |
+| #2373 | #2353 | Fix: register `daily_quiz` router — Quiz of the Day 404 | 2026-03-25 |
+| #2364 | #2349 | Fix: ISO date format fallback in `_parse_report_date` | 2026-03-25 |
+| #2374 | #2350 | Fix: populate `creator_name`/`creator_email` in announcement sync | 2026-03-25 |
