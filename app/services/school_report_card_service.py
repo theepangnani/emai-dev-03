@@ -323,10 +323,17 @@ def extract_metadata(text_content: str) -> dict:
         result["grade_level"] = grade_match.group(1).lstrip("0") or "0"
 
     # School: "School: Franklin Street Public School", "School Name: ..."
+    # Also matches standalone lines like "Bill Hogarth Secondary School"
     school_match = re.search(
-        r"School(?:\s+Name)?[:\s]+([A-Z][A-Za-z\s.'-]+(?:School|Academy|Institute|Collegiate))",
+        r"School(?:\s+Name)?[:\s]+([A-Z][A-Za-z\s.'-]+(?:(?:Secondary|Public|Catholic|High|Middle)\s+School|School|Academy|Institute|Collegiate))",
         text_content,
     )
+    if not school_match:
+        # Fallback: match a line containing a school name with a known suffix
+        school_match = re.search(
+            r"([A-Z][A-Za-z\s.'-]+(?:(?:Secondary|Public|Catholic|High|Middle)\s+School|Academy|Institute|Collegiate))",
+            text_content,
+        )
     if school_match:
         result["school_name"] = school_match.group(1).strip()
 
