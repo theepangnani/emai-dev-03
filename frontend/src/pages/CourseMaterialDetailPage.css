@@ -1248,6 +1248,161 @@
   color: var(--color-ink);
 }
 
+/* ── Popover anchor + button ────────────────────── */
+.cm-guide-meta-item--popover-anchor {
+  position: relative;
+}
+
+.cm-guide-meta-item--popover-anchor::before {
+  content: '';
+  display: none;
+}
+
+.cm-meta-popover-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px dashed var(--color-border);
+  transition: color 0.15s;
+}
+
+.cm-meta-popover-btn:hover {
+  color: var(--color-accent-strong);
+}
+
+/* ── Metadata popover ───────────────────────────── */
+.cm-meta-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 100;
+  min-width: 220px;
+  max-width: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.cm-meta-popover-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.cm-meta-popover-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--color-accent-strong);
+  text-decoration: none;
+}
+
+.cm-meta-popover-link:hover {
+  text-decoration: underline;
+}
+
+.cm-meta-popover--tasks {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.cm-meta-popover-task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cm-meta-popover-task-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-ink);
+  transition: background 0.15s;
+}
+
+.cm-meta-popover-task-link:hover {
+  background: var(--color-surface-alt);
+}
+
+.cm-meta-popover-task-status {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+.cm-meta-popover-task-status--done {
+  background: var(--color-success-bg, #e8f5e9);
+  color: var(--color-success, #27ae60);
+}
+
+.cm-meta-popover-task-status--overdue {
+  background: var(--color-danger-bg, #fdecea);
+  color: var(--color-danger, #e74c3c);
+}
+
+.cm-meta-popover-task-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.cm-meta-popover-task-due {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+}
+
+.cm-meta-popover-task-due--overdue {
+  color: var(--color-danger, #e74c3c);
+  font-weight: 600;
+}
+
+/* ── Mobile backdrop for popover bottom sheet (#2389) ── */
+@media (max-width: 600px) {
+  .cm-guide-meta-item--popover-anchor:has(.cm-meta-popover)::before {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 99;
+  }
+
+  .cm-meta-popover {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    max-width: 100%;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+}
+
 /* ── Linked task banner ───────────────────────── */
 .cm-linked-tasks {
   display: flex;

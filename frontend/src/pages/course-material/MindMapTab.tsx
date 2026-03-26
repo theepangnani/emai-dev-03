@@ -4,6 +4,7 @@ import type { MindMapData, MindMapBranchGroup } from '../../api/study';
 import type { TaskItem } from '../../api/tasks';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
+import { ContentMetaBar } from './ContentMetaBar';
 import './MindMapTab.css';
 
 interface MindMapTabProps {
@@ -16,6 +17,9 @@ interface MindMapTabProps {
   hasSourceContent: boolean;
   linkedTasks?: TaskItem[];
   atLimit?: boolean;
+  courseName?: string | null;
+  createdAt?: string | null;
+  courseId?: number;
 }
 
 function FocusIcon() {
@@ -105,6 +109,9 @@ export function MindMapTab({
   hasSourceContent,
   linkedTasks = [],
   atLimit = false,
+  courseName,
+  createdAt,
+  courseId,
 }: MindMapTabProps) {
   const parsedMindMap: MindMapData | null = mindMap ? (() => {
     try { return JSON.parse(mindMap.content) as MindMapData; } catch { return null; }
@@ -148,6 +155,7 @@ export function MindMapTab({
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(mindMap)}>{'\u{1F5D1}\uFE0F'} Delete</button>
           </div>
+          <ContentMetaBar courseName={courseName} createdAt={createdAt || mindMap.created_at} linkedTasks={linkedTasks} courseId={courseId} />
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'mind_map' && (
             <div className="cm-regen-status">
