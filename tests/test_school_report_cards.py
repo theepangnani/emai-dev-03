@@ -362,6 +362,56 @@ class TestCareerPathEndpoint:
         )
         assert resp.status_code == 403
 
+    def test_career_path_student_role_denied(self, client, src_users):
+        """Student role cannot access career-path endpoint (PARENT only)."""
+        headers = _auth(client, "src_student@test.com")
+        student = src_users["student"]
+
+        resp = client.post(
+            f"/api/school-report-cards/{student.id}/career-path",
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_career_path_no_text_content(self, client, db_session, src_users):
+        """Cards exist but none have text_content → 400."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        # Archive existing cards so they don't interfere
+        from app.models.school_report_card import SchoolReportCard
+        existing = db_session.query(SchoolReportCard).filter(
+            SchoolReportCard.student_id == student.id,
+            SchoolReportCard.archived_at.is_(None),
+        ).all()
+        for card in existing:
+            card.archived_at = datetime.now(timezone.utc)
+        db_session.flush()
+
+        # Create a card with no text content
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="no_text_career.pdf",
+            text_content=None,
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        resp = client.post(
+            f"/api/school-report-cards/{student.id}/career-path",
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "No report cards" in resp.json()["detail"]
+
+        # Clean up: archive the no-text card, restore originals
+        rc.archived_at = datetime.now(timezone.utc)
+        for card in existing:
+            card.archived_at = None
+        db_session.commit()
+
     def test_career_path_success(self, client, db_session, src_users):
         """Mock generate_content, upload a card with text, trigger analyze, then career path."""
         headers = _auth(client, "src_parent@test.com")
@@ -406,6 +456,61 @@ class TestCareerPathEndpoint:
         assert "career_suggestions" in data
         assert "overall_assessment" in data
         assert data["report_cards_analyzed"] >= 1
+
+    def test_career_path_cache_hit(self, client, db_session, src_users):
+        """Second career-path call with same cards returns cached result without AI call."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        # Create a report card with text
+        from app.models.school_report_card import SchoolReportCard
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="cache_career_test.pdf",
+            text_content="C" * 100,
+            term="Fall 2025",
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        mock_career = (json.dumps(SAMPLE_CAREER), "end_turn")
+        mock_gen = AsyncMock(return_value=mock_career)
+
+        # First call — should invoke generate_content
+        with patch("app.services.school_report_card_service.generate_content", mock_gen), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp1 = client.post(
+                f"/api/school-report-cards/{student.id}/career-path",
+                headers=headers,
+            )
+        assert resp1.status_code == 200, resp1.text
+        assert mock_gen.call_count == 1
+
+        # Second call — should return cached, generate_content NOT called again
+        mock_gen2 = AsyncMock(return_value=mock_career)
+        with patch("app.services.school_report_card_service.generate_content", mock_gen2), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp2 = client.post(
+                f"/api/school-report-cards/{student.id}/career-path",
+                headers=headers,
+            )
+        assert resp2.status_code == 200, resp2.text
+        assert mock_gen2.call_count == 0
+
+        # Verify both responses have the same data
+        data1 = resp1.json()
+        data2 = resp2.json()
+        assert data1["strengths"] == data2["strengths"]
+        assert data1["career_suggestions"] == data2["career_suggestions"]
+
+    def test_career_path_unauthenticated(self, client):
+        """No auth token → 401."""
+        resp = client.post("/api/school-report-cards/1/career-path")
+        assert resp.status_code in (401, 403)
 
 
 # ── Cache Behavior Tests ──
