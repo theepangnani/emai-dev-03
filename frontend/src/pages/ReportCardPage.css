@@ -242,6 +242,16 @@
     padding: 0.5rem;
   }
 
+  .rc-actions {
+    flex-wrap: wrap;
+  }
+
+  .rc-btn {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+  }
+
   .rc-header {
     padding: 1.5rem 1rem 1rem;
   }
@@ -254,7 +264,17 @@
     padding: 1rem;
   }
 
+  .rc-stat-value {
+    font-size: 1.4rem;
+  }
+
   .rc-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rc-subjects-table th,
+  .rc-subjects-table td {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
   }
 }
