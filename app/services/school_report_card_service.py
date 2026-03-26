@@ -290,6 +290,12 @@ Rules:
     return result
 
 
+_MONTHS_PATTERN = (
+    r"(?:January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)"
+)
+
+
 # ---------------------------------------------------------------------------
 # 3. Metadata Extraction (regex, no AI)
 # ---------------------------------------------------------------------------
@@ -362,8 +368,7 @@ def extract_metadata(text_content: str) -> dict:
     if not result["report_date"]:
         head = text_content[:500]
         standalone_match = re.search(
-            r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December)"
-            r")\s+(20\d{2})\b",
+            rf"\b({_MONTHS_PATTERN})\s+(20\d{{2}})\b",
             head,
             re.IGNORECASE,
         )
@@ -441,11 +446,6 @@ def extract_metadata(text_content: str) -> dict:
 # ---------------------------------------------------------------------------
 # 4. Filename Date Extraction
 # ---------------------------------------------------------------------------
-
-_MONTHS_PATTERN = (
-    r"(?:January|February|March|April|May|June|July|August|September|"
-    r"October|November|December)"
-)
 
 
 def extract_date_from_filename(filename: str) -> str | None:

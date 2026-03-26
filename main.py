@@ -1892,6 +1892,7 @@ def _run_migrations_inner(engine):
                         "FROM school_report_cards WHERE report_date IS NULL"
                     )).fetchall()
                     if rows:
+                        logger.info("Backfilling report_date for %d rows with NULL report_date (#2368)", len(rows))
                         from app.services.school_report_card_service import (
                             extract_date_from_filename,
                             extract_metadata,
