@@ -17,7 +17,7 @@ from app.models.course import Course, student_courses
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
-from app.api.deps import get_current_user, can_access_course
+from app.api.deps import get_current_user, can_access_course, can_access_material
 from app.models.notification import NotificationType
 from app.services.notification_service import notify_parents_of_student
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
@@ -1096,9 +1096,19 @@ def list_course_contents(
         cids = list({item.course_id for item in items})
         school_ids = _get_school_course_ids(db, cids)
         if school_ids:
-            return _strip_urls_for_school(items, school_ids, db)
+            results = _strip_urls_for_school(items, school_ids, db)
+            # Strip text_content for non-trust-circle users
+            for i, item in enumerate(items):
+                if not can_access_material(db, current_user, item):
+                    results[i].text_content = None
+            return results
 
-    return [_to_response(item, db) for item in items]
+    results = [_to_response(item, db) for item in items]
+    # Strip text_content for non-trust-circle users
+    for i, item in enumerate(items):
+        if not can_access_material(db, current_user, item):
+            results[i].text_content = None
+    return results
 
 
 def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None = None) -> list[int]:
@@ -1174,8 +1184,9 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
             ids.update(r[0] for r in taught)
 
     elif user.role == UserRole.ADMIN:
-        all_ids = db.query(Course.id).all()
-        return [r[0] for r in all_ids]
+        # Admin sees courses they personally created (trust-circle model)
+        admin_created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
+        ids.update(r[0] for r in admin_created)
 
     return list(ids)
 
@@ -1194,8 +1205,8 @@ def get_course_content(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     now = datetime.now(timezone.utc)
 
@@ -1252,8 +1263,8 @@ def download_course_content_file(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     # Restrict downloads for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
@@ -1793,13 +1804,13 @@ def download_source_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Download/view an individual source file. Must have access to the course."""
+    """Download/view an individual source file. Must be in the trust circle."""
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
-    if not can_access_course(db, current_user, content.course_id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this course")
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     # Restrict downloads for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
