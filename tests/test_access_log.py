@@ -14,11 +14,11 @@ def _create_course_and_content(client, db_session, teacher_headers, teacher_emai
     from app.models.user import User
     teacher = db_session.query(User).filter(User.email == teacher_email).first()
 
-    resp = client.post("/api/courses", json={"name": "Access Log Test Course"}, headers=teacher_headers)
+    resp = client.post("/api/courses/", json={"name": "Access Log Test Course"}, headers=teacher_headers)
     assert resp.status_code == 200, resp.text
     course_id = resp.json()["id"]
 
-    resp = client.post("/api/course-contents", json={
+    resp = client.post("/api/course-contents/", json={
         "course_id": course_id,
         "title": "Test Material",
         "content_type": "notes",
@@ -168,11 +168,11 @@ class TestAccessLogParentAccess:
 
         # Create content as student
         student_headers = _auth(client, student_email)
-        resp = client.post("/api/courses", json={"name": "Student Course"}, headers=student_headers)
+        resp = client.post("/api/courses/", json={"name": "Student Course"}, headers=student_headers)
         assert resp.status_code in (200, 201)
         course_id = resp.json()["id"]
 
-        resp = client.post("/api/course-contents", json={
+        resp = client.post("/api/course-contents/", json={
             "course_id": course_id,
             "title": "Student Notes",
             "content_type": "notes",
