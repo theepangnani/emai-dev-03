@@ -173,7 +173,7 @@ class TestUploadEndpoint:
         assert resp.status_code in (200, 500), resp.text
         if resp.status_code == 200:
             data = resp.json()
-            assert data["total_uploaded"] >= 0
+            assert len(data["uploaded"]) >= 0
 
     def test_upload_requires_parent_role(self, client, src_users):
         headers = _auth(client, "src_student@test.com")
@@ -267,7 +267,7 @@ class TestAnalyzeEndpoint:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["analysis_type"] == "full"
-        assert data["teacher_feedback_summary"] != ""
+        assert data["content"]["teacher_feedback_summary"] != ""
 
     def test_analyze_no_text(self, client, db_session, src_users):
         headers = _auth(client, "src_parent@test.com")

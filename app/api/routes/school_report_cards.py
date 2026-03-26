@@ -359,10 +359,9 @@ async def analyze_report_card(
         analysis_type="full",
         content=json.dumps(result),
         content_hash=content_hash,
+        ai_model=_usage.get("model_name"),
         prompt_tokens=_usage.get("prompt_tokens"),
         completion_tokens=_usage.get("completion_tokens"),
-        total_tokens=_usage.get("total_tokens"),
-        model_name=_usage.get("model_name"),
         estimated_cost_usd=_usage.get("estimated_cost_usd"),
     )
     db.add(analysis)
@@ -480,10 +479,9 @@ async def career_path_analysis(
         analysis_type="career_path",
         content=json.dumps(result),
         content_hash=combined_hash,
+        ai_model=_usage.get("model_name"),
         prompt_tokens=_usage.get("prompt_tokens"),
         completion_tokens=_usage.get("completion_tokens"),
-        total_tokens=_usage.get("total_tokens"),
-        model_name=_usage.get("model_name"),
         estimated_cost_usd=_usage.get("estimated_cost_usd"),
     )
     db.add(analysis)
