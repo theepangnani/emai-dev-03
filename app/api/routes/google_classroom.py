@@ -25,6 +25,7 @@ from app.services.audit_service import log_action
 from app.services.email_service import add_inspiration_to_email, send_email_sync, wrap_branded_email
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.schemas.course_announcement import CourseAnnouncementResponse
 
 
 def _require_google_classroom():
@@ -1091,7 +1092,7 @@ def sync_google_materials(
 
 # ── Course Announcements (#2279) ─────────────────────────────────────
 
-@router.get("/courses/{course_id}/announcements")
+@router.get("/courses/{course_id}/announcements", response_model=list[CourseAnnouncementResponse])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_course_announcements(
     request: Request,
@@ -1136,22 +1137,7 @@ def get_course_announcements(
 
     announcements = query.order_by(CourseAnnouncement.creation_time.desc()).all()
 
-    return [
-        {
-            "id": a.id,
-            "course_id": a.course_id,
-            "google_announcement_id": a.google_announcement_id,
-            "text": a.text,
-            "creator_name": a.creator_name,
-            "creator_email": a.creator_email,
-            "creation_time": a.creation_time.isoformat() if a.creation_time else None,
-            "update_time": a.update_time.isoformat() if a.update_time else None,
-            "materials_json": a.materials_json,
-            "alternate_link": a.alternate_link,
-            "created_at": a.created_at.isoformat() if a.created_at else None,
-        }
-        for a in announcements
-    ]
+    return announcements
 
 
 # ── Teacher Google Accounts ──────────────────────────────────────────
