@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
+from html import escape
 
 from sqlalchemy import and_, func as sa_func
 from sqlalchemy.orm import Session
@@ -79,7 +80,8 @@ def _generate_encouragement(child_name: str, xp: int, streak: int, quizzes: int,
         from app.core.config import settings
         import openai
 
-        client = openai.OpenAI(api_key=settings.openai_api_key)
+        # TODO: migrate to async openai.AsyncOpenAI to avoid blocking the event loop
+        client = openai.OpenAI(api_key=settings.openai_api_key, timeout=5.0)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -100,8 +102,8 @@ def _generate_encouragement(child_name: str, xp: int, streak: int, quizzes: int,
             temperature=0.7,
         )
         return response.choices[0].message.content.strip()
-    except Exception:
-        logger.warning("AI encouragement generation failed for %s", first_name)
+    except Exception as exc:
+        logger.warning("AI encouragement generation failed for %s: %s", first_name, exc)
         return None
 
 
@@ -475,7 +477,7 @@ def render_digest_email_html(
             encouragement_html = (
                 f'<div style="margin-top:12px;padding:10px 14px;background:#ecfdf5;'
                 f'border-radius:8px;color:#065f46;font-size:13px;font-style:italic;">'
-                f'{child.encouragement}</div>'
+                f'{escape(child.encouragement)}</div>'
             )
 
         children_html += f"""
