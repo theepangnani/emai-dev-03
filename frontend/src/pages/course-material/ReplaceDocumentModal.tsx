@@ -13,7 +13,8 @@ interface ReplaceDocumentModalProps {
   onUploadStatusChange: (status: 'uploading' | 'success' | 'error' | null) => void;
 }
 
-const MAX_FILE_SIZE_MB = 30;
+import { MAX_FILE_SIZE_MB } from '../../constants/upload';
+
 const MAX_FILES = 10;
 const ACCEPTED_TYPES = '.pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip';
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'];

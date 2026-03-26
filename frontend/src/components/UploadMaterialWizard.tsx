@@ -3,8 +3,7 @@ import UploadWizardStep1 from './UploadWizardStep1';
 import UploadWizardStep2 from './UploadWizardStep2';
 import { coursesApi } from '../api/courses';
 import './UploadMaterialWizard.css';
-
-const MAX_FILE_SIZE_MB = 30;
+import { MAX_FILE_SIZE_MB } from '../constants/upload';
 const MAX_FILES_PER_SESSION = 10;
 
 export type StudyMaterialType = 'study_guide' | 'quiz' | 'flashcards';
