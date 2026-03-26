@@ -86,6 +86,94 @@ def require_role(*roles: UserRole):
     return checker
 
 
+def can_access_material(db: Session, user: User, content) -> bool:
+    """Check if a user is in the trust circle for a specific material.
+
+    Trust circle grants access when any of the following is true:
+      - User created the material
+      - User created the course
+      - User is the assigned teacher
+      - User (student) is enrolled in the course
+      - User (parent) has a linked child enrolled in the course
+      - Admin → NOT granted access (key difference from can_access_course)
+    """
+    from app.models.course import Course, student_courses
+    from app.models.student import Student, parent_students
+    from app.models.teacher import Teacher
+
+    # Admin is explicitly excluded from material access
+    if user.has_role(UserRole.ADMIN):
+        return False
+
+    # Creator of the material always has access
+    if content.created_by_user_id == user.id:
+        return True
+
+    # Look up the course
+    course = db.query(Course).filter(Course.id == content.course_id).first()
+    if not course:
+        return False
+
+    # Course creator has access
+    if course.created_by_user_id == user.id:
+        return True
+
+    # Assigned teacher has access
+    if user.has_role(UserRole.TEACHER):
+        teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+        if teacher and course.teacher_id == teacher.id:
+            return True
+
+    # Enrolled student has access
+    if user.has_role(UserRole.STUDENT):
+        student = db.query(Student).filter(Student.user_id == user.id).first()
+        if student:
+            enrolled = (
+                db.query(student_courses.c.course_id)
+                .filter(
+                    student_courses.c.student_id == student.id,
+                    student_courses.c.course_id == content.course_id,
+                )
+                .first()
+            )
+            if enrolled:
+                return True
+
+    # Parent of enrolled student has access, or parent of child who created content/course
+    if user.has_role(UserRole.PARENT):
+        child_student_ids = [
+            r[0] for r in db.query(parent_students.c.student_id).filter(
+                parent_students.c.parent_id == user.id
+            ).all()
+        ]
+        if child_student_ids:
+            # Check if child is enrolled in the course
+            enrolled = (
+                db.query(student_courses.c.student_id)
+                .filter(
+                    student_courses.c.student_id.in_(child_student_ids),
+                    student_courses.c.course_id == content.course_id,
+                )
+                .first()
+            )
+            if enrolled:
+                return True
+
+            # Check if child created the material or the course
+            child_user_ids = [
+                r[0] for r in db.query(Student.user_id).filter(
+                    Student.id.in_(child_student_ids)
+                ).all()
+            ]
+            if child_user_ids:
+                if content.created_by_user_id in child_user_ids:
+                    return True
+                if course.created_by_user_id in child_user_ids:
+                    return True
+
+    return False
+
+
 def can_access_course(db: Session, user: User, course_id: int) -> bool:
     """Check if a user has access to a specific course.
 
