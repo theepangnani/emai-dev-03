@@ -12,7 +12,7 @@ class WaitlistCreate(BaseModel):
     email: EmailStr
     roles: list[str] = Field(min_length=1)
     website: str = ""  # honeypot
-    started_at: Optional[float] = None  # timing check
+    started_at: Optional[float] = None  # elapsed seconds since form load (bot protection)
 
     @field_validator("roles")
     @classmethod
