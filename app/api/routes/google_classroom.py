@@ -1100,6 +1100,8 @@ def get_course_announcements(
     db: Session = Depends(get_db),
     after: str | None = Query(None, description="Filter announcements after this ISO date"),
     before: str | None = Query(None, description="Filter announcements before this ISO date"),
+    limit: int = Query(50, ge=1, le=200, description="Max announcements to return"),
+    offset: int = Query(0, ge=0, description="Number of announcements to skip"),
     _gc=Depends(_require_google_classroom),
 ):
     """Get synced announcements for a course.
@@ -1134,7 +1136,7 @@ def get_course_announcements(
         except ValueError:
             pass
 
-    announcements = query.order_by(CourseAnnouncement.creation_time.desc()).all()
+    announcements = query.order_by(CourseAnnouncement.creation_time.desc()).offset(offset).limit(limit).all()
 
     return [
         {
