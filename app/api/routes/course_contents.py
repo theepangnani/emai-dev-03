@@ -2044,3 +2044,94 @@ def get_content_image(
             headers={"Cache-Control": "public, max-age=86400"},
         )
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image data not available")
+
+
+# ── Access Log endpoint (#2273) ──────────────────────────────────────
+
+@router.get("/{content_id}/access-log")
+def get_content_access_log(
+    content_id: int,
+    days: int = Query(default=30, ge=1, le=365),
+    action: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return access log for a course content item. Only the content creator
+    or the parent of the creator (if creator is a student) may view this."""
+    from app.models.audit_log import AuditLog
+    from app.schemas.access_log import AccessLogEntry, AccessLogResponse
+
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+
+    # Authorization: creator or parent-of-creator only
+    is_creator = content.created_by_user_id == current_user.id
+
+    is_parent_of_creator = False
+    if not is_creator and content.created_by_user_id:
+        creator = db.query(User).filter(User.id == content.created_by_user_id).first()
+        if creator and creator.role and creator.role.value == "student":
+            linked_student = (
+                db.query(Student)
+                .filter(Student.user_id == creator.id)
+                .first()
+            )
+            if linked_student:
+                is_parent_of_creator = current_user in linked_student.parents
+
+    if not is_creator and not is_parent_of_creator:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the content owner can view access logs")
+
+    # Query audit logs for this content
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    query = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.resource_type == "course_content",
+            AuditLog.resource_id == content_id,
+            AuditLog.created_at >= cutoff,
+        )
+    )
+    if action:
+        query = query.filter(AuditLog.action == action)
+
+    logs = query.order_by(AuditLog.created_at.desc()).all()
+
+    # Build user lookup for names/roles
+    user_ids = {log.user_id for log in logs if log.user_id}
+    users_map: dict[int, User] = {}
+    if user_ids:
+        users = db.query(User).filter(User.id.in_(user_ids)).all()
+        users_map = {u.id: u for u in users}
+
+    entries = []
+    total_views = 0
+    total_downloads = 0
+    viewer_ids: set[int] = set()
+
+    for log in logs:
+        u = users_map.get(log.user_id) if log.user_id else None
+        entries.append(AccessLogEntry(
+            user_id=log.user_id,
+            user_name=u.full_name if u else None,
+            user_role=u.role.value if u and u.role else None,
+            action=log.action,
+            timestamp=log.created_at,
+            ip_address=log.ip_address,
+        ))
+        if log.action in ("read", "material_view"):
+            total_views += 1
+        if log.action in ("material_download", "export"):
+            total_downloads += 1
+        if log.user_id:
+            viewer_ids.add(log.user_id)
+
+    return AccessLogResponse(
+        content_id=content_id,
+        content_title=content.title,
+        access_log=entries,
+        total_views=total_views,
+        total_downloads=total_downloads,
+        unique_viewers=len(viewer_ids),
+    )
