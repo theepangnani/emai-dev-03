@@ -36,6 +36,11 @@ class ChildDigest(BaseModel):
     overdue_items: list[DigestOverdueItem] = []
     highlight: str = ""  # one-line summary
     conversation_starter: str | None = None  # suggested question for parent
+    # Gamification fields (#2228)
+    xp_earned: int = 0
+    current_streak: int = 0
+    study_minutes: int = 0
+    encouragement: str | None = None  # AI-generated encouragement sentence
 
 
 class WeeklyDigestResponse(BaseModel):

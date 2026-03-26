@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime, timedelta, timezone
+from html import escape
 
 from sqlalchemy import and_, func as sa_func
 from sqlalchemy.orm import Session
@@ -11,8 +12,10 @@ from app.models.course import Course, student_courses
 from app.models.quiz_result import QuizResult
 from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
+from app.models.study_session import StudySession
 from app.models.task import Task
 from app.models.user import User
+from app.models.xp import XpLedger, XpSummary
 from app.schemas.weekly_digest import (
     ChildDigest,
     DigestChildAssignment,
@@ -51,6 +54,57 @@ def _build_conversation_starter(
         f"{first_name} studied {topic} this week "
         f"— ask them: What did you find most interesting about {topic}?"
     )
+
+
+def _generate_encouragement(child_name: str, xp: int, streak: int, quizzes: int, study_mins: int) -> str | None:
+    """Generate a one-sentence AI encouragement for a child's weekly activity.
+
+    Returns None if no meaningful activity or if the AI call fails.
+    """
+    first_name = (child_name or "").split()[0]
+    if xp == 0 and streak == 0 and quizzes == 0 and study_mins == 0:
+        return None
+
+    parts = []
+    if xp > 0:
+        parts.append(f"earned {xp} XP")
+    if streak > 0:
+        parts.append(f"has a {streak}-day streak")
+    if quizzes > 0:
+        parts.append(f"completed {quizzes} quizzes")
+    if study_mins > 0:
+        parts.append(f"studied for {study_mins} minutes")
+    activity = ", ".join(parts)
+
+    try:
+        from app.core.config import settings
+        import openai
+
+        # TODO: migrate to async openai.AsyncOpenAI to avoid blocking the event loop
+        client = openai.OpenAI(api_key=settings.openai_api_key, timeout=5.0)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You write one short, warm encouragement sentence for a parent's "
+                        "weekly email about their child's learning progress. "
+                        "Keep it under 25 words. Be positive and specific."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"{first_name} {activity} this week.",
+                },
+            ],
+            max_tokens=60,
+            temperature=0.7,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as exc:
+        logger.warning("AI encouragement generation failed for %s: %s", first_name, exc)
+        return None
 
 
 def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResponse:
@@ -192,6 +246,47 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
         for uid, pct in qr_rows:
             quiz_data.setdefault(uid, []).append(pct)
 
+    # 7. XP earned per child (last 7 days) (#2228)
+    xp_earned_data: dict[int, int] = {}
+    if child_user_ids:
+        xp_rows = (
+            db.query(XpLedger.student_id, sa_func.sum(XpLedger.xp_awarded))
+            .filter(
+                XpLedger.student_id.in_(child_user_ids),
+                XpLedger.created_at >= week_start,
+            )
+            .group_by(XpLedger.student_id)
+            .all()
+        )
+        xp_earned_data = {uid: int(total) for uid, total in xp_rows}
+
+    # 8. Current streak per child (#2228)
+    streak_data: dict[int, int] = {}
+    if child_user_ids:
+        streak_rows = (
+            db.query(XpSummary.student_id, XpSummary.current_streak)
+            .filter(XpSummary.student_id.in_(child_user_ids))
+            .all()
+        )
+        streak_data = {uid: streak for uid, streak in streak_rows}
+
+    # 9. Study time per child in minutes (last 7 days) (#2228)
+    study_time_data: dict[int, int] = {}
+    if child_user_ids:
+        st_rows = (
+            db.query(
+                StudySession.student_id,
+                sa_func.sum(StudySession.duration_seconds),
+            )
+            .filter(
+                StudySession.student_id.in_(child_user_ids),
+                StudySession.created_at >= week_start,
+            )
+            .group_by(StudySession.student_id)
+            .all()
+        )
+        study_time_data = {uid: int(total) // 60 for uid, total in st_rows}
+
     # ── Build per-child digests ──
 
     child_digests: list[ChildDigest] = []
@@ -253,6 +348,11 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
                     item_type="assignment",
                 ))
 
+        # Gamification data (#2228)
+        child_xp = xp_earned_data.get(user.id, 0)
+        child_streak = streak_data.get(user.id, 0)
+        child_study_mins = study_time_data.get(user.id, 0)
+
         # Highlight sentence
         parts = []
         if task_info.total > 0:
@@ -263,11 +363,23 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
             parts.append(f"{sg_count} study guide{'s' if sg_count != 1 else ''} created")
         if quiz_info.quiz_count > 0:
             parts.append(f"avg quiz score {quiz_info.average_percentage}%")
+        if child_xp > 0:
+            parts.append(f"{child_xp} XP earned")
+        if child_streak > 0:
+            parts.append(f"{child_streak}-day streak")
+        if child_study_mins > 0:
+            parts.append(f"{child_study_mins} min studied")
         highlight = ", ".join(parts) if parts else "No activity this week"
 
         # Conversation starter based on most recent study guide
         conversation_starter = _build_conversation_starter(
             user.full_name, recent_guides.get(user.id)
+        )
+
+        # AI encouragement sentence (#2228)
+        encouragement = _generate_encouragement(
+            user.full_name, child_xp, child_streak,
+            quiz_info.quiz_count, child_study_mins,
         )
 
         child_digests.append(ChildDigest(
@@ -281,6 +393,10 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
             overdue_items=overdue_items,
             highlight=highlight,
             conversation_starter=conversation_starter,
+            xp_earned=child_xp,
+            current_streak=child_streak,
+            study_minutes=child_study_mins,
+            encouragement=encouragement,
         ))
 
     # Overall summary
@@ -322,16 +438,60 @@ def render_digest_email_html(
         if child.quiz_scores.quiz_count > 0:
             quiz_html = f'<div style="margin-top:4px;">Quizzes taken: {child.quiz_scores.quiz_count} (avg {child.quiz_scores.average_percentage}%)</div>'
 
+        # Gamification badges row (#2228)
+        badges_html = ""
+        badge_items = []
+        if child.current_streak > 0:
+            flame = "&#128293;"  # fire emoji
+            badge_items.append(
+                f'<td style="text-align:center;padding:8px 12px;">'
+                f'<div style="font-size:24px;">{flame}</div>'
+                f'<div style="font-size:12px;color:#4b5563;margin-top:2px;">{child.current_streak}-day streak</div>'
+                f'</td>'
+            )
+        if child.xp_earned > 0:
+            star = "&#11088;"  # star emoji
+            badge_items.append(
+                f'<td style="text-align:center;padding:8px 12px;">'
+                f'<div style="font-size:24px;">{star}</div>'
+                f'<div style="font-size:12px;color:#4b5563;margin-top:2px;">{child.xp_earned} XP</div>'
+                f'</td>'
+            )
+        if child.study_minutes > 0:
+            clock = "&#9201;"  # timer emoji
+            badge_items.append(
+                f'<td style="text-align:center;padding:8px 12px;">'
+                f'<div style="font-size:24px;">{clock}</div>'
+                f'<div style="font-size:12px;color:#4b5563;margin-top:2px;">{child.study_minutes} min</div>'
+                f'</td>'
+            )
+        if badge_items:
+            badges_html = (
+                '<table cellpadding="0" cellspacing="0" style="margin:12px auto 0 auto;">'
+                f'<tr>{"".join(badge_items)}</tr></table>'
+            )
+
+        # AI encouragement (#2228)
+        encouragement_html = ""
+        if child.encouragement:
+            encouragement_html = (
+                f'<div style="margin-top:12px;padding:10px 14px;background:#ecfdf5;'
+                f'border-radius:8px;color:#065f46;font-size:13px;font-style:italic;">'
+                f'{escape(child.encouragement)}</div>'
+            )
+
         children_html += f"""
         <div style="margin-bottom:24px;padding:16px;background:#f9fafb;border-radius:12px;border-left:4px solid #4f46e5;">
           <h3 style="margin:0 0 8px 0;color:#1f2937;">{child.full_name}</h3>
-          <div style="color:#4b5563;font-size:14px;line-height:1.6;">
+          {badges_html}
+          <div style="color:#4b5563;font-size:14px;line-height:1.6;margin-top:12px;">
             <div>Tasks: {child.tasks.completed}/{child.tasks.total} completed</div>
             <div>Assignments: {child.assignments.submitted}/{child.assignments.due} submitted</div>
             <div>Study guides created: {child.study_guides_created}</div>
             {quiz_html}
           </div>
           {overdue_html}
+          {encouragement_html}
           {f'<div style="margin-top:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:13px;">{child.conversation_starter}</div>' if child.conversation_starter else ""}
         </div>
         """
@@ -346,6 +506,9 @@ def render_digest_email_html(
     </div>
     <p style="margin-top:24px;text-align:center;">
       <a href="https://www.classbridge.ca/dashboard" style="display:inline-block;padding:12px 24px;background:#4f46e5;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;">View Dashboard</a>
+    </p>
+    <p style="margin-top:12px;text-align:center;">
+      <a href="mailto:?subject=Check%20out%20how%20the%20kids%20are%20doing%20on%20ClassBridge&body=I%20just%20got%20this%20weekly%20report%20from%20ClassBridge%20%E2%80%94%20it%20tracks%20the%20kids%27%20learning%20progress%21%0A%0Ahttps%3A%2F%2Fwww.classbridge.ca" style="display:inline-block;padding:10px 20px;background:#f3f4f6;color:#4f46e5;text-decoration:none;border-radius:8px;font-weight:600;border:1px solid #e5e7eb;">Forward to Family</a>
     </p>
     """
 
@@ -381,6 +544,10 @@ def _translate_digest(digest: WeeklyDigestResponse, target_language: str) -> Wee
         if child.conversation_starter:
             child.conversation_starter = _translate_safe(
                 child.conversation_starter, target_language
+            )
+        if child.encouragement:
+            child.encouragement = _translate_safe(
+                child.encouragement, target_language
             )
 
     return digest
