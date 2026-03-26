@@ -80,10 +80,9 @@ export function ContentMetaBar({ courseName, createdAt, linkedTasks = [], course
             <div className="cm-meta-popover cm-meta-popover--tasks">
               <div className="cm-meta-popover-title">Linked Tasks</div>
               <ul className="cm-meta-popover-task-list">
-                {linkedTasks.map(task => {
-                  const d = task.due_date ? new Date(task.due_date) : null;
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
+                {(() => { const today = new Date(); today.setHours(0, 0, 0, 0); return linkedTasks.map(task => {
+                  const dateOnly = task.due_date?.substring(0, 10);
+                  const d = dateOnly ? new Date(dateOnly + 'T00:00:00') : null;
                   const isOverdue = d ? d < today && !task.is_completed : false;
                   return (
                     <li key={task.id} className="cm-meta-popover-task">
@@ -100,7 +99,7 @@ export function ContentMetaBar({ courseName, createdAt, linkedTasks = [], course
                       </Link>
                     </li>
                   );
-                })}
+                }); })()}
               </ul>
             </div>
           )}

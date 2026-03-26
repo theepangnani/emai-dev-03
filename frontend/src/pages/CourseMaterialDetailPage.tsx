@@ -962,6 +962,7 @@ export function CourseMaterialDetailPage() {
               courseName={content?.course_name}
               createdAt={content?.created_at}
               courseId={content?.course_id}
+              linkedTasks={Object.values(linkedTasks).flat()}
             />
           )}
 
@@ -1064,6 +1065,7 @@ export function CourseMaterialDetailPage() {
               courseName={content?.course_name}
               createdAt={briefingNote?.created_at}
               courseId={content?.course_id}
+              linkedTasks={Object.values(linkedTasks).flat()}
             />
           )}
 
