@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { courseContentsApi } from '../../api/client';
 import type { AccessLogEntry } from '../../api/client';
 
@@ -13,40 +13,60 @@ const DATE_RANGE_OPTIONS = [
   { value: 0, label: 'All time' },
 ];
 
+interface FetchState {
+  entries: AccessLogEntry[];
+  totalViews: number;
+  totalDownloads: number;
+  uniqueViewers: number;
+  loading: boolean;
+  error: string | null;
+  endpointMissing: boolean;
+}
+
+type FetchAction =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; data: { entries: AccessLogEntry[]; total_views: number; total_downloads: number; unique_viewers: number } }
+  | { type: 'FETCH_404' }
+  | { type: 'FETCH_ERROR' };
+
+function fetchReducer(state: FetchState, action: FetchAction): FetchState {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, loading: true, error: null, endpointMissing: false };
+    case 'FETCH_SUCCESS':
+      return { ...state, loading: false, entries: action.data.entries, totalViews: action.data.total_views, totalDownloads: action.data.total_downloads, uniqueViewers: action.data.unique_viewers };
+    case 'FETCH_404':
+      return { ...state, loading: false, endpointMissing: true };
+    case 'FETCH_ERROR':
+      return { ...state, loading: false, error: 'Failed to load access log' };
+  }
+}
+
+const initialState: FetchState = {
+  entries: [], totalViews: 0, totalDownloads: 0, uniqueViewers: 0,
+  loading: true, error: null, endpointMissing: false,
+};
+
 export function AccessLogTab({ courseContentId }: AccessLogTabProps) {
-  const [entries, setEntries] = useState<AccessLogEntry[]>([]);
-  const [totalViews, setTotalViews] = useState(0);
-  const [totalDownloads, setTotalDownloads] = useState(0);
-  const [uniqueViewers, setUniqueViewers] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [endpointMissing, setEndpointMissing] = useState(false);
+  const [state, dispatch] = useReducer(fetchReducer, initialState);
+  const { entries, totalViews, totalDownloads, uniqueViewers, loading, error, endpointMissing } = state;
   const [days, setDays] = useState(30);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setEndpointMissing(false);
+    dispatch({ type: 'FETCH_START' });
 
     courseContentsApi.getAccessLog(courseContentId, days ? { days } : undefined)
       .then(data => {
-        if (cancelled) return;
-        setEntries(data.entries);
-        setTotalViews(data.total_views);
-        setTotalDownloads(data.total_downloads);
-        setUniqueViewers(data.unique_viewers);
+        if (!cancelled) dispatch({ type: 'FETCH_SUCCESS', data });
       })
       .catch(err => {
         if (cancelled) return;
         if (err?.response?.status === 404) {
-          setEndpointMissing(true);
+          dispatch({ type: 'FETCH_404' });
         } else {
-          setError('Failed to load access log');
+          dispatch({ type: 'FETCH_ERROR' });
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
 
     return () => { cancelled = true; };
