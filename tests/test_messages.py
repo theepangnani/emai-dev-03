@@ -648,3 +648,194 @@ class TestCreateConversationRelaxed:
             "initial_message": "Hello?",
         }, headers=headers)
         assert resp.status_code == 404
+
+
+# ── Role-based messaging authorization (#2417) ────────────
+
+@pytest.fixture()
+def auth_users(db_session):
+    """Create a full set of users with relationships for authorization tests.
+
+    Relationships:
+    - parent1 is guardian of student1
+    - student1 and student2 are classmates (enrolled in teacher1's course)
+    - student3 is NOT in any shared course with student1
+    - parent2 has no children linked
+    - teacher1 teaches course1 (with student1, student2)
+    - teacher2 teaches course2 (with student3 only, no overlap)
+    - admin1 is an admin
+    """
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.student import Student, parent_students, RelationshipType
+    from app.models.teacher import Teacher
+    from app.models.course import Course, student_courses
+    from sqlalchemy import insert
+
+    hashed = get_password_hash(PASSWORD)
+
+    def _get_or_create(email, full_name, role, **kwargs):
+        u = db_session.query(User).filter(User.email == email).first()
+        if not u:
+            u = User(email=email, full_name=full_name, role=role,
+                     hashed_password=hashed, **kwargs)
+            db_session.add(u)
+            db_session.flush()
+        return u
+
+    parent1 = _get_or_create("auth_parent1@test.com", "Auth Parent1", UserRole.PARENT)
+    parent2 = _get_or_create("auth_parent2@test.com", "Auth Parent2", UserRole.PARENT)
+    student1_user = _get_or_create("auth_student1@test.com", "Auth Student1", UserRole.STUDENT)
+    student2_user = _get_or_create("auth_student2@test.com", "Auth Student2", UserRole.STUDENT)
+    student3_user = _get_or_create("auth_student3@test.com", "Auth Student3", UserRole.STUDENT)
+    teacher1_user = _get_or_create("auth_teacher1@test.com", "Auth Teacher1", UserRole.TEACHER)
+    teacher2_user = _get_or_create("auth_teacher2@test.com", "Auth Teacher2", UserRole.TEACHER)
+    admin1 = _get_or_create("auth_admin1@test.com", "Auth Admin1", UserRole.ADMIN)
+    db_session.flush()
+
+    # Student records
+    def _get_or_create_student(user_id):
+        s = db_session.query(Student).filter(Student.user_id == user_id).first()
+        if not s:
+            s = Student(user_id=user_id)
+            db_session.add(s)
+            db_session.flush()
+        return s
+
+    student1 = _get_or_create_student(student1_user.id)
+    student2 = _get_or_create_student(student2_user.id)
+    student3 = _get_or_create_student(student3_user.id)
+
+    # Teacher records
+    def _get_or_create_teacher(user_id):
+        t = db_session.query(Teacher).filter(Teacher.user_id == user_id).first()
+        if not t:
+            t = Teacher(user_id=user_id)
+            db_session.add(t)
+            db_session.flush()
+        return t
+
+    teacher1 = _get_or_create_teacher(teacher1_user.id)
+    teacher2 = _get_or_create_teacher(teacher2_user.id)
+
+    # Parent-student link: parent1 -> student1
+    existing_link = db_session.execute(
+        parent_students.select().where(
+            parent_students.c.parent_id == parent1.id,
+            parent_students.c.student_id == student1.id,
+        )
+    ).first()
+    if not existing_link:
+        db_session.execute(insert(parent_students).values(
+            parent_id=parent1.id, student_id=student1.id,
+            relationship_type=RelationshipType.GUARDIAN,
+        ))
+
+    # Course 1 taught by teacher1 with student1 and student2
+    course1 = db_session.query(Course).filter(Course.name == "Auth Test Course 1").first()
+    if not course1:
+        course1 = Course(name="Auth Test Course 1", teacher_id=teacher1.id,
+                         created_by_user_id=teacher1_user.id, is_private=False)
+        db_session.add(course1)
+        db_session.flush()
+
+        db_session.execute(student_courses.insert().values(
+            student_id=student1.id, course_id=course1.id,
+        ))
+        db_session.execute(student_courses.insert().values(
+            student_id=student2.id, course_id=course1.id,
+        ))
+
+    # Course 2 taught by teacher2 with student3 only
+    course2 = db_session.query(Course).filter(Course.name == "Auth Test Course 2").first()
+    if not course2:
+        course2 = Course(name="Auth Test Course 2", teacher_id=teacher2.id,
+                         created_by_user_id=teacher2_user.id, is_private=False)
+        db_session.add(course2)
+        db_session.flush()
+
+        db_session.execute(student_courses.insert().values(
+            student_id=student3.id, course_id=course2.id,
+        ))
+
+    db_session.commit()
+    for u in [parent1, parent2, student1_user, student2_user, student3_user,
+              teacher1_user, teacher2_user, admin1]:
+        db_session.refresh(u)
+
+    return {
+        "parent1": parent1,
+        "parent2": parent2,
+        "student1": student1_user,
+        "student2": student2_user,
+        "student3": student3_user,
+        "teacher1": teacher1_user,
+        "teacher2": teacher2_user,
+        "admin": admin1,
+    }
+
+
+class TestMessagingRoleAuthorization:
+    """Test _can_message authorization rules for POST /api/messages/conversations."""
+
+    def _create_conversation(self, client, sender_email, recipient_id):
+        headers = _auth(client, sender_email)
+        return client.post("/api/messages/conversations", json={
+            "recipient_id": recipient_id,
+            "subject": "Auth test",
+            "initial_message": "Test message",
+        }, headers=headers)
+
+    def test_parent_can_message_teacher(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["parent1"].email, auth_users["teacher1"].id)
+        assert resp.status_code == 200
+
+    def test_parent_can_message_own_child(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["parent1"].email, auth_users["student1"].id)
+        assert resp.status_code == 200
+
+    def test_parent_cannot_message_other_student(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["parent1"].email, auth_users["student2"].id)
+        assert resp.status_code == 403
+
+    def test_parent_cannot_message_other_parent(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["parent1"].email, auth_users["parent2"].id)
+        assert resp.status_code == 403
+
+    def test_student_can_message_classmate(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["student1"].email, auth_users["student2"].id)
+        assert resp.status_code == 200
+
+    def test_student_cannot_message_non_classmate(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["student1"].email, auth_users["student3"].id)
+        assert resp.status_code == 403
+
+    def test_teacher_can_message_own_student(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["teacher1"].email, auth_users["student1"].id)
+        assert resp.status_code == 200
+
+    def test_teacher_cannot_message_unlinked_student(self, client, auth_users):
+        resp = self._create_conversation(
+            client, auth_users["teacher1"].email, auth_users["student3"].id)
+        assert resp.status_code == 403
+
+    def test_admin_can_message_anyone(self, client, auth_users):
+        # Admin -> parent
+        resp = self._create_conversation(
+            client, auth_users["admin"].email, auth_users["parent1"].id)
+        assert resp.status_code == 200
+        # Admin -> student
+        resp = self._create_conversation(
+            client, auth_users["admin"].email, auth_users["student3"].id)
+        assert resp.status_code == 200
+        # Admin -> teacher
+        resp = self._create_conversation(
+            client, auth_users["admin"].email, auth_users["teacher2"].id)
+        assert resp.status_code == 200
