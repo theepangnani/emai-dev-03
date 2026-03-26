@@ -17,7 +17,7 @@ class SurveySubmission(BaseModel):
     session_id: str = Field(min_length=1, max_length=36)
     answers: list[SurveyAnswerCreate] = Field(min_length=1)
     website: str = ""  # honeypot field — should always be empty
-    started_at: Optional[float] = None  # Unix timestamp when survey started
+    started_at: Optional[float] = None  # elapsed seconds since form load (bot protection)
 
     @field_validator("role")
     @classmethod

@@ -83,7 +83,7 @@ def _send_verification_ack_email(user: User, db: Session) -> None:
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
     # Bot protection check
     from app.core.bot_protection import is_bot_submission
-    if is_bot_submission(user_data.website, user_data.started_at, min_seconds=5):
+    if is_bot_submission(user_data.website, elapsed_seconds=user_data.started_at, min_seconds=5):
         return UserResponse(
             id=0, email="", full_name="", role=None, roles=[], is_active=True,
             google_connected=False, needs_onboarding=False, onboarding_completed=False,
@@ -371,9 +371,9 @@ async def login(
     from app.core.bot_protection import is_bot_submission
     form_body = await request.form()
     _hp = form_body.get("website", "")
-    _sa_raw = form_body.get("started_at")
-    _sa = float(_sa_raw) if _sa_raw else None
-    if is_bot_submission(str(_hp), _sa, min_seconds=2):
+    _elapsed_raw = form_body.get("started_at")
+    _elapsed = float(_elapsed_raw) if _elapsed_raw else None
+    if is_bot_submission(str(_hp), elapsed_seconds=_elapsed, min_seconds=2):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email/username or password",
@@ -769,7 +769,7 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
     """Send a password reset email. Always returns 200 to avoid user enumeration."""
     # Bot protection check
     from app.core.bot_protection import is_bot_submission
-    if is_bot_submission(body.website, body.started_at, min_seconds=2):
+    if is_bot_submission(body.website, elapsed_seconds=body.started_at, min_seconds=2):
         return {"message": "If an account with that email exists, a reset link has been sent."}
 
     user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
