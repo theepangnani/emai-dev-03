@@ -2,7 +2,9 @@ import { useState, useRef, Suspense } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse } from '../../api/client';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import type { TaskItem } from '../../api/tasks';
 import { SourceFilesSection, type SourceFilesSectionHandle } from './SourceFilesSection';
+import { ContentMetaBar } from './ContentMetaBar';
 
 interface QuizItem {
   question: string;
@@ -26,6 +28,9 @@ interface DocumentTabProps {
   onShowRegenPrompt: () => void;
   onReloadData: () => Promise<void>;
   onAddMoreFiles?: () => void;
+  courseName?: string | null;
+  createdAt?: string | null;
+  linkedTasks?: TaskItem[];
 }
 
 function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
@@ -91,6 +96,9 @@ export function DocumentTab({
   showToast,
   onShowRegenPrompt,
   onReloadData,
+  courseName,
+  createdAt,
+  linkedTasks = [],
 }: DocumentTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
@@ -222,6 +230,11 @@ export function DocumentTab({
             </>
           )}
         </div>
+        <ContentMetaBar
+          courseName={courseName}
+          createdAt={createdAt || content.created_at}
+          linkedTasks={linkedTasks}
+        />
         <div className="cm-tab-card-body">
           {isEditing ? (
             <textarea

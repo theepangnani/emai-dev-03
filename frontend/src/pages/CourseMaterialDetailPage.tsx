@@ -959,6 +959,9 @@ export function CourseMaterialDetailPage() {
               showToast={showToast}
               onShowRegenPrompt={() => setShowRegenPrompt(true)}
               onReloadData={loadData}
+              courseName={content?.course_name}
+              createdAt={content?.created_at}
+              linkedTasks={Object.values(linkedTasks).flat()}
             />
           )}
 
@@ -1000,6 +1003,8 @@ export function CourseMaterialDetailPage() {
               atLimit={atLimit}
               onFormatSelect={handleFormatSelect}
               onViewDocument={() => setActiveTab('document')}
+              courseName={content?.course_name}
+              createdAt={quiz?.created_at}
             />
           )}
 
@@ -1017,6 +1022,8 @@ export function CourseMaterialDetailPage() {
               atLimit={atLimit}
               onFormatSelect={handleFormatSelect}
               onViewDocument={() => setActiveTab('document')}
+              courseName={content?.course_name}
+              createdAt={flashcardSet?.created_at}
             />
           )}
 
@@ -1031,6 +1038,8 @@ export function CourseMaterialDetailPage() {
               hasSourceContent={hasSourceContent}
               linkedTasks={linkedTasks[mindMapGuide?.id ?? 0] ?? []}
               atLimit={atLimit}
+              courseName={content?.course_name}
+              createdAt={mindMapGuide?.created_at}
             />
           )}
 
@@ -1048,6 +1057,8 @@ export function CourseMaterialDetailPage() {
               atLimit={atLimit}
               studentName={resolvedStudent?.student_name}
               courseContentId={contentId}
+              courseName={content?.course_name}
+              createdAt={briefingNote?.created_at}
             />
           )}
 
