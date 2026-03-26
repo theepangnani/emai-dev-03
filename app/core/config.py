@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     max_study_guides_per_parent: int = 200
 
     # File upload limits
-    max_upload_size_mb: int = 20       # Max per-file size for course material uploads
+    max_upload_size_mb: int = 30       # Max per-file size for course material uploads
     max_files_per_session: int = 10    # Max files per upload session (enforced on frontend + paste endpoint)
 
     # Audit logging
