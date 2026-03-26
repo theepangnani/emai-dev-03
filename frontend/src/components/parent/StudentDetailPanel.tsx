@@ -43,7 +43,7 @@ const CONTENT_TYPE_ICONS: Record<string, string> = {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const MAX_RECENT_MATERIALS = 10;
+const MAX_RECENT_MATERIALS = 5;
 
 /* ── Helpers ───────────────────────────────────────────────── */
 
@@ -124,7 +124,7 @@ export function StudentDetailPanel({
   onViewAllTasks,
   onViewAllMaterials,
 }: StudentDetailPanelProps) {
-  const [materialsExpanded, setMaterialsExpanded] = useState(false);
+  const [materialsExpanded, setMaterialsExpanded] = useState(true);
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [showOtherTasks, setShowOtherTasks] = useState(false);
 
