@@ -3,6 +3,7 @@ import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResp
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { SourceFilesSection, type SourceFilesSectionHandle } from './SourceFilesSection';
+import { ContentMetaBar } from './ContentMetaBar';
 
 interface QuizItem {
   question: string;
@@ -26,6 +27,10 @@ interface DocumentTabProps {
   onShowRegenPrompt: () => void;
   onReloadData: () => Promise<void>;
   onAddMoreFiles?: () => void;
+  courseName?: string | null;
+  createdAt?: string | null;
+  linkedTasks?: import('../../api/tasks').TaskItem[];
+  courseId?: number;
 }
 
 function parseFormattedContent(text: string): { type: 'quiz'; data: QuizItem[] } | { type: 'flashcards'; data: FlashcardItem[] } | null {
@@ -91,6 +96,10 @@ export function DocumentTab({
   showToast,
   onShowRegenPrompt,
   onReloadData,
+  courseName,
+  createdAt,
+  linkedTasks = [],
+  courseId,
 }: DocumentTabProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTextContent, setEditTextContent] = useState('');
@@ -222,6 +231,7 @@ export function DocumentTab({
             </>
           )}
         </div>
+        <ContentMetaBar courseName={courseName} createdAt={createdAt} linkedTasks={linkedTasks} courseId={courseId} />
         <div className="cm-tab-card-body">
           {isEditing ? (
             <textarea

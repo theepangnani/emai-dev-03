@@ -1,8 +1,10 @@
 import { Suspense, useRef, useState } from 'react';
 import type { BriefingNote } from '../../api/client';
+import type { TaskItem } from '../../api/tasks';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
+import { ContentMetaBar } from './ContentMetaBar';
 
 interface BriefingTabProps {
   briefingNote: BriefingNote | undefined;
@@ -13,6 +15,10 @@ interface BriefingTabProps {
   atLimit?: boolean;
   studentName?: string;
   courseContentId?: number;
+  courseName?: string | null;
+  createdAt?: string | null;
+  linkedTasks?: TaskItem[];
+  courseId?: number;
 }
 
 function BriefingIcon() {
@@ -34,6 +40,10 @@ export function BriefingTab({
   atLimit = false,
   studentName,
   courseContentId,
+  courseName,
+  createdAt,
+  linkedTasks = [],
+  courseId,
 }: BriefingTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -66,6 +76,7 @@ export function BriefingTab({
             </span>
             <button className="cm-action-btn danger" onClick={() => onDelete(briefingNote)}>Delete</button>
           </div>
+          <ContentMetaBar courseName={courseName} createdAt={createdAt || briefingNote.created_at} linkedTasks={linkedTasks} courseId={courseId} />
           {generating && (
             <div className="cm-regen-status">
               <GenerationSpinner size="md" />
