@@ -276,7 +276,7 @@ Document type classification and study goal selection to produce persona-based, 
 
 - Structured content items with 7 types: notes, syllabus, labs, assignments, readings, resources, other
 - Upload: PDF, Word, PPTX, text notes, images, ZIP
-- Multi-file upload: up to 10 files, 20 MB each, combined into one material
+- Multi-file upload: up to 10 files, 30 MB each, combined into one material
 - Google Cloud Storage integration for production with SourceFile tracking (#1841)
 - Backfill migration for existing materials; original filenames as material titles
 - Magic bytes validation prevents extension spoofing
