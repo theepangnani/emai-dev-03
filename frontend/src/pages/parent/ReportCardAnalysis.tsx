@@ -28,7 +28,7 @@ export function ReportCardAnalysis() {
   // Loading states
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
-  const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null);
+  const [analyzeLoadingIds, setAnalyzeLoadingIds] = useState<Set<number>>(new Set());
   const [careerLoading, setCareerLoading] = useState(false);
 
   // Modal + errors
@@ -98,7 +98,7 @@ export function ReportCardAnalysis() {
 
   // Analyze a report card
   const handleAnalyze = useCallback(async (card: SchoolReportCard) => {
-    setAnalyzeLoadingId(card.id);
+    setAnalyzeLoadingIds(prev => new Set(prev).add(card.id));
     setError(null);
     try {
       const resp = await schoolReportCardsApi.analyze(card.id);
@@ -112,7 +112,7 @@ export function ReportCardAnalysis() {
       const e = err as { response?: { data?: { detail?: string } } };
       setError(e.response?.data?.detail || 'Failed to analyze report card.');
     } finally {
-      setAnalyzeLoadingId(null);
+      setAnalyzeLoadingIds(prev => { const next = new Set(prev); next.delete(card.id); return next; });
     }
   }, []);
 
@@ -123,7 +123,7 @@ export function ReportCardAnalysis() {
       setSelectedAnalysis(null);
       return;
     }
-    setAnalyzeLoadingId(card.id);
+    setAnalyzeLoadingIds(prev => new Set(prev).add(card.id));
     setError(null);
     try {
       const resp = await schoolReportCardsApi.getAnalysis(card.id);
@@ -133,7 +133,7 @@ export function ReportCardAnalysis() {
       const e = err as { response?: { data?: { detail?: string } } };
       setError(e.response?.data?.detail || 'Failed to load analysis.');
     } finally {
-      setAnalyzeLoadingId(null);
+      setAnalyzeLoadingIds(prev => { const next = new Set(prev); next.delete(card.id); return next; });
     }
   }, [expandedCardId]);
 
@@ -271,17 +271,17 @@ export function ReportCardAnalysis() {
                           <button
                             className="rca-action-btn rca-action-btn-outline"
                             onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleViewAnalysis(card); }}
-                            disabled={analyzeLoadingId === card.id}
+                            disabled={analyzeLoadingIds.has(card.id)}
                           >
-                            {analyzeLoadingId === card.id ? 'Loading...' : expandedCardId === card.id ? 'Hide' : 'View Analysis'}
+                            {analyzeLoadingIds.has(card.id) ? 'Loading...' : expandedCardId === card.id ? 'Hide' : 'View Analysis'}
                           </button>
                         ) : (
                           <button
                             className="rca-action-btn"
                             onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleAnalyze(card); }}
-                            disabled={analyzeLoadingId === card.id}
+                            disabled={analyzeLoadingIds.has(card.id)}
                           >
-                            {analyzeLoadingId === card.id ? 'Analyzing...' : 'Analyze Now'}
+                            {analyzeLoadingIds.has(card.id) ? 'Analyzing...' : 'Analyze Now'}
                           </button>
                         )}
                         <button
