@@ -1124,16 +1124,16 @@ def get_course_announcements(
     if after:
         try:
             after_dt = datetime.fromisoformat(after)
-            query = query.filter(CourseAnnouncement.creation_time >= after_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=422, detail=f"Invalid 'after' date format: {after}")
+        query = query.filter(CourseAnnouncement.creation_time >= after_dt)
 
     if before:
         try:
             before_dt = datetime.fromisoformat(before)
-            query = query.filter(CourseAnnouncement.creation_time <= before_dt)
         except ValueError:
-            pass
+            raise HTTPException(status_code=422, detail=f"Invalid 'before' date format: {before}")
+        query = query.filter(CourseAnnouncement.creation_time <= before_dt)
 
     announcements = query.order_by(CourseAnnouncement.creation_time.desc()).all()
 
