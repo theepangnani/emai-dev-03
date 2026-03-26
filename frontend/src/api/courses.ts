@@ -444,6 +444,11 @@ export const courseContentsApi = {
     return response.data as { updated: number; category: string };
   },
 
+  getAccessLog: async (contentId: number, params?: { days?: number }): Promise<AccessLogResponse> => {
+    const response = await api.get(`/api/course-contents/${contentId}/access-log`, { params: params || {} });
+    return response.data;
+  },
+
   bulkArchive: async (contentIds: number[]) => {
     const response = await api.post('/api/course-contents/bulk-archive', {
       content_ids: contentIds,
@@ -483,6 +488,22 @@ export const courseContentsApi = {
     URL.revokeObjectURL(url);
   },
 };
+
+// Access Log Types (#2274)
+export interface AccessLogEntry {
+  id: number;
+  user_name: string;
+  user_role: string;
+  action: string;
+  timestamp: string;
+}
+
+export interface AccessLogResponse {
+  entries: AccessLogEntry[];
+  total_views: number;
+  total_downloads: number;
+  unique_viewers: number;
+}
 
 // Submission Types (#839)
 export interface SubmissionResponse {

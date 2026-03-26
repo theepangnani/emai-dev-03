@@ -167,6 +167,24 @@
   color: var(--color-ink-muted);
 }
 
+/* Privacy indicator badge (#2274) */
+.cm-privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  white-space: nowrap;
+}
+
+.cm-privacy-badge svg {
+  flex-shrink: 0;
+}
+
 .cm-meta-date {
   display: inline-flex;
   align-items: center;
@@ -2030,4 +2048,155 @@
 
 .cm-subguide-status-dismiss:hover {
   opacity: 1;
+}
+
+/* ── Access Log Tab (#2274) ─────────────────────── */
+.access-log-tab {
+  padding: 1rem 0;
+}
+
+.access-log-loading,
+.access-log-error,
+.access-log-empty {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--color-muted);
+}
+
+.access-log-error {
+  color: var(--color-danger);
+}
+
+.access-log-coming-soon {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--color-ink-muted);
+}
+
+.access-log-coming-soon svg {
+  color: var(--color-accent);
+  margin-bottom: 0.75rem;
+}
+
+.access-log-coming-soon h3 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--color-ink);
+}
+
+.access-log-coming-soon p {
+  margin: 0;
+  max-width: 400px;
+  margin-inline: auto;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.access-log-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.access-log-stat {
+  flex: 1;
+  min-width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.access-log-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  font-family: var(--font-display);
+}
+
+.access-log-stat-label {
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+.access-log-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+}
+
+.access-log-filter select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 0.85rem;
+}
+
+.access-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.access-log-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--color-border);
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.access-log-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-ink);
+}
+
+.access-log-table tbody tr:hover {
+  background: var(--color-surface-alt);
+}
+
+.access-log-role {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.access-log-role.student {
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
+}
+
+.access-log-role.parent {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.access-log-role.teacher {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.access-log-role.admin {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }

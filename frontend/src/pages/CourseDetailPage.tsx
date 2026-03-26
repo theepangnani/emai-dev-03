@@ -788,6 +788,15 @@ export function CourseDetailPage() {
                         {item.google_classroom_material_id && (
                           <span className="course-detail-badge google">Google Classroom</span>
                         )}
+                        {(course?.is_private || course?.classroom_type === 'private') && (
+                          <span className="cd-privacy-badge" title="This material is only visible to enrolled students, their parents, and the assigned teacher">
+                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                              <path d="M4 7V5a4 4 0 118 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                              <rect x="2.5" y="7" width="11" height="8" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+                            </svg>
+                            IP Protected
+                          </span>
+                        )}
                         <span className="cd-content-item-title">{item.title}</span>
                       </div>
                       {item.description && <p className="cd-content-item-desc">{item.description}</p>}

@@ -48,6 +48,9 @@ const mockTasksList = vi.fn().mockResolvedValue([])
 const mockGetLinkedCourseIds = vi.fn().mockResolvedValue({ linked_course_ids: [10], children: [] })
 
 vi.mock('../api/client', () => ({
+  coursesApi: {
+    get: vi.fn().mockResolvedValue({ is_private: false, classroom_type: null }),
+  },
   courseContentsApi: {
     get: (...args: any[]) => mockGet(...args),
     getLinkedCourseIds: (...args: any[]) => mockGetLinkedCourseIds(...args),

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
+import { coursesApi, courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { resourceLinksApi, type ResourceLinkGroup } from '../api/resourceLinks';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,7 @@ import { FlashcardsTab } from './course-material/FlashcardsTab';
 import { MindMapTab } from './course-material/MindMapTab';
 import { VideosLinksTab } from './course-material/VideosLinksTab';
 import { BriefingTab } from './course-material/BriefingTab';
+import { AccessLogTab } from './course-material/AccessLogTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -42,8 +43,8 @@ import { LinkedMaterialsPanel } from '../components/LinkedMaterialsPanel';
 import { useLinkedMaterials } from '../hooks/useLinkedMaterials';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos', 'briefing'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing' | 'access-log';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos', 'briefing', 'access-log'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -112,6 +113,15 @@ function BriefingTabIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M11 1H5a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M6 5h4M6 7.5h4M6 10h2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function AccessLogIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 1a7 7 0 110 14A7 7 0 018 1z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M8 4v4l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -254,6 +264,9 @@ export function CourseMaterialDetailPage() {
   const [briefingNote, setBriefingNote] = useState<BriefingNote | undefined>(undefined);
   const [generatingBriefing, setGeneratingBriefing] = useState(false);
 
+  // Course privacy state (#2274)
+  const [coursePrivate, setCoursePrivate] = useState(false);
+
   // Unlinked material state (#623)
   const [isUnlinked, setIsUnlinked] = useState(false);
   const [linkedChildren, setLinkedChildren] = useState<LinkedCourseChild[]>([]);
@@ -320,6 +333,16 @@ export function CourseMaterialDetailPage() {
   }, [contentId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Fetch course privacy status (#2274)
+  useEffect(() => {
+    if (!content?.course_id) return;
+    coursesApi.get(content.course_id)
+      .then((c: { is_private?: boolean; classroom_type?: string }) => {
+        setCoursePrivate(!!c.is_private || c.classroom_type === 'private');
+      })
+      .catch(() => {});
+  }, [content?.course_id]);
 
   // Auto-generate study guide when navigated from dashboard upload with autoGenerate flag
   useEffect(() => {
@@ -746,6 +769,7 @@ export function CourseMaterialDetailPage() {
     { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
+    ...(content.created_by_user_id === user?.id ? [{ key: 'access-log' as TabKey, label: 'Access Log', shortLabel: 'Log', hasContent: true, icon: <AccessLogIcon /> }] : []),
     { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
@@ -775,6 +799,15 @@ export function CourseMaterialDetailPage() {
               </div>
               <div className="cm-detail-meta">
                 {content.course_name && <span className="cm-type-badge">{content.course_name}</span>}
+                {coursePrivate && (
+                  <span className="cm-privacy-badge" title="This material is only visible to enrolled students, their parents, and the assigned teacher">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                      <path d="M4 7V5a4 4 0 118 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                      <rect x="2.5" y="7" width="11" height="8" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+                    </svg>
+                    IP Protected
+                  </span>
+                )}
                 <span className="cm-meta-date">
                   <CalendarIcon />
                   {new Date(content.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1016,6 +1049,10 @@ export function CourseMaterialDetailPage() {
               studentName={resolvedStudent?.student_name}
               courseContentId={contentId}
             />
+          )}
+
+          {activeTab === 'access-log' && content.created_by_user_id === user?.id && (
+            <AccessLogTab courseContentId={contentId} />
           )}
 
         </div>
