@@ -4559,12 +4559,46 @@ Parents upload physical school report cards (photos/scans). AI (GPT-4o-mini visi
 
 ---
 
+### §6.123 Course Material Metadata & Clickable Popovers (Phase 1) - IMPLEMENTED (PR #2395)
+
+All course material content tabs now display a consistent metadata bar showing Class name, Created Date, and linked Tasks count. Class name and Tasks are interactive — clicking opens a popover with details and navigation.
+
+**Implementation:**
+1. **Shared `ContentMetaBar` component** (`frontend/src/pages/course-material/ContentMetaBar.tsx`) — renders in all 6 content tabs: Study Guide, Quiz, Flashcards, Mind Map, Parent Briefing, Source Document
+2. **Class popover:** Click course name → shows course name + "View Course" link navigating to `/courses/{id}`
+3. **Tasks popover:** Click task count → shows linked task list with title, due date, completion status (✓/○/!), and links to `/tasks/{id}`
+4. **Overdue indicator:** Tasks past due date shown with red "!" badge and red due date text. Uses timezone-safe local midnight comparison to avoid off-by-one.
+5. **Mobile UX:** Popovers render as bottom sheets on `< 600px` with semi-transparent backdrop overlay (CSS `:has()` selector). Tap backdrop to dismiss.
+6. **Keyboard accessible:** Escape key closes popovers; outside click dismisses.
+
+**Tabs with metadata:**
+| Tab | Created Date Source | Linked Tasks Source |
+|-----|-------------------|-------------------|
+| Study Guide | `studyGuide.created_at` | Tasks linked to study guide |
+| Quiz | `quiz.created_at` | Tasks linked to quiz |
+| Flashcards | `flashcardSet.created_at` | Tasks linked to flashcard set |
+| Mind Map | `mindMapGuide.created_at` | Tasks linked to mind map guide |
+| Parent Briefing | `briefingNote.created_at` | All linked tasks (flattened) |
+| Source Document | `content.created_at` | All linked tasks (flattened) |
+
+**Key files:**
+- `frontend/src/pages/course-material/ContentMetaBar.tsx` — shared component (115 lines)
+- `frontend/src/pages/CourseMaterialDetailPage.tsx` — prop threading to all tabs
+- `frontend/src/pages/CourseMaterialDetailPage.css` — popover + mobile bottom sheet styles
+
+**Issues resolved:** #2259, #2260, #2388, #2389, #2390, #2394
+
+---
+
 ### 6.122 Bug Fixes & Quality (March 24-26, 2026)
 
 **Bug fixes deployed in this period:**
 
 | PR | Issue | Description | Date |
 |----|-------|-------------|------|
+| #2395 | #2259, #2260, #2388-#2390, #2394 | Feat: course material metadata & clickable popovers in all tabs | 2026-03-26 |
+| #2384 | #2366, #2368 | Fix: report card ordering & mobile view | 2026-03-26 |
+| #2379 | #2377, #2378 | Fix: bug report modal submit + login bot protection clock skew | 2026-03-26 |
 | #2365 | #2354 | Fix: expand class material section by default | 2026-03-25 |
 | #2373 | #2353 | Fix: register `daily_quiz` router — Quiz of the Day 404 | 2026-03-25 |
 | #2364 | #2349 | Fix: ISO date format fallback in `_parse_report_date` | 2026-03-25 |
