@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { parentApi } from '../../api/parent';
 import { parentAIApi } from '../../api/parentAI';
@@ -11,6 +12,7 @@ type CourseOption = { id: number; name: string };
 type AssignmentOption = { id: number; title: string; course_id: number };
 
 export function ParentAITools() {
+  const navigate = useNavigate();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [childHighlights, setChildHighlights] = useState<ChildHighlight[]>([]);
   const [allAssignments, setAllAssignments] = useState<AssignmentOption[]>([]);
@@ -346,6 +348,18 @@ export function ParentAITools() {
                 )}
               </div>
             )}
+          </div>
+
+          {/* Report Card Analysis Card */}
+          <div className="pai-card">
+            <button className="pai-card-header" onClick={() => navigate('/school-report-cards')}>
+              <div className="pai-card-icon">&#x1F4CB;</div>
+              <div className="pai-card-info">
+                <h3>Report Card Analysis</h3>
+                <p>Upload school report cards and get AI-powered analysis with career path suggestions.</p>
+              </div>
+              <span className="pai-card-toggle">&#x2192;</span>
+            </button>
           </div>
         </div>
       </div>

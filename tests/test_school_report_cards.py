@@ -319,3 +319,202 @@ class TestDeleteEndpoint:
             headers=headers,
         )
         assert resp.status_code == 404
+
+
+# ── Career Path Tests ──
+
+class TestCareerPathEndpoint:
+    def test_career_path_requires_cards(self, client, db_session, src_users):
+        """POST career-path with no cards returns 400."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        # Archive all existing cards for this student so none are available
+        from app.models.school_report_card import SchoolReportCard
+        existing = db_session.query(SchoolReportCard).filter(
+            SchoolReportCard.student_id == student.id,
+            SchoolReportCard.archived_at.is_(None),
+        ).all()
+        for card in existing:
+            card.archived_at = datetime.now(timezone.utc)
+        db_session.commit()
+
+        resp = client.post(
+            f"/api/school-report-cards/{student.id}/career-path",
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "No report cards" in resp.json()["detail"]
+
+        # Unarchive them again so other tests are not affected
+        for card in existing:
+            card.archived_at = None
+        db_session.commit()
+
+    def test_career_path_unauthorized(self, client, src_users):
+        """Outsider parent gets 403."""
+        headers = _auth(client, "src_outsider@test.com")
+        student = src_users["student"]
+
+        resp = client.post(
+            f"/api/school-report-cards/{student.id}/career-path",
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_career_path_success(self, client, db_session, src_users):
+        """Mock generate_content, upload a card with text, trigger analyze, then career path."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        # Create a report card with sufficient text
+        from app.models.school_report_card import SchoolReportCard
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="career_test.pdf",
+            text_content="A" * 100,
+            term="Winter 2026",
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        # First analyze the card
+        mock_analysis = (json.dumps(SAMPLE_ANALYSIS), "end_turn")
+        with patch("app.services.school_report_card_service.generate_content", new_callable=AsyncMock, return_value=mock_analysis), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp = client.post(
+                f"/api/school-report-cards/{rc.id}/analyze",
+                headers=headers,
+            )
+        assert resp.status_code == 200, resp.text
+
+        # Now trigger career path
+        mock_career = (json.dumps(SAMPLE_CAREER), "end_turn")
+        with patch("app.services.school_report_card_service.generate_content", new_callable=AsyncMock, return_value=mock_career), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp = client.post(
+                f"/api/school-report-cards/{student.id}/career-path",
+                headers=headers,
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert "strengths" in data
+        assert "career_suggestions" in data
+        assert "overall_assessment" in data
+        assert data["report_cards_analyzed"] >= 1
+
+
+# ── Cache Behavior Tests ──
+
+class TestCacheBehavior:
+    def test_analyze_returns_cached(self, client, db_session, src_users):
+        """Analyze twice; second call should not call generate_content again."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        from app.models.school_report_card import SchoolReportCard
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="cache_test.pdf",
+            text_content="B" * 100,
+            term="Spring 2026",
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        mock_result = (json.dumps(SAMPLE_ANALYSIS), "end_turn")
+        mock_gen = AsyncMock(return_value=mock_result)
+
+        # First call — should invoke generate_content
+        with patch("app.services.school_report_card_service.generate_content", mock_gen), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp1 = client.post(
+                f"/api/school-report-cards/{rc.id}/analyze",
+                headers=headers,
+            )
+        assert resp1.status_code == 200
+        assert mock_gen.call_count == 1
+
+        # Second call — should return cached, generate_content NOT called again
+        mock_gen2 = AsyncMock(return_value=mock_result)
+        with patch("app.services.school_report_card_service.generate_content", mock_gen2), \
+             patch("app.api.routes.school_report_cards.check_ai_usage"), \
+             patch("app.api.routes.school_report_cards.increment_ai_usage"):
+            resp2 = client.post(
+                f"/api/school-report-cards/{rc.id}/analyze",
+                headers=headers,
+            )
+        assert resp2.status_code == 200
+        assert mock_gen2.call_count == 0
+
+    def test_get_analysis_not_yet_analyzed(self, client, db_session, src_users):
+        """GET analysis endpoint returns {"analysis": null} for unanalyzed card."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        from app.models.school_report_card import SchoolReportCard
+        rc = SchoolReportCard(
+            student_id=student.id,
+            uploaded_by_user_id=src_users["parent"].id,
+            original_filename="no_analysis_test.pdf",
+            text_content="Some text content",
+            grade_level="08",
+        )
+        db_session.add(rc)
+        db_session.commit()
+
+        resp = client.get(
+            f"/api/school-report-cards/{rc.id}/analysis",
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"analysis": None}
+
+
+# ── File Validation Tests ──
+
+class TestFileValidation:
+    def test_reject_invalid_extension(self, client, db_session, src_users):
+        """Upload .docx file, expect it in failures list."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        with patch("app.api.routes.school_report_cards.check_upload_allowed"), \
+             patch("app.api.routes.school_report_cards.record_upload"):
+            resp = client.post(
+                "/api/school-report-cards/upload",
+                headers=headers,
+                data={"student_id": str(student.id)},
+                files=[("files", ("bad_file.docx", BytesIO(b"fake content"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))],
+            )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_uploaded"] == 0
+        # The .docx file is rejected — it does not appear in the uploaded list
+        assert len(data["uploaded"]) == 0
+
+    def test_reject_more_than_10_files(self, client, db_session, src_users):
+        """Upload 11 files, expect 400."""
+        headers = _auth(client, "src_parent@test.com")
+        student = src_users["student"]
+
+        files = [
+            ("files", (f"file_{i}.pdf", BytesIO(b"%PDF-1.4 fake"), "application/pdf"))
+            for i in range(11)
+        ]
+
+        resp = client.post(
+            "/api/school-report-cards/upload",
+            headers=headers,
+            data={"student_id": str(student.id)},
+            files=files,
+        )
+        assert resp.status_code == 400
+        assert "Maximum 10 files" in resp.json()["detail"]

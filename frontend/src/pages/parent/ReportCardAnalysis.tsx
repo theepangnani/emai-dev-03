@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { DashboardLayout } from '../../components/DashboardLayout';
+import { useConfirm } from '../../components/ConfirmModal';
 import { parentApi } from '../../api/parent';
 import type { ChildSummary } from '../../api/parent';
 import { schoolReportCardsApi } from '../../api/schoolReportCards';
@@ -7,17 +8,16 @@ import type {
   SchoolReportCard,
   FullAnalysis,
   CareerPathAnalysis,
-  GradeAnalysisItem,
-  ImprovementArea,
-  ParentTip,
-  GradeTrend,
-  CareerSuggestion,
 } from '../../api/schoolReportCards';
 import { ChildSelectorTabs } from '../../components/ChildSelectorTabs';
 import { PageSkeleton } from '../../components/Skeleton';
+import ReportCardUploadModal from '../../components/parent/ReportCardUploadModal';
+import { ReportCardAnalysisView } from '../../components/parent/ReportCardAnalysisView';
+import { CareerPathView } from '../../components/parent/CareerPathView';
 import './ReportCardAnalysis.css';
 
 export function ReportCardAnalysis() {
+  const { confirm, confirmModal } = useConfirm();
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
   const [reportCards, setReportCards] = useState<SchoolReportCard[]>([]);
@@ -30,25 +30,13 @@ export function ReportCardAnalysis() {
   const [listLoading, setListLoading] = useState(false);
   const [analyzeLoadingId, setAnalyzeLoadingId] = useState<number | null>(null);
   const [careerLoading, setCareerLoading] = useState(false);
-  const [uploadLoading, setUploadLoading] = useState(false);
 
   // Modal + errors
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCareerPath, setShowCareerPath] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [careerError, setCareerError] = useState<string | null>(null);
 
-  // Upload form
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-
-  // Expandable analysis sections
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    subjects: true,
-    learningSkills: true,
-    improvements: true,
-    parentTips: true,
-  });
 
   // Load children on mount
   useEffect(() => {
@@ -170,38 +158,23 @@ export function ReportCardAnalysis() {
     }
   }, [selectedChildId, showCareerPath, careerPath]);
 
-  // Upload handler
-  const handleUpload = useCallback(async () => {
-    if (!selectedChildId || !uploadFile) return;
-    setUploadLoading(true);
-    setUploadError(null);
+  // Delete handler
+  const handleDelete = useCallback(async (cardId: number) => {
+    const confirmed = await confirm({
+      title: 'Delete Report Card',
+      message: 'Delete this report card? This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
-      const formData = new FormData();
-      formData.append('files', uploadFile);
-      formData.append('student_id', String(selectedChildId));
-      await schoolReportCardsApi.upload(formData);
-      setShowUploadModal(false);
-      setUploadFile(null);
-      // Reload list
-      await loadReportCards(selectedChildId);
+      await schoolReportCardsApi.delete(cardId);
+      if (selectedChildId) loadReportCards(selectedChildId);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
-      setUploadError(e.response?.data?.detail || 'Failed to upload report card.');
-    } finally {
-      setUploadLoading(false);
+      setError(e.response?.data?.detail || 'Failed to delete report card.');
     }
-  }, [selectedChildId, uploadFile, loadReportCards]);
-
-  // Toggle analysis section
-  const toggleSection = useCallback((section: string) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
-  }, []);
-
-  const trendArrow = (trajectory: string) => {
-    if (trajectory === 'improving') return '\u2197\uFE0F';
-    if (trajectory === 'declining') return '\u2198\uFE0F';
-    return '\u2794';
-  };
+  }, [confirm, selectedChildId, loadReportCards]);
 
   if (loading) {
     return (
@@ -246,7 +219,7 @@ export function ReportCardAnalysis() {
             <div className="rca-action-bar">
               <button
                 className="rca-btn"
-                onClick={() => { setShowUploadModal(true); setUploadError(null); setUploadFile(null); }}
+                onClick={() => setShowUploadModal(true)}
               >
                 Upload Report Card
               </button>
@@ -311,113 +284,23 @@ export function ReportCardAnalysis() {
                             {analyzeLoadingId === card.id ? 'Analyzing...' : 'Analyze Now'}
                           </button>
                         )}
+                        <button
+                          className="rca-action-btn rca-action-btn-outline"
+                          style={{ color: 'var(--danger, #e74c3c)', borderColor: 'var(--danger, #e74c3c)' }}
+                          onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDelete(card.id); }}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </button>
 
                     {/* Expanded analysis view */}
                     {expandedCardId === card.id && selectedAnalysis && (
-                      <div className="rca-card-body">
-                        {/* Overall Summary */}
-                        <div className="rca-analysis-summary">{selectedAnalysis.overall_summary}</div>
-
-                        {/* Teacher Feedback Summary */}
-                        {selectedAnalysis.teacher_feedback_summary && (
-                          <div className="rca-analysis-section">
-                            <h4>Teacher Feedback Summary</h4>
-                            <p>{selectedAnalysis.teacher_feedback_summary}</p>
-                          </div>
-                        )}
-
-                        {/* Subjects (grade_analysis) */}
-                        <div className="rca-analysis-section">
-                          <h4 onClick={() => toggleSection('subjects')}>
-                            <span className="rca-toggle">{expandedSections.subjects ? '\u25B2' : '\u25BC'}</span>
-                            Subjects ({selectedAnalysis.grade_analysis.length})
-                          </h4>
-                          {expandedSections.subjects && selectedAnalysis.grade_analysis.map((subj: GradeAnalysisItem, i: number) => (
-                            <div key={i} className="rca-subject-card">
-                              <div className="rca-subject-header">
-                                <strong>{subj.subject}</strong>
-                                {subj.grade && <span className="rca-subject-grade">{subj.grade}</span>}
-                                {subj.level !== null && <span className="rca-subject-grade">Level {subj.level}</span>}
-                              </div>
-                              {subj.teacher_comment && <p>{subj.teacher_comment}</p>}
-                              {subj.feedback && <p className="rca-subject-feedback">{subj.feedback}</p>}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Learning Skills */}
-                        {selectedAnalysis.learning_skills && (
-                          <div className="rca-analysis-section">
-                            <h4 onClick={() => toggleSection('learningSkills')}>
-                              <span className="rca-toggle">{expandedSections.learningSkills ? '\u25B2' : '\u25BC'}</span>
-                              Learning Skills ({selectedAnalysis.learning_skills.ratings.length})
-                            </h4>
-                            {expandedSections.learningSkills && (
-                              <>
-                                <div className="rca-tag-list">
-                                  {selectedAnalysis.learning_skills.ratings.map((r, i: number) => (
-                                    <span key={i} className="rca-tag">{r.skill}: {r.rating}</span>
-                                  ))}
-                                </div>
-                                {selectedAnalysis.learning_skills.summary && (
-                                  <p>{selectedAnalysis.learning_skills.summary}</p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Improvement Areas */}
-                        {selectedAnalysis.improvement_areas.length > 0 && (
-                          <div className="rca-analysis-section">
-                            <h4 onClick={() => toggleSection('improvements')}>
-                              <span className="rca-toggle">{expandedSections.improvements ? '\u25B2' : '\u25BC'}</span>
-                              Areas for Improvement ({selectedAnalysis.improvement_areas.length})
-                            </h4>
-                            {expandedSections.improvements && (
-                              <ul className="rca-rec-list">
-                                {selectedAnalysis.improvement_areas.map((a: ImprovementArea, i: number) => (
-                                  <li key={i}>
-                                    <span className="rca-rec-icon">{'\u26A0\uFE0F'}</span>
-                                    <div>
-                                      <strong>{a.area}</strong> ({a.priority})
-                                      <br />
-                                      {a.detail}
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Parent Tips */}
-                        {selectedAnalysis.parent_tips.length > 0 && (
-                          <div className="rca-analysis-section">
-                            <h4 onClick={() => toggleSection('parentTips')}>
-                              <span className="rca-toggle">{expandedSections.parentTips ? '\u25B2' : '\u25BC'}</span>
-                              Recommendations ({selectedAnalysis.parent_tips.length})
-                            </h4>
-                            {expandedSections.parentTips && (
-                              <ul className="rca-rec-list">
-                                {selectedAnalysis.parent_tips.map((r: ParentTip, i: number) => (
-                                  <li key={i}>
-                                    <span className="rca-rec-icon">{'\u{1F4A1}'}</span>
-                                    <div>
-                                      {r.tip}
-                                      {r.related_subject && (
-                                        <span className="rca-tag" style={{ marginLeft: '0.5rem' }}>{r.related_subject}</span>
-                                      )}
-                                    </div>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <ReportCardAnalysisView
+                        analysis={selectedAnalysis}
+                        reportCard={card}
+                        onClose={() => { setExpandedCardId(null); setSelectedAnalysis(null); }}
+                      />
                     )}
                   </div>
                 ))}
@@ -426,103 +309,23 @@ export function ReportCardAnalysis() {
 
             {/* Career Path Analysis */}
             {showCareerPath && careerPath && (
-              <div className="rca-career-section">
-                <h2>Career Path Analysis</h2>
-                <p className="rca-career-summary">{careerPath.overall_assessment}</p>
-
-                {/* Strengths */}
-                {careerPath.strengths.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Key Strengths</h4>
-                    <ul className="rca-rec-list">
-                      {careerPath.strengths.map((s: string, i: number) => (
-                        <li key={i}>
-                          <span className="rca-rec-icon">{'\u2B50'}</span>
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Trends */}
-                {careerPath.grade_trends.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Subject Trends</h4>
-                    {careerPath.grade_trends.map((t: GradeTrend, i: number) => (
-                      <div key={i} className="rca-trend-item">
-                        <span className="rca-trend-arrow">{trendArrow(t.trajectory)}</span>
-                        <div>
-                          <strong>{t.subject}</strong> — {t.note}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Career Suggestions */}
-                {careerPath.career_suggestions.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Suggested Career Paths</h4>
-                    <div className="rca-career-grid">
-                      {careerPath.career_suggestions.map((c: CareerSuggestion, i: number) => (
-                        <div key={i} className="rca-career-card">
-                          <h4>{c.career}</h4>
-                          <p>{c.reasoning}</p>
-                          {c.next_steps && <p><strong>Next steps:</strong> {c.next_steps}</p>}
-                          <div className="rca-tag-list">
-                            {c.related_subjects.map((s: string, j: number) => (
-                              <span key={j} className="rca-tag">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CareerPathView careerPath={careerPath} onClose={() => setShowCareerPath(false)} />
             )}
           </>
         )}
 
         {/* Upload Modal */}
-        {showUploadModal && (
-          <div className="rca-modal-overlay" onClick={() => setShowUploadModal(false)}>
-            <div className="rca-modal" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <h2>Upload Report Card</h2>
-              <div className="rca-modal-form">
-                <div className="rca-file-input">
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                  />
-                </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #888)', margin: 0 }}>
-                  Accepted formats: PDF, JPG, PNG
-                </p>
-                {uploadError && <div className="rca-error">{uploadError}</div>}
-                <div className="rca-modal-actions">
-                  <button
-                    className="rca-btn rca-btn-secondary"
-                    onClick={() => setShowUploadModal(false)}
-                    disabled={uploadLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="rca-btn"
-                    onClick={handleUpload}
-                    disabled={!uploadFile || uploadLoading}
-                  >
-                    {uploadLoading ? 'Uploading...' : 'Upload'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+        {showUploadModal && selectedChildId && (
+          <ReportCardUploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            studentId={selectedChildId}
+            studentName={children.find(c => c.student_id === selectedChildId)?.full_name || ''}
+            onUploadComplete={() => { setShowUploadModal(false); loadReportCards(selectedChildId); }}
+          />
         )}
       </div>
+      {confirmModal}
     </DashboardLayout>
   );
 }
