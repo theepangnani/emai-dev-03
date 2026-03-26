@@ -1881,6 +1881,45 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("course_announcements FK migration failed (#2334): %s", e)
 
+    # ── Backfill report_date from filename/text for school_report_cards (#2368) ──
+    try:
+        with engine.connect() as conn:
+            inspector = sa_inspect(engine)
+            if "school_report_cards" in inspector.get_table_names():
+                rows = conn.execute(text(
+                    "SELECT id, original_filename, text_content "
+                    "FROM school_report_cards WHERE report_date IS NULL"
+                )).fetchall()
+                if rows:
+                    from app.services.school_report_card_service import (
+                        extract_date_from_filename,
+                        extract_metadata,
+                    )
+                    from app.api.routes.school_report_cards import _parse_report_date
+                    updated = 0
+                    for row in rows:
+                        rc_id, orig_filename, text_content = row[0], row[1], row[2]
+                        date_str = None
+                        # Try filename first
+                        if orig_filename:
+                            date_str = extract_date_from_filename(orig_filename)
+                        # Fallback: broadened OCR regex
+                        if not date_str and text_content:
+                            meta = extract_metadata(text_content)
+                            date_str = meta.get("report_date")
+                        if date_str:
+                            parsed = _parse_report_date(date_str)
+                            if parsed:
+                                conn.execute(text(
+                                    "UPDATE school_report_cards SET report_date = :d WHERE id = :id"
+                                ), {"d": str(parsed), "id": rc_id})
+                                updated += 1
+                    conn.commit()
+                    if updated:
+                        logger.info("Backfilled report_date for %d school_report_cards (#2368)", updated)
+    except Exception as e:
+        logger.warning("school_report_cards report_date backfill failed (#2368): %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 

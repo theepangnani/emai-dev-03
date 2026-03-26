@@ -358,6 +358,20 @@ def extract_metadata(text_content: str) -> dict:
         if date_match:
             result["report_date"] = date_match.group(1).strip()
 
+    # Fallback: standalone "Month Year" in the first 500 chars (no label prefix)
+    if not result["report_date"]:
+        head = text_content[:500]
+        standalone_match = re.search(
+            r"\b((?:January|February|March|April|May|June|July|August|September|October|November|December)"
+            r")\s+(20\d{2})\b",
+            head,
+            re.IGNORECASE,
+        )
+        if standalone_match:
+            month = standalone_match.group(1)
+            year = standalone_match.group(2)
+            result["report_date"] = f"{month} 1, {year}"
+
     # Term: "Term 1", "Midterm", "Progress Report", "Semester Two Interim"
     term_match = re.search(
         r"(Term\s+\d|Midterm|Progress\s+Report|Semester\s+(?:One|Two|1|2)\s*(?:Interim|Final)?|"
@@ -425,7 +439,55 @@ def extract_metadata(text_content: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 4. Content Hash
+# 4. Filename Date Extraction
+# ---------------------------------------------------------------------------
+
+_MONTHS_PATTERN = (
+    r"(?:January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)"
+)
+
+
+def extract_date_from_filename(filename: str) -> str | None:
+    """
+    Extract a date from a report card filename.
+
+    Handles patterns like:
+    - "March 2026 YRDSB Report Card.pdf" → "March 1, 2026"
+    - "February 2026 - Progress Report.pdf" → "February 1, 2026"
+
+    Returns a date string in "Month Day, Year" format that _parse_report_date()
+    can parse, or None if no date pattern is found.
+    """
+    if not filename:
+        return None
+
+    # Strip extension
+    name = filename.rsplit(".", 1)[0] if "." in filename else filename
+
+    # Try "Month Year" at the start of the filename
+    start_match = re.match(
+        rf"({_MONTHS_PATTERN})\s+(20\d{{2}})\b",
+        name.strip(),
+        re.IGNORECASE,
+    )
+    if start_match:
+        return f"{start_match.group(1)} 1, {start_match.group(2)}"
+
+    # Fallback: "Month Year" anywhere in the filename
+    anywhere_match = re.search(
+        rf"\b({_MONTHS_PATTERN})\s+(20\d{{2}})\b",
+        name,
+        re.IGNORECASE,
+    )
+    if anywhere_match:
+        return f"{anywhere_match.group(1)} 1, {anywhere_match.group(2)}"
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# 5. Content Hash
 # ---------------------------------------------------------------------------
 
 def compute_content_hash(text: str) -> str:
