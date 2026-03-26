@@ -6,6 +6,7 @@ import { FormatSelector, type StudyFormat } from '../../components/study/FormatS
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
+import { ContentMetaBar } from './ContentMetaBar';
 
 interface FlashcardItem {
   front: string;
@@ -25,6 +26,9 @@ interface FlashcardsTabProps {
   atLimit?: boolean;
   onFormatSelect?: (format: StudyFormat) => void;
   onViewDocument?: () => void;
+  courseName?: string | null;
+  createdAt?: string | null;
+  courseId?: number;
 }
 
 function FocusIcon() {
@@ -60,6 +64,9 @@ export function FlashcardsTab({
   atLimit = false,
   onFormatSelect,
   onViewDocument,
+  courseName,
+  createdAt,
+  courseId,
 }: FlashcardsTabProps) {
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -164,6 +171,7 @@ export function FlashcardsTab({
             )}
             <Link to={`/study/flashcards/${flashcardSet.id}`} state={{ fromMaterial: true }} className="cm-action-btn" title="Open in full page">{'\u{1F5D6}\uFE0F'} Full Page</Link>
           </div>
+          <ContentMetaBar courseName={courseName} createdAt={createdAt || flashcardSet.created_at} linkedTasks={linkedTasks} courseId={courseId} />
           <LinkedTasksBanner tasks={linkedTasks} />
           {generating === 'flashcards' && (
             <div className="cm-regen-status">
