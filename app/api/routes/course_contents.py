@@ -29,6 +29,7 @@ from app.models.resource_link import ResourceLink
 from app.core.config import settings
 from app.services.link_extraction_service import extract_and_enrich_links
 from app.services import gcs_service
+from app.services.audit_service import log_action
 
 
 from app.services.material_hierarchy import create_material_hierarchy, get_linked_materials, generate_sub_title
@@ -529,6 +530,17 @@ async def upload_course_content_file(
     db.commit()
     db.refresh(content)
 
+    # Audit log: material upload (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_upload",
+        resource_type="course_content", resource_id=content.id,
+        details={"course_id": course_id, "filename": filename,
+                 "file_size": len(file_content)},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
+
     # Store file as SourceFile for Cloud Run persistence (#1557)
     try:
         if settings.use_gcs:
@@ -833,6 +845,17 @@ async def upload_multi_files(
     record_upload(db, current_user, total_size)
     db.commit()
     db.refresh(content)
+
+    # Audit log: material upload (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_upload",
+        resource_type="course_content", resource_id=content.id,
+        details={"course_id": course_id, "filename": content.original_filename,
+                 "file_count": len(file_entries), "file_size": total_size},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     # Extract and store images from all uploaded files (#1309)
     try:
@@ -1206,6 +1229,14 @@ def get_course_content(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
     if not can_access_material(db, current_user, content):
+        log_action(
+            db, user_id=current_user.id, action="material_view",
+            resource_type="course_content", resource_id=content_id,
+            details={"denied": True, "course_id": content.course_id},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        db.commit()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     now = datetime.now(timezone.utc)
@@ -1232,6 +1263,16 @@ def get_course_content(
     content.last_viewed_at = now
     db.commit()
     db.refresh(content)
+
+    # Audit log: material view (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_view",
+        resource_type="course_content", resource_id=content.id,
+        details={"course_id": content.course_id, "filename": content.original_filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     # Strip URLs for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
@@ -1264,17 +1305,45 @@ def download_course_content_file(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
 
     if not can_access_material(db, current_user, content):
+        log_action(
+            db, user_id=current_user.id, action="material_download",
+            resource_type="course_content", resource_id=content_id,
+            details={"denied": True, "course_id": content.course_id},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        db.commit()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No access to this material")
 
     # Restrict downloads for students on school courses (#550)
     if current_user.role == UserRole.STUDENT:
         school_ids = _get_school_course_ids(db, [content.course_id])
         if content.course_id in school_ids:
+            log_action(
+                db, user_id=current_user.id, action="material_download",
+                resource_type="course_content", resource_id=content_id,
+                details={"denied": True, "reason": "school_course_restriction",
+                         "course_id": content.course_id},
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get("user-agent"),
+            )
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Downloads are restricted for school classroom content. "
                        "You can view assignment details but cannot download documents.",
             )
+
+    # Audit log: material download (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_download",
+        resource_type="course_content", resource_id=content.id,
+        details={"course_id": content.course_id, "filename": content.original_filename,
+                 "file_size": content.file_size},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     # Try disk file first, fall back to SourceFile in DB (#1557)
     if content.file_path:
@@ -1828,6 +1897,16 @@ def download_source_file(
     )
     if not source:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source file not found")
+
+    # Audit log: source file download (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_download",
+        resource_type="course_content", resource_id=content_id,
+        details={"source_file_id": file_id, "filename": source.filename},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
 
     media_type = source.file_type
     if not media_type:
