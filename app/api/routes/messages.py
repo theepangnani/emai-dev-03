@@ -565,17 +565,16 @@ def get_valid_recipients(
                     .join(student_courses, student_courses.c.student_id == Student.id)
                     .filter(student_courses.c.course_id.in_(my_course_ids))
                 )
+            conditions = [
+                User.role == UserRole.TEACHER,
+                User.role == UserRole.ADMIN,
+                User.roles.contains("admin"),
+            ]
+            if classmate_user_ids:
+                conditions.append(User.id.in_(classmate_user_ids))
             users = (
                 db.query(User)
-                .filter(
-                    *base_filter,
-                    or_(
-                        User.role == UserRole.TEACHER,
-                        User.role == UserRole.ADMIN,
-                        User.roles.contains("admin"),
-                        User.id.in_(classmate_user_ids) if classmate_user_ids else False,
-                    ),
-                )
+                .filter(*base_filter, or_(*conditions))
                 .limit(20)
                 .all()
             )
@@ -604,16 +603,15 @@ def get_valid_recipients(
                         .all()
                     ]
                 allowed_user_ids = student_user_ids + parent_user_ids
+            conditions = [
+                User.role == UserRole.ADMIN,
+                User.roles.contains("admin"),
+            ]
+            if allowed_user_ids:
+                conditions.append(User.id.in_(allowed_user_ids))
             users = (
                 db.query(User)
-                .filter(
-                    *base_filter,
-                    or_(
-                        User.role == UserRole.ADMIN,
-                        User.roles.contains("admin"),
-                        User.id.in_(allowed_user_ids) if allowed_user_ids else False,
-                    ),
-                )
+                .filter(*base_filter, or_(*conditions))
                 .limit(20)
                 .all()
             )
