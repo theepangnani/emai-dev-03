@@ -1,8 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
 class CourseAnnouncementResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     course_id: int
     google_announcement_id: str
@@ -13,7 +15,4 @@ class CourseAnnouncementResponse(BaseModel):
     update_time: datetime | None
     materials_json: str | None
     alternate_link: str | None
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    created_at: datetime | None
