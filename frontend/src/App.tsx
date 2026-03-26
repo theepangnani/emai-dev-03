@@ -185,7 +185,7 @@ function App() {
               <Route
                 path="/school-report-cards"
                 element={
-                  <ProtectedRoute allowedRoles={['parent']}>
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
                     <ReportCardAnalysis />
                   </ProtectedRoute>
                 }

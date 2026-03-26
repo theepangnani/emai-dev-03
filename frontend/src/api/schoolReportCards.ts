@@ -102,6 +102,9 @@ export const schoolReportCardsApi = {
   list: (studentId: number) =>
     api.get<SchoolReportCard[]>(`/api/school-report-cards/${studentId}`),
 
+  listMy: () =>
+    api.get<SchoolReportCard[]>('/api/school-report-cards/my'),
+
   getAnalysis: (reportCardId: number) =>
     api.get<FullAnalysis | null>(`/api/school-report-cards/${reportCardId}/analysis`),
 

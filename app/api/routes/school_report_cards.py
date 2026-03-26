@@ -55,6 +55,17 @@ def _verify_parent_child(db: Session, parent_user_id: int, student_id: int) -> S
     return student
 
 
+def _verify_student_self(db: Session, user_id: int, student_id: int) -> Student:
+    """Verify student is accessing their own record. Returns Student or raises 403."""
+    student = db.query(Student).filter(
+        Student.id == student_id,
+        Student.user_id == user_id,
+    ).first()
+    if not student:
+        raise HTTPException(status_code=403, detail="You can only view your own report cards")
+    return student
+
+
 def _build_full_analysis_response(analysis: SchoolReportCardAnalysis) -> FullAnalysisResponse:
     """Build FullAnalysisResponse from a DB analysis record."""
     try:
@@ -250,16 +261,69 @@ async def upload_report_cards(
 # ── 2. List Report Cards ────────────────────────────────────
 
 
+@router.get("/my", response_model=list[SchoolReportCardListItem])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_my_report_cards(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.STUDENT)),
+):
+    """List all report cards for the currently logged-in student."""
+    student = db.query(Student).filter(Student.user_id == current_user.id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student profile not found")
+
+    cards = (
+        db.query(SchoolReportCard)
+        .filter(
+            SchoolReportCard.student_id == student.id,
+            SchoolReportCard.archived_at.is_(None),
+        )
+        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
+        .all()
+    )
+
+    analysis_card_ids = set()
+    if cards:
+        card_ids = [c.id for c in cards]
+        rows = (
+            db.query(SchoolReportCardAnalysis.report_card_id)
+            .filter(
+                SchoolReportCardAnalysis.report_card_id.in_(card_ids),
+                SchoolReportCardAnalysis.analysis_type == "full",
+            )
+            .all()
+        )
+        analysis_card_ids = {r[0] for r in rows}
+
+    return [
+        SchoolReportCardListItem(
+            id=c.id,
+            original_filename=c.original_filename,
+            school_name=c.school_name,
+            grade_level=c.grade_level,
+            term=c.term,
+            report_date=str(c.report_date) if c.report_date else None,
+            school_year=c.school_year,
+            has_analysis=c.id in analysis_card_ids,
+            created_at=c.created_at.isoformat() if c.created_at else "",
+        )
+        for c in cards
+    ]
+
+
 @router.get("/{student_id}", response_model=list[SchoolReportCardListItem])
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_report_cards(
     request: Request,
     student_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN, UserRole.STUDENT)),
 ):
     """List all report cards for a student."""
-    if current_user.role != UserRole.ADMIN:
+    if current_user.role == UserRole.STUDENT:
+        _verify_student_self(db, current_user.id, student_id)
+    elif current_user.role != UserRole.ADMIN:
         _verify_parent_child(db, current_user.id, student_id)
 
     cards = (
@@ -311,11 +375,21 @@ def get_analysis(
     request: Request,
     report_card_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN)),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.ADMIN, UserRole.STUDENT)),
 ):
     """Get cached analysis for a report card, or null if not yet analyzed."""
     is_admin = current_user.role == UserRole.ADMIN
-    _verify_report_card_ownership(db, current_user.id, report_card_id, is_admin=is_admin)
+    if current_user.role == UserRole.STUDENT:
+        # Students can only view analysis for their own report cards
+        rc = db.query(SchoolReportCard).filter(
+            SchoolReportCard.id == report_card_id,
+            SchoolReportCard.archived_at.is_(None),
+        ).first()
+        if not rc:
+            raise HTTPException(status_code=404, detail="Report card not found")
+        _verify_student_self(db, current_user.id, rc.student_id)
+    else:
+        _verify_report_card_ownership(db, current_user.id, report_card_id, is_admin=is_admin)
 
     analysis = (
         db.query(SchoolReportCardAnalysis)

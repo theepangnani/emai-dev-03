@@ -265,6 +265,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       return [
         { label: 'Home', path: '/dashboard' },
         { label: 'Study', path: '/study' },
+        { label: 'Report Cards', path: '/school-report-cards' },
         { label: 'Analytics', path: '/analytics' },
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },

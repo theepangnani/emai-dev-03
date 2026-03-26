@@ -4546,6 +4546,7 @@ Parents upload physical school report cards (photos/scans). AI (GPT-4o-mini visi
 - [x] Backend tests: 7 tests for career path, cache, file validation (#2360)
 - [x] Integration links on My Kids + ParentAITools pages (#2361)
 - [x] Route `/school-report-cards` + sidebar nav link for parents (#2352)
+- [x] Student read-only access: students can view their own report cards and AI analysis (#2401)
 
 **Key files:**
 - `app/api/routes/report_cards.py` — upload and analysis endpoints
