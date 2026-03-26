@@ -325,6 +325,19 @@ def list_course_announcements(
     return announcements, credentials
 
 
+def get_user_profile(service, user_id: str) -> dict | None:
+    """Look up a Google Classroom user profile by userId.
+
+    Returns dict with 'name' (fullName) and 'emailAddress', or None on failure.
+    """
+    try:
+        profile = service.userProfiles().get(userId=user_id).execute()
+        return profile
+    except Exception as e:
+        logger.debug("Failed to look up user profile %s: %s", user_id, e)
+        return None
+
+
 def get_student_submissions(
     access_token: str,
     course_id: str,

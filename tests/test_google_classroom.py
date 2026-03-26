@@ -147,17 +147,19 @@ class TestSyncResponseFormat:
             db_session.refresh(user)
         return user
 
+    @patch("app.api.routes.google_classroom.get_classroom_service")
     @patch("app.api.routes.google_classroom.list_course_announcements")
     @patch("app.api.routes.google_classroom.list_courses")
     @patch("app.api.routes.google_classroom.get_course_work_materials")
     @patch("app.api.routes.google_classroom.get_course_work")
     def test_sync_returns_material_and_assignment_counts(
-        self, mock_coursework, mock_materials, mock_courses, mock_announcements, client, db_session
+        self, mock_coursework, mock_materials, mock_courses, mock_announcements, mock_gc_service, client, db_session
     ):
         user = self._make_student_user(db_session)
         creds = MagicMock()
         creds.token = "fake-access"
         creds.refresh_token = "fake-refresh"
+        mock_gc_service.return_value = (MagicMock(), creds)
 
         mock_courses.return_value = (
             [{"id": "gc-100", "name": "Test Course", "description": "desc"}],
@@ -185,17 +187,19 @@ class TestSyncResponseFormat:
         assert data["announcements_synced"] >= 0
         assert "course" in data["message"].lower()
 
+    @patch("app.api.routes.google_classroom.get_classroom_service")
     @patch("app.api.routes.google_classroom.list_course_announcements")
     @patch("app.api.routes.google_classroom.list_courses")
     @patch("app.api.routes.google_classroom.get_course_work_materials")
     @patch("app.api.routes.google_classroom.get_course_work")
     def test_sync_message_includes_counts_when_nonzero(
-        self, mock_coursework, mock_materials, mock_courses, mock_announcements, client, db_session
+        self, mock_coursework, mock_materials, mock_courses, mock_announcements, mock_gc_service, client, db_session
     ):
         user = self._make_student_user(db_session)
         creds = MagicMock()
         creds.token = "fake-access"
         creds.refresh_token = "fake-refresh"
+        mock_gc_service.return_value = (MagicMock(), creds)
 
         mock_courses.return_value = (
             [{"id": "gc-200", "name": "New Course"}],
@@ -329,3 +333,131 @@ class TestTokenExchangeErrorLogging:
         location = resp.headers["location"]
         assert "/login" in location
         assert "error=" in location
+
+
+# ── Announcement creator fields (#2350) ──────────────────────
+
+class TestAnnouncementCreatorFields:
+    """Verify _sync_announcements_for_course populates creator_name / creator_email."""
+
+    def _make_student_user(self, db_session):
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.student import Student
+
+        email = "ann_creator@test.com"
+        user = db_session.query(User).filter(User.email == email).first()
+        if not user:
+            user = User(
+                email=email, full_name="Ann Creator", role=UserRole.STUDENT,
+                hashed_password=get_password_hash(PASSWORD),
+                google_access_token="fake-access",
+                google_refresh_token="fake-refresh",
+            )
+            db_session.add(user)
+            db_session.flush()
+            student = Student(user_id=user.id)
+            db_session.add(student)
+            db_session.commit()
+            db_session.refresh(user)
+        return user
+
+    @patch("app.api.routes.google_classroom.get_user_profile")
+    @patch("app.api.routes.google_classroom.get_classroom_service")
+    @patch("app.api.routes.google_classroom.list_course_announcements")
+    @patch("app.api.routes.google_classroom.list_courses")
+    @patch("app.api.routes.google_classroom.get_course_work_materials")
+    @patch("app.api.routes.google_classroom.get_course_work")
+    def test_creator_fields_populated_from_profile(
+        self, mock_cw, mock_mat, mock_courses, mock_ann, mock_service, mock_profile,
+        client, db_session,
+    ):
+        user = self._make_student_user(db_session)
+        creds = MagicMock()
+        creds.token = "fake-access"
+        creds.refresh_token = "fake-refresh"
+
+        mock_courses.return_value = (
+            [{"id": "gc-cr-100", "name": "Creator Course"}],
+            creds,
+        )
+        mock_mat.return_value = ([], creds)
+        mock_cw.return_value = ([], creds)
+        mock_ann.return_value = (
+            [{
+                "id": "ann-1",
+                "text": "Hello class",
+                "state": "PUBLISHED",
+                "creatorUserId": "user-123",
+                "creationTime": "2026-01-01T00:00:00Z",
+            }],
+            creds,
+        )
+
+        fake_service = MagicMock()
+        mock_service.return_value = (fake_service, creds)
+        mock_profile.return_value = {
+            "name": {"fullName": "Jane Teacher"},
+            "emailAddress": "jane@school.edu",
+        }
+
+        headers = _auth(client, user.email)
+        resp = client.post("/api/google/courses/sync", headers=headers)
+        assert resp.status_code == 200
+
+        from app.models.course_announcement import CourseAnnouncement
+        ann = db_session.query(CourseAnnouncement).filter(
+            CourseAnnouncement.google_announcement_id == "ann-1",
+        ).first()
+        assert ann is not None
+        assert ann.creator_name == "Jane Teacher"
+        assert ann.creator_email == "jane@school.edu"
+
+    @patch("app.api.routes.google_classroom.get_user_profile")
+    @patch("app.api.routes.google_classroom.get_classroom_service")
+    @patch("app.api.routes.google_classroom.list_course_announcements")
+    @patch("app.api.routes.google_classroom.list_courses")
+    @patch("app.api.routes.google_classroom.get_course_work_materials")
+    @patch("app.api.routes.google_classroom.get_course_work")
+    def test_creator_fields_none_when_profile_fails(
+        self, mock_cw, mock_mat, mock_courses, mock_ann, mock_service, mock_profile,
+        client, db_session,
+    ):
+        """When profile lookup fails, creator fields should be None (not crash)."""
+        user = self._make_student_user(db_session)
+        creds = MagicMock()
+        creds.token = "fake-access"
+        creds.refresh_token = "fake-refresh"
+
+        mock_courses.return_value = (
+            [{"id": "gc-cr-101", "name": "Fail Course"}],
+            creds,
+        )
+        mock_mat.return_value = ([], creds)
+        mock_cw.return_value = ([], creds)
+        mock_ann.return_value = (
+            [{
+                "id": "ann-fail-1",
+                "text": "Test",
+                "state": "PUBLISHED",
+                "creatorUserId": "user-999",
+                "creationTime": "2026-01-01T00:00:00Z",
+            }],
+            creds,
+        )
+
+        fake_service = MagicMock()
+        mock_service.return_value = (fake_service, creds)
+        mock_profile.return_value = None
+
+        headers = _auth(client, user.email)
+        resp = client.post("/api/google/courses/sync", headers=headers)
+        assert resp.status_code == 200
+
+        from app.models.course_announcement import CourseAnnouncement
+        ann = db_session.query(CourseAnnouncement).filter(
+            CourseAnnouncement.google_announcement_id == "ann-fail-1",
+        ).first()
+        assert ann is not None
+        assert ann.creator_name is None
+        assert ann.creator_email is None

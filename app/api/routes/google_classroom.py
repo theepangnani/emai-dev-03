@@ -47,6 +47,8 @@ from app.services.google_classroom import (
     get_course_work_materials,
     list_course_teachers,
     list_course_announcements,
+    get_classroom_service,
+    get_user_profile,
     GMAIL_READONLY_SCOPE,
 )
 
@@ -827,6 +829,15 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
         logger.warning(f"Failed to fetch announcements for course {course.google_classroom_id}: {e}")
         return 0
 
+    # Build a Classroom service for user profile lookups
+    try:
+        service, _ = get_classroom_service(user.google_access_token, user.google_refresh_token)
+    except Exception:
+        service = None
+
+    # Cache resolved profiles to avoid repeated API calls for the same creator
+    profile_cache: dict[str, dict | None] = {}
+
     count = 0
     for ga in google_announcements:
         # Skip non-published announcements
@@ -844,8 +855,16 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
         text = ga.get("text", "")
         creator_name = None
         creator_email = None
-        creator_profile = ga.get("creatorUserId")
-        # The API returns creatorUserId but not name directly; we store what we can
+        creator_user_id = ga.get("creatorUserId")
+        if creator_user_id and service:
+            if creator_user_id not in profile_cache:
+                profile_cache[creator_user_id] = get_user_profile(service, creator_user_id)
+            profile = profile_cache[creator_user_id]
+            if profile:
+                name_obj = profile.get("name")
+                if name_obj:
+                    creator_name = name_obj.get("fullName")
+                creator_email = profile.get("emailAddress")
         alternate_link = ga.get("alternateLink", "")
 
         # Parse creation/update times
@@ -872,6 +891,8 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
 
         if existing:
             existing.text = text
+            existing.creator_name = creator_name or existing.creator_name
+            existing.creator_email = creator_email or existing.creator_email
             existing.creation_time = creation_time or existing.creation_time
             existing.update_time = update_time
             existing.materials_json = materials_json
