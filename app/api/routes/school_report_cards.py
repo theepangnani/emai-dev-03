@@ -108,12 +108,14 @@ def _verify_report_card_ownership(
 
 
 def _parse_report_date(raw: str | None) -> date | None:
-    """Parse report date string to a date object. Handles MM/DD/YYYY and Month Day, Year."""
+    """Parse report date string to a date object. Handles MM/DD/YYYY, Month Day Year, and ISO 8601."""
     if not raw:
         return None
-    for fmt in ("%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+    # Strip time component from ISO datetime (e.g. "2024-01-15T10:30:00")
+    cleaned = raw.strip().split("T")[0] if "T" in raw else raw.strip()
+    for fmt in ("%m/%d/%Y", "%B %d, %Y", "%b %d, %Y", "%Y-%m-%d"):
         try:
-            return datetime.strptime(raw.strip(), fmt).date()
+            return datetime.strptime(cleaned, fmt).date()
         except ValueError:
             continue
     logger.warning("Could not parse report_date: %s", raw)
