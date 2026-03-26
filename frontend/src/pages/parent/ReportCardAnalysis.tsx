@@ -7,13 +7,12 @@ import type {
   SchoolReportCard,
   FullAnalysis,
   CareerPathAnalysis,
-  GradeTrend,
-  CareerSuggestion,
 } from '../../api/schoolReportCards';
 import { ChildSelectorTabs } from '../../components/ChildSelectorTabs';
 import { PageSkeleton } from '../../components/Skeleton';
 import ReportCardUploadModal from '../../components/parent/ReportCardUploadModal';
 import { ReportCardAnalysisView } from '../../components/parent/ReportCardAnalysisView';
+import { CareerPathView } from '../../components/parent/CareerPathView';
 import './ReportCardAnalysis.css';
 
 export function ReportCardAnalysis() {
@@ -158,12 +157,6 @@ export function ReportCardAnalysis() {
   }, [selectedChildId, showCareerPath, careerPath]);
 
 
-  const trendArrow = (trajectory: string) => {
-    if (trajectory === 'improving') return '\u2197\uFE0F';
-    if (trajectory === 'declining') return '\u2198\uFE0F';
-    return '\u2794';
-  };
-
   if (loading) {
     return (
       <DashboardLayout>
@@ -290,61 +283,7 @@ export function ReportCardAnalysis() {
 
             {/* Career Path Analysis */}
             {showCareerPath && careerPath && (
-              <div className="rca-career-section">
-                <h2>Career Path Analysis</h2>
-                <p className="rca-career-summary">{careerPath.overall_assessment}</p>
-
-                {/* Strengths */}
-                {careerPath.strengths.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Key Strengths</h4>
-                    <ul className="rca-rec-list">
-                      {careerPath.strengths.map((s: string, i: number) => (
-                        <li key={i}>
-                          <span className="rca-rec-icon">{'\u2B50'}</span>
-                          {s}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Trends */}
-                {careerPath.grade_trends.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Subject Trends</h4>
-                    {careerPath.grade_trends.map((t: GradeTrend, i: number) => (
-                      <div key={i} className="rca-trend-item">
-                        <span className="rca-trend-arrow">{trendArrow(t.trajectory)}</span>
-                        <div>
-                          <strong>{t.subject}</strong> — {t.note}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Career Suggestions */}
-                {careerPath.career_suggestions.length > 0 && (
-                  <div className="rca-analysis-section">
-                    <h4>Suggested Career Paths</h4>
-                    <div className="rca-career-grid">
-                      {careerPath.career_suggestions.map((c: CareerSuggestion, i: number) => (
-                        <div key={i} className="rca-career-card">
-                          <h4>{c.career}</h4>
-                          <p>{c.reasoning}</p>
-                          {c.next_steps && <p><strong>Next steps:</strong> {c.next_steps}</p>}
-                          <div className="rca-tag-list">
-                            {c.related_subjects.map((s: string, j: number) => (
-                              <span key={j} className="rca-tag">{s}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CareerPathView careerPath={careerPath} onClose={() => setShowCareerPath(false)} />
             )}
           </>
         )}
