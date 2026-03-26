@@ -76,15 +76,9 @@ class ParentTip(BaseModel):
 
 class FullAnalysisResponse(BaseModel):
     """Complete analysis response for a single report card."""
-    id: int
     report_card_id: int
     analysis_type: str = "full"
-    teacher_feedback_summary: str = ""
-    grade_analysis: list[GradeAnalysisItem] = Field(default_factory=list)
-    learning_skills: LearningSkillsSummary = Field(default_factory=LearningSkillsSummary)
-    improvement_areas: list[ImprovementArea] = Field(default_factory=list)
-    parent_tips: list[ParentTip] = Field(default_factory=list)
-    overall_summary: str = ""
+    content: dict = Field(default_factory=dict)
     created_at: str
 
 
@@ -108,20 +102,43 @@ class CareerSuggestion(BaseModel):
 
 class CareerPathResponse(BaseModel):
     """Career path analysis across all report cards."""
+    student_id: int
+    content: dict = Field(default_factory=dict)
+    report_cards_used: int = 0
+    created_at: str
+
+
+# ── Report Card Items ──
+
+class ReportCardItem(BaseModel):
+    """Item for report card list view."""
     id: int
     student_id: int
-    strengths: list[str] = Field(default_factory=list)
-    grade_trends: list[GradeTrend] = Field(default_factory=list)
-    career_suggestions: list[CareerSuggestion] = Field(default_factory=list)
-    overall_assessment: str = ""
-    report_cards_analyzed: int = 0
-    created_at: str
+    original_filename: str
+    file_size: Optional[int] = 0
+    school_name: str = ""
+    grade_level: str = ""
+    term: str = ""
+    report_date: Optional[str] = None
+    has_text: bool = False
+    has_analysis: bool = False
+    created_at: str = ""
+
+
+class UploadedReportCard(BaseModel):
+    """Single uploaded report card in bulk upload response."""
+    id: int
+    filename: str = ""
+    file_size: int = 0
+    text_extracted: bool = False
+    school_name: str = ""
+    grade_level: str = ""
+    term: str = ""
 
 
 # ── Bulk Upload ──
 
 class UploadReportCardResponse(BaseModel):
     """Response for bulk upload."""
-    uploaded: list[SchoolReportCardResponse] = Field(default_factory=list)
-    failed: list[str] = Field(default_factory=list)  # filenames that failed
-    total_uploaded: int = 0
+    uploaded: list[UploadedReportCard] = Field(default_factory=list)
+    failures: list[dict] = Field(default_factory=list)
