@@ -263,7 +263,7 @@ def list_report_cards(
             SchoolReportCard.student_id == student_id,
             SchoolReportCard.archived_at.is_(None),
         )
-        .order_by(SchoolReportCard.report_date.desc(), SchoolReportCard.created_at.desc())
+        .order_by(SchoolReportCard.report_date.desc().nullslast(), SchoolReportCard.created_at.desc())
         .all()
     )
 

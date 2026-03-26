@@ -120,8 +120,8 @@ export function ReportCardAnalysisView({ analysis, reportCard, onClose }: Report
                   <tbody>
                     {analysis.grade_analysis.map((item, i) => (
                       <tr key={i}>
-                        <td>{item.subject}</td>
-                        <td>
+                        <td data-label="Subject">{item.subject}</td>
+                        <td data-label="Grade">
                           {item.grade != null ? (
                             <span className={`rca-grade-cell ${gradeClass(item.grade, item.median)}`}>
                               {item.grade}%
@@ -130,9 +130,9 @@ export function ReportCardAnalysisView({ analysis, reportCard, onClose }: Report
                             '\u2014'
                           )}
                         </td>
-                        <td>{item.median != null ? `${item.median}%` : '\u2014'}</td>
-                        <td>{item.level ?? '\u2014'}</td>
-                        <td>
+                        <td data-label="Median">{item.median != null ? `${item.median}%` : '\u2014'}</td>
+                        <td data-label="Level">{item.level ?? '\u2014'}</td>
+                        <td data-label="Feedback">
                           {item.feedback ?? '\u2014'}
                           {item.teacher_comment && (
                             <div>

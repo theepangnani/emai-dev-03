@@ -400,22 +400,79 @@
 
 /* Responsive */
 @media (max-width: 600px) {
-  .rca-grade-table {
-    font-size: 0.78rem;
-  }
-
-  .rca-grade-table th,
-  .rca-grade-table td {
-    padding: 0.4rem 0.5rem;
-  }
-
-  .rca-skills-grid {
-    grid-template-columns: 1fr;
+  .rca-container {
+    padding: 0 0.5rem 1.5rem;
   }
 
   .rca-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .rca-header h2 {
+    font-size: 1.15rem;
+  }
+
+  .rca-section-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .rca-section-body {
+    padding: 0 1rem 1rem;
+  }
+
+  /* Grade table: stack into card layout on mobile */
+  .rca-grade-table,
+  .rca-grade-table thead,
+  .rca-grade-table tbody,
+  .rca-grade-table tr,
+  .rca-grade-table th,
+  .rca-grade-table td {
+    display: block;
+  }
+
+  .rca-grade-table thead {
+    position: absolute;
+    left: -9999px;
+  }
+
+  .rca-grade-table tr {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-color, #eee);
+  }
+
+  .rca-grade-table tr:last-child {
+    border-bottom: none;
+  }
+
+  .rca-grade-table td {
+    padding: 0.2rem 0;
+    border-bottom: none;
+    font-size: 0.8rem;
+  }
+
+  .rca-grade-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--text-secondary, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    display: inline-block;
+    min-width: 5rem;
+    margin-right: 0.5rem;
+  }
+
+  .rca-skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rca-improvement-item {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .rca-tip-item {
+    padding: 0.5rem 0.75rem;
   }
 }
