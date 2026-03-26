@@ -276,6 +276,93 @@ def _build_conversation_detail(
     )
 
 
+def _can_message(db: Session, sender: User, recipient: User) -> bool:
+    """Check if sender is authorized to message recipient based on role rules.
+
+    - Admin: can message anyone
+    - Parent: can message teachers, admins, and their own children
+    - Student: can message classmates (same courses), teachers, and admins
+    - Teacher: can message their own students, parents of those students, and admins
+    """
+    # Admins can message anyone
+    if sender.role == UserRole.ADMIN:
+        return True
+
+    # Anyone can message an admin
+    if recipient.has_role(UserRole.ADMIN):
+        return True
+
+    if sender.role == UserRole.PARENT:
+        # Can message teachers
+        if recipient.has_role(UserRole.TEACHER):
+            return True
+        # Can message own children
+        child_user_ids = [
+            row[0] for row in
+            db.query(Student.user_id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == sender.id)
+            .all()
+        ]
+        return recipient.id in child_user_ids
+
+    if sender.role == UserRole.STUDENT:
+        # Can message teachers
+        if recipient.has_role(UserRole.TEACHER):
+            return True
+        # Can message classmates (students in same courses)
+        my_student = db.query(Student).filter(Student.user_id == sender.id).first()
+        if my_student:
+            my_course_ids = (
+                db.query(student_courses.c.course_id)
+                .filter(student_courses.c.student_id == my_student.id)
+            )
+            classmate_user_ids = [
+                row[0] for row in
+                db.query(Student.user_id)
+                .join(student_courses, student_courses.c.student_id == Student.id)
+                .filter(
+                    student_courses.c.course_id.in_(my_course_ids),
+                    Student.user_id != sender.id,
+                )
+                .distinct()
+                .all()
+            ]
+            return recipient.id in classmate_user_ids
+        return False
+
+    if sender.role == UserRole.TEACHER:
+        teacher = db.query(Teacher).filter(Teacher.user_id == sender.id).first()
+        if teacher:
+            # Get students in teacher's courses
+            student_rows = (
+                db.query(Student)
+                .join(student_courses, student_courses.c.student_id == Student.id)
+                .join(Course, Course.id == student_courses.c.course_id)
+                .filter(Course.teacher_id == teacher.id)
+                .distinct()
+                .all()
+            )
+            student_user_ids = {s.user_id for s in student_rows}
+            # Can message own students
+            if recipient.id in student_user_ids:
+                return True
+            # Can message parents of own students
+            student_ids = [s.id for s in student_rows]
+            if student_ids:
+                parent_user_ids = {
+                    row[0] for row in
+                    db.query(parent_students.c.parent_id)
+                    .filter(parent_students.c.student_id.in_(student_ids))
+                    .distinct()
+                    .all()
+                }
+                return recipient.id in parent_user_ids
+        return False
+
+    return False
+
+
 @router.get("/search", response_model=MessageSearchResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def search_messages(
@@ -430,20 +517,109 @@ def get_valid_recipients(
     """
     logger.info(f"Getting recipients for user {current_user.id} ({current_user.role})")
 
-    # ── Global user search mode ─────────────────────────────────
+    # ── Role-aware user search mode ──────────────────────────────
     if q:
         escaped_q = escape_like(q)
         like_pattern = f"%{escaped_q}%"
-        users = (
-            db.query(User)
-            .filter(
-                User.is_active == True,  # noqa: E712
-                User.id != current_user.id,
-                sa_func.lower(User.full_name).like(sa_func.lower(like_pattern)),
+        base_filter = [
+            User.is_active == True,  # noqa: E712
+            User.id != current_user.id,
+            sa_func.lower(User.full_name).like(sa_func.lower(like_pattern)),
+        ]
+
+        if current_user.role == UserRole.ADMIN:
+            # Admins can search all active users
+            users = db.query(User).filter(*base_filter).limit(20).all()
+        elif current_user.role == UserRole.PARENT:
+            # Parents can only find teachers, admins, and their own children
+            child_user_ids = (
+                db.query(Student.user_id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(parent_students.c.parent_id == current_user.id)
             )
-            .limit(20)
-            .all()
-        )
+            users = (
+                db.query(User)
+                .filter(
+                    *base_filter,
+                    or_(
+                        User.role == UserRole.TEACHER,
+                        User.role == UserRole.ADMIN,
+                        User.roles.contains("admin"),
+                        User.id.in_(child_user_ids),
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+        elif current_user.role == UserRole.STUDENT:
+            # Students can find classmates (same courses), teachers, and admins
+            my_student = db.query(Student).filter(Student.user_id == current_user.id).first()
+            classmate_user_ids = []
+            if my_student:
+                my_course_ids = (
+                    db.query(student_courses.c.course_id)
+                    .filter(student_courses.c.student_id == my_student.id)
+                )
+                classmate_user_ids = (
+                    db.query(Student.user_id)
+                    .join(student_courses, student_courses.c.student_id == Student.id)
+                    .filter(student_courses.c.course_id.in_(my_course_ids))
+                )
+            users = (
+                db.query(User)
+                .filter(
+                    *base_filter,
+                    or_(
+                        User.role == UserRole.TEACHER,
+                        User.role == UserRole.ADMIN,
+                        User.roles.contains("admin"),
+                        User.id.in_(classmate_user_ids) if classmate_user_ids else False,
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+        elif current_user.role == UserRole.TEACHER:
+            # Teachers can find their own students, parents of those students, and admins
+            teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+            allowed_user_ids = []
+            if teacher:
+                student_rows = (
+                    db.query(Student)
+                    .join(student_courses, student_courses.c.student_id == Student.id)
+                    .join(Course, Course.id == student_courses.c.course_id)
+                    .filter(Course.teacher_id == teacher.id)
+                    .distinct()
+                    .all()
+                )
+                student_user_ids = [s.user_id for s in student_rows]
+                student_ids = [s.id for s in student_rows]
+                parent_user_ids = []
+                if student_ids:
+                    parent_user_ids = [
+                        row[0] for row in
+                        db.query(parent_students.c.parent_id)
+                        .filter(parent_students.c.student_id.in_(student_ids))
+                        .distinct()
+                        .all()
+                    ]
+                allowed_user_ids = student_user_ids + parent_user_ids
+            users = (
+                db.query(User)
+                .filter(
+                    *base_filter,
+                    or_(
+                        User.role == UserRole.ADMIN,
+                        User.roles.contains("admin"),
+                        User.id.in_(allowed_user_ids) if allowed_user_ids else False,
+                    ),
+                )
+                .limit(20)
+                .all()
+            )
+        else:
+            users = []
+
         return [
             RecipientOption(
                 user_id=u.id,
@@ -631,6 +807,60 @@ def get_valid_recipients(
                             if r.user_id == parent_id and student_name not in r.student_names:
                                 r.student_names.append(student_name)
 
+    if current_user.has_role(UserRole.STUDENT):
+        # Student can message classmates (students in same courses) and teachers
+        my_student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if my_student:
+            my_course_ids = (
+                db.query(student_courses.c.course_id)
+                .filter(student_courses.c.student_id == my_student.id)
+                .subquery()
+            )
+            # Classmates: other students in the same courses
+            classmates = (
+                db.query(Student)
+                .options(selectinload(Student.user))
+                .join(student_courses, student_courses.c.student_id == Student.id)
+                .filter(
+                    student_courses.c.course_id.in_(db.query(my_course_ids.c.course_id)),
+                    Student.id != my_student.id,
+                )
+                .distinct()
+                .all()
+            )
+            for classmate in classmates:
+                if classmate.user and classmate.user_id not in seen_user_ids:
+                    seen_user_ids.add(classmate.user_id)
+                    result.append(
+                        RecipientOption(
+                            user_id=classmate.user_id,
+                            full_name=classmate.user.full_name,
+                            role=classmate.user.role.value if classmate.user.role else "student",
+                            student_names=[],
+                        )
+                    )
+
+            # Teachers of their courses
+            course_teachers = (
+                db.query(User)
+                .join(Teacher, Teacher.user_id == User.id)
+                .join(Course, Course.teacher_id == Teacher.id)
+                .filter(Course.id.in_(db.query(my_course_ids.c.course_id)))
+                .distinct()
+                .all()
+            )
+            for t_user in course_teachers:
+                if t_user.id not in seen_user_ids:
+                    seen_user_ids.add(t_user.id)
+                    result.append(
+                        RecipientOption(
+                            user_id=t_user.id,
+                            full_name=t_user.full_name,
+                            role=t_user.role.value if t_user.role else "teacher",
+                            student_names=[],
+                        )
+                    )
+
     # ── Always include admin users as valid recipients for everyone ──
     admin_users = (
         db.query(User)
@@ -685,6 +915,13 @@ def create_conversation(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot message yourself",
+        )
+
+    # Enforce role-based recipient restrictions
+    if not _can_message(db, current_user, recipient):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to message this user",
         )
 
     # Check if conversation already exists between these two
