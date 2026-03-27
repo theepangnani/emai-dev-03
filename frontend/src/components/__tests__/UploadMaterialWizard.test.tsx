@@ -52,14 +52,14 @@ describe('UploadMaterialWizard — Step 1 (default)', () => {
     expect(screen.getByText('test-doc.pdf')).toBeInTheDocument()
   })
 
-  it('oversized files (>20 MB) show error message', async () => {
+  it('oversized files (>30 MB) show error message', async () => {
     render(<UploadMaterialWizard {...defaultProps} />)
 
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    const bigFile = makeFile('huge.pdf', 25)
+    const bigFile = makeFile('huge.pdf', 35)
     await userEvent.upload(input, bigFile)
 
-    expect(screen.getByText(/exceed.*20 MB/i)).toBeInTheDocument()
+    expect(screen.getByText(/exceed.*30 MB/i)).toBeInTheDocument()
   })
 
   it('max file limit (10) enforced', async () => {
