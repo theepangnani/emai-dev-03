@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime
+from sqlalchemy import Column, Integer, String, Date, DateTime, Boolean, Index
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -9,7 +9,13 @@ class HolidayDate(Base):
     __tablename__ = "holiday_dates"
 
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, nullable=False, unique=True)
-    name = Column(String(100), nullable=False)
-    board = Column(String(50), default="YRDSB")
-    created_at = Column(DateTime, default=func.now())
+    name = Column(String(200), nullable=False)
+    date = Column(Date, nullable=False)
+    board_code = Column(String(20), nullable=True)  # e.g. "YRDSB", null = all boards
+    is_recurring = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_holiday_dates_date", "date"),
+        Index("ix_holiday_dates_board_code", "board_code"),
+    )

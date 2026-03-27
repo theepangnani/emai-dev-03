@@ -21,6 +21,7 @@ from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline, study_sessions, report_card, bug_reports, daily_quiz
 from app.api.routes import school_report_cards  # §6.121 Report Card Upload & AI Analysis
 from app.api.routes import study_suggestions
+from app.api.routes import holiday_dates
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1786,6 +1787,23 @@ def _run_migrations_inner(engine):
             logger.warning("holiday_dates column rename migration failed (#2024): %s", e)
 
 
+    # ── holiday_dates: add board_code & is_recurring columns (#2024) ──
+    try:
+        with engine.connect() as conn:
+            inspector_hol = sa_inspect(engine)
+            if "holiday_dates" in inspector_hol.get_table_names():
+                hol_cols = {c["name"] for c in inspector_hol.get_columns("holiday_dates")}
+                if "board" in hol_cols and "board_code" not in hol_cols:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN board TO board_code"))
+                    conn.commit()
+                    logger.info("Renamed holiday_dates.board -> board_code (#2024)")
+                if "is_recurring" not in hol_cols:
+                    conn.execute(text("ALTER TABLE holiday_dates ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"))
+                    conn.commit()
+                    logger.info("Added 'is_recurring' column to holiday_dates (#2024)")
+    except Exception as e:
+        logger.warning("holiday_dates board_code/is_recurring migration failed (#2024): %s", e)
+
     # ── xp_ledger: context_id column (#2009) ──────────
     try:
         with engine.connect() as conn:
@@ -2117,6 +2135,7 @@ app.include_router(bug_reports.router, prefix="/api")
 app.include_router(school_report_cards.router, prefix="/api")
 app.include_router(study_suggestions.router, prefix="/api")
 app.include_router(daily_quiz.router, prefix="/api")
+app.include_router(holiday_dates.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
