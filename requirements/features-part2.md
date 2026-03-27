@@ -370,7 +370,7 @@ Users can hold multiple roles simultaneously (e.g., a parent who is also a teach
 - [ ] **Admin role management UI** (#255) — Admin can add/remove roles for any user from the admin portal, with checkbox modal and auto-creation of profile records
 - [x] **Auto-create profile records** (#256) — When adding teacher/student roles, auto-create Teacher/Student records if missing; preserve data on role removal (IMPLEMENTED - Feb 2026, commit 120e065)
 - [x] **Multi-role registration** (#257) — Checkbox role selection during signup instead of single dropdown (IMPLEMENTED - Feb 2026, commit 120e065). **Note:** Role selection is being moved from registration to post-login onboarding (§6.43, #412-#414); multi-role selection will be supported in the onboarding flow instead
-- [ ] **Admin as multi-role** — Admin users can simultaneously hold parent, teacher, and/or student roles, accessing all corresponding dashboards and features via the role switcher
+- [x] **Admin as multi-role** — Admin users can simultaneously hold parent, teacher, and/or student roles, accessing all corresponding dashboards and features via the role switcher. **CRITICAL:** Access control functions must evaluate ALL held roles, not blanket-deny based on `has_role(ADMIN)` — since `has_role()` checks the `roles` CSV column containing ALL roles. Pure admins are denied by matching no access rule, not by early return. (fix #2468, Mar 2026)
 - [ ] Merged data views (combined parent+teacher data on single dashboard)
 
 ### 6.25 Course Materials Lifecycle Management (Phase 1) - IMPLEMENTED

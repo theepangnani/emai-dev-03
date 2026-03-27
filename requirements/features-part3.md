@@ -4394,13 +4394,18 @@ Materials are accessible ONLY to the course's trust circle:
 | Enrolled students | Yes | Yes | No | No |
 | Parents of enrolled students | Yes | Yes | No | No |
 | Parent of student creator | Yes | Yes | Yes | Yes |
-| **Admin** | **Metadata only** | **No** | **No** | **No** |
+| **Pure admin** (admin-only role) | **Metadata only** | **No** | **No** | **No** |
+| **Multi-role admin** (e.g. admin+parent) | Via other role | Via other role | Via other role | Via other role |
 
-**Admin metadata access:** Admins can see aggregate data (material count per course, total storage usage, file types) for platform management, but cannot view material content, text extractions, or download files.
+**Admin metadata access:** Pure admins (admin-only) can see aggregate data (material count per course, total storage usage, file types) for platform management, but cannot view material content, text extractions, or download files.
+
+**Multi-role admin access (fix #2468):** Users who hold admin AND another role (e.g. parent, teacher, student) are evaluated through their non-admin role paths. A user with roles=admin+parent is granted parent-level access if their child is enrolled. The admin exclusion must NOT use `has_role(ADMIN)` as a blanket deny — `has_role()` checks ALL roles, so it would block multi-role users. Instead, pure admins are denied naturally by matching no trust-circle rule.
+
+**Public course access:** Materials in public courses (`is_private=False`) are accessible to all authenticated non-admin users. This matches `can_access_course()` semantics.
 
 **Implementation:**
 - New `can_access_material(db, user, content)` function in `app/api/deps.py` (#2269)
-- Mirrors `can_access_course()` logic but excludes admin role from content access
+- No blanket admin exclusion — pure admins naturally match no trust-circle rule (fix #2468)
 - Remove admin override from `_can_modify_content()` in `app/api/routes/course_contents.py` (#2270)
 - Replace `can_access_course()` with `can_access_material()` in all content read/download endpoints
 - Strip `text_content` from API responses for non-trust-circle users
