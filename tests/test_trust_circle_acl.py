@@ -152,6 +152,30 @@ class TestCanAccessMaterial:
             db_session, trust_circle_data["outsider"], trust_circle_data["content"]
         ) is False
 
+    def test_outsider_can_access_public_course_material(self, db_session, trust_circle_data):
+        """Outsider should access materials on public (non-private) courses."""
+        from app.api.deps import can_access_material
+        course = trust_circle_data["course"]
+        course.is_private = False
+        db_session.commit()
+        assert can_access_material(
+            db_session, trust_circle_data["outsider"], trust_circle_data["content"]
+        ) is True
+        course.is_private = True
+        db_session.commit()
+
+    def test_admin_still_denied_on_public_course(self, db_session, trust_circle_data):
+        """Admin exclusion applies even on public courses."""
+        from app.api.deps import can_access_material
+        course = trust_circle_data["course"]
+        course.is_private = False
+        db_session.commit()
+        assert can_access_material(
+            db_session, trust_circle_data["admin"], trust_circle_data["content"]
+        ) is False
+        course.is_private = True
+        db_session.commit()
+
 
 class TestMaterialEndpointAccess:
     """Integration tests for trust-circle enforcement on API endpoints."""
