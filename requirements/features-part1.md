@@ -359,7 +359,7 @@ Role-based restrictions enforce who each user can message:
 |---|---|
 | **Parent** | Teachers, their own children, admins |
 | **Student** | Classmates (students in same courses), teachers, admins |
-| **Teacher** | Their own students (via courses), parents of those students, admins |
+| **Teacher** | Their own students (via courses and direct links), parents of those students, admins |
 | **Admin** | Anyone (no restrictions) |
 
 Restrictions are enforced in three places:

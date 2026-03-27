@@ -357,7 +357,34 @@ def _can_message(db: Session, sender: User, recipient: User) -> bool:
                     .distinct()
                     .all()
                 }
-                return recipient.id in parent_user_ids
+                if recipient.id in parent_user_ids:
+                    return True
+            # Also check direct teacher links via student_teachers table
+            direct_student_ids = [
+                row[0] for row in
+                db.query(student_teachers.c.student_id)
+                .filter(student_teachers.c.teacher_user_id == sender.id)
+                .all()
+            ]
+            if direct_student_ids:
+                # Can message directly-linked students
+                direct_student_user_ids = {
+                    row[0] for row in
+                    db.query(Student.user_id)
+                    .filter(Student.id.in_(direct_student_ids))
+                    .all()
+                }
+                if recipient.id in direct_student_user_ids:
+                    return True
+                # Can message parents of directly-linked students
+                direct_parent_ids = {
+                    row[0] for row in
+                    db.query(parent_students.c.parent_id)
+                    .filter(parent_students.c.student_id.in_(direct_student_ids))
+                    .all()
+                }
+                if recipient.id in direct_parent_ids:
+                    return True
         return False
 
     return False
@@ -603,6 +630,28 @@ def get_valid_recipients(
                         .all()
                     ]
                 allowed_user_ids = student_user_ids + parent_user_ids
+            # Also include directly-linked students and their parents
+            direct_student_ids = [
+                row[0] for row in
+                db.query(student_teachers.c.student_id)
+                .filter(student_teachers.c.teacher_user_id == current_user.id)
+                .all()
+            ]
+            if direct_student_ids:
+                direct_student_user_ids = [
+                    row[0] for row in
+                    db.query(Student.user_id)
+                    .filter(Student.id.in_(direct_student_ids))
+                    .all()
+                ]
+                direct_parent_user_ids = [
+                    row[0] for row in
+                    db.query(parent_students.c.parent_id)
+                    .filter(parent_students.c.student_id.in_(direct_student_ids))
+                    .all()
+                ]
+                allowed_user_ids.extend(direct_student_user_ids)
+                allowed_user_ids.extend(direct_parent_user_ids)
             conditions = [
                 User.role == UserRole.ADMIN,
                 User.roles.contains("admin"),
