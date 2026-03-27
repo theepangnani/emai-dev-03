@@ -21,6 +21,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/teachers", tags=["Teacher Thanks"])
 
 
+@router.get("/me/thanks-count", response_model=TeacherThanksCount)
+def get_my_thanks_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.TEACHER)),
+):
+    """Get thanks count for the currently logged-in teacher."""
+    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+    if not teacher:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher profile not found")
+
+    total_count = (
+        db.query(sa_func.count(TeacherThanks.id))
+        .filter(TeacherThanks.teacher_id == teacher.id)
+        .scalar()
+    ) or 0
+
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    week_count = (
+        db.query(sa_func.count(TeacherThanks.id))
+        .filter(
+            TeacherThanks.teacher_id == teacher.id,
+            TeacherThanks.created_at >= week_ago,
+        )
+        .scalar()
+    ) or 0
+
+    return TeacherThanksCount(teacher_id=teacher.id, total_count=total_count, week_count=week_count)
+
+
 @router.post("/{teacher_id}/thank", response_model=TeacherThanksResponse, status_code=status.HTTP_201_CREATED)
 def send_thanks(
     teacher_id: int,
@@ -110,32 +139,3 @@ def get_thanks_status(
         .first()
     )
     return TeacherThanksStatus(thanked_today=existing is not None)
-
-
-@router.get("/me/thanks-count", response_model=TeacherThanksCount)
-def get_my_thanks_count(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.TEACHER)),
-):
-    """Get thanks count for the currently logged-in teacher."""
-    teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
-    if not teacher:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher profile not found")
-
-    total_count = (
-        db.query(sa_func.count(TeacherThanks.id))
-        .filter(TeacherThanks.teacher_id == teacher.id)
-        .scalar()
-    ) or 0
-
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    week_count = (
-        db.query(sa_func.count(TeacherThanks.id))
-        .filter(
-            TeacherThanks.teacher_id == teacher.id,
-            TeacherThanks.created_at >= week_ago,
-        )
-        .scalar()
-    ) or 0
-
-    return TeacherThanksCount(teacher_id=teacher.id, total_count=total_count, week_count=week_count)

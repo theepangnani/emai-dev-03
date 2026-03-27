@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
@@ -8,15 +8,14 @@ class TeacherThanksCreate(BaseModel):
 
 
 class TeacherThanksResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     from_user_id: int
     teacher_id: int
     course_id: int | None
     message: str | None
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class TeacherThanksCount(BaseModel):
