@@ -1305,7 +1305,8 @@ def send_course_announcement(
         html_body = add_inspiration_to_email(html_body, db, "parent")
         email_batch.append((email, f"{course.name}: {data.subject}", html_body))
 
-    email_count = send_emails_batch(email_batch) if email_batch else 0
+    batch_result = send_emails_batch(email_batch) if email_batch else {"sent": 0}
+    email_count = batch_result["sent"]
     broadcast.email_count = email_count
     db.commit()
 
