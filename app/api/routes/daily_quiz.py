@@ -8,7 +8,8 @@ from app.api.deps import get_current_user
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.daily_quiz import DailyQuizResponse, DailyQuizQuestion, DailyQuizSubmit, DailyQuizSubmitResponse
+from app.schemas.daily_quiz import DailyQuizResponse, DailyQuizCompleteRequest, DailyQuizCompleteResponse
+from app.schemas.study import QuizQuestion
 from app.services.daily_quiz_service import get_or_create_daily_quiz, submit_daily_quiz
 
 router = APIRouter(prefix="/quiz-of-the-day", tags=["Quiz of the Day"])
@@ -16,16 +17,18 @@ router = APIRouter(prefix="/quiz-of-the-day", tags=["Quiz of the Day"])
 
 def _to_response(quiz) -> DailyQuizResponse:
     """Convert DailyQuiz model to response schema."""
-    questions = [DailyQuizQuestion(**q) for q in json.loads(quiz.quiz_data)]
+    questions = [QuizQuestion(**q) for q in json.loads(quiz.questions_json)]
+    course_name = quiz.course.name if hasattr(quiz, "course") and quiz.course else None
     return DailyQuizResponse(
         id=quiz.id,
-        user_id=quiz.user_id,
         quiz_date=quiz.quiz_date,
+        title=quiz.title or f"Daily Quiz: {quiz.quiz_date}",
         questions=questions,
         total_questions=quiz.total_questions,
         score=quiz.score,
-        percentage=quiz.percentage,
         completed_at=quiz.completed_at,
+        xp_awarded=quiz.xp_awarded,
+        course_name=course_name,
     )
 
 
@@ -44,11 +47,11 @@ async def get_quiz_of_the_day(
     return _to_response(quiz)
 
 
-@router.post("/submit", response_model=DailyQuizSubmitResponse)
+@router.post("/complete", response_model=DailyQuizCompleteResponse)
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
-async def submit_quiz_of_the_day(
+async def complete_quiz_of_the_day(
     request: Request,
-    data: DailyQuizSubmit,
+    data: DailyQuizCompleteRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -57,4 +60,4 @@ async def submit_quiz_of_the_day(
         result = submit_daily_quiz(db, current_user, data.answers)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return DailyQuizSubmitResponse(**result)
+    return DailyQuizCompleteResponse(**result)

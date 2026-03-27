@@ -168,7 +168,8 @@ async def get_or_create_daily_quiz(db: Session, user: User) -> DailyQuiz:
     quiz = DailyQuiz(
         user_id=user.id,
         quiz_date=date.today(),
-        quiz_data=json.dumps(questions),
+        questions_json=json.dumps(questions),
+        title=f"Daily Challenge: {date.today().strftime('%B %d, %Y')}",
         total_questions=len(questions),
     )
     db.add(quiz)
@@ -190,7 +191,7 @@ def submit_daily_quiz(db: Session, user: User, answers: dict[int, str]) -> dict:
     if quiz.completed_at is not None:
         raise ValueError("Daily quiz already completed")
 
-    questions = json.loads(quiz.quiz_data)
+    questions = json.loads(quiz.questions_json)
     score = 0
     for i, q in enumerate(questions):
         if answers.get(i) == q["correct_answer"]:

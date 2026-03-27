@@ -1,35 +1,36 @@
+"""Pydantic schemas for Quiz of the Day."""
 from datetime import date, datetime
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import BaseModel
-
-
-class DailyQuizQuestion(BaseModel):
-    question: str
-    options: dict[str, str]
-    correct_answer: str
-    explanation: str
+from app.schemas.study import QuizQuestion
 
 
 class DailyQuizResponse(BaseModel):
+    """Response for GET /quiz-of-the-day."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
-    user_id: int
     quiz_date: date
-    questions: list[DailyQuizQuestion]
-    total_questions: int
-    score: int | None
-    percentage: float | None
-    completed_at: datetime | None
-
-    class Config:
-        from_attributes = True
-
-
-class DailyQuizSubmit(BaseModel):
-    answers: dict[int, str]  # question_index -> selected_answer
+    title: str
+    questions: list[QuizQuestion]
+    score: int | None = None
+    total_questions: int = 5
+    completed_at: datetime | None = None
+    xp_awarded: int | None = None
+    course_name: str | None = None
 
 
-class DailyQuizSubmitResponse(BaseModel):
+class DailyQuizCompleteRequest(BaseModel):
+    """Request body for POST /quiz-of-the-day/complete."""
+    answers: dict[int, str] = Field(
+        ...,
+        description="Map of question index (0-based) to selected answer letter (A/B/C/D)",
+    )
+
+
+class DailyQuizCompleteResponse(BaseModel):
+    """Response for POST /quiz-of-the-day/complete."""
     score: int
     total_questions: int
-    percentage: float
-    xp_awarded: int | None = None
+    xp_awarded: int
+    results: list[dict]  # Per-question result with correct/incorrect and explanation

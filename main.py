@@ -1820,6 +1820,32 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("xp_ledger context_id migration failed (#2009): %s", e)
 
+    # ── daily_quizzes: add new columns from Quiz of the Day (#2225) ──
+    try:
+        with engine.connect() as conn:
+            inspector_dq = sa_inspect(engine)
+            if "daily_quizzes" in inspector_dq.get_table_names():
+                dq_cols = {c["name"] for c in inspector_dq.get_columns("daily_quizzes")}
+                if "questions_json" not in dq_cols and "quiz_data" in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes RENAME COLUMN quiz_data TO questions_json"))
+                    conn.commit()
+                    logger.info("Renamed daily_quizzes.quiz_data -> questions_json (#2225)")
+                if "title" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN title VARCHAR(255) DEFAULT 'Daily Quiz'"))
+                    conn.commit()
+                    logger.info("Added 'title' column to daily_quizzes (#2225)")
+                if "course_content_id" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN course_content_id INTEGER"))
+                    conn.commit()
+                if "course_id" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN course_id INTEGER"))
+                    conn.commit()
+                if "xp_awarded" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN xp_awarded INTEGER"))
+                    conn.commit()
+    except Exception as e:
+        logger.warning("daily_quizzes migration failed (#2225): %s", e)
+
     # ── bug_reports: widen screenshot_url from VARCHAR(500) to TEXT (#2101) ──
     try:
         with engine.connect() as conn:
