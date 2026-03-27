@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
+from jose import jwt as jose_jwt
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -1984,9 +1985,14 @@ try:
                 conn.execute(text(
                     "ALTER TABLE teacher_thanks ADD COLUMN thanks_date DATE"
                 ))
-                conn.execute(text(
-                    "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
-                ))
+                if "sqlite" in settings.database_url:
+                    conn.execute(text(
+                        "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
+                    ))
+                else:
+                    conn.execute(text(
+                        "UPDATE teacher_thanks SET thanks_date = created_at::date WHERE thanks_date IS NULL"
+                    ))
                 conn.commit()
 
             # Add unique constraint (idempotent)
@@ -2099,7 +2105,6 @@ async def log_requests(request: Request, call_next):
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         try:
-            from jose import jwt as jose_jwt
             payload = jose_jwt.decode(
                 auth_header[7:],
                 settings.secret_key,
