@@ -154,7 +154,7 @@ def create_document():
          'so that I can get AI-powered analysis of their academic performance.',
          ['Parent must have at least 1 linked child',
           'Supported formats: PDF, JPG, JPEG, PNG',
-          'Max file size: 20 MB per file',
+          'Max file size: 30 MB per file',
           'Max files per upload: 10',
           'System auto-extracts metadata (grade, school, term, date)',
           'Upload succeeds even if text extraction fails']),
@@ -200,7 +200,7 @@ def create_document():
     add_table_row(table, ['Scenario', 'Expected Response', 'HTTP Status'], header=True)
     errors = [
         ['Invalid file type (.docx, .txt)', '"Invalid file type"', '400'],
-        ['File exceeds 20 MB', '"File size exceeds limit"', '400'],
+        ['File exceeds 30 MB', '"File size exceeds limit"', '400'],
         ['Upload > 10 files', '"Maximum 10 files per upload"', '400'],
         ['Text extraction < 50 chars', 'Upload OK; Analysis blocked', '400 on analyze'],
         ['AI usage limit exhausted', '"AI usage limit reached"', '429'],
@@ -547,7 +547,7 @@ def create_document():
         '|  |   Drag report cards here           |  |\n'
         '|  |   or click to browse               |  |\n'
         '|  |                                    |  |\n'
-        '|  |   PDF, JPG, PNG (max 20MB each)    |  |\n'
+        '|  |   PDF, JPG, PNG (max 30MB each)    |  |\n'
         '|  +------------------------------------+  |\n'
         '|                                          |\n'
         '|  Files:                                  |\n'
@@ -791,7 +791,7 @@ def create_document():
         'Click "Delete" -> confirm -> verify card removed from list',
         'Login as student -> verify /school-report-cards is blocked (403)',
         'Upload invalid file type (.docx) -> verify rejection',
-        'Upload file > 20MB -> verify rejection',
+        'Upload file > 30MB -> verify rejection',
     ]
     for m in manual:
         doc.add_paragraph(m, style='List Bullet')

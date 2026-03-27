@@ -273,7 +273,7 @@ Parent ←→ Teacher (inferred: parent's child enrolled in teacher's course)
 - Tag content to specific class or subject - IMPLEMENTED
 - AI generates study materials from user-provided content - IMPLEMENTED
 - **Multi-file upload (#991)**: Select multiple files at once; all selected files are combined into ONE course material. Text is extracted from each file and concatenated with per-file headers. Users can keep adding files before clicking Generate/Upload. Drag-and-drop and the file picker both append to the file list - IMPLEMENTED
-- **File upload security hardening (#1006)**: Per-file size limit 20 MB (configurable via `MAX_UPLOAD_SIZE_MB` env var); magic bytes validation prevents extension spoofing (PDF, images, Office, ZIP); 10-file session cap in upload modal with user-facing error; UI hint shows real limits. Phase 2 adds AV scanning and premium limits (#1007) - IMPLEMENTED
+- **File upload security hardening (#1006)**: Per-file size limit 30 MB (configurable via `MAX_UPLOAD_SIZE_MB` env var); magic bytes validation prevents extension spoofing (PDF, images, Office, ZIP); 10-file session cap in upload modal with user-facing error; UI hint shows real limits. Phase 2 adds AV scanning and premium limits (#1007) - IMPLEMENTED
 - **Multi-file OCR rate limit fix (#1003)**: `/upload/extract-text` rate limit raised from 5→30 requests/minute; frontend switched from concurrent `Promise.all()` to sequential `for...of` processing to prevent 429 errors when uploading many files at once; 429-specific error message shown to user - IMPLEMENTED (PR #1004)
 - Content privacy controls - pending
 - Version history - pending
