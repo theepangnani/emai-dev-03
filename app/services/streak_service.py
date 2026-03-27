@@ -99,6 +99,7 @@ class StreakService:
         if summary.current_streak in STREAK_MILESTONES:
             StreakService._notify_parents_of_milestone(db, student_id, summary.current_streak)
 
+        db.commit()
         return log_entry
 
     @staticmethod
@@ -135,8 +136,7 @@ class StreakService:
             )
             db.add(notification)
 
-        if parent_rows:
-            db.commit()
+        # Note: caller (record_qualifying_action) handles the commit
 
     @staticmethod
     def evaluate_streak(db: Session, student_id: int) -> str:
