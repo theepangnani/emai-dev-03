@@ -14,13 +14,16 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
-from app.core.logging_config import setup_logging, get_logger, RequestLogger
+from app.core.logging_config import setup_logging, get_logger, RequestLogger, generate_trace_id, trace_id_var, user_id_var, endpoint_var
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
 from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline, study_sessions, report_card, bug_reports, daily_quiz
 from app.api.routes import school_report_cards  # §6.121 Report Card Upload & AI Analysis
 from app.api.routes import study_suggestions
+from app.api.routes import holiday_dates
+from app.api.routes import family_report
+from app.api.routes import teacher_thanks
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -29,6 +32,7 @@ setup_logging(
     environment=settings.environment,
     enable_console=True,
     enable_file=settings.log_to_file,
+    log_format=getattr(settings, "log_format", ""),  # Empty = auto (json in prod, text in dev)
 )
 
 logger = get_logger(__name__)
@@ -49,6 +53,7 @@ from app.models.study_session import StudySession  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
 from app.models.daily_quiz import DailyQuiz  # noqa: F401
 from app.models.course_announcement import CourseAnnouncement  # noqa: F401
+from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -1786,6 +1791,23 @@ def _run_migrations_inner(engine):
             logger.warning("holiday_dates column rename migration failed (#2024): %s", e)
 
 
+    # ── holiday_dates: add board_code & is_recurring columns (#2024) ──
+    try:
+        with engine.connect() as conn:
+            inspector_hol = sa_inspect(engine)
+            if "holiday_dates" in inspector_hol.get_table_names():
+                hol_cols = {c["name"] for c in inspector_hol.get_columns("holiday_dates")}
+                if "board" in hol_cols and "board_code" not in hol_cols:
+                    conn.execute(text("ALTER TABLE holiday_dates RENAME COLUMN board TO board_code"))
+                    conn.commit()
+                    logger.info("Renamed holiday_dates.board -> board_code (#2024)")
+                if "is_recurring" not in hol_cols:
+                    conn.execute(text("ALTER TABLE holiday_dates ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE"))
+                    conn.commit()
+                    logger.info("Added 'is_recurring' column to holiday_dates (#2024)")
+    except Exception as e:
+        logger.warning("holiday_dates board_code/is_recurring migration failed (#2024): %s", e)
+
     # ── xp_ledger: context_id column (#2009) ──────────
     try:
         with engine.connect() as conn:
@@ -1801,6 +1823,32 @@ def _run_migrations_inner(engine):
                         conn.rollback()
     except Exception as e:
         logger.warning("xp_ledger context_id migration failed (#2009): %s", e)
+
+    # ── daily_quizzes: add new columns from Quiz of the Day (#2225) ──
+    try:
+        with engine.connect() as conn:
+            inspector_dq = sa_inspect(engine)
+            if "daily_quizzes" in inspector_dq.get_table_names():
+                dq_cols = {c["name"] for c in inspector_dq.get_columns("daily_quizzes")}
+                if "questions_json" not in dq_cols and "quiz_data" in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes RENAME COLUMN quiz_data TO questions_json"))
+                    conn.commit()
+                    logger.info("Renamed daily_quizzes.quiz_data -> questions_json (#2225)")
+                if "title" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN title VARCHAR(255) DEFAULT 'Daily Quiz'"))
+                    conn.commit()
+                    logger.info("Added 'title' column to daily_quizzes (#2225)")
+                if "course_content_id" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN course_content_id INTEGER"))
+                    conn.commit()
+                if "course_id" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN course_id INTEGER"))
+                    conn.commit()
+                if "xp_awarded" not in dq_cols:
+                    conn.execute(text("ALTER TABLE daily_quizzes ADD COLUMN xp_awarded INTEGER"))
+                    conn.commit()
+    except Exception as e:
+        logger.warning("daily_quizzes migration failed (#2225): %s", e)
 
     # ── bug_reports: widen screenshot_url from VARCHAR(500) to TEXT (#2101) ──
     try:
@@ -1925,6 +1973,49 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("school_report_cards report_date backfill failed (#2368): %s", e)
 
+# --- teacher_thanks: add thanks_date column + unique constraint (#2451, #2452) ---
+try:
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        if "teacher_thanks" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("teacher_thanks")}
+            if "thanks_date" not in cols:
+                logger.info("Adding thanks_date column to teacher_thanks (#2451, #2452)...")
+                conn.execute(text(
+                    "ALTER TABLE teacher_thanks ADD COLUMN thanks_date DATE"
+                ))
+                conn.execute(text(
+                    "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
+                ))
+                conn.commit()
+
+            # Add unique constraint (idempotent)
+            is_sqlite = "sqlite" in settings.database_url
+            existing_indexes = {idx["name"] for idx in inspector.get_indexes("teacher_thanks") if idx.get("name")}
+            if "uq_teacher_thanks_daily" not in existing_indexes:
+                # Deduplicate: keep earliest row per (from_user_id, teacher_id, thanks_date)
+                conn.execute(text(
+                    "DELETE FROM teacher_thanks WHERE id NOT IN ("
+                    "SELECT MIN(id) FROM teacher_thanks GROUP BY from_user_id, teacher_id, thanks_date)"
+                ))
+                if is_sqlite:
+                    conn.execute(text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_teacher_thanks_daily "
+                        "ON teacher_thanks(from_user_id, teacher_id, thanks_date)"
+                    ))
+                else:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE teacher_thanks ADD CONSTRAINT uq_teacher_thanks_daily "
+                            "UNIQUE (from_user_id, teacher_id, thanks_date)"
+                        ))
+                    except Exception:
+                        pass  # Already exists
+                conn.commit()
+                logger.info("Added uq_teacher_thanks_daily unique constraint (#2452)")
+except Exception as e:
+    logger.warning("teacher_thanks migration (#2451, #2452) failed: %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 
@@ -1989,14 +2080,38 @@ async def check_ready(request: Request, call_next):
     return await call_next(request)
 
 
-# Request logging middleware
+# Request logging middleware with correlation IDs
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all HTTP requests with timing."""
+    """Log all HTTP requests with timing and correlation IDs."""
+    # Generate or reuse trace ID from incoming header
+    tid = request.headers.get("X-Request-ID") or generate_trace_id()
+    trace_id_var.set(tid)
+    endpoint_var.set(request.url.path)
+
     start_time = time.time()
 
     # Get client IP
     client_ip = request.client.host if request.client else "unknown"
+
+    # Best-effort user identification for logging — NOT an auth check
+    uid = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from jose import jwt as jose_jwt
+            payload = jose_jwt.decode(
+                auth_header[7:],
+                settings.secret_key,
+                algorithms=[settings.algorithm],
+            )
+            uid = payload.get("sub") or payload.get("user_id")
+            if uid is not None:
+                uid = int(uid)
+        except Exception:
+            pass
+    if uid is not None:
+        user_id_var.set(uid)
 
     # Process request
     response = await call_next(request)
@@ -2004,8 +2119,11 @@ async def log_requests(request: Request, call_next):
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000
 
-    # Get user ID from request state if available
-    user_id = getattr(request.state, "user_id", None)
+    # Prefer user_id from request.state (set by deps) over JWT parse
+    user_id = getattr(request.state, "user_id", None) or uid
+
+    # Add trace ID to response headers
+    response.headers["X-Request-ID"] = tid
 
     # Log the request
     request_logger.log_request(
@@ -2015,6 +2133,7 @@ async def log_requests(request: Request, call_next):
         duration_ms=duration_ms,
         client_ip=client_ip,
         user_id=user_id,
+        trace_id=tid,
     )
 
     return response
@@ -2040,7 +2159,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["Content-Disposition"],
+    expose_headers=["Content-Disposition", "X-Request-ID"],
 )
 
 # Security headers middleware
@@ -2095,7 +2214,6 @@ app.include_router(help_routes.router, prefix="/api")
 app.include_router(briefing.router, prefix="/api")
 app.include_router(parent_ai.router, prefix="/api")
 app.include_router(weekly_digest.router, prefix="/api")
-app.include_router(study_sharing.router, prefix="/api")
 app.include_router(calendar_import.router, prefix="/api")
 app.include_router(tutorials.router, prefix="/api")
 app.include_router(readiness.router, prefix="/api")
@@ -2109,7 +2227,6 @@ app.include_router(study_sessions.router, prefix="/api")
 from app.api.routes import wallet as wallet_routes
 app.include_router(wallet_routes.router, prefix="/api")
 app.include_router(wallet_routes.payments_router, prefix="/api")
-app.include_router(xp.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(timeline.router, prefix="/api")
 app.include_router(report_card.router, prefix="/api")
@@ -2117,6 +2234,9 @@ app.include_router(bug_reports.router, prefix="/api")
 app.include_router(school_report_cards.router, prefix="/api")
 app.include_router(study_suggestions.router, prefix="/api")
 app.include_router(daily_quiz.router, prefix="/api")
+app.include_router(holiday_dates.router, prefix="/api")
+app.include_router(family_report.router, prefix="/api")
+app.include_router(teacher_thanks.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

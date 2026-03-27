@@ -46,7 +46,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, get_last_ai_usage
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -55,11 +55,18 @@ from app.services.file_processor import (
     get_supported_formats,
     FileProcessingError,
     MAX_FILE_SIZE,
+    MIN_EXTRACTION_CHARS,
     _ocr_images_with_vision,
     check_extracted_text_sufficient,
 )
 
 logger = get_logger(__name__)
+
+# User-facing error when extracted text is too short for AI generation (#2217)
+INSUFFICIENT_TEXT_MSG = (
+    "We couldn't read enough text from this document. "
+    "Please try a different file or format."
+)
 
 router = APIRouter(prefix="/study", tags=["Study Tools"])
 
@@ -591,6 +598,10 @@ async def generate_study_guide_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
+    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if len(description.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
 
@@ -859,6 +870,15 @@ async def generate_quiz_endpoint(
             detail="Please provide assignment_id or content to generate a quiz",
         )
 
+    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if len(content.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Safety-check resolved content (may originate from assignment/course content)
+    safe, reason = check_texts_safe(content, body.focus_prompt)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
+
     # Extract question count from focus prompt if user specified one
     num_questions = body.num_questions
     if body.focus_prompt and num_questions <= 10:
@@ -1055,6 +1075,15 @@ async def generate_flashcards_endpoint(
             status_code=400,
             detail="Please provide assignment_id or content to generate flashcards",
         )
+
+    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if len(content.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Safety-check resolved content (may originate from assignment/course content)
+    safe, reason = check_texts_safe(content, body.focus_prompt)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
 
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
@@ -2020,11 +2049,9 @@ async def generate_from_text_and_images(
             detail="No content provided. Please paste text or include images with readable content."
         )
 
-    # Block AI generation when extracted text is too short (#2217)
-    try:
-        check_extracted_text_sufficient(extracted_text, "pasted-content")
-    except FileProcessingError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if len(extracted_text.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
 
     # Safety-check all user-provided text inputs (#2213)
     for text_input in [focus_prompt, extracted_text]:
@@ -2231,11 +2258,9 @@ async def generate_from_file_upload(
             detail="No text could be extracted from the uploaded file"
         )
 
-    # Block AI generation when extracted text is too short (#2217)
-    try:
-        check_extracted_text_sufficient(extracted_text, file.filename or "unknown")
-    except FileProcessingError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if len(extracted_text.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
 
     # Safety-check all user-provided text inputs (#2213)
     for text_input in [focus_prompt, extracted_text]:

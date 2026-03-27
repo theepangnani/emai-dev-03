@@ -47,37 +47,42 @@ def _send_via_smtp(to_email: str, subject: str, html_content: str) -> bool:
     return True
 
 
-def send_emails_batch(emails: list[tuple[str, str, str]]) -> int:
+def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
     """Send multiple emails reusing a single SMTP connection.
 
     Args:
         emails: list of (to_email, subject, html_content) tuples.
 
     Returns:
-        Number of successfully sent emails.
+        Dict with keys: sent (int), failed (int), failed_emails (list[str]).
     """
+    result: dict = {"sent": 0, "failed": 0, "failed_emails": []}
+
     if not emails:
-        return 0
+        return result
 
     # Try SendGrid first (each call is an HTTP request, no connection reuse needed)
     if _has_valid_sendgrid_key():
-        count = 0
         for to_email, subject, html_content in emails:
             try:
                 _send_via_sendgrid(to_email, subject, html_content)
-                count += 1
+                result["sent"] += 1
             except Exception as e:
                 logger.warning(f"SendGrid failed for {to_email} | error={e}")
-        if count > 0:
-            return count
+                result["failed"] += 1
+                result["failed_emails"].append(to_email)
+        if result["sent"] > 0:
+            return result
         logger.warning("SendGrid failed for all emails, falling back to SMTP")
 
     # SMTP batch: single connection for all emails
     if not (settings.smtp_user and settings.smtp_password):
         logger.warning("No email provider configured for batch send")
-        return 0
+        result["failed"] = len(emails)
+        result["failed_emails"] = [e[0] for e in emails]
+        return result
 
-    count = 0
+    sent_emails: set[str] = set()
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
             server.starttls()
@@ -91,14 +96,19 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> int:
                     msg["Subject"] = subject
                     msg.attach(MIMEText(html_content, "html"))
                     server.send_message(msg)
-                    count += 1
+                    result["sent"] += 1
+                    sent_emails.add(to_email)
                     logger.info(f"Batch email sent to {to_email}")
                 except Exception as e:
+                    result["failed"] += 1
+                    result["failed_emails"].append(to_email)
                     logger.warning(f"Failed to send batch email to {to_email} | error={e}")
     except Exception as e:
         logger.error(f"SMTP connection failed for batch send | error={e}")
+        result["failed"] += len(emails) - result["sent"]
+        result["failed_emails"] = [addr for addr, _, _ in emails if addr not in sent_emails]
 
-    return count
+    return result
 
 
 def _has_valid_sendgrid_key() -> bool:

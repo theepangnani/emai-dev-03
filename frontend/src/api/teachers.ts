@@ -77,3 +77,46 @@ export const teacherCommsApi = {
     return response.data as { status: string; to: string };
   },
 };
+
+// Teacher Thanks Types (#2226)
+export interface TeacherThanksCount {
+  teacher_id: number;
+  total_count: number;
+  week_count: number;
+}
+
+export interface TeacherThanksStatus {
+  thanked_today: boolean;
+}
+
+export interface TeacherThanksResponse {
+  id: number;
+  from_user_id: number;
+  teacher_id: number;
+  course_id: number | null;
+  message: string | null;
+  created_at: string;
+}
+
+// Teacher Thanks API
+export const teacherThanksApi = {
+  sendThanks: async (teacherId: number, data: { course_id?: number; message?: string }) => {
+    const response = await api.post(`/api/teachers/${teacherId}/thank`, data);
+    return response.data as TeacherThanksResponse;
+  },
+
+  getThanksCount: async (teacherId: number) => {
+    const response = await api.get(`/api/teachers/${teacherId}/thanks-count`);
+    return response.data as TeacherThanksCount;
+  },
+
+  getThanksStatus: async (teacherId: number) => {
+    const response = await api.get(`/api/teachers/${teacherId}/thanks-status`);
+    return response.data as TeacherThanksStatus;
+  },
+
+  getMyThanksCount: async () => {
+    const response = await api.get('/api/teachers/me/thanks-count');
+    return response.data as TeacherThanksCount;
+  },
+};

@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Float, String, Text, ForeignKey, DateTime, Date, Index, UniqueConstraint
-from sqlalchemy.orm import relationship, backref
+"""DailyQuiz model -- tracks per-student daily quiz generation and completion."""
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Date, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -10,18 +11,29 @@ class DailyQuiz(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    quiz_date = Column(Date, nullable=False)
-    quiz_data = Column(Text, nullable=False)  # JSON: list of QuizQuestion dicts
-    score = Column(Integer, nullable=True)
+    quiz_date = Column(Date, nullable=False)  # The calendar day this quiz is for
+
+    # The generated quiz content (JSON array of questions)
+    questions_json = Column(Text, nullable=False)
+    title = Column(String(255), nullable=False)
+
+    # Source content used to generate the quiz
+    course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
+
+    # Completion tracking
+    score = Column(Integer, nullable=True)  # Number of correct answers (null = not completed)
     total_questions = Column(Integer, nullable=False, default=5)
-    percentage = Column(Float, nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    xp_awarded = Column(Integer, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User", backref=backref("daily_quizzes", passive_deletes=True))
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    course_content = relationship("CourseContent", foreign_keys=[course_content_id])
+    course = relationship("Course", foreign_keys=[course_id])
 
     __table_args__ = (
-        UniqueConstraint("user_id", "quiz_date", name="uq_daily_quiz_user_date"),
-        Index("ix_daily_quizzes_user", "user_id"),
-        Index("ix_daily_quizzes_date", "quiz_date"),
+        Index("ix_daily_quizzes_user_date", "user_id", "quiz_date", unique=True),
     )

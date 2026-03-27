@@ -13,6 +13,9 @@ from app.models.holiday import HolidayDate
 
 logger = logging.getLogger(__name__)
 
+# Streak milestones that trigger parent notifications (#2224)
+STREAK_MILESTONES = {7, 14, 30}
+
 
 class StreakService:
     """Manages daily study streaks with freeze tokens and school calendar awareness."""
@@ -46,7 +49,11 @@ class StreakService:
 
     @staticmethod
     def record_qualifying_action(db: Session, student_id: int, action_type: str) -> Optional[StreakLog]:
-        """Called after an XP-earning action. Records today as a streak day if not already recorded."""
+        """Called after an XP-earning action. Records today as a streak day if not already recorded.
+
+        Flushes changes to the session but does NOT commit — the caller is
+        responsible for committing the transaction.
+        """
         today = date.today()
 
         # Check if today already has a streak_log entry for this student
@@ -85,13 +92,55 @@ class StreakService:
             multiplier=tier["multiplier"],
         )
         db.add(log_entry)
-        db.commit()
+        db.flush()
 
         logger.info(
             "Streak recorded: student=%d action=%s streak=%d tier=%s",
             student_id, action_type, summary.current_streak, tier["tier"],
         )
+
+        # Notify parents when a streak milestone is reached (#2224)
+        if summary.current_streak in STREAK_MILESTONES:
+            StreakService._notify_parents_of_milestone(db, student_id, summary.current_streak)
+
+        db.commit()
         return log_entry
+
+    @staticmethod
+    def _notify_parents_of_milestone(db: Session, student_user_id: int, streak_days: int) -> None:
+        """Create a notification for each linked parent when a student hits a streak milestone."""
+        from app.models.notification import Notification, NotificationType
+        from app.models.student import Student, parent_students
+        from app.models.user import User
+
+        # Resolve the Student record from user_id
+        student_record = db.query(Student).filter(Student.user_id == student_user_id).first()
+        if not student_record:
+            return
+
+        # Get the student's display name
+        student_user = db.query(User).filter(User.id == student_user_id).first()
+        if not student_user:
+            return
+        child_name = student_user.full_name or "Your child"
+
+        # Find all linked parents
+        parent_rows = (
+            db.query(parent_students.c.parent_id)
+            .filter(parent_students.c.student_id == student_record.id)
+            .all()
+        )
+
+        for (parent_id,) in parent_rows:
+            notification = Notification(
+                user_id=parent_id,
+                type=NotificationType.SYSTEM,
+                title="\U0001f525 Study Streak!",
+                content=f"{child_name} has studied {streak_days} days in a row!",
+            )
+            db.add(notification)
+
+        # Note: caller (record_qualifying_action) handles the commit
 
     @staticmethod
     def evaluate_streak(db: Session, student_id: int) -> str:

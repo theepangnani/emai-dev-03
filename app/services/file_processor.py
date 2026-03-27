@@ -56,6 +56,7 @@ IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
 
 # Minimum extracted text length to proceed with AI generation (#2217)
 MIN_EXTRACTED_TEXT_LENGTH = 50
+MIN_EXTRACTION_CHARS = MIN_EXTRACTED_TEXT_LENGTH  # Alias for import convenience
 
 logger = get_logger(__name__)
 

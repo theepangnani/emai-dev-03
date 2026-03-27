@@ -30,7 +30,7 @@ from app.schemas.admin import (
     AdminMessageCreate, AdminMessageResponse,
 )
 from app.schemas.audit import AuditLogResponse, AuditLogList
-from app.schemas.holiday import HolidayDateCreate, HolidayDateResponse
+from app.schemas.holiday_date import HolidayDateCreate, HolidayDateResponse
 from app.schemas.user import UserResponse
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, send_emails_batch, add_inspiration_to_email
@@ -499,7 +499,8 @@ def send_broadcast(
         except Exception:
             logger.warning("Failed to render broadcast email for %s", email)
 
-    email_count = send_emails_batch(email_batch)
+    batch_result = send_emails_batch(email_batch)
+    email_count = batch_result["sent"]
 
     broadcast.email_count = email_count
     db.commit()
@@ -810,7 +811,8 @@ def create_holiday(
     holiday = HolidayDate(
         date=data.date,
         name=data.name,
-        board=data.board,
+        board_code=data.board_code,
+        is_recurring=data.is_recurring,
     )
     db.add(holiday)
     db.commit()

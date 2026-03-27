@@ -1,10 +1,15 @@
 """
 Logging configuration for EMAI application.
 Implements rotating file logs with 10 MB max size.
+Supports structured JSON output for production (controlled by LOG_FORMAT setting).
 """
 
+import json
 import logging
 import sys
+import uuid
+from contextvars import ContextVar
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -16,12 +21,56 @@ LOG_DIR.mkdir(exist_ok=True)
 MAX_LOG_SIZE = 10 * 1024 * 1024  # 10 MB
 BACKUP_COUNT = 5  # Keep 5 backup files
 
-# Log format
+# Log format (text mode)
 LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(filename)s:%(lineno)d | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+# Context variables for request correlation
+trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
+user_id_var: ContextVar[int | None] = ContextVar("user_id", default=None)
+endpoint_var: ContextVar[str] = ContextVar("endpoint", default="")
 
-def get_file_handler(filename: str, level: int = logging.DEBUG) -> RotatingFileHandler:
+
+def generate_trace_id() -> str:
+    """Generate a new trace ID for request correlation."""
+    return str(uuid.uuid4())
+
+
+class JSONFormatter(logging.Formatter):
+    """Structured JSON log formatter."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_entry = {
+            "timestamp": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "filename": record.filename,
+            "lineno": record.lineno,
+        }
+
+        # Add context variables if available
+        tid = trace_id_var.get("")
+        if tid:
+            log_entry["trace_id"] = tid
+
+        uid = user_id_var.get(None)
+        if uid is not None:
+            log_entry["user_id"] = uid
+
+        ep = endpoint_var.get("")
+        if ep:
+            log_entry["endpoint"] = ep
+
+        # Add exception info if present
+        if record.exc_info and record.exc_info[0] is not None:
+            log_entry["exception"] = self.formatException(record.exc_info)
+
+        return json.dumps(log_entry, default=str)
+
+
+def get_file_handler(filename: str, level: int = logging.DEBUG, use_json: bool = False) -> RotatingFileHandler:
     """Create a rotating file handler."""
     log_file = LOG_DIR / filename
     handler = RotatingFileHandler(
@@ -31,15 +80,21 @@ def get_file_handler(filename: str, level: int = logging.DEBUG) -> RotatingFileH
         encoding="utf-8",
     )
     handler.setLevel(level)
-    handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+    if use_json:
+        handler.setFormatter(JSONFormatter())
+    else:
+        handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
     return handler
 
 
-def get_console_handler(level: int = logging.INFO) -> logging.StreamHandler:
+def get_console_handler(level: int = logging.INFO, use_json: bool = False) -> logging.StreamHandler:
     """Create a console handler."""
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(level)
-    handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+    if use_json:
+        handler.setFormatter(JSONFormatter())
+    else:
+        handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
     return handler
 
 
@@ -49,6 +104,7 @@ def setup_logging(
     environment: str = "development",
     enable_console: bool = True,
     enable_file: bool = True,
+    log_format: str = "",
 ) -> logging.Logger:
     """
     Configure logging for the application.
@@ -60,6 +116,7 @@ def setup_logging(
         environment: Application environment (development, production)
         enable_console: Whether to log to console
         enable_file: Whether to log to file
+        log_format: "json" or "text" (empty = auto based on environment)
 
     Returns:
         Configured root logger
@@ -70,6 +127,12 @@ def setup_logging(
             log_level = "WARNING"  # Minimal logging in production
         else:
             log_level = "DEBUG"  # Verbose logging in development
+
+    # Auto-determine log format based on environment if not specified
+    if not log_format:
+        use_json = environment == "production"
+    else:
+        use_json = log_format.lower() == "json"
 
     # Convert string level to logging constant
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
@@ -83,15 +146,15 @@ def setup_logging(
 
     # Add console handler
     if enable_console:
-        root_logger.addHandler(get_console_handler(numeric_level))
+        root_logger.addHandler(get_console_handler(numeric_level, use_json=use_json))
 
     # Add file handlers
     if enable_file:
         # Main application log
-        root_logger.addHandler(get_file_handler(f"{app_name}.log", logging.DEBUG))
+        root_logger.addHandler(get_file_handler(f"{app_name}.log", logging.DEBUG, use_json=use_json))
 
         # Error-only log
-        error_handler = get_file_handler(f"{app_name}_error.log", logging.ERROR)
+        error_handler = get_file_handler(f"{app_name}_error.log", logging.ERROR, use_json=use_json)
         root_logger.addHandler(error_handler)
 
     # Configure specific loggers
@@ -134,9 +197,12 @@ class RequestLogger:
         duration_ms: float,
         client_ip: str = None,
         user_id: int = None,
+        trace_id: str = None,
     ):
         """Log an HTTP request."""
         extra_info = []
+        if trace_id:
+            extra_info.append(f"trace_id={trace_id}")
         if client_ip:
             extra_info.append(f"ip={client_ip}")
         if user_id:

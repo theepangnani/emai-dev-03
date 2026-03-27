@@ -312,7 +312,7 @@ class TestHolidayDatesTable:
 
         holiday = HolidayDate(
             date=date(2026, 12, 25),
-            board="YRDSB",
+            board_code="YRDSB",
             name="Christmas Day",
         )
         db_session.add(holiday)
@@ -320,7 +320,7 @@ class TestHolidayDatesTable:
         db_session.refresh(holiday)
         assert holiday.id is not None
         assert holiday.date == date(2026, 12, 25)
-        assert holiday.board == "YRDSB"
+        assert holiday.board_code == "YRDSB"
 
 
 class TestHolidayCRUDEndpoints:
@@ -338,7 +338,7 @@ class TestHolidayCRUDEndpoints:
             "/api/admin/holidays",
             json={
                 "date": "2026-09-07",
-                "board": "YRDSB",
+                "board_code": "YRDSB",
                 "name": "Labour Day",
             },
             headers=headers,
@@ -346,7 +346,7 @@ class TestHolidayCRUDEndpoints:
         assert resp.status_code == 201
         data = resp.json()
         assert data["date"] == "2026-09-07"
-        assert data["board"] == "YRDSB"
+        assert data["board_code"] == "YRDSB"
         assert data["name"] == "Labour Day"
         assert data["id"] is not None
 
