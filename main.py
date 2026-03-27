@@ -2049,7 +2049,7 @@ async def log_requests(request: Request, call_next):
     # Get client IP
     client_ip = request.client.host if request.client else "unknown"
 
-    # Try to extract user_id from JWT token (best-effort, no DB call)
+    # Best-effort user identification for logging — NOT an auth check
     uid = None
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
@@ -2059,7 +2059,6 @@ async def log_requests(request: Request, call_next):
                 auth_header[7:],
                 settings.secret_key,
                 algorithms=[settings.algorithm],
-                options={"verify_exp": False},
             )
             uid = payload.get("sub") or payload.get("user_id")
             if uid is not None:
