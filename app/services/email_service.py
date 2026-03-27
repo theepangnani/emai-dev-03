@@ -54,7 +54,7 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
         emails: list of (to_email, subject, html_content) tuples.
 
     Returns:
-        Dict with keys ``sent`` (int), ``failed`` (int), ``failed_emails`` (list[str]).
+        Dict with keys: sent (int), failed (int), failed_emails (list[str]).
     """
     result: dict = {"sent": 0, "failed": 0, "failed_emails": []}
 
@@ -63,18 +63,19 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
 
     # Try SendGrid first (each call is an HTTP request, no connection reuse needed)
     if _has_valid_sendgrid_key():
-        sg_result: dict = {"sent": 0, "failed": 0, "failed_emails": []}
         for to_email, subject, html_content in emails:
             try:
                 _send_via_sendgrid(to_email, subject, html_content)
-                sg_result["sent"] += 1
+                result["sent"] += 1
             except Exception as e:
                 logger.warning(f"SendGrid failed for {to_email} | error={e}")
-                sg_result["failed"] += 1
-                sg_result["failed_emails"].append(to_email)
-        if sg_result["sent"] > 0:
-            return sg_result
+                result["failed"] += 1
+                result["failed_emails"].append(to_email)
+        if result["sent"] > 0:
+            return result
         logger.warning("SendGrid failed for all emails, falling back to SMTP")
+        # Reset counts before SMTP fallback
+        result = {"sent": 0, "failed": 0, "failed_emails": []}
 
     # SMTP batch: single connection for all emails
     if not (settings.smtp_user and settings.smtp_password):
@@ -83,6 +84,7 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
         result["failed_emails"] = [e[0] for e in emails]
         return result
 
+    sent_emails: set[str] = set()
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
             server.starttls()
@@ -97,15 +99,16 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
                     msg.attach(MIMEText(html_content, "html"))
                     server.send_message(msg)
                     result["sent"] += 1
+                    sent_emails.add(to_email)
                     logger.info(f"Batch email sent to {to_email}")
                 except Exception as e:
-                    logger.warning(f"Failed to send batch email to {to_email} | error={e}")
                     result["failed"] += 1
                     result["failed_emails"].append(to_email)
+                    logger.warning(f"Failed to send batch email to {to_email} | error={e}")
     except Exception as e:
         logger.error(f"SMTP connection failed for batch send | error={e}")
-        result["failed"] = len(emails)
-        result["failed_emails"] = [e[0] for e in emails]
+        result["failed"] += len(emails) - result["sent"]
+        result["failed_emails"] = [addr for addr, _, _ in emails if addr not in sent_emails]
 
     return result
 
