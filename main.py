@@ -22,6 +22,7 @@ from app.api.routes import auth, users, students, courses, assignments, google_c
 from app.api.routes import school_report_cards  # §6.121 Report Card Upload & AI Analysis
 from app.api.routes import study_suggestions
 from app.api.routes import holiday_dates
+from app.api.routes import family_report
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -2162,6 +2163,7 @@ app.include_router(school_report_cards.router, prefix="/api")
 app.include_router(study_suggestions.router, prefix="/api")
 app.include_router(daily_quiz.router, prefix="/api")
 app.include_router(holiday_dates.router, prefix="/api")
+app.include_router(family_report.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
