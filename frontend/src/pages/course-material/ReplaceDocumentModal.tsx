@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { courseContentsApi, type CourseContentItem, type CourseContentUpdateResponse, type StudyGuide } from '../../api/client';
 import '../../components/UploadMaterialWizard.css';
-
 import { MAX_FILE_SIZE_MB } from '../../constants/upload';
 
 interface ReplaceDocumentModalProps {
