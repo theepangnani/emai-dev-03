@@ -66,6 +66,29 @@ const defaultProps = {
   onAddMoreFiles: vi.fn(),
 };
 
+describe('DocumentTab — hide OCR text when source files exist', () => {
+  it('shows source files info card instead of OCR text when source_files_count > 0', () => {
+    render(
+      <DocumentTab
+        content={makeContent({ has_file: false, text_content: 'OCR extracted text', source_files_count: 1, original_filename: 'test.pdf' })}
+        {...defaultProps}
+      />
+    );
+    expect(screen.getByText('Original document available in Source Files below.')).toBeInTheDocument();
+    expect(screen.queryByText('Text Content')).not.toBeInTheDocument();
+  });
+
+  it('shows text content when no file and no source files', () => {
+    render(
+      <DocumentTab
+        content={makeContent({ has_file: false, text_content: 'Some notes', source_files_count: 0 })}
+        {...defaultProps}
+      />
+    );
+    expect(screen.getByText('Text Content')).toBeInTheDocument();
+  });
+});
+
 describe('DocumentTab — Add More Files button', () => {
   it('shows Add More Files button for master material', () => {
     render(

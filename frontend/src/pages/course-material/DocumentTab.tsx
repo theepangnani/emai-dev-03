@@ -248,6 +248,11 @@ export function DocumentTab({
                   <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
                   <p className="cm-file-info-hint">Original document available for download.</p>
                 </div>
+              ) : (content.source_files_count && content.source_files_count > 0) ? (
+                <div className="cm-file-info-card">
+                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+                  <p className="cm-file-info-hint">Original document available in Source Files below.</p>
+                </div>
               ) : content.text_content ? (
                 <div className="cm-text-content-collapsible">
                   <button
