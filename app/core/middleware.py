@@ -35,7 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "img-src 'self' data: blob: https:; "
                 "font-src 'self' data: https://fonts.gstatic.com; "
-                "connect-src 'self'; "
+                "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; "
                 "frame-src 'self' https://www.youtube.com; "
                 "frame-ancestors 'none'"
             )
@@ -46,7 +46,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
                 "img-src 'self' data: https: http://localhost:*; "
                 "font-src 'self' data: https://fonts.gstatic.com; "
-                "connect-src 'self' http://localhost:* ws://localhost:*; "
+                "connect-src 'self' http://localhost:* ws://localhost:* https://fonts.googleapis.com https://fonts.gstatic.com; "
                 "frame-src 'self' https://www.youtube.com; "
                 "frame-ancestors 'none'"
             )
