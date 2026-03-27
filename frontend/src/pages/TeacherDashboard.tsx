@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi } from '../api/client';
+import { coursesApi, googleApi, invitesApi, messagesApi, assignmentsApi, teacherThanksApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
-import type { GoogleAccount, InviteResponse, AssignmentItem } from '../api/client';
+import type { GoogleAccount, InviteResponse, AssignmentItem, TeacherThanksCount } from '../api/client';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
@@ -41,6 +41,7 @@ export function TeacherDashboard() {
   // Activity summary state
   const [unreadCount, setUnreadCount] = useState(0);
   const [overdueCount, setOverdueCount] = useState(0);
+  const [thanksCount, setThanksCount] = useState<TeacherThanksCount | null>(null);
 
   // Create course modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -122,6 +123,11 @@ export function TeacherDashboard() {
         const overdue = assignmentsData.value.filter((a: AssignmentItem) => a.due_date && new Date(a.due_date) < now);
         setOverdueCount(overdue.length);
       }
+      // Load thanks count for teacher (#2226)
+      try {
+        const tc = await teacherThanksApi.getMyThanksCount();
+        setThanksCount(tc);
+      } catch { /* teacher profile may not exist */ }
     } finally {
       setLoading(false);
     }
@@ -418,6 +424,27 @@ export function TeacherDashboard() {
             )}
           </div>
         </section>
+
+        {/* Section 2b: Thanks Received (#2226) */}
+        {thanksCount && thanksCount.total_count > 0 && (
+          <section className="dash-section dash-section--thanks">
+            <div className="dash-section-header">
+              <h3 className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#10084;</span> Thanks Received</h3>
+            </div>
+            <div className="dash-section-body">
+              <div className="thanks-counter-row">
+                <div className="thanks-stat">
+                  <span className="thanks-stat-value">{thanksCount.total_count}</span>
+                  <span className="thanks-stat-label">Total</span>
+                </div>
+                <div className="thanks-stat">
+                  <span className="thanks-stat-value">{thanksCount.week_count}</span>
+                  <span className="thanks-stat-label">This week</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Section 3: Quick Actions */}
         <section className="dash-section dash-section--actions">

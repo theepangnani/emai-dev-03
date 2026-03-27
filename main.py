@@ -23,6 +23,7 @@ from app.api.routes import school_report_cards  # §6.121 Report Card Upload & A
 from app.api.routes import study_suggestions
 from app.api.routes import holiday_dates
 from app.api.routes import family_report
+from app.api.routes import teacher_thanks
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -52,6 +53,7 @@ from app.models.study_session import StudySession  # noqa: F401
 from app.models.bug_report import BugReport  # noqa: F401
 from app.models.daily_quiz import DailyQuiz  # noqa: F401
 from app.models.course_announcement import CourseAnnouncement  # noqa: F401
+from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -2191,6 +2193,7 @@ app.include_router(study_suggestions.router, prefix="/api")
 app.include_router(daily_quiz.router, prefix="/api")
 app.include_router(holiday_dates.router, prefix="/api")
 app.include_router(family_report.router, prefix="/api")
+app.include_router(teacher_thanks.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
