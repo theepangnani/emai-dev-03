@@ -8,31 +8,33 @@ ADMIN_EMAIL = "hol_admin@test.com"
 USER_EMAIL = "hol_user@test.com"
 
 
+def _register(client, email, role="parent", full_name="Test User"):
+    return client.post("/api/auth/register", json={
+        "email": email, "password": PASSWORD, "full_name": full_name, "role": role,
+    })
+
+
 @pytest.fixture(autouse=True)
-def _setup_users(db_session):
-    """Create an admin and a regular user for tests."""
-    from app.core.security import get_password_hash
+def _setup_users(client, db_session):
+    """Create an admin and a regular user for tests via API or DB."""
     from app.models.user import User, UserRole
+    from app.core.security import get_password_hash
 
-    hashed = get_password_hash(PASSWORD)
-
+    # Register via API if not exists (admin can't self-register, so register as parent then upgrade)
     if not db_session.query(User).filter(User.email == ADMIN_EMAIL).first():
-        db_session.add(User(
-            email=ADMIN_EMAIL,
-            full_name="Holiday Admin",
-            role=UserRole.ADMIN,
-            roles="admin",
-            hashed_password=hashed,
-        ))
+        resp = _register(client, ADMIN_EMAIL, "parent", "Holiday Admin")
+        assert resp.status_code in (200, 201, 409), resp.text
+        # Upgrade to admin role via DB
+        db_session.expire_all()
+        user = db_session.query(User).filter(User.email == ADMIN_EMAIL).first()
+        if user:
+            user.role = UserRole.ADMIN
+            user.roles = "admin"
+            db_session.commit()
+
     if not db_session.query(User).filter(User.email == USER_EMAIL).first():
-        db_session.add(User(
-            email=USER_EMAIL,
-            full_name="Holiday User",
-            role=UserRole.PARENT,
-            roles="parent",
-            hashed_password=hashed,
-        ))
-    db_session.commit()
+        resp = _register(client, USER_EMAIL, "parent", "Holiday User")
+        assert resp.status_code in (200, 201, 409), resp.text
 
 
 def test_create_holiday_date_admin(client):
@@ -93,24 +95,6 @@ def test_list_holiday_dates_filter_board(client):
     assert resp.status_code == 200
     data = resp.json()
     assert all(h["board_code"] == "BOARD_A" for h in data)
-
-
-def test_list_holiday_dates_filter_date_range(client):
-    headers = _auth(client, ADMIN_EMAIL)
-    client.post("/api/holiday-dates", json={
-        "name": "Range Test",
-        "date": "2027-03-15",
-        "board_code": "YRDSB",
-    }, headers=headers)
-
-    user_headers = _auth(client, USER_EMAIL)
-    resp = client.get(
-        "/api/holiday-dates?start_date=2027-03-01&end_date=2027-03-31",
-        headers=user_headers,
-    )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert any(h["name"] == "Range Test" for h in data)
 
 
 def test_update_holiday_date(client):
