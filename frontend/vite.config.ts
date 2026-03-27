@@ -59,29 +59,9 @@ export default defineConfig({
               },
             },
           },
-          {
-            // Google Fonts
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-stylesheets',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-webfonts',
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-              },
-            },
-          },
+          // Google Fonts are loaded via <link> tag (style-src/font-src CSP).
+          // Do NOT cache via service worker — its fetch() falls under connect-src
+          // and conflicts with CSP. The browser handles fonts natively.
         ],
       },
     }),
