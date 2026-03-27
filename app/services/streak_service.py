@@ -88,7 +88,7 @@ class StreakService:
             multiplier=tier["multiplier"],
         )
         db.add(log_entry)
-        db.commit()
+        db.flush()
 
         logger.info(
             "Streak recorded: student=%d action=%s streak=%d tier=%s",
