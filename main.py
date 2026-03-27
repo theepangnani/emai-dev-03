@@ -1985,9 +1985,14 @@ try:
                 conn.execute(text(
                     "ALTER TABLE teacher_thanks ADD COLUMN thanks_date DATE"
                 ))
-                conn.execute(text(
-                    "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
-                ))
+                if "sqlite" in settings.database_url:
+                    conn.execute(text(
+                        "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
+                    ))
+                else:
+                    conn.execute(text(
+                        "UPDATE teacher_thanks SET thanks_date = created_at::date WHERE thanks_date IS NULL"
+                    ))
                 conn.commit()
 
             # Add unique constraint (idempotent)
