@@ -90,6 +90,7 @@ def can_access_material(db: Session, user: User, content) -> bool:
     """Check if a user is in the trust circle for a specific material.
 
     Trust circle grants access when any of the following is true:
+      - The course is public (not private)
       - User created the material
       - User created the course
       - User is the assigned teacher
@@ -113,6 +114,10 @@ def can_access_material(db: Session, user: User, content) -> bool:
     course = db.query(Course).filter(Course.id == content.course_id).first()
     if not course:
         return False
+
+    # Public courses grant read access to all authenticated users
+    if not course.is_private:
+        return True
 
     # Course creator has access
     if course.created_by_user_id == user.id:

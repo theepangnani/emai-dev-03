@@ -72,11 +72,12 @@ def trust_circle_data(db_session):
     db_session.add(student_rec)
     db_session.flush()
 
-    # Course owned by teacher
+    # Course owned by teacher (private — trust-circle tests need restricted access)
     course = Course(
         name="TC Trust Circle Course",
         teacher_id=teacher_rec.id,
         created_by_user_id=teacher_user.id,
+        is_private=True,
     )
     db_session.add(course)
     db_session.flush()
