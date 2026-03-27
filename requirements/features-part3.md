@@ -328,6 +328,8 @@ Additional security improvements beyond the initial §6.23 risk audit fixes:
 #### 6.36.2 Security Headers (#141)
 - Added security middleware with HSTS (`Strict-Transport-Security`), CSP (`Content-Security-Policy`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `Referrer-Policy`
 - CSP `img-src` must include `blob:` to allow authenticated image previews (source file viewer, AuthImage component use blob URLs created from authenticated API responses) (#1628)
+- CSP `connect-src` must include `fonts.googleapis.com` and `fonts.gstatic.com` — the Workbox service worker uses `fetch()` for cached resources which falls under `connect-src`, not `style-src` (#2471)
+- **Do NOT cache Google Fonts in service worker** — remove `runtimeCaching` entries for Google Fonts from Workbox config; let the browser handle fonts natively via `<link>` tag (governed by `style-src`/`font-src`) (#2471)
 - Headers applied globally via FastAPI middleware
 
 #### 6.36.3 LIKE Pattern Injection Fix (#184)
