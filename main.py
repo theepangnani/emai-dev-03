@@ -14,7 +14,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
-from app.core.logging_config import setup_logging, get_logger, RequestLogger
+from app.core.logging_config import setup_logging, get_logger, RequestLogger, generate_trace_id, trace_id_var, user_id_var, endpoint_var
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
@@ -31,6 +31,7 @@ setup_logging(
     environment=settings.environment,
     enable_console=True,
     enable_file=settings.log_to_file,
+    log_format=getattr(settings, "log_format", ""),  # Empty = auto (json in prod, text in dev)
 )
 
 logger = get_logger(__name__)
@@ -2034,14 +2035,39 @@ async def check_ready(request: Request, call_next):
     return await call_next(request)
 
 
-# Request logging middleware
+# Request logging middleware with correlation IDs
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log all HTTP requests with timing."""
+    """Log all HTTP requests with timing and correlation IDs."""
+    # Generate or reuse trace ID from incoming header
+    tid = request.headers.get("X-Request-ID") or generate_trace_id()
+    trace_id_var.set(tid)
+    endpoint_var.set(request.url.path)
+
     start_time = time.time()
 
     # Get client IP
     client_ip = request.client.host if request.client else "unknown"
+
+    # Try to extract user_id from JWT token (best-effort, no DB call)
+    uid = None
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            from jose import jwt as jose_jwt
+            payload = jose_jwt.decode(
+                auth_header[7:],
+                settings.secret_key,
+                algorithms=[settings.algorithm],
+                options={"verify_exp": False},
+            )
+            uid = payload.get("sub") or payload.get("user_id")
+            if uid is not None:
+                uid = int(uid)
+        except Exception:
+            pass
+    if uid is not None:
+        user_id_var.set(uid)
 
     # Process request
     response = await call_next(request)
@@ -2049,8 +2075,11 @@ async def log_requests(request: Request, call_next):
     # Calculate duration
     duration_ms = (time.time() - start_time) * 1000
 
-    # Get user ID from request state if available
-    user_id = getattr(request.state, "user_id", None)
+    # Prefer user_id from request.state (set by deps) over JWT parse
+    user_id = getattr(request.state, "user_id", None) or uid
+
+    # Add trace ID to response headers
+    response.headers["X-Request-ID"] = tid
 
     # Log the request
     request_logger.log_request(
@@ -2060,6 +2089,7 @@ async def log_requests(request: Request, call_next):
         duration_ms=duration_ms,
         client_ip=client_ip,
         user_id=user_id,
+        trace_id=tid,
     )
 
     return response
@@ -2085,7 +2115,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
-    expose_headers=["Content-Disposition"],
+    expose_headers=["Content-Disposition", "X-Request-ID"],
 )
 
 # Security headers middleware
