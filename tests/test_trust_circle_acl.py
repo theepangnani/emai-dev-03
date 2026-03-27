@@ -140,7 +140,8 @@ class TestCanAccessMaterial:
             db_session, trust_circle_data["parent"], trust_circle_data["content"]
         ) is True
 
-    def test_admin_cannot_access(self, db_session, trust_circle_data):
+    def test_pure_admin_cannot_access_private(self, db_session, trust_circle_data):
+        """Pure admin (no other roles) denied on private course — matches no rule."""
         from app.api.deps import can_access_material
         assert can_access_material(
             db_session, trust_circle_data["admin"], trust_circle_data["content"]
@@ -164,15 +165,15 @@ class TestCanAccessMaterial:
         course.is_private = True
         db_session.commit()
 
-    def test_admin_still_denied_on_public_course(self, db_session, trust_circle_data):
-        """Admin exclusion applies even on public courses."""
+    def test_admin_can_access_public_course(self, db_session, trust_circle_data):
+        """Admin can access materials on public courses (public = everyone)."""
         from app.api.deps import can_access_material
         course = trust_circle_data["course"]
         course.is_private = False
         db_session.commit()
         assert can_access_material(
             db_session, trust_circle_data["admin"], trust_circle_data["content"]
-        ) is False
+        ) is True
         course.is_private = True
         db_session.commit()
 

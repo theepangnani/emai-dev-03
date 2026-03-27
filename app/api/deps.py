@@ -90,25 +90,18 @@ def can_access_material(db: Session, user: User, content) -> bool:
     """Check if a user is in the trust circle for a specific material.
 
     Trust circle grants access when any of the following is true:
-      - The course is public (not private)
       - User created the material
+      - The course is public (not private)
       - User created the course
       - User is the assigned teacher
       - User (student) is enrolled in the course
       - User (parent) has a linked child enrolled in the course
-      - Admin → NOT granted access (key difference from can_access_course)
+    Pure admins naturally get no access (they match no rule above).
+    Multi-role users (e.g. admin+parent) are evaluated through their other roles.
     """
-    import logging
-    _log = logging.getLogger("emai.access")
-
     from app.models.course import Course, student_courses
     from app.models.student import Student, parent_students
     from app.models.teacher import Teacher
-
-    # Admin is explicitly excluded from material access
-    if user.has_role(UserRole.ADMIN):
-        _log.warning("can_access_material DENIED: user=%s role=ADMIN content=%s", user.id, content.id)
-        return False
 
     # Creator of the material always has access
     if content.created_by_user_id == user.id:
@@ -117,17 +110,11 @@ def can_access_material(db: Session, user: User, content) -> bool:
     # Look up the course
     course = db.query(Course).filter(Course.id == content.course_id).first()
     if not course:
-        _log.warning("can_access_material DENIED: user=%s content=%s course_id=%s not found", user.id, content.id, content.course_id)
         return False
 
     # Public courses grant read access to all authenticated users
     if not course.is_private:
         return True
-
-    _log.info(
-        "can_access_material: user=%s role=%s content=%s course=%s is_private=%s created_by=%s course_created_by=%s",
-        user.id, user.role, content.id, course.id, course.is_private, content.created_by_user_id, course.created_by_user_id,
-    )
 
     # Course creator has access
     if course.created_by_user_id == user.id:
@@ -161,7 +148,6 @@ def can_access_material(db: Session, user: User, content) -> bool:
                 parent_students.c.parent_id == user.id
             ).all()
         ]
-        _log.info("can_access_material PARENT: user=%s child_student_ids=%s", user.id, child_student_ids)
         if child_student_ids:
             # Check if child is enrolled in the course
             enrolled = (
@@ -172,7 +158,6 @@ def can_access_material(db: Session, user: User, content) -> bool:
                 )
                 .first()
             )
-            _log.info("can_access_material PARENT enrollment check: enrolled=%s course_id=%s", enrolled, content.course_id)
             if enrolled:
                 return True
 
@@ -182,14 +167,12 @@ def can_access_material(db: Session, user: User, content) -> bool:
                     Student.id.in_(child_student_ids)
                 ).all()
             ]
-            _log.info("can_access_material PARENT child_user_ids=%s content_creator=%s course_creator=%s", child_user_ids, content.created_by_user_id, course.created_by_user_id)
             if child_user_ids:
                 if content.created_by_user_id in child_user_ids:
                     return True
                 if course.created_by_user_id in child_user_ids:
                     return True
 
-    _log.warning("can_access_material DENIED: user=%s role=%s content=%s course=%s — no matching rule", user.id, user.role, content.id, course.id)
     return False
 
 
