@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
+from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.teacher_thanks import TeacherThanks
 from app.models.teacher import Teacher
@@ -22,7 +23,9 @@ router = APIRouter(prefix="/teachers", tags=["Teacher Thanks"])
 
 
 @router.get("/me/thanks-count", response_model=TeacherThanksCount)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_my_thanks_count(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.TEACHER)),
 ):
@@ -51,7 +54,9 @@ def get_my_thanks_count(
 
 
 @router.post("/{teacher_id}/thank", response_model=TeacherThanksResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def send_thanks(
+    request: Request,
     teacher_id: int,
     body: TeacherThanksCreate,
     db: Session = Depends(get_db),
@@ -92,7 +97,9 @@ def send_thanks(
 
 
 @router.get("/{teacher_id}/thanks-count", response_model=TeacherThanksCount)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_thanks_count(
+    request: Request,
     teacher_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -122,7 +129,9 @@ def get_thanks_count(
 
 
 @router.get("/{teacher_id}/thanks-status", response_model=TeacherThanksStatus)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_thanks_status(
+    request: Request,
     teacher_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT, UserRole.PARENT)),
