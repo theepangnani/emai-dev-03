@@ -88,6 +88,21 @@ def check_content_safe(text: str) -> tuple[bool, str]:
         return False, "Safety verification unavailable, please try again."
 
 
+def check_texts_safe(*texts: str) -> tuple[bool, str]:
+    """Batch-check multiple text inputs for content safety.
+
+    Returns (True, "") if ALL texts pass, or (False, reason) on the first failure.
+    Skips None/empty values.
+    """
+    for text in texts:
+        if not text or not text.strip():
+            continue
+        safe, reason = check_content_safe(text)
+        if not safe:
+            return False, reason
+    return True, ""
+
+
 async def generate_content(
     prompt: str,
     system_prompt: str = "You are an educational assistant helping students learn effectively.",

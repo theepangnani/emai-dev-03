@@ -46,7 +46,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, get_last_ai_usage
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -599,6 +599,11 @@ async def generate_study_guide_endpoint(
 
     if len(description.strip()) < MIN_EXTRACTION_CHARS:
         raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Content safety check (#2213)
+    safe, reason = check_texts_safe(description, body.focus_prompt)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
 
     # Check AI usage limit before generation
     check_ai_usage(current_user, db)
