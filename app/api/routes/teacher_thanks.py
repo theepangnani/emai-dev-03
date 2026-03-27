@@ -76,22 +76,6 @@ def send_thanks(
 
     today = date.today()
 
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    existing = (
-        db.query(TeacherThanks)
-        .filter(
-            TeacherThanks.from_user_id == current_user.id,
-            TeacherThanks.teacher_id == teacher_id,
-            TeacherThanks.created_at >= today_start,
-        )
-        .first()
-    )
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="You have already thanked this teacher today",
-        )
-
     thanks = TeacherThanks(
         from_user_id=current_user.id,
         teacher_id=teacher_id,

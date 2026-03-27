@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
+from jose import jwt as jose_jwt
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -2099,7 +2100,6 @@ async def log_requests(request: Request, call_next):
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         try:
-            from jose import jwt as jose_jwt
             payload = jose_jwt.decode(
                 auth_header[7:],
                 settings.secret_key,
