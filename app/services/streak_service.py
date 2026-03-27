@@ -51,8 +51,8 @@ class StreakService:
     def record_qualifying_action(db: Session, student_id: int, action_type: str) -> Optional[StreakLog]:
         """Called after an XP-earning action. Records today as a streak day if not already recorded.
 
-        Flushes changes to the session but does NOT commit — the caller is
-        responsible for committing the transaction.
+        Flushes the streak log, optionally adds milestone notifications,
+        then commits the transaction.
         """
         today = date.today()
 
@@ -140,7 +140,7 @@ class StreakService:
             )
             db.add(notification)
 
-        # Note: caller (record_qualifying_action) handles the commit
+        # Note: record_qualifying_action commits after this returns
 
     @staticmethod
     def evaluate_streak(db: Session, student_id: int) -> str:
