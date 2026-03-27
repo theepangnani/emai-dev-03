@@ -3,7 +3,8 @@ import { schoolReportCardsApi } from '../../api/schoolReportCards';
 import { useFocusTrap } from '../../utils/useFocusTrap';
 import './ReportCardUploadModal.css';
 
-const MAX_FILE_SIZE_MB = 30;
+import { MAX_FILE_SIZE_MB } from '../../constants/upload';
+
 const MAX_FILES = 10;
 const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png'];
 const ALLOWED_MIME_TYPES = [

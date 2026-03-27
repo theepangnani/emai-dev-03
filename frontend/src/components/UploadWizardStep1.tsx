@@ -1,8 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import CreateClassModal from './CreateClassModal';
 
-const MAX_FILE_SIZE_MB = 30;
-const MAX_FILES_PER_SESSION = 10;
+import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION } from '../constants/upload';
+
 const ACCEPTED_TYPES = '.pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip';
 
 interface UploadWizardStep1Props {
