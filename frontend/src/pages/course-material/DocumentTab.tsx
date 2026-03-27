@@ -187,7 +187,7 @@ export function DocumentTab({
             </>
           ) : (
             <>
-              {hasContent && !content.has_file && (
+              {hasContent && !content.has_file && !(content.source_files_count && content.source_files_count > 0) && (
                 <>
                   <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
                   <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
@@ -247,6 +247,11 @@ export function DocumentTab({
                 <div className="cm-file-info-card">
                   <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
                   <p className="cm-file-info-hint">Original document available for download.</p>
+                </div>
+              ) : (content.source_files_count && content.source_files_count > 0) ? (
+                <div className="cm-file-info-card">
+                  <p className="cm-file-info-name">{content.original_filename || 'Uploaded document'}</p>
+                  <p className="cm-file-info-hint">Original document available in Source Files below.</p>
                 </div>
               ) : content.text_content ? (
                 <div className="cm-text-content-collapsible">
