@@ -842,10 +842,13 @@ class TestAIGenerationErrorHandling:
         ), patch(
             "app.api.routes.study.check_content_safe",
             return_value=(True, ""),
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
-                json={"content": "Photosynthesis converts sunlight to energy.", "topic": "Biology", "num_questions": 3},
+                json={"content": "Photosynthesis converts sunlight into chemical energy that plants use for growth and cellular processes.", "topic": "Biology", "num_questions": 3},
                 headers=headers,
             )
 
@@ -869,10 +872,13 @@ class TestAIGenerationErrorHandling:
         ), patch(
             "app.api.routes.study.check_content_safe",
             return_value=(True, ""),
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/flashcards/generate",
-                json={"content": "Photosynthesis converts sunlight to energy.", "topic": "Biology", "num_cards": 5},
+                json={"content": "Photosynthesis converts sunlight into chemical energy that plants use for growth and cellular processes.", "topic": "Biology", "num_cards": 5},
                 headers=headers,
             )
 
@@ -899,7 +905,7 @@ class TestAIGenerationErrorHandling:
         ):
             resp = client.post(
                 "/api/study/generate",
-                json={"content": "Photosynthesis converts sunlight to energy.", "title": "Biology"},
+                json={"content": "Photosynthesis converts sunlight into chemical energy that plants use for growth and cellular processes.", "title": "Biology"},
                 headers=headers,
             )
 
@@ -921,10 +927,13 @@ class TestAIGenerationErrorHandling:
         ), patch(
             "app.api.routes.study.check_content_safe",
             return_value=(True, ""),
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
-                json={"content": "Test content for quiz.", "topic": "Test", "num_questions": 3},
+                json={"content": "Photosynthesis converts sunlight into chemical energy that plants use for growth and cellular processes.", "topic": "Test", "num_questions": 3},
                 headers=headers,
             )
 
@@ -946,10 +955,13 @@ class TestAIGenerationErrorHandling:
         ), patch(
             "app.api.routes.study.check_content_safe",
             return_value=(True, ""),
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
-                json={"content": "Test content.", "topic": "Test", "num_questions": 3},
+                json={"content": "Photosynthesis converts sunlight into chemical energy that plants use for growth and cellular processes.", "topic": "Test", "num_questions": 3},
                 headers=headers,
             )
 
@@ -1014,6 +1026,9 @@ class TestGenerateFromCourseContent:
             "app.api.routes.study.generate_quiz",
             new_callable=AsyncMock,
             return_value=quiz_json,
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/quiz/generate",
@@ -1034,6 +1049,9 @@ class TestGenerateFromCourseContent:
             "app.api.routes.study.generate_flashcards",
             new_callable=AsyncMock,
             return_value=cards_json,
+        ), patch(
+            "app.api.routes.study.check_texts_safe",
+            return_value=(True, ""),
         ):
             resp = client.post(
                 "/api/study/flashcards/generate",
