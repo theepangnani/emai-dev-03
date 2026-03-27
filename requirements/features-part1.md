@@ -351,6 +351,24 @@ Grade tracking and analytics dashboard for parents and students. Provides perfor
 - Message history
 - Notification system with in-app bell, email reminders, and preferences
 
+#### 6.6.1 Messaging Recipient Restrictions - IMPLEMENTED
+
+Role-based restrictions enforce who each user can message:
+
+| Sender Role | Can Message |
+|---|---|
+| **Parent** | Teachers, their own children, admins |
+| **Student** | Classmates (students in same courses), teachers, admins |
+| **Teacher** | Their own students (via courses and direct links), parents of those students, admins |
+| **Admin** | Anyone (no restrictions) |
+
+Restrictions are enforced in three places:
+1. **Default recipients list** — only shows valid recipients for the user's role
+2. **Search mode** — search results are filtered to only valid recipients
+3. **Conversation creation** — server-side authorization check rejects unauthorized recipients with 403
+
+**GitHub Issues:** #2408
+
 ### 6.7 Contextual Notes System (Phase 2+)
 
 A contextual note-taking system that lets users take notes while studying course materials, study guides, quizzes, and flashcards. Notes are tied to the course material context, auto-save on every change, and are searchable from the global search engine.
