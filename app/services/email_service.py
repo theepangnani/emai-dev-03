@@ -74,8 +74,6 @@ def send_emails_batch(emails: list[tuple[str, str, str]]) -> dict:
         if result["sent"] > 0:
             return result
         logger.warning("SendGrid failed for all emails, falling back to SMTP")
-        # Reset counts before SMTP fallback
-        result = {"sent": 0, "failed": 0, "failed_emails": []}
 
     # SMTP batch: single connection for all emails
     if not (settings.smtp_user and settings.smtp_password):
