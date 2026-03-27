@@ -78,6 +78,17 @@ describe('DocumentTab — hide OCR text when source files exist', () => {
     expect(screen.queryByText('Text Content')).not.toBeInTheDocument();
   });
 
+  it('hides Print/PDF buttons when source files exist', () => {
+    render(
+      <DocumentTab
+        content={makeContent({ has_file: false, text_content: 'OCR extracted text', source_files_count: 1 })}
+        {...defaultProps}
+      />
+    );
+    expect(screen.queryByText(/Print/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/PDF/)).not.toBeInTheDocument();
+  });
+
   it('shows text content when no file and no source files', () => {
     render(
       <DocumentTab

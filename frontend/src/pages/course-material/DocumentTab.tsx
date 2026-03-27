@@ -187,7 +187,7 @@ export function DocumentTab({
             </>
           ) : (
             <>
-              {hasContent && !content.has_file && (
+              {hasContent && !content.has_file && !(content.source_files_count && content.source_files_count > 0) && (
                 <>
                   <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
                   <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
