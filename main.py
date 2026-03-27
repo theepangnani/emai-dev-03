@@ -1973,6 +1973,49 @@ def _run_migrations_inner(engine):
     except Exception as e:
         logger.warning("school_report_cards report_date backfill failed (#2368): %s", e)
 
+# --- teacher_thanks: add thanks_date column + unique constraint (#2451, #2452) ---
+try:
+    with engine.connect() as conn:
+        inspector = sa_inspect(engine)
+        if "teacher_thanks" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("teacher_thanks")}
+            if "thanks_date" not in cols:
+                logger.info("Adding thanks_date column to teacher_thanks (#2451, #2452)...")
+                conn.execute(text(
+                    "ALTER TABLE teacher_thanks ADD COLUMN thanks_date DATE"
+                ))
+                conn.execute(text(
+                    "UPDATE teacher_thanks SET thanks_date = DATE(created_at) WHERE thanks_date IS NULL"
+                ))
+                conn.commit()
+
+            # Add unique constraint (idempotent)
+            is_sqlite = "sqlite" in settings.database_url
+            existing_indexes = {idx["name"] for idx in inspector.get_indexes("teacher_thanks") if idx.get("name")}
+            if "uq_teacher_thanks_daily" not in existing_indexes:
+                # Deduplicate: keep earliest row per (from_user_id, teacher_id, thanks_date)
+                conn.execute(text(
+                    "DELETE FROM teacher_thanks WHERE id NOT IN ("
+                    "SELECT MIN(id) FROM teacher_thanks GROUP BY from_user_id, teacher_id, thanks_date)"
+                ))
+                if is_sqlite:
+                    conn.execute(text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_teacher_thanks_daily "
+                        "ON teacher_thanks(from_user_id, teacher_id, thanks_date)"
+                    ))
+                else:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE teacher_thanks ADD CONSTRAINT uq_teacher_thanks_daily "
+                            "UNIQUE (from_user_id, teacher_id, thanks_date)"
+                        ))
+                    except Exception:
+                        pass  # Already exists
+                conn.commit()
+                logger.info("Added uq_teacher_thanks_daily unique constraint (#2452)")
+except Exception as e:
+    logger.warning("teacher_thanks migration (#2451, #2452) failed: %s", e)
+
 
 _is_prod = "sqlite" not in settings.database_url
 

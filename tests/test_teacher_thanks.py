@@ -70,6 +70,56 @@ def test_send_thanks_duplicate_same_day(client, thanks_users):
     assert resp.status_code == 429
 
 
+def test_send_thanks_invalid_course_id(client, thanks_users):
+    """Invalid course_id should return 404, not 500 IntegrityError (#2451)."""
+    headers = _auth(client, "thanksstudent@test.com")
+    teacher_id = thanks_users["teacher"].id
+    resp = client.post(
+        f"/api/teachers/{teacher_id}/thank",
+        json={"course_id": 999999},
+        headers=headers,
+    )
+    assert resp.status_code == 404
+    assert "Course not found" in resp.json()["detail"]
+
+
+def test_send_thanks_daily_unique_constraint(client, db_session, thanks_users):
+    """DB unique constraint prevents duplicate thanks on the same day (#2452)."""
+    from datetime import date
+    from app.models.teacher_thanks import TeacherThanks
+
+    teacher_id = thanks_users["teacher"].id
+    # Create a second student to avoid conflicts with other tests
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    email = "thanksdup@test.com"
+    user = db_session.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            email=email,
+            full_name="Thanks Dup Student",
+            role=UserRole.STUDENT,
+            hashed_password=get_password_hash(PASSWORD),
+        )
+        db_session.add(user)
+        db_session.commit()
+
+    # Insert directly to bypass the application-level check
+    row = TeacherThanks(
+        from_user_id=user.id,
+        teacher_id=teacher_id,
+        thanks_date=date.today(),
+    )
+    db_session.add(row)
+    db_session.commit()
+
+    # Now the API should be blocked by either the app check or the DB constraint
+    headers = _auth(client, email)
+    resp = client.post(f"/api/teachers/{teacher_id}/thank", json={}, headers=headers)
+    assert resp.status_code == 429
+
+
 def test_send_thanks_teacher_not_found(client, thanks_users):
     headers = _auth(client, "thanksstudent@test.com")
     resp = client.post("/api/teachers/99999/thank", json={}, headers=headers)

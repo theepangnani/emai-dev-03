@@ -1,7 +1,8 @@
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
@@ -9,6 +10,7 @@ from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.teacher_thanks import TeacherThanks
 from app.models.teacher import Teacher
+from app.models.course import Course
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user, require_role
 from app.schemas.teacher_thanks import (
@@ -67,6 +69,13 @@ def send_thanks(
     if not teacher:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
 
+    if body.course_id is not None:
+        course = db.query(Course).filter(Course.id == body.course_id).first()
+        if not course:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
+
+    today = date.today()
+
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     existing = (
         db.query(TeacherThanks)
@@ -88,9 +97,17 @@ def send_thanks(
         teacher_id=teacher_id,
         course_id=body.course_id,
         message=body.message,
+        thanks_date=today,
     )
     db.add(thanks)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="You have already thanked this teacher today",
+        )
     db.refresh(thanks)
     logger.info("User %d sent thanks to teacher %d", current_user.id, teacher_id)
     return thanks
