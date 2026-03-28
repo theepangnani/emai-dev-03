@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -21,6 +21,21 @@ interface TrendCounts {
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
+
+  const scrollToUserManagement = (roleFilter?: string) => {
+    if (roleFilter) setRoleFilter(roleFilter);
+    setUsersExpanded(true);
+    setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
+
+  const handleKeyDown = (callback: () => void) => (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      callback();
+    }
+  };
+
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -241,30 +256,30 @@ export function AdminDashboard() {
           </div>
           <div className="dash-section-body">
             <div className="dash-metric-cards">
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => scrollToUserManagement()} onKeyDown={handleKeyDown(() => scrollToUserManagement())}>
                 <span className="dash-metric-value">{stats?.total_users ?? '—'}</span>
                 <span className="dash-metric-label">Users</span>
                 {trends.total > 0 && <span className="dash-metric-trend">+{trends.total} this week</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => scrollToUserManagement('student')} onKeyDown={handleKeyDown(() => scrollToUserManagement('student'))}>
                 <span className="dash-metric-value">{stats?.users_by_role?.student ?? 0}</span>
                 <span className="dash-metric-label">Students</span>
                 {trends.student > 0 && <span className="dash-metric-trend">+{trends.student}</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => scrollToUserManagement('teacher')} onKeyDown={handleKeyDown(() => scrollToUserManagement('teacher'))}>
                 <span className="dash-metric-value">{stats?.users_by_role?.teacher ?? 0}</span>
                 <span className="dash-metric-label">Teachers</span>
                 {trends.teacher > 0 && <span className="dash-metric-trend">+{trends.teacher}</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => navigate('/classes')} onKeyDown={handleKeyDown(() => navigate('/classes'))}>
                 <span className="dash-metric-value">{stats?.total_courses ?? 0}</span>
                 <span className="dash-metric-label">Classes</span>
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => navigate('/materials')} onKeyDown={handleKeyDown(() => navigate('/materials'))}>
                 <span className="dash-metric-value">{stats?.total_materials ?? 0}</span>
                 <span className="dash-metric-label">Materials</span>
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" role="button" tabIndex={0} onClick={() => scrollToUserManagement()} onKeyDown={handleKeyDown(() => scrollToUserManagement())}>
                 <span className="dash-metric-value">{stats?.new_registrations_today ?? 0}</span>
                 <span className="dash-metric-label">New Today</span>
               </div>
@@ -296,11 +311,11 @@ export function AdminDashboard() {
           </div>
           <div className="dash-section-body">
             <div className="admin-activity-summary">
-              <div className="admin-activity-summary-row">
+              <div className="admin-activity-summary-row" role="button" tabIndex={0} onClick={() => scrollToUserManagement()} onKeyDown={handleKeyDown(() => scrollToUserManagement())}>
                 <span className="admin-activity-summary-icon">👤</span>
                 <span>{stats?.new_registrations_today ?? 0} new registrations today</span>
               </div>
-              <div className="admin-activity-summary-row">
+              <div className="admin-activity-summary-row" role="button" tabIndex={0} onClick={() => navigate('/admin/ai-usage')} onKeyDown={handleKeyDown(() => navigate('/admin/ai-usage'))}>
                 <span className="admin-activity-summary-icon">🤖</span>
                 <span>{stats?.ai_generations_last_hour ?? 0} AI generations in last hour</span>
               </div>
@@ -308,8 +323,18 @@ export function AdminDashboard() {
             <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '12px 0' }} />
             {recentActivity.length > 0 ? (
               <div className="admin-recent-activity-list">
-                {recentActivity.map((entry) => (
-                  <div key={entry.id} className="admin-activity-item">
+                {recentActivity.map((entry) => {
+                  const handleActivityClick = () => {
+                    if (entry.resource_type === 'course_content' || entry.resource_id) {
+                      navigate('/materials');
+                    } else if (entry.action === 'login') {
+                      scrollToUserManagement();
+                    } else {
+                      navigate('/admin/audit-log');
+                    }
+                  };
+                  return (
+                  <div key={entry.id} className="admin-activity-item" role="button" tabIndex={0} onClick={handleActivityClick} onKeyDown={handleKeyDown(handleActivityClick)}>
                     <div className="admin-activity-dot" />
                     <div className="admin-activity-content">
                       <div className="admin-activity-action">
@@ -320,7 +345,7 @@ export function AdminDashboard() {
                       <div className="admin-activity-time">{new Date(entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
                     </div>
                   </div>
-                ))}
+                  ); })}
               </div>
             ) : (
               <EmptyState icon="&#128202;" title="No recent activity" description="System activity will appear here." />
@@ -350,7 +375,7 @@ export function AdminDashboard() {
             <h3 className="dash-section-title">Quick Actions</h3>
           </div>
           <div className="dash-quick-actions">
-            <button className="dash-quick-action" onClick={() => { setUsersExpanded(true); document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }); }}><span className="dash-quick-action-icon">👥</span> Manage Users</button>
+            <button className="dash-quick-action" onClick={() => scrollToUserManagement()}><span className="dash-quick-action-icon">👥</span> Manage Users</button>
             <Link to="/admin/audit-log" className="dash-quick-action"><span className="dash-quick-action-icon">&#128203;</span> View Logs</Link>
             <Link to="/admin/ai-usage" className="dash-quick-action"><span className="dash-quick-action-icon">&#129302;</span> AI Settings</Link>
             <Link to="/admin/faq" className="dash-quick-action"><span className="dash-quick-action-icon">&#10067;</span> Manage FAQ</Link>

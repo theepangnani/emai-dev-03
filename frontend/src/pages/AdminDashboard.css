@@ -473,6 +473,7 @@
   padding: 10px 12px;
   border-radius: 8px;
   transition: background 0.15s;
+  cursor: pointer;
 }
 
 .admin-activity-item:hover {
@@ -603,6 +604,14 @@
   gap: 8px;
   font-size: 13px;
   color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.admin-activity-summary-row:hover {
+  background: var(--color-surface-alt);
 }
 
 .admin-activity-summary-icon {
