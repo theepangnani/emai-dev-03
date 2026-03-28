@@ -10,9 +10,21 @@ import './SpeedDialFAB.css';
 const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
 export function SpeedDialFAB() {
-  const { notesFAB, studyGuideContext, pendingQuestion, clearPendingQuestion } = useFABContext();
+  const { notesFAB, studyGuideContext, getPendingQuestion, clearPendingQuestion, subscribePendingQuestion } = useFABContext();
   const [dialOpen, setDialOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [pendingQuestionTick, forceUpdate] = useState(0);
+
+  // Subscribe to pending question changes — only SpeedDialFAB re-renders
+  useEffect(() => {
+    return subscribePendingQuestion(() => forceUpdate(n => n + 1));
+  }, [subscribePendingQuestion]);
+
+  // Read pending question on each render (tick changes trigger re-render)
+  const pendingQuestion = getPendingQuestion();
+  // Suppress unused-var lint — tick is used only to trigger re-renders
+  void pendingQuestionTick;
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Help chat state — passes study guide context for §6.114

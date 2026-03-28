@@ -20,9 +20,10 @@ interface FABContextValue {
   unregisterNotesFAB: () => void;
   studyGuideContext: StudyGuideContext | null;
   setStudyGuideContext: (ctx: StudyGuideContext | null) => void;
-  pendingQuestion: string | null;
   openChatWithQuestion: (text: string) => void;
   clearPendingQuestion: () => void;
+  getPendingQuestion: () => string | null;
+  subscribePendingQuestion: (listener: () => void) => () => void;
 }
 
 const FABContext = createContext<FABContextValue | null>(null);
@@ -30,7 +31,8 @@ const FABContext = createContext<FABContextValue | null>(null);
 export function FABProvider({ children }: { children: ReactNode }) {
   const [notesFAB, setNotesFAB] = useState<NotesFABConfig | null>(null);
   const [studyGuideContext, setStudyGuideContextState] = useState<StudyGuideContext | null>(null);
-  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const pendingQuestionRef = useRef<string | null>(null);
+  const pendingQuestionListeners = useRef<Set<() => void>>(new Set());
 
   const registerNotesFAB = useCallback((config: NotesFABConfig) => {
     setNotesFAB(config);
@@ -45,18 +47,26 @@ export function FABProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const openChatWithQuestion = useCallback((text: string) => {
-    setPendingQuestion(text);
+    pendingQuestionRef.current = text;
+    pendingQuestionListeners.current.forEach(fn => fn());
   }, []);
 
   const clearPendingQuestion = useCallback(() => {
-    setPendingQuestion(null);
+    pendingQuestionRef.current = null;
   }, []);
+
+  const subscribePendingQuestion = useCallback((listener: () => void) => {
+    pendingQuestionListeners.current.add(listener);
+    return () => { pendingQuestionListeners.current.delete(listener); };
+  }, []);
+
+  const getPendingQuestion = useCallback(() => pendingQuestionRef.current, []);
 
   const value = useMemo(() => ({
     notesFAB, registerNotesFAB, unregisterNotesFAB,
     studyGuideContext, setStudyGuideContext,
-    pendingQuestion, openChatWithQuestion, clearPendingQuestion,
-  }), [notesFAB, registerNotesFAB, unregisterNotesFAB, studyGuideContext, setStudyGuideContext, pendingQuestion, openChatWithQuestion, clearPendingQuestion]);
+    openChatWithQuestion, clearPendingQuestion, getPendingQuestion, subscribePendingQuestion,
+  }), [notesFAB, registerNotesFAB, unregisterNotesFAB, studyGuideContext, setStudyGuideContext, openChatWithQuestion, clearPendingQuestion, getPendingQuestion, subscribePendingQuestion]);
 
   return (
     <FABContext.Provider value={value}>
@@ -71,9 +81,10 @@ const NOOP_FAB_CONTEXT: FABContextValue = {
   unregisterNotesFAB: () => {},
   studyGuideContext: null,
   setStudyGuideContext: () => {},
-  pendingQuestion: null,
   openChatWithQuestion: () => {},
   clearPendingQuestion: () => {},
+  getPendingQuestion: () => null,
+  subscribePendingQuestion: () => () => {},
 };
 
 export function useFABContext() {
