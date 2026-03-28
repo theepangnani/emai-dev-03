@@ -379,7 +379,7 @@ async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: U
                 )
             except Exception:
                 import logging
-                logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id)
+                logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id, exc_info=True)
 
     return _StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -430,7 +430,7 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
             )
         except Exception:
             import logging
-            logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id)
+            logging.getLogger(__name__).warning("Failed to debit study Q&A credits for user_id=%s", user.id, exc_info=True)
 
     return HelpChatResponse(
         reply="".join(reply_parts),
