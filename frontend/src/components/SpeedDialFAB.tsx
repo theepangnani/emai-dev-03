@@ -49,19 +49,26 @@ export function SpeedDialFAB() {
     }
   }, [chatOpen]);
 
+  const pendingQuestionRef = useRef<string | null>(null);
+
   // Handle pending question from FABContext (text selection → chatbot injection)
   useEffect(() => {
-    if (!pendingQuestion) return;
-    if (!chatOpen) {
-      setChatOpen(true);
-      setDialOpen(false);
-      return; // Wait for next render when chatOpen is true
-    }
-    if (!isLoading) {
-      sendMessage(pendingQuestion);
+    if (pendingQuestion) {
+      pendingQuestionRef.current = pendingQuestion;
       clearPendingQuestion();
+      if (!chatOpen) {
+        setChatOpen(true);
+        setDialOpen(false);
+      }
     }
-  }, [pendingQuestion, chatOpen, isLoading, sendMessage, clearPendingQuestion]);
+  }, [pendingQuestion, chatOpen, clearPendingQuestion]);
+
+  useEffect(() => {
+    if (pendingQuestionRef.current && chatOpen && !isLoading) {
+      sendMessage(pendingQuestionRef.current);
+      pendingQuestionRef.current = null;
+    }
+  }, [chatOpen, isLoading, sendMessage]);
 
   // Listen for programmatic open (Ctrl+K / Cmd+K dispatches this event)
   useEffect(() => {
