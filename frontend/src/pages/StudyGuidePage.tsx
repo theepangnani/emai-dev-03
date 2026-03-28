@@ -19,8 +19,6 @@ import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { NotesPanel } from '../components/NotesPanel';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
-import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
-import { GenerationSpinner } from '../components/GenerationSpinner';
 import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { StudyGuideBreadcrumb } from '../components/StudyGuideBreadcrumb';
 import { useTextSelection } from '../hooks/useTextSelection';
@@ -70,11 +68,7 @@ export function StudyGuidePage() {
   const [highlights, setHighlights] = useState<{text: string}[]>([]);
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [generateSelectedText, _setGenerateSelectedText] = useState('');
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
-  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string; courseContentId?: number } | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -104,28 +98,6 @@ export function StudyGuidePage() {
     setNotesOpen(true);
     clearSelection();
     window.getSelection()?.removeAllRanges();
-  };
-
-  const handleDoGenerate = async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
-    if (!guide) return;
-    setShowGenerateModal(false); // Close modal immediately
-    setSubGuideStatus({ generating: true, ready: false });
-    // Fire and forget — no await
-    studyApi.generateChildGuide(guide.id, {
-      topic: generateSelectedText,
-      guide_type: guideType,
-      custom_prompt: customPrompt,
-      document_type: documentType,
-      study_goal: studyGoal,
-    }).then(result => {
-      refreshAIUsage();
-      setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title, courseContentId: result.course_content_id ?? undefined });
-      // Refresh child guides list
-      studyApi.listChildGuides(guide.id).then(setChildGuides).catch(() => {});
-    }).catch(() => {
-      setSubGuideStatus(null);
-      setError('Failed to generate sub-guide');
-    });
   };
 
   // Detect first-time guide view from navigation state
@@ -361,25 +333,6 @@ export function StudyGuidePage() {
         </div>
       )}
 
-      {subGuideStatus && (
-        <div className={`sg-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
-          {subGuideStatus.generating ? (
-            <>
-              <GenerationSpinner size="sm" />
-              <span>Generating sub-guide...</span>
-            </>
-          ) : subGuideStatus.ready ? (
-            <>
-              <span>Sub-guide ready!</span>
-              <Link to={subGuideStatus.courseContentId ? `/course-materials/${subGuideStatus.courseContentId}?tab=guide` : `/study/guide/${subGuideStatus.guideId}`} className="sg-subguide-status-link">
-                View &ldquo;{subGuideStatus.title}&rdquo; &rarr;
-              </Link>
-              <button className="sg-subguide-status-dismiss" onClick={() => setSubGuideStatus(null)} aria-label="Dismiss">&times;</button>
-            </>
-          ) : null}
-        </div>
-      )}
-
       <div ref={contentRef}>
         <ContentCard>
           <MarkdownErrorBoundary>
@@ -429,16 +382,6 @@ export function StudyGuidePage() {
         containerRef={contentRef}
         onAddNote={handleAddToNotes}
         onAskChatBot={(text) => openChatWithQuestion(text)}
-      />
-      <GenerateSubGuideModal
-        open={showGenerateModal}
-        selectedText={generateSelectedText}
-        onClose={() => setShowGenerateModal(false)}
-        onGenerate={handleDoGenerate}
-        aiAvailable={!atLimit}
-        aiRemaining={remaining}
-        documentType={guide.document_type ?? undefined}
-        studyGoal={guide.study_goal ?? undefined}
       />
       {guide.course_content_id && (
         <>
