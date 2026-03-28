@@ -39,38 +39,38 @@ describe('SelectionTooltip', () => {
     expect(onAddToNotes).toHaveBeenCalledOnce()
   })
 
-  it('does not render Generate Study Material button when callback not provided', () => {
+  it('does not render Ask Chat Bot button when callback not provided', () => {
     render(
       <SelectionTooltip rect={mockRect} visible onAddToNotes={vi.fn()} />
     )
-    expect(screen.queryByText('Generate Study Material')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ask Chat Bot')).not.toBeInTheDocument()
   })
 
-  it('renders Generate Study Material button when callback is provided', () => {
+  it('renders Ask Chat Bot button when callback is provided', () => {
     render(
       <SelectionTooltip
         rect={mockRect}
         visible
         onAddToNotes={vi.fn()}
-        onGenerateStudyMaterial={vi.fn()}
+        onAskChatBot={vi.fn()}
       />
     )
-    expect(screen.getByText('Generate Study Material')).toBeInTheDocument()
+    expect(screen.getByText('Ask Chat Bot')).toBeInTheDocument()
   })
 
-  it('calls onGenerateStudyMaterial when Generate Study Material is clicked', async () => {
+  it('calls onAskChatBot when Ask Chat Bot is clicked', async () => {
     const user = userEvent.setup()
-    const onGenerate = vi.fn()
+    const onAskChatBot = vi.fn()
     render(
       <SelectionTooltip
         rect={mockRect}
         visible
         onAddToNotes={vi.fn()}
-        onGenerateStudyMaterial={onGenerate}
+        onAskChatBot={onAskChatBot}
       />
     )
-    await user.click(screen.getByText('Generate Study Material'))
-    expect(onGenerate).toHaveBeenCalledOnce()
+    await user.click(screen.getByText('Ask Chat Bot'))
+    expect(onAskChatBot).toHaveBeenCalledOnce()
   })
 
   it('renders both buttons side by side', () => {
@@ -79,12 +79,12 @@ describe('SelectionTooltip', () => {
         rect={mockRect}
         visible
         onAddToNotes={vi.fn()}
-        onGenerateStudyMaterial={vi.fn()}
+        onAskChatBot={vi.fn()}
       />
     )
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(2)
     expect(screen.getByText('Add to Notes')).toBeInTheDocument()
-    expect(screen.getByText('Generate Study Material')).toBeInTheDocument()
+    expect(screen.getByText('Ask Chat Bot')).toBeInTheDocument()
   })
 })

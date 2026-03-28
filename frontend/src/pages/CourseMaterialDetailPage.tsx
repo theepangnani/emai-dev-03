@@ -30,7 +30,6 @@ import { NotesPanel } from '../components/NotesPanel';
 import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
-import { GenerateSubGuideModal } from '../components/GenerateSubGuideModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { useTextSelection } from '../hooks/useTextSelection';
@@ -239,16 +238,7 @@ export function CourseMaterialDetailPage() {
     window.getSelection()?.removeAllRanges();
   }, [selection, clearSelection]);
 
-  // Right-click context menu state (#1594)
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateSelectedText, setGenerateSelectedText] = useState('');
-  const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string; courseContentId?: number } | null>(null);
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
-  const handleContextGenerate = useCallback((selectedText: string) => {
-    setGenerateSelectedText(selectedText);
-    setShowGenerateModal(true);
-  }, []);
-
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
@@ -360,74 +350,6 @@ export function CourseMaterialDetailPage() {
     }
   }, [content, location.state]);
 
-  // Right-click context menu → generate sub-study guide from selected text (#1594)
-  const handleDoContextGenerate = useCallback(async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
-    if (!content) return;
-    // Find the current study guide to use as parent for sub-guide generation
-    const parentGuide = findRootGuide('study_guide');
-    if (parentGuide) {
-      // Close modal immediately, fire API in background
-      setShowGenerateModal(false);
-      setSubGuideStatus({ generating: true, ready: false });
-      studyApi.generateChildGuide(parentGuide.id, {
-        topic: generateSelectedText,
-        guide_type: guideType,
-        custom_prompt: customPrompt,
-        document_type: documentType,
-        study_goal: studyGoal,
-      }).then(result => {
-        refreshAIUsage();
-        setSubGuideStatus({ generating: false, ready: true, guideId: result.id, title: result.title, courseContentId: result.course_content_id ?? undefined });
-        // Refresh child guides list
-        studyApi.listChildGuides(parentGuide.id).then(setChildGuides).catch(() => {});
-      }).catch(() => {
-        setSubGuideStatus(null);
-        setError('Failed to generate sub-guide');
-      });
-    } else {
-      // No existing study guide — generate new one with selected text as focus
-      const type = guideType as 'study_guide' | 'quiz' | 'flashcards';
-      const tabMap: Record<string, TabKey> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards' };
-      setActiveTab(tabMap[type] || 'guide');
-      setGenerating(type);
-      try {
-        if (type === 'study_guide') {
-          await studyApi.generateGuide({
-            course_content_id: contentId,
-            course_id: content.course_id,
-            title: content.title,
-            content: content.text_content || content.description || '',
-            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
-          });
-        } else if (type === 'quiz') {
-          await studyApi.generateQuiz({
-            course_content_id: contentId,
-            course_id: content.course_id,
-            topic: content.title,
-            content: content.text_content || content.description || '',
-            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
-          });
-        } else if (type === 'flashcards') {
-          await studyApi.generateFlashcards({
-            course_content_id: contentId,
-            course_id: content.course_id,
-            topic: content.title,
-            content: content.text_content || content.description || '',
-            focus_prompt: generateSelectedText + (customPrompt ? `\n\n${customPrompt}` : ''),
-          });
-        }
-        await loadData();
-        refreshAIUsage();
-        setShowGenerateModal(false);
-      } catch {
-        setShowGenerateModal(false);
-        // error handled by tab
-      } finally {
-        setGenerating(null);
-      }
-    }
-  }, [content, contentId, generateSelectedText, guides, refreshAIUsage, loadData, navigate]);
-
   // Auto-open notes panel if ?notes=open is in URL (#1087)
   useEffect(() => {
     if (searchParams.get('notes') === 'open') {
@@ -486,16 +408,8 @@ export function CourseMaterialDetailPage() {
     studyApi.listChildGuides(fetchId).then(setChildGuides).catch(() => setChildGuides([]));
   }, [studyGuide?.id, studyGuide?.parent_guide_id, studyGuide?.relationship_type]);
 
-  // Auto-dismiss ephemeral sub-guide notification when persistent banner appears
-  useEffect(() => {
-    if (childGuides.length > 0 && subGuideStatus?.ready) {
-      const timer = setTimeout(() => setSubGuideStatus(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [childGuides.length, subGuideStatus?.ready]);
-
   // §6.114 — Register study guide context for chatbot Q&A mode
-  const { setStudyGuideContext } = useFABContext();
+  const { setStudyGuideContext, openChatWithQuestion } = useFABContext();
   useEffect(() => {
     if (studyGuide) {
       setStudyGuideContext({ id: studyGuide.id, title: studyGuide.title, courseId: studyGuide.course_id ?? undefined });
@@ -868,25 +782,6 @@ export function CourseMaterialDetailPage() {
 
         <AIWarningBanner />
 
-        {subGuideStatus && (
-          <div className={`cm-subguide-status ${subGuideStatus.ready ? 'ready' : 'generating'}`}>
-            {subGuideStatus.generating ? (
-              <>
-                <GenerationSpinner size="sm" />
-                <span>Generating sub-guide...</span>
-              </>
-            ) : subGuideStatus.ready ? (
-              <>
-                <span>Sub-guide ready!</span>
-                <Link to={subGuideStatus.courseContentId ? `/course-materials/${subGuideStatus.courseContentId}?tab=guide` : `/study/guide/${subGuideStatus.guideId}`} className="cm-subguide-status-link">
-                  View &ldquo;{subGuideStatus.title}&rdquo; &rarr;
-                </Link>
-                <button className="cm-subguide-status-dismiss" onClick={() => setSubGuideStatus(null)} aria-label="Dismiss">&times;</button>
-              </>
-            ) : null}
-          </div>
-        )}
-
         {studyGuide && (
           <SubGuidesPanel childGuides={childGuides} parentGuideId={studyGuide.parent_guide_id || studyGuide.id} currentGuideId={studyGuide.parent_guide_id ? studyGuide.id : undefined} />
         )}
@@ -1152,9 +1047,9 @@ export function CourseMaterialDetailPage() {
           rect={selection.rect}
           visible
           onAddToNotes={handleAddToNotes}
-          onGenerateStudyMaterial={() => {
+          onAskChatBot={() => {
             if (selection) {
-              handleContextGenerate(selection.text);
+              openChatWithQuestion(selection.text);
               clearSelection();
               window.getSelection()?.removeAllRanges();
             }
@@ -1164,29 +1059,7 @@ export function CourseMaterialDetailPage() {
       <TextSelectionContextMenu
         containerRef={contentAreaRef}
         onAddNote={(text) => { setAppendText(text); setAddHighlight({ text }); setShowNotesPanel(true); window.getSelection()?.removeAllRanges(); }}
-        onGenerateStudyGuide={handleContextGenerate}
-        onGenerateSampleTest={handleContextGenerate}
-        aiAvailable={!atLimit}
-      />
-      <GenerateSubGuideModal
-        open={showGenerateModal}
-        selectedText={generateSelectedText}
-        onClose={() => setShowGenerateModal(false)}
-        onGenerate={handleDoContextGenerate}
-        aiAvailable={!atLimit}
-        aiRemaining={remaining}
-        documentType={guides.find(g => g.document_type)?.document_type ?? undefined}
-        studyGoal={guides.find(g => g.study_goal)?.study_goal ?? undefined}
-        onStreamGenerate={content ? (params) => {
-          setShowGenerateModal(false);
-          setActiveTab('guide');
-          setGenerating('study_guide');
-          stream.startStream(params);
-        } : undefined}
-        courseContentId={contentId}
-        courseId={content?.course_id}
-        contentTitle={content?.title}
-        textContent={content?.text_content || content?.description || ''}
+        onAskChatBot={(text) => openChatWithQuestion(text)}
       />
       {showHelpStudyMenu && resolvedStudent && (
         <HelpStudyMenu

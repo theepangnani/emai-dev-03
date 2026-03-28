@@ -4,10 +4,10 @@ interface SelectionTooltipProps {
   rect: DOMRect;
   visible: boolean;
   onAddToNotes: () => void;
-  onGenerateStudyMaterial?: () => void;
+  onAskChatBot?: () => void;
 }
 
-export function SelectionTooltip({ rect, visible, onAddToNotes, onGenerateStudyMaterial }: SelectionTooltipProps) {
+export function SelectionTooltip({ rect, visible, onAddToNotes, onAskChatBot }: SelectionTooltipProps) {
   if (!visible) return null;
 
   const top = rect.top + window.scrollY - 44;
@@ -30,19 +30,17 @@ export function SelectionTooltip({ rect, visible, onAddToNotes, onGenerateStudyM
         </svg>
         <span>Add to Notes</span>
       </button>
-      {onGenerateStudyMaterial && (
+      {onAskChatBot && (
         <button
-          className="selection-tooltip-btn selection-tooltip-btn-generate"
-          onClick={onGenerateStudyMaterial}
-          onTouchEnd={(e) => { e.preventDefault(); onGenerateStudyMaterial(); }}
-          data-testid="selection-tooltip-generate"
+          className="selection-tooltip-btn selection-tooltip-btn-chat"
+          onClick={onAskChatBot}
+          onTouchEnd={(e) => { e.preventDefault(); onAskChatBot(); }}
+          data-testid="selection-tooltip-chat"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 1v2M8 13v2M1 8h2M13 8h2" />
-            <path d="M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4" />
-            <circle cx="8" cy="8" r="2.5" />
+            <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V3z" />
           </svg>
-          <span>Generate Study Material</span>
+          <span>Ask Chat Bot</span>
         </button>
       )}
     </div>

@@ -11,8 +11,7 @@ function renderContextMenu(props: Partial<React.ComponentProps<typeof TextSelect
       <TextSelectionContextMenu
         containerRef={containerRef}
         onAddNote={vi.fn()}
-        onGenerateStudyGuide={vi.fn()}
-        onGenerateSampleTest={vi.fn()}
+        onAskChatBot={vi.fn()}
         {...props}
       />
     </div>
@@ -40,8 +39,7 @@ describe('TextSelectionContextMenu', () => {
     fireEvent.contextMenu(container, { clientX: 100, clientY: 200 })
 
     expect(screen.getByText('Add Note')).toBeInTheDocument()
-    expect(screen.getByText('Generate Study Guide')).toBeInTheDocument()
-    expect(screen.getByText('Generate Sample Test')).toBeInTheDocument()
+    expect(screen.getByText('Ask Chat Bot')).toBeInTheDocument()
   })
 
   it('does not show menu without text selection', () => {
@@ -74,9 +72,9 @@ describe('TextSelectionContextMenu', () => {
     expect(onAddNote).toHaveBeenCalledWith('test text')
   })
 
-  it('calls onGenerateStudyGuide with selected text', () => {
-    const onGenerate = vi.fn()
-    renderContextMenu({ onGenerateStudyGuide: onGenerate })
+  it('calls onAskChatBot with selected text', () => {
+    const onAskChatBot = vi.fn()
+    renderContextMenu({ onAskChatBot })
 
     vi.spyOn(window, 'getSelection').mockReturnValue({
       toString: () => 'study text',
@@ -85,24 +83,9 @@ describe('TextSelectionContextMenu', () => {
 
     const container = screen.getByTestId('container')
     fireEvent.contextMenu(container, { clientX: 100, clientY: 200 })
-    fireEvent.click(screen.getByText('Generate Study Guide'))
+    fireEvent.click(screen.getByText('Ask Chat Bot'))
 
-    expect(onGenerate).toHaveBeenCalledWith('study text')
-  })
-
-  it('disables AI buttons when aiAvailable is false', () => {
-    renderContextMenu({ aiAvailable: false })
-
-    vi.spyOn(window, 'getSelection').mockReturnValue({
-      toString: () => 'test text',
-      rangeCount: 1,
-    } as unknown as Selection)
-
-    const container = screen.getByTestId('container')
-    fireEvent.contextMenu(container, { clientX: 100, clientY: 200 })
-
-    expect(screen.getByText('Generate Study Guide')).toBeDisabled()
-    expect(screen.getByText('Generate Sample Test')).toBeDisabled()
+    expect(onAskChatBot).toHaveBeenCalledWith('study text')
   })
 
   it('closes on Escape key', () => {

@@ -3468,7 +3468,7 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 
 #### Deferred to v2
 
-- SelectionTooltip redesign (add generate button alongside "Add to Notes")
+- ~~SelectionTooltip redesign (add generate button alongside "Add to Notes")~~ → Replaced: "Generate Study Material" button replaced with "Ask Chat Bot" (#2554)
 - Breadcrumb navigation for multi-level hierarchies (3+ levels deep)
 - Full tree hierarchy endpoint (`/tree`)
 
@@ -4156,6 +4156,14 @@ Context-aware chatbot Q&A when users are viewing a study guide. The existing Hel
 - Per-guide conversation history (separate sessionStorage key per guide ID)
 - Credit display in header: "0.25 credits/question"
 - Reverts to normal help mode when navigating away from study guide
+
+**Text Selection → Chatbot Injection (#2554):**
+- SelectionTooltip "Generate Study Material" button replaced with "Ask Chat Bot"
+- TextSelectionContextMenu "Generate Study Guide" / "Generate Sample Test" replaced with single "Ask Chat Bot"
+- Both entry points open the chatbot, inject the selected text as a question, and auto-submit
+- When no text is selected, chatbot opens with BAU suggestion chips (no change)
+- "Generate study guide" added as a Study Q&A suggestion chip action row
+- "Add to Notes" button unchanged on both tooltip and context menu
 
 **Save Actions on Assistant Messages (study_qa mode only):**
 1. **Save as Study Guide** — Creates sub-guide (`relationship_type="sub_guide"`, `parent_guide_id` = current guide). No AI credits consumed.
