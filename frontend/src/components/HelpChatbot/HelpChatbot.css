@@ -346,7 +346,7 @@
 
 .help-chatbot-input input:focus {
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px rgba(73, 184, 192, 0.12);
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
 }
 
 .help-chatbot-input input::placeholder {
@@ -380,6 +380,11 @@
 .help-chatbot-send:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+}
+
+.help-chatbot-send:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
 }
 
 /* Error card */
@@ -638,6 +643,12 @@
   background: var(--color-surface-hover);
   border-color: var(--color-accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.study-qa-action-row:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
 }
 
 .study-qa-action-icon {
