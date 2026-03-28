@@ -39,14 +39,13 @@ export function SpeedDialFAB() {
 
   // Handle pending question from FABContext (text selection → chatbot injection)
   useEffect(() => {
-    if (pendingQuestion && !chatOpen) {
+    if (!pendingQuestion) return;
+    if (!chatOpen) {
       setChatOpen(true);
       setDialOpen(false);
+      return; // Wait for next render when chatOpen is true
     }
-  }, [pendingQuestion, chatOpen]);
-
-  useEffect(() => {
-    if (pendingQuestion && chatOpen && !isLoading) {
+    if (!isLoading) {
       sendMessage(pendingQuestion);
       clearPendingQuestion();
     }
