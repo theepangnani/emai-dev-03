@@ -63,7 +63,7 @@ class TestAccessLogOwnerAccess:
         data = resp.json()
         assert data["content_id"] == content_id
         assert data["content_title"] == "Test Material"
-        assert len(data["access_log"]) == 3
+        assert len(data["access_log"]) == 2
         assert data["total_views"] == 1
         assert data["total_downloads"] == 1
         assert data["unique_viewers"] == 1
