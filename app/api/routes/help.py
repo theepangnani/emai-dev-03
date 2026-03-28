@@ -298,7 +298,7 @@ async def help_chat_stream(
 # ---------------------------------------------------------------------------
 
 def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
-    """Load a study guide and verify the user has access. Returns (guide, source_text)."""
+    """Load a study guide and verify the user has access. Returns (guide, source_text, image_descriptions)."""
     from app.models.study_guide import StudyGuide
     from app.models.course_content import CourseContent
 
@@ -328,11 +328,15 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
         if link:
             has_access = True
 
-    # Fallback: course-based access (enrolled student, public course, teacher, etc.)
-    if not has_access and guide.course_content_id:
-        from app.api.deps import can_access_material
+    # Load course content once (reused for access check, source text, and images)
+    cc = None
+    if guide.course_content_id:
         cc = db.query(CourseContent).filter(CourseContent.id == guide.course_content_id).first()
-        if cc and can_access_material(db, user, cc):
+
+    # Fallback: course-based access (enrolled student, public course, teacher, etc.)
+    if not has_access and cc:
+        from app.api.deps import can_access_material
+        if can_access_material(db, user, cc):
             has_access = True
 
     if not has_access:
@@ -340,14 +344,12 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
 
     # Load source document text if available
     source_text = None
-    if guide.course_content_id:
-        cc = db.query(CourseContent).filter(CourseContent.id == guide.course_content_id).first()
-        if cc and cc.text_content:
-            source_text = cc.text_content
+    if cc and cc.text_content:
+        source_text = cc.text_content
 
     # Load source image descriptions if available
     image_descriptions = None
-    if guide.course_content_id:
+    if cc:
         from app.models.content_image import ContentImage
         images = (
             db.query(ContentImage)

@@ -101,10 +101,10 @@ class StudyQAService:
         guide_title: str,
         guide_content: str,
         source_content: str | None,
-        image_descriptions: str | None = None,
-        message: str = "",
-        user_id: int = 0,
+        message: str,
+        user_id: int,
         conversation_history: list[dict] | None = None,
+        image_descriptions: str | None = None,
     ):
         """Async generator yielding SSE event dicts for study Q&A.
 
