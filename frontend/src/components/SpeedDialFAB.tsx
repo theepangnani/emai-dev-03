@@ -180,14 +180,21 @@ export function SpeedDialFAB() {
               </div>
             )}
             {error && (
-              <div className="help-chatbot-error">
-                {error.includes('/help') ? (
-                  <>
-                    {error.split('/help')[0]}
-                    <a href="/help" style={{ color: 'inherit', textDecoration: 'underline' }}>/help</a>
-                    {error.split('/help')[1]}
-                  </>
-                ) : error}
+              <div className="help-chatbot-error-card">
+                <svg className="help-chatbot-error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span className="help-chatbot-error-text">
+                  {error.includes('/help') ? (
+                    <>
+                      {error.split('/help')[0]}
+                      <a href="/help" style={{ color: 'inherit', textDecoration: 'underline' }}>/help</a>
+                      {error.split('/help')[1]}
+                    </>
+                  ) : error}
+                </span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -206,8 +213,12 @@ export function SpeedDialFAB() {
               className="help-chatbot-send"
               onClick={handleSend}
               disabled={isLoading || !inputValue.trim()}
+              aria-label="Send message"
             >
-              Send
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
         </div>
