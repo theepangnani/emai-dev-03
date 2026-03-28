@@ -57,8 +57,11 @@ export function SpeedDialFAB() {
       pendingQuestionRef.current = pendingQuestion;
       clearPendingQuestion();
       if (!chatOpen) {
-        setChatOpen(true);
-        setDialOpen(false);
+        // Defer state updates to avoid cascading renders inside effect
+        queueMicrotask(() => {
+          setChatOpen(true);
+          setDialOpen(false);
+        });
       }
     }
   }, [pendingQuestion, chatOpen, clearPendingQuestion]);
