@@ -262,6 +262,16 @@ def create_course_content(
     db.commit()
     db.refresh(content)
 
+    # Audit log: material upload (#2272)
+    log_action(
+        db, user_id=current_user.id, action="material_upload",
+        resource_type="course_content", resource_id=content.id,
+        details={"course_id": data.course_id, "title": data.title},
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+    db.commit()
+
     # Notify parents when a student uploads material
     if current_user.role == UserRole.STUDENT:
         try:
