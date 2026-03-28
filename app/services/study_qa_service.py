@@ -18,6 +18,7 @@ RATE_LIMIT = 20  # per hour per user
 RATE_WINDOW = 3600  # 1 hour
 MAX_GUIDE_CHARS = 24_000  # ~6000 tokens
 MAX_SOURCE_CHARS = 8_000  # ~2000 tokens
+MAX_IMAGE_DESC_CHARS = 4_000  # ~1000 tokens
 MAX_RESPONSE_TOKENS = 1500
 CREDITS_PER_QUESTION = "0.25"
 
@@ -71,6 +72,7 @@ class StudyQAService:
         guide_title: str,
         guide_content: str,
         source_content: str | None = None,
+        image_descriptions: str | None = None,
     ) -> str:
         content = self._truncate(guide_content, MAX_GUIDE_CHARS)
         source_section = ""
@@ -78,6 +80,14 @@ class StudyQAService:
             source_section = (
                 "SOURCE DOCUMENT (original uploaded material):\n---\n"
                 + self._truncate(source_content, MAX_SOURCE_CHARS)
+                + "\n---"
+            )
+        if image_descriptions:
+            source_section += (
+                "\n\nSOURCE IMAGES/DIAGRAMS (extracted from the uploaded material):\n"
+                "When the student asks about values, angles, labels, or measurements from diagrams, "
+                "reference these descriptions to explain where the values come from.\n---\n"
+                + self._truncate(image_descriptions, MAX_IMAGE_DESC_CHARS)
                 + "\n---"
             )
         return SYSTEM_PROMPT.format(
@@ -94,6 +104,7 @@ class StudyQAService:
         message: str,
         user_id: int,
         conversation_history: list[dict] | None = None,
+        image_descriptions: str | None = None,
     ):
         """Async generator yielding SSE event dicts for study Q&A.
 
@@ -112,7 +123,7 @@ class StudyQAService:
             }
             return
 
-        system_prompt = self.build_system_prompt(guide_title, guide_content, source_content)
+        system_prompt = self.build_system_prompt(guide_title, guide_content, source_content, image_descriptions)
 
         # Build messages with conversation history
         messages = []

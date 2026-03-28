@@ -323,6 +323,74 @@ def test_nonexistent_study_guide_returns_404(client, stream_user):
     assert resp.status_code == 404
 
 
+def test_enrolled_student_can_access_study_guide_qa(client, db_session):
+    """Regression #2535: enrolled student can use Q&A on a course's study guide."""
+    from conftest import _auth
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.student import Student
+    from app.models.course import Course, student_courses
+    from app.models.course_content import CourseContent
+    from app.models.study_guide import StudyGuide
+
+    hashed = get_password_hash("Password123!")
+
+    # Guide owner (student A)
+    owner = User(email="qa_owner_2535@test.com", full_name="Owner Student", role=UserRole.STUDENT, hashed_password=hashed)
+    db_session.add(owner)
+    db_session.flush()
+
+    # Enrolled student (student B)
+    enrolled = User(email="qa_enrolled_2535@test.com", full_name="Enrolled Student", role=UserRole.STUDENT, hashed_password=hashed)
+    db_session.add(enrolled)
+    db_session.flush()
+
+    enrolled_student_rec = Student(user_id=enrolled.id, grade_level=10)
+    db_session.add(enrolled_student_rec)
+    db_session.flush()
+
+    # Course + enroll student B
+    course = Course(name="Test Course 2535", created_by_user_id=owner.id, is_private=True)
+    db_session.add(course)
+    db_session.flush()
+
+    db_session.execute(student_courses.insert().values(student_id=enrolled_student_rec.id, course_id=course.id))
+
+    # CourseContent linked to the course
+    cc = CourseContent(course_id=course.id, title="Lesson 1", content_type="document", created_by_user_id=owner.id)
+    db_session.add(cc)
+    db_session.flush()
+
+    # Study guide owned by student A, linked to CourseContent
+    guide = StudyGuide(
+        user_id=owner.id,
+        title="Guide for Lesson 1",
+        content="Study content.",
+        guide_type="study_guide",
+        course_content_id=cc.id,
+    )
+    db_session.add(guide)
+    db_session.commit()
+
+    with patch("app.services.study_qa_service.study_qa_service.stream_answer", side_effect=_fake_stream_answer), \
+         patch("app.services.ai_usage.check_ai_usage"), \
+         patch("app.services.ai_usage.increment_ai_usage"):
+        headers = _auth(client, "qa_enrolled_2535@test.com")
+        resp = client.post(
+            "/api/help/chat/stream",
+            json={
+                "message": "Explain this topic",
+                "conversation": [],
+                "page_context": "",
+                "study_guide_id": guide.id,
+            },
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.text}"
+    assert "text/event-stream" in resp.headers.get("content-type", "")
+
+
 # --- Existing help chat service tests ---
 
 
