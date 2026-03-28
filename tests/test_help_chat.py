@@ -183,6 +183,146 @@ def test_stream_endpoint_returns_sse_for_search_intent(client, stream_user):
     assert "search" in body
 
 
+# --- §6.114 Study Q&A access control tests (#2528) ---
+
+
+@pytest.fixture()
+def study_qa_users(db_session):
+    """Create parent, student, unrelated user, Student record, parent-student link, and a study guide."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.student import Student, parent_students
+    from app.models.study_guide import StudyGuide
+
+    hashed = get_password_hash("Password123!")
+
+    # Parent user
+    parent = db_session.query(User).filter(User.email == "qa_parent@test.com").first()
+    if not parent:
+        parent = User(email="qa_parent@test.com", full_name="QA Parent", role=UserRole.PARENT, hashed_password=hashed)
+        db_session.add(parent)
+        db_session.flush()
+
+    # Student user
+    student_user = db_session.query(User).filter(User.email == "qa_student@test.com").first()
+    if not student_user:
+        student_user = User(email="qa_student@test.com", full_name="QA Student", role=UserRole.STUDENT, hashed_password=hashed)
+        db_session.add(student_user)
+        db_session.flush()
+
+    # Student record (needed for parent_students link)
+    student_rec = db_session.query(Student).filter(Student.user_id == student_user.id).first()
+    if not student_rec:
+        student_rec = Student(user_id=student_user.id, grade_level=10)
+        db_session.add(student_rec)
+        db_session.flush()
+
+    # Parent-student link
+    existing_link = db_session.execute(
+        parent_students.select().where(
+            parent_students.c.parent_id == parent.id,
+            parent_students.c.student_id == student_rec.id,
+        )
+    ).first()
+    if not existing_link:
+        db_session.execute(parent_students.insert().values(parent_id=parent.id, student_id=student_rec.id))
+
+    # Unrelated user (not owner, not shared, not parent)
+    unrelated = db_session.query(User).filter(User.email == "qa_unrelated@test.com").first()
+    if not unrelated:
+        unrelated = User(email="qa_unrelated@test.com", full_name="QA Unrelated", role=UserRole.PARENT, hashed_password=hashed)
+        db_session.add(unrelated)
+        db_session.flush()
+
+    # Study guide owned by student
+    guide = StudyGuide(
+        user_id=student_user.id,
+        title="Test Study Guide",
+        content="Some study content for testing.",
+        guide_type="study_guide",
+    )
+    db_session.add(guide)
+    db_session.commit()
+
+    return {
+        "parent": parent,
+        "student_user": student_user,
+        "student_rec": student_rec,
+        "unrelated": unrelated,
+        "guide": guide,
+    }
+
+
+async def _fake_stream_answer(**kwargs):
+    """Fake async generator for study_qa_service.stream_answer."""
+    yield {"type": "chunk", "text": "Hello "}
+    yield {"type": "chunk", "text": "world"}
+    yield {"type": "done", "input_tokens": 10, "output_tokens": 5, "estimated_cost_usd": 0.001}
+
+
+def test_parent_can_access_child_study_guide_qa(client, study_qa_users):
+    """Regression #2528: parent linked via parent_students can access child's study guide Q&A."""
+    from conftest import _auth
+
+    data = study_qa_users
+    with patch("app.services.study_qa_service.study_qa_service.stream_answer", side_effect=_fake_stream_answer), \
+         patch("app.services.ai_usage.check_ai_usage"), \
+         patch("app.services.ai_usage.increment_ai_usage"):
+        headers = _auth(client, "qa_parent@test.com")
+        resp = client.post(
+            "/api/help/chat/stream",
+            json={
+                "message": "Explain this topic",
+                "conversation": [],
+                "page_context": "",
+                "study_guide_id": data["guide"].id,
+            },
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, f"Expected 200 but got {resp.status_code}: {resp.text}"
+    assert "text/event-stream" in resp.headers.get("content-type", "")
+
+
+def test_unrelated_user_gets_403_for_study_guide_qa(client, study_qa_users):
+    """Unrelated user (not owner, not shared, not parent) gets 403 for study guide Q&A."""
+    from conftest import _auth
+
+    data = study_qa_users
+    headers = _auth(client, "qa_unrelated@test.com")
+    resp = client.post(
+        "/api/help/chat/stream",
+        json={
+            "message": "Explain this topic",
+            "conversation": [],
+            "page_context": "",
+            "study_guide_id": data["guide"].id,
+        },
+        headers=headers,
+    )
+
+    assert resp.status_code == 403
+
+
+def test_nonexistent_study_guide_returns_404(client, stream_user):
+    """Non-existent study_guide_id returns 404."""
+    from conftest import _auth
+
+    headers = _auth(client, "streamuser@test.com")
+    resp = client.post(
+        "/api/help/chat/stream",
+        json={
+            "message": "Explain this",
+            "conversation": [],
+            "page_context": "",
+            "study_guide_id": 999999,
+        },
+        headers=headers,
+    )
+
+    assert resp.status_code == 404
+
+
 # --- Existing help chat service tests ---
 
 
