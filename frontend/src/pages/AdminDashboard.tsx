@@ -297,11 +297,11 @@ export function AdminDashboard() {
           </div>
           <div className="dash-section-body">
             <div className="admin-activity-summary">
-              <div className="admin-activity-summary-row">
+              <div className="admin-activity-summary-row" onClick={() => { setUsersExpanded(true); setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>
                 <span className="admin-activity-summary-icon">👤</span>
                 <span>{stats?.new_registrations_today ?? 0} new registrations today</span>
               </div>
-              <div className="admin-activity-summary-row">
+              <div className="admin-activity-summary-row" onClick={() => navigate('/admin/ai-usage')}>
                 <span className="admin-activity-summary-icon">🤖</span>
                 <span>{stats?.ai_generations_last_hour ?? 0} AI generations in last hour</span>
               </div>
@@ -310,7 +310,16 @@ export function AdminDashboard() {
             {recentActivity.length > 0 ? (
               <div className="admin-recent-activity-list">
                 {recentActivity.map((entry) => (
-                  <div key={entry.id} className="admin-activity-item">
+                  <div key={entry.id} className="admin-activity-item" onClick={() => {
+                    if (entry.resource_type === 'course_content' || entry.resource_id) {
+                      navigate('/materials');
+                    } else if (entry.action === 'login') {
+                      setUsersExpanded(true);
+                      setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                    } else {
+                      navigate('/admin/audit-log');
+                    }
+                  }}>
                     <div className="admin-activity-dot" />
                     <div className="admin-activity-content">
                       <div className="admin-activity-action">
