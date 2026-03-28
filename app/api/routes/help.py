@@ -313,7 +313,7 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
     )
     if not has_access:
         # Check parent-of-owner
-        from app.models.parent_student import parent_students
+        from app.models.student import parent_students
         link = db.execute(
             parent_students.select().where(
                 and_(
