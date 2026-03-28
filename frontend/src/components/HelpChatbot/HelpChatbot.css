@@ -35,7 +35,7 @@
   position: fixed;
   bottom: 96px;
   right: 24px;
-  width: 380px;
+  width: 400px;
   height: 520px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -62,31 +62,39 @@
 /* Header */
 .help-chatbot-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
+  flex-direction: column;
+  padding: 14px 16px 10px;
   background: var(--color-accent);
   color: #fff;
   flex-shrink: 0;
 }
 
-.help-chatbot-header-title {
+.help-chatbot-header-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
 }
 
-.help-chatbot-header-logo {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  margin: -4px 0 -4px -2px;
-}
-
-.help-chatbot-header h3 {
-  margin: 0;
+.help-chatbot-header-label {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.help-chatbot-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.help-chatbot-header-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.85;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .help-chatbot-close {
@@ -94,12 +102,12 @@
   border: none;
   color: #fff;
   cursor: pointer;
-  font-size: 20px;
-  line-height: 1;
-  padding: 2px 6px;
+  padding: 4px;
   border-radius: 4px;
-  opacity: 0.8;
+  opacity: 0.7;
   transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
 }
 
 .help-chatbot-close:hover {
@@ -112,10 +120,11 @@
   border: none;
   color: white;
   cursor: pointer;
-  font-size: 0.8rem;
-  opacity: 0.8;
-  padding: 4px 8px;
+  opacity: 0.7;
+  padding: 4px;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
 }
 
 .help-chatbot-clear:hover {
@@ -123,15 +132,24 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+.help-chatbot-credit-pill {
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
 /* Messages area */
 .help-chatbot-messages {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 /* Welcome message */
@@ -306,7 +324,8 @@
 /* Input area */
 .help-chatbot-input {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
   padding: 12px 16px;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -315,18 +334,19 @@
 
 .help-chatbot-input input {
   flex: 1;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 24px;
   background: var(--color-bg);
   color: var(--color-ink);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .help-chatbot-input input:focus {
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
 }
 
 .help-chatbot-input input::placeholder {
@@ -338,33 +358,68 @@
 }
 
 .help-chatbot-send {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
   background: var(--color-accent);
   color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.15s;
 }
 
 .help-chatbot-send:hover:not(:disabled) {
   opacity: 0.9;
+  transform: scale(1.05);
 }
 
 .help-chatbot-send:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-/* Error message */
-.help-chatbot-error {
-  text-align: center;
+.help-chatbot-send:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
+}
+
+/* Error card */
+.help-chatbot-error-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-danger-bg, #fef2f2);
+  border: 1px solid var(--color-danger-border, #fecaca);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.help-chatbot-error-icon {
   color: var(--color-danger, #e53e3e);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.help-chatbot-error-text {
   font-size: 13px;
-  padding: 4px 8px;
+  color: var(--color-danger, #e53e3e);
+  line-height: 1.4;
+}
+
+.help-chatbot-error-text a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Dark mode error card */
+[data-theme="dark"] .help-chatbot-error-card {
+  background: rgba(229, 62, 62, 0.1);
+  border-color: rgba(229, 62, 62, 0.3);
 }
 
 
@@ -553,9 +608,80 @@
   text-align: right;
 }
 
-.help-chatbot-credit-info {
-  font-size: 10px;
-  color: var(--color-text-muted, #888);
-  white-space: nowrap;
-  padding: 0 4px;
+/* Study Q&A — Welcome heading */
+.help-chatbot-welcome--study {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-align: left;
+  padding: 8px 0 4px;
+}
+
+/* Study Q&A — Vertical action rows */
+.study-qa-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.study-qa-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  text-align: left;
+  width: 100%;
+}
+
+.study-qa-action-row:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.study-qa-action-row:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-light, rgba(73, 184, 192, 0.12));
+}
+
+.study-qa-action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-accent-light, rgba(73, 184, 192, 0.1));
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
+.study-qa-action-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.study-qa-action-arrow {
+  color: var(--color-ink-muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.study-qa-action-row:hover .study-qa-action-arrow {
+  opacity: 1;
+}
+
+/* Dark mode */
+[data-theme="dark"] .study-qa-action-icon {
+  background: rgba(73, 184, 192, 0.15);
 }

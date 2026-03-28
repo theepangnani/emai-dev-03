@@ -102,11 +102,9 @@ export function SpeedDialFAB() {
   const hasMultipleActions = !!notesFAB;
 
   // §6.114 — header and welcome text adapt to study mode
-  const headerTitle = isStudyMode
-    ? `Ask about: ${studyGuideContext?.title?.slice(0, 30) || 'Study Guide'}${(studyGuideContext?.title?.length || 0) > 30 ? '...' : ''}`
-    : 'ClassBridge Help';
+  const guideTitle = studyGuideContext?.title || 'Study Guide';
   const welcomeText = isStudyMode
-    ? 'Ask me anything about this study guide. I can explain concepts, generate practice questions, and more.'
+    ? 'What would you like to know?'
     : 'Hi! I\'m ClassBridge Helper. Ask me anything about the platform.';
 
   return (
@@ -115,34 +113,40 @@ export function SpeedDialFAB() {
       {chatOpen && (
         <div className="help-chatbot-panel">
           <div className="help-chatbot-header">
-            <div className="help-chatbot-header-title">
-              <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
-              <h3>{headerTitle}</h3>
+            <div className="help-chatbot-header-top">
+              <span className="help-chatbot-header-label">
+                {isStudyMode ? 'Study Q&A' : 'ClassBridge Help'}
+              </span>
+              <div className="help-chatbot-header-actions">
+                {messages.length > 0 && (
+                  <button
+                    className="help-chatbot-clear"
+                    onClick={clearMessages}
+                    aria-label="Clear chat history"
+                    title="Clear chat"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /></svg>
+                  </button>
+                )}
+                <button
+                  className="help-chatbot-close"
+                  onClick={() => setChatOpen(false)}
+                  aria-label="Close help chat"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
             </div>
             {isStudyMode && (
-              <span className="help-chatbot-credit-info">0.25 credits/Q</span>
+              <div className="help-chatbot-header-subtitle">{guideTitle}</div>
             )}
-            {messages.length > 0 && (
-              <button
-                className="help-chatbot-clear"
-                onClick={clearMessages}
-                aria-label="Clear chat history"
-                title="Clear chat"
-              >
-                Clear
-              </button>
-            )}
-            <button
-              className="help-chatbot-close"
-              onClick={() => setChatOpen(false)}
-              aria-label="Close help chat"
-            >
-              &times;
-            </button>
           </div>
+          {isStudyMode && (
+            <div className="help-chatbot-credit-pill">0.25 credits per question</div>
+          )}
           <div className="help-chatbot-messages">
             {showWelcome && (
-              <div className="help-chatbot-welcome">
+              <div className={`help-chatbot-welcome ${isStudyMode ? 'help-chatbot-welcome--study' : ''}`}>
                 {welcomeText}
               </div>
             )}
@@ -176,14 +180,21 @@ export function SpeedDialFAB() {
               </div>
             )}
             {error && (
-              <div className="help-chatbot-error">
-                {error.includes('/help') ? (
-                  <>
-                    {error.split('/help')[0]}
-                    <a href="/help" style={{ color: 'inherit', textDecoration: 'underline' }}>/help</a>
-                    {error.split('/help')[1]}
-                  </>
-                ) : error}
+              <div className="help-chatbot-error-card">
+                <svg className="help-chatbot-error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span className="help-chatbot-error-text">
+                  {error.includes('/help') ? (
+                    <>
+                      {error.split('/help')[0]}
+                      <a href="/help" style={{ color: 'inherit', textDecoration: 'underline' }}>/help</a>
+                      {error.split('/help')[1]}
+                    </>
+                  ) : error}
+                </span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -202,8 +213,12 @@ export function SpeedDialFAB() {
               className="help-chatbot-send"
               onClick={handleSend}
               disabled={isLoading || !inputValue.trim()}
+              aria-label="Send message"
             >
-              Send
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
             </button>
           </div>
         </div>
