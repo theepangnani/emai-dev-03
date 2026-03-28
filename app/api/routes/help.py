@@ -325,8 +325,18 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
                 )
             )
         ).first()
-        if not link:
-            raise HTTPException(status_code=403, detail="Access denied to this study guide")
+        if link:
+            has_access = True
+
+    # Fallback: course-based access (enrolled student, public course, teacher, etc.)
+    if not has_access and guide.course_content_id:
+        from app.api.deps import can_access_material
+        cc = db.query(CourseContent).filter(CourseContent.id == guide.course_content_id).first()
+        if cc and can_access_material(db, user, cc):
+            has_access = True
+
+    if not has_access:
+        raise HTTPException(status_code=403, detail="Access denied to this study guide")
 
     # Load source document text if available
     source_text = None
