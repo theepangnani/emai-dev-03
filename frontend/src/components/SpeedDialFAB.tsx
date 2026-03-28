@@ -10,10 +10,17 @@ import './SpeedDialFAB.css';
 const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
 export function SpeedDialFAB() {
-  const { notesFAB, studyGuideContext, pendingQuestion, clearPendingQuestion } = useFABContext();
+  const { notesFAB, studyGuideContext, getPendingQuestion, clearPendingQuestion, subscribePendingQuestion } = useFABContext();
   const [dialOpen, setDialOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to pending question changes (ref+subscriber pattern)
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    return subscribePendingQuestion(() => setTick(t => t + 1));
+  }, [subscribePendingQuestion]);
+  const pendingQuestion = getPendingQuestion();
 
   // Help chat state — passes study guide context for §6.114
   const {
@@ -38,19 +45,30 @@ export function SpeedDialFAB() {
   }, [chatOpen]);
 
   // Handle pending question from FABContext (text selection → chatbot injection)
+  const pendingQuestionRef = useRef<string | null>(null);
+
+  // Step 1: capture the question in a local ref and open the chat panel
   useEffect(() => {
     if (!pendingQuestion) return;
+    pendingQuestionRef.current = pendingQuestion;
+    clearPendingQuestion();
     if (!chatOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: must open chat before sending pending question
       setChatOpen(true);
       setDialOpen(false);
-      return; // Wait for next render when chatOpen is true
+    } else {
+      // Already open — trigger send on next microtask so ref is stable
+      queueMicrotask(() => setTick(t => t + 1));
     }
-    if (!isLoading) {
-      sendMessage(pendingQuestion);
-      clearPendingQuestion();
-    }
-  }, [pendingQuestion, chatOpen, isLoading, sendMessage, clearPendingQuestion]);
+  }, [pendingQuestion, chatOpen, clearPendingQuestion]);
+
+  // Step 2: send the question once chat is open and not loading
+  useEffect(() => {
+    if (!chatOpen || isLoading || !pendingQuestionRef.current) return;
+    const text = pendingQuestionRef.current;
+    pendingQuestionRef.current = null;
+    sendMessage(text);
+  }, [chatOpen, isLoading, sendMessage]);
 
   // Listen for programmatic open (Ctrl+K / Cmd+K dispatches this event)
   useEffect(() => {
