@@ -41,6 +41,7 @@ export function SpeedDialFAB() {
   useEffect(() => {
     if (!pendingQuestion) return;
     if (!chatOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: must open chat before sending pending question
       setChatOpen(true);
       setDialOpen(false);
       return; // Wait for next render when chatOpen is true
