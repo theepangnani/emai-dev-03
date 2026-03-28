@@ -335,7 +335,26 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
         if cc and cc.text_content:
             source_text = cc.text_content
 
-    return guide, source_text
+    # Load source image descriptions if available
+    image_descriptions = None
+    if guide.course_content_id:
+        from app.models.content_image import ContentImage
+        images = (
+            db.query(ContentImage)
+            .filter(ContentImage.course_content_id == guide.course_content_id)
+            .order_by(ContentImage.position_index)
+            .all()
+        )
+        if images:
+            parts = []
+            for img in images:
+                idx = img.position_index + 1
+                desc = img.description or f"Image {idx}"
+                ctx = f' (near: "{img.position_context[:80]}...")' if img.position_context else ""
+                parts.append(f"[IMG-{idx}] {desc}{ctx}")
+            image_descriptions = "\n".join(parts)
+
+    return guide, source_text, image_descriptions
 
 
 async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: User):
@@ -344,7 +363,7 @@ async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: U
     from app.services.study_qa_service import study_qa_service
     from app.services.ai_usage import check_ai_usage, increment_ai_usage
 
-    guide, source_text = _load_study_guide_for_qa(request.study_guide_id, user, db)
+    guide, source_text, image_descriptions = _load_study_guide_for_qa(request.study_guide_id, user, db)
 
     # Credit check
     check_ai_usage(user, db)
@@ -355,6 +374,7 @@ async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: U
             guide_title=guide.title,
             guide_content=guide.content or "",
             source_content=source_text,
+            image_descriptions=image_descriptions,
             message=request.message,
             user_id=user.id,
             conversation_history=[
@@ -393,7 +413,7 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
     from app.services.study_qa_service import study_qa_service
     from app.services.ai_usage import check_ai_usage, increment_ai_usage
 
-    guide, source_text = _load_study_guide_for_qa(request.study_guide_id, user, db)
+    guide, source_text, image_descriptions = _load_study_guide_for_qa(request.study_guide_id, user, db)
     check_ai_usage(user, db)
 
     reply_parts = []
@@ -403,6 +423,7 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
         guide_title=guide.title,
         guide_content=guide.content or "",
         source_content=source_text,
+        image_descriptions=image_descriptions,
         message=request.message,
         user_id=user.id,
         conversation_history=[
