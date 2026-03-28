@@ -173,15 +173,17 @@
   align-items: center;
   gap: 6px;
   flex-wrap: nowrap;
+  grid-column: 1 / -1;
 }
 
 .xp-badge-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  gap: 4px;
   height: 32px;
-  border-radius: 50%;
+  padding: 0 10px;
+  border-radius: 16px;
   background: var(--color-accent-subtle, rgba(99, 102, 241, 0.08));
   font-size: 16px;
   line-height: 1;
@@ -191,6 +193,13 @@
 .xp-badge-chip--locked {
   background: var(--color-surface-alt, #f3f4f6);
   filter: grayscale(1) opacity(0.4);
+}
+
+.xp-badge-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
 }
 
 .xp-badges-more {
@@ -213,6 +222,7 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  grid-column: 1 / -1;
 }
 
 /* ── Parent Child XP Info ─────────────────── */
@@ -257,6 +267,10 @@
   .xp-dashboard-section > .xp-today {
     flex-direction: row;
     gap: 8px;
+  }
+
+  .xp-badges {
+    flex-wrap: wrap;
   }
 }
 
