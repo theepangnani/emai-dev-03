@@ -104,7 +104,7 @@ export function SpeedDialFAB() {
   // §6.114 — header and welcome text adapt to study mode
   const guideTitle = studyGuideContext?.title || 'Study Guide';
   const welcomeText = isStudyMode
-    ? 'Ask me anything about this study guide. I can explain concepts, generate practice questions, and more.'
+    ? 'What would you like to know?'
     : 'Hi! I\'m ClassBridge Helper. Ask me anything about the platform.';
 
   return (
@@ -146,7 +146,7 @@ export function SpeedDialFAB() {
           )}
           <div className="help-chatbot-messages">
             {showWelcome && (
-              <div className="help-chatbot-welcome">
+              <div className={`help-chatbot-welcome ${isStudyMode ? 'help-chatbot-welcome--study' : ''}`}>
                 {welcomeText}
               </div>
             )}
