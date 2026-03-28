@@ -562,6 +562,35 @@ export function StudentDashboard() {
         </div>
       </section>
 
+      {/* Section: Quick Actions */}
+      <section className="dash-section dash-section--actions">
+        <div className="dash-section-header">
+          <h3 className="dash-section-title">Quick Actions</h3>
+        </div>
+        <div className="dash-quick-actions">
+          <button className="dash-quick-action" onClick={() => navigate('/study/session')}>
+            <span className="dash-quick-action-icon">&#9202;</span>
+            Study Session
+          </button>
+          <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
+            <span className="dash-quick-action-icon">&#128214;</span>
+            View Study Guides
+          </button>
+          <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}>
+            <span className="dash-quick-action-icon">&#128228;</span>
+            Upload Class Materials
+          </button>
+          <button className="dash-quick-action" onClick={() => navigate('/tasks')}>
+            <span className="dash-quick-action-icon">&#9989;</span>
+            Create Tasks
+          </button>
+          <button className="dash-quick-action" onClick={() => navigate('/messages')}>
+            <span className="dash-quick-action-icon">&#128172;</span>
+            Send Message
+          </button>
+        </div>
+      </section>
+
       {/* ── XP Progress ────────────────────────────────── */}
       <XpDashboardSection />
 
@@ -734,34 +763,6 @@ export function StudentDashboard() {
           </div>
         </section>
 
-        {/* Section 3: Quick Actions */}
-        <section className="dash-section dash-section--actions">
-          <div className="dash-section-header">
-            <h3 className="dash-section-title">Quick Actions</h3>
-          </div>
-          <div className="dash-quick-actions">
-            <button className="dash-quick-action" onClick={() => navigate('/study/session')}>
-              <span className="dash-quick-action-icon">&#9202;</span>
-              Study Session
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
-              <span className="dash-quick-action-icon">&#128214;</span>
-              View Study Guides
-            </button>
-            <button className="dash-quick-action" onClick={() => studyTools.setShowStudyModal(true)}>
-              <span className="dash-quick-action-icon">&#128228;</span>
-              Upload Class Materials
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/tasks')}>
-              <span className="dash-quick-action-icon">&#9989;</span>
-              Create Tasks
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/messages')}>
-              <span className="dash-quick-action-icon">&#128172;</span>
-              Send Message
-            </button>
-          </div>
-        </section>
       </div>
 
       {/* ── Upload / Study Material Modal — same experience as Parent ── */}
