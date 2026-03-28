@@ -246,6 +246,13 @@
   background: var(--color-surface-alt);
   border-radius: 12px;
   gap: 4px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dash-metric-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .dash-metric-value {

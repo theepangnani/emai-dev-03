@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../api/client';
 import type { AdminStats, AdminUserItem, BroadcastItem, AuditLogItem } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -21,6 +21,7 @@ interface TrendCounts {
 }
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserItem[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -241,30 +242,30 @@ export function AdminDashboard() {
           </div>
           <div className="dash-section-body">
             <div className="dash-metric-cards">
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => { setUsersExpanded(true); setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 0); }}>
                 <span className="dash-metric-value">{stats?.total_users ?? '—'}</span>
                 <span className="dash-metric-label">Users</span>
                 {trends.total > 0 && <span className="dash-metric-trend">+{trends.total} this week</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => { setRoleFilter('student'); setUsersExpanded(true); setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 0); }}>
                 <span className="dash-metric-value">{stats?.users_by_role?.student ?? 0}</span>
                 <span className="dash-metric-label">Students</span>
                 {trends.student > 0 && <span className="dash-metric-trend">+{trends.student}</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => { setRoleFilter('teacher'); setUsersExpanded(true); setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 0); }}>
                 <span className="dash-metric-value">{stats?.users_by_role?.teacher ?? 0}</span>
                 <span className="dash-metric-label">Teachers</span>
                 {trends.teacher > 0 && <span className="dash-metric-trend">+{trends.teacher}</span>}
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => navigate('/classes')}>
                 <span className="dash-metric-value">{stats?.total_courses ?? 0}</span>
                 <span className="dash-metric-label">Classes</span>
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => navigate('/materials')}>
                 <span className="dash-metric-value">{stats?.total_materials ?? 0}</span>
                 <span className="dash-metric-label">Materials</span>
               </div>
-              <div className="dash-metric-card">
+              <div className="dash-metric-card" onClick={() => { setUsersExpanded(true); setTimeout(() => document.getElementById('admin-user-management')?.scrollIntoView({ behavior: 'smooth' }), 0); }}>
                 <span className="dash-metric-value">{stats?.new_registrations_today ?? 0}</span>
                 <span className="dash-metric-label">New Today</span>
               </div>
