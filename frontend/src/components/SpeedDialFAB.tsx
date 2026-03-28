@@ -10,7 +10,7 @@ import './SpeedDialFAB.css';
 const CHAT_COMMANDS = new Set(['clear', 'reset']);
 
 export function SpeedDialFAB() {
-  const { notesFAB, studyGuideContext } = useFABContext();
+  const { notesFAB, studyGuideContext, pendingQuestion, clearPendingQuestion } = useFABContext();
   const [dialOpen, setDialOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,6 +36,21 @@ export function SpeedDialFAB() {
       setTimeout(() => inputRef.current?.focus(), 200);
     }
   }, [chatOpen]);
+
+  // Handle pending question from FABContext (text selection → chatbot injection)
+  useEffect(() => {
+    if (pendingQuestion && !chatOpen) {
+      setChatOpen(true);
+      setDialOpen(false);
+    }
+  }, [pendingQuestion, chatOpen]);
+
+  useEffect(() => {
+    if (pendingQuestion && chatOpen && !isLoading) {
+      sendMessage(pendingQuestion);
+      clearPendingQuestion();
+    }
+  }, [pendingQuestion, chatOpen, isLoading, sendMessage, clearPendingQuestion]);
 
   // Listen for programmatic open (Ctrl+K / Cmd+K dispatches this event)
   useEffect(() => {

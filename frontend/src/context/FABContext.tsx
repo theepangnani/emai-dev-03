@@ -20,6 +20,9 @@ interface FABContextValue {
   unregisterNotesFAB: () => void;
   studyGuideContext: StudyGuideContext | null;
   setStudyGuideContext: (ctx: StudyGuideContext | null) => void;
+  pendingQuestion: string | null;
+  openChatWithQuestion: (text: string) => void;
+  clearPendingQuestion: () => void;
 }
 
 const FABContext = createContext<FABContextValue | null>(null);
@@ -27,6 +30,7 @@ const FABContext = createContext<FABContextValue | null>(null);
 export function FABProvider({ children }: { children: ReactNode }) {
   const [notesFAB, setNotesFAB] = useState<NotesFABConfig | null>(null);
   const [studyGuideContext, setStudyGuideContextState] = useState<StudyGuideContext | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
   const registerNotesFAB = useCallback((config: NotesFABConfig) => {
     setNotesFAB(config);
@@ -40,10 +44,19 @@ export function FABProvider({ children }: { children: ReactNode }) {
     setStudyGuideContextState(ctx);
   }, []);
 
+  const openChatWithQuestion = useCallback((text: string) => {
+    setPendingQuestion(text);
+  }, []);
+
+  const clearPendingQuestion = useCallback(() => {
+    setPendingQuestion(null);
+  }, []);
+
   const value = useMemo(() => ({
     notesFAB, registerNotesFAB, unregisterNotesFAB,
     studyGuideContext, setStudyGuideContext,
-  }), [notesFAB, registerNotesFAB, unregisterNotesFAB, studyGuideContext, setStudyGuideContext]);
+    pendingQuestion, openChatWithQuestion, clearPendingQuestion,
+  }), [notesFAB, registerNotesFAB, unregisterNotesFAB, studyGuideContext, setStudyGuideContext, pendingQuestion, openChatWithQuestion, clearPendingQuestion]);
 
   return (
     <FABContext.Provider value={value}>
@@ -58,6 +71,9 @@ const NOOP_FAB_CONTEXT: FABContextValue = {
   unregisterNotesFAB: () => {},
   studyGuideContext: null,
   setStudyGuideContext: () => {},
+  pendingQuestion: null,
+  openChatWithQuestion: () => {},
+  clearPendingQuestion: () => {},
 };
 
 export function useFABContext() {

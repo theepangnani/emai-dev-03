@@ -241,14 +241,10 @@ export function CourseMaterialDetailPage() {
 
   // Right-click context menu state (#1594)
   const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateSelectedText, setGenerateSelectedText] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [generateSelectedText, _setGenerateSelectedText] = useState('');
   const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string; courseContentId?: number } | null>(null);
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
-  const handleContextGenerate = useCallback((selectedText: string) => {
-    setGenerateSelectedText(selectedText);
-    setShowGenerateModal(true);
-  }, []);
-
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
@@ -495,7 +491,7 @@ export function CourseMaterialDetailPage() {
   }, [childGuides.length, subGuideStatus?.ready]);
 
   // §6.114 — Register study guide context for chatbot Q&A mode
-  const { setStudyGuideContext } = useFABContext();
+  const { setStudyGuideContext, openChatWithQuestion } = useFABContext();
   useEffect(() => {
     if (studyGuide) {
       setStudyGuideContext({ id: studyGuide.id, title: studyGuide.title, courseId: studyGuide.course_id ?? undefined });
@@ -1152,9 +1148,9 @@ export function CourseMaterialDetailPage() {
           rect={selection.rect}
           visible
           onAddToNotes={handleAddToNotes}
-          onGenerateStudyMaterial={() => {
+          onAskChatBot={() => {
             if (selection) {
-              handleContextGenerate(selection.text);
+              openChatWithQuestion(selection.text);
               clearSelection();
               window.getSelection()?.removeAllRanges();
             }
@@ -1164,9 +1160,7 @@ export function CourseMaterialDetailPage() {
       <TextSelectionContextMenu
         containerRef={contentAreaRef}
         onAddNote={(text) => { setAppendText(text); setAddHighlight({ text }); setShowNotesPanel(true); window.getSelection()?.removeAllRanges(); }}
-        onGenerateStudyGuide={handleContextGenerate}
-        onGenerateSampleTest={handleContextGenerate}
-        aiAvailable={!atLimit}
+        onAskChatBot={(text) => openChatWithQuestion(text)}
       />
       <GenerateSubGuideModal
         open={showGenerateModal}

@@ -47,6 +47,11 @@ const STUDY_QA_ACTIONS: { label: string; prompt: string; icon: JSX.Element }[] =
     prompt: 'Give me practice questions',
     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
   },
+  {
+    label: 'Generate study guide',
+    prompt: 'Generate a study guide from this content',
+    icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2M8 17h2M12 13h4M12 17h4"/></svg>,
+  },
 ];
 
 export function SuggestionChips({ onChipClick, currentPage, isStudyMode }: SuggestionChipsProps) {

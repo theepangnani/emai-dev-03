@@ -57,7 +57,7 @@ export function StudyGuidePage() {
   const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
   useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
   // §6.114 — Register study guide context for chatbot Q&A mode
-  const { setStudyGuideContext } = useFABContext();
+  const { setStudyGuideContext, openChatWithQuestion } = useFABContext();
   useEffect(() => {
     if (guide) {
       setStudyGuideContext({ id: guide.id, title: guide.title, courseId: guide.course_id ?? undefined });
@@ -71,7 +71,8 @@ export function StudyGuidePage() {
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [generateSelectedText, setGenerateSelectedText] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [generateSelectedText, _setGenerateSelectedText] = useState('');
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
   const [subGuideStatus, setSubGuideStatus] = useState<{ generating: boolean; ready: boolean; guideId?: number; title?: string; courseContentId?: number } | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
@@ -103,11 +104,6 @@ export function StudyGuidePage() {
     setNotesOpen(true);
     clearSelection();
     window.getSelection()?.removeAllRanges();
-  };
-
-  const handleGenerateSubGuide = (selectedText: string) => {
-    setGenerateSelectedText(selectedText);
-    setShowGenerateModal(true);
   };
 
   const handleDoGenerate = async (guideType: string, customPrompt?: string, documentType?: string, studyGoal?: string) => {
@@ -420,9 +416,9 @@ export function StudyGuidePage() {
           rect={selection.rect}
           visible
           onAddToNotes={handleAddToNotes}
-          onGenerateStudyMaterial={() => {
+          onAskChatBot={() => {
             if (selection) {
-              handleGenerateSubGuide(selection.text);
+              openChatWithQuestion(selection.text);
               clearSelection();
               window.getSelection()?.removeAllRanges();
             }
@@ -432,9 +428,7 @@ export function StudyGuidePage() {
       <TextSelectionContextMenu
         containerRef={contentRef}
         onAddNote={handleAddToNotes}
-        onGenerateStudyGuide={handleGenerateSubGuide}
-        onGenerateSampleTest={handleGenerateSubGuide}
-        aiAvailable={!atLimit}
+        onAskChatBot={(text) => openChatWithQuestion(text)}
       />
       <GenerateSubGuideModal
         open={showGenerateModal}
