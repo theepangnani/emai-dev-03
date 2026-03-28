@@ -312,13 +312,16 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
         or guide.shared_with_user_id == user.id
     )
     if not has_access:
-        # Check parent-of-owner
-        from app.models.parent_student import parent_students
+        # Check parent-of-owner (parent_students.student_id -> students.id,
+        # so we must join through students to match on user_id)
+        from app.models.student import Student, parent_students
         link = db.execute(
             parent_students.select().where(
                 and_(
                     parent_students.c.parent_id == user.id,
-                    parent_students.c.student_id == guide.user_id,
+                    parent_students.c.student_id.in_(
+                        db.query(Student.id).filter(Student.user_id == guide.user_id)
+                    ),
                 )
             )
         ).first()
