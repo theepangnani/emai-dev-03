@@ -1257,28 +1257,18 @@ export function CoursesPage() {
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '0 0 16px' }}>
+            <div className="cp-wizard-steps">
               {[1, 2, 3].map((s) => (
-                <div key={s} style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  color: wizardStep >= s ? '#6366f1' : '#9ca3af',
-                  fontWeight: wizardStep === s ? 600 : 400,
-                  fontSize: '0.85rem',
-                }}>
-                  <span style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: wizardStep >= s ? '#6366f1' : '#e5e7eb',
-                    color: wizardStep >= s ? '#fff' : '#6b7280',
-                    fontSize: '0.75rem', fontWeight: 600,
-                  }}>{s}</span>
+                <div key={s} className={`cp-wizard-step${wizardStep === s ? ' active' : ''}`}
+                  style={{ color: wizardStep >= s ? '#6366f1' : '#9ca3af' }}>
+                  <span className={`cp-wizard-step-number${wizardStep >= s ? ' reached' : ''}`}>{s}</span>
                   {s === 1 ? 'Details' : s === 2 ? 'Teacher' : 'Students'}
-                  {s < 3 && <span style={{ color: '#d1d5db', margin: '0 2px' }}>—</span>}
+                  {s < 3 && <span className="cp-wizard-step-divider">—</span>}
                 </div>
               ))}
             </div>
 
-            <div className="modal-form" style={{ overflow: 'visible' }}>
+            <div className="modal-form cp-wizard-form">
               {/* Step 1: Class Details */}
               {wizardStep === 1 && (
                 <>
@@ -1449,28 +1439,18 @@ export function CoursesPage() {
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={createModalRef} onClick={(e) => e.stopPropagation()}>
             <h2>Create Class</h2>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', margin: '0 0 16px' }}>
+            <div className="cp-wizard-steps">
               {[1, 2].map((s) => (
-                <div key={s} style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  color: wizardStep >= s ? '#6366f1' : '#9ca3af',
-                  fontWeight: wizardStep === s ? 600 : 400,
-                  fontSize: '0.85rem',
-                }}>
-                  <span style={{
-                    width: '24px', height: '24px', borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: wizardStep >= s ? '#6366f1' : '#e5e7eb',
-                    color: wizardStep >= s ? '#fff' : '#6b7280',
-                    fontSize: '0.75rem', fontWeight: 600,
-                  }}>{s}</span>
+                <div key={s} className={`cp-wizard-step${wizardStep === s ? ' active' : ''}`}
+                  style={{ color: wizardStep >= s ? '#6366f1' : '#9ca3af' }}>
+                  <span className={`cp-wizard-step-number${wizardStep >= s ? ' reached' : ''}`}>{s}</span>
                   {s === 1 ? 'Details' : 'Teacher'}
-                  {s < 2 && <span style={{ color: '#d1d5db', margin: '0 2px' }}>—</span>}
+                  {s < 2 && <span className="cp-wizard-step-divider">—</span>}
                 </div>
               ))}
             </div>
 
-            <div className="modal-form" style={{ overflow: 'visible' }}>
+            <div className="modal-form cp-wizard-form">
               {/* Step 1: Class Details */}
               {wizardStep === 1 && (
                 <>
