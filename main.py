@@ -27,6 +27,7 @@ from app.api.routes import family_report
 from app.api.routes import teacher_thanks
 from app.api.routes import csv_import
 from app.api.routes import weekly_report
+from app.api.routes import journey
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -2025,6 +2026,45 @@ except Exception as e:
     logger.warning("teacher_thanks migration (#2451, #2452) failed: %s", e)
 
 
+# ── journey_hints table (#2604) ──────────────────────────
+try:
+    with engine.connect() as conn:
+        if "sqlite" not in settings.database_url:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS journey_hints (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    hint_key VARCHAR(50) NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'shown',
+                    shown_at TIMESTAMPTZ,
+                    dismissed_at TIMESTAMPTZ,
+                    snooze_until TIMESTAMPTZ,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    CONSTRAINT uq_journey_hint_user_key UNIQUE (user_id, hint_key)
+                )
+            """))
+        else:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS journey_hints (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    hint_key VARCHAR(50) NOT NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'shown',
+                    shown_at DATETIME,
+                    dismissed_at DATETIME,
+                    snooze_until DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT uq_journey_hint_user_key UNIQUE (user_id, hint_key)
+                )
+            """))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_journey_hints_user_id ON journey_hints(user_id)"
+        ))
+        conn.commit()
+        logger.info("journey_hints table ensured (#2604)")
+except Exception as e:
+    logger.warning("journey_hints migration (#2604) failed: %s", e)
+
 _is_prod = "sqlite" not in settings.database_url
 
 # Readiness flag — set to True after startup_event() completes.
@@ -2246,6 +2286,7 @@ app.include_router(family_report.router, prefix="/api")
 app.include_router(teacher_thanks.router, prefix="/api")
 app.include_router(csv_import.router, prefix="/api")
 app.include_router(weekly_report.router, prefix="/api")
+app.include_router(journey.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 

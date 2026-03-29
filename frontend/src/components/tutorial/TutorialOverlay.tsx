@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useTutorialProgress } from '../../hooks/useTutorialProgress';
 import type { TourStep } from '../OnboardingTour';
 import './TutorialOverlay.css';
@@ -117,6 +118,15 @@ export function TutorialOverlay({ tutorialKey, steps, autoShow = true }: Tutoria
       <div className="tutorial-tooltip" style={tooltipStyle}>
         <div className="tutorial-tooltip-title">{step.title}</div>
         <div className="tutorial-tooltip-content">{step.content}</div>
+        {step.journeyId && (
+          <Link
+            to={`/help#journey-${step.journeyId}`}
+            className="tutorial-guide-link"
+            onClick={handleSkip}
+          >
+            See full guide &#x2192;
+          </Link>
+        )}
         <div className="tutorial-tooltip-footer">
           <span className="tutorial-tooltip-progress">
             {currentStep + 1} / {steps.length}

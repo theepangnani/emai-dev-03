@@ -782,3 +782,443 @@
     - "Step 3: Click the download icon to save the file locally."
     - "Step 4: Use the + menu to replace or edit the source document."
   tags: [source-files, download, document, materials, upload]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS — PARENT (P01–P10)
+# ============================================================
+
+- id: journey-P01
+  name: "Parent Journey: Registration & First Login"
+  description: "Step-by-step walkthrough for parents joining ClassBridge. Covers joining the waitlist, receiving the approval email, completing registration with name and password, selecting the Parent role during onboarding, and landing on the Parent Dashboard for the first time."
+  roles: [parent]
+  how_to:
+    - "Step 1: Visit classbridge.ca and click 'Join the Waitlist'."
+    - "Step 2: Enter your name, email, and select 'Parent' as your role."
+    - "Step 3: Wait for the admin approval email with your registration link."
+    - "Step 4: Click the link, set your password, and complete onboarding."
+    - "Step 5: You land on the Parent Dashboard — your home base."
+  tags: [journey, parent, registration, getting-started, walkthrough, onboarding]
+
+- id: journey-P02
+  name: "Parent Journey: Add or Link Your Child"
+  description: "How parents add a child to their ClassBridge account. Covers creating a child profile from My Kids, entering the child's name and email, sending a link request, and what happens when the child approves the link from their student account."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to the My Kids page from the sidebar."
+    - "Step 2: Click the + icon to add a new child."
+    - "Step 3: Enter your child's name and email address."
+    - "Step 4: A link request is sent to the child's student account."
+    - "Step 5: Once the child approves, they appear in your My Kids list with courses and tasks."
+  tags: [journey, parent, my-kids, link-child, walkthrough, getting-started]
+
+- id: journey-P03
+  name: "Parent Journey: Upload Course Material"
+  description: "Walkthrough for parents uploading course materials for their child. Covers navigating to Course Materials, choosing a child and course, uploading via drag-and-drop or paste, selecting AI tools to generate, and viewing the uploaded material."
+  roles: [parent]
+  how_to:
+    - "Step 1: Navigate to Course Materials from the sidebar."
+    - "Step 2: Click Upload and select the child and course."
+    - "Step 3: Drag-and-drop a file or paste text content."
+    - "Step 4: Optionally select AI tools (Study Guide, Quiz, Flashcards) to auto-generate."
+    - "Step 5: Click Upload — the material appears in the list and AI tools generate in the background."
+  tags: [journey, parent, upload, course-materials, walkthrough]
+
+- id: journey-P04
+  name: "Parent Journey: Report Card Upload & AI Analysis"
+  description: "How parents upload a report card and get AI-powered analysis. Covers uploading the report card document, the AI extracting grades and comments, viewing the analysis with strengths, areas for improvement, and suggested actions."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to Course Materials and click Upload."
+    - "Step 2: Select your child and choose 'Report Card' as the content type."
+    - "Step 3: Upload the report card PDF or image."
+    - "Step 4: AI analyzes the grades and teacher comments automatically."
+    - "Step 5: View the AI analysis showing strengths, areas to improve, and next steps."
+  tags: [journey, parent, report-card, ai, analysis, grades, walkthrough]
+
+- id: journey-P05
+  name: "Parent Journey: Understanding Your Dashboard"
+  description: "A tour of the Parent Dashboard showing what each section means. Covers the child filter pills, Today's Focus urgency header with overdue/due-today/upcoming counts, alert banners, student detail panel, quick actions, and navigation to key pages."
+  roles: [parent]
+  how_to:
+    - "Step 1: Log in — the Parent Dashboard is your landing page."
+    - "Step 2: Use child filter pills at the top to switch between children."
+    - "Step 3: Review Today's Focus for urgency counts (overdue, due today, upcoming)."
+    - "Step 4: Check alert banners for important notifications."
+    - "Step 5: Use the student detail panel to see courses, tasks, and recent activity per child."
+  tags: [journey, parent, dashboard, overview, walkthrough, navigation]
+
+- id: journey-P06
+  name: "Parent Journey: Messaging Your Child's Teacher"
+  description: "How parents start a conversation with their child's teacher through in-app messaging. Covers navigating to Messages, starting a new conversation, selecting a teacher, composing and sending a message, and receiving replies."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to Messages from the sidebar."
+    - "Step 2: Click 'New Conversation'."
+    - "Step 3: Select a teacher from the list of linked teachers."
+    - "Step 4: Type your message and click Send."
+    - "Step 5: You will receive a notification when the teacher replies."
+  tags: [journey, parent, messaging, teacher, communication, walkthrough]
+
+- id: journey-P07
+  name: "Parent Journey: Creating Tasks & Reminders"
+  description: "How parents create tasks and reminders for their children. Covers navigating to Tasks, creating a new task with title, due date, priority, and assignee, using the calendar view, and tracking task completion."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to Tasks from the sidebar."
+    - "Step 2: Click the + icon to create a new task."
+    - "Step 3: Enter the title, description, due date, and priority."
+    - "Step 4: Assign the task to a child."
+    - "Step 5: Track completion from the Tasks list or calendar view."
+  tags: [journey, parent, tasks, reminders, calendar, walkthrough]
+
+- id: journey-P08
+  name: "Parent Journey: Smart Daily Briefing & Help My Kid"
+  description: "How parents use the AI-powered daily briefing and Help My Kid feature. Covers viewing the briefing notes with upcoming deadlines, recent grades, areas needing attention, and AI-suggested conversation starters to support your child's learning."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to Parent Briefing Notes from the sidebar or dashboard."
+    - "Step 2: Select a child to view their briefing."
+    - "Step 3: Review upcoming deadlines and recent grade trends."
+    - "Step 4: Read AI-suggested actions and areas needing attention."
+    - "Step 5: Use conversation starters to discuss schoolwork with your child."
+  tags: [journey, parent, briefing, help-my-kid, ai, daily-briefing, walkthrough]
+
+- id: journey-P09
+  name: "Parent Journey: Managing Courses"
+  description: "How parents view and manage their children's courses. Covers browsing the course list filtered by child, viewing course details with materials and assignments, creating custom courses, and assigning courses to children."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to Courses from the sidebar."
+    - "Step 2: Filter by child to see their enrolled courses."
+    - "Step 3: Click a course to view details, materials, and assignments."
+    - "Step 4: Optionally create a custom course for extra study materials."
+    - "Step 5: Assign courses to children from the course detail page."
+  tags: [journey, parent, courses, management, walkthrough]
+
+- id: journey-P10
+  name: "Parent Journey: Connecting Google Classroom"
+  description: "How parents connect Google Classroom to automatically sync their child's courses and assignments. Covers authorizing Google, selecting the child's classroom, and viewing synced courses and due dates on the dashboard."
+  roles: [parent]
+  how_to:
+    - "Step 1: Go to your dashboard and click 'Connect Google Classroom'."
+    - "Step 2: Authorize ClassBridge in the Google consent screen."
+    - "Step 3: Your child's courses and assignments sync automatically."
+    - "Step 4: Synced courses appear in the Courses list with a Google icon."
+    - "Step 5: Use the Sync button anytime to pull the latest changes."
+  tags: [journey, parent, google-classroom, sync, integration, walkthrough]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS — STUDENT (S01–S10)
+# ============================================================
+
+- id: journey-S01
+  name: "Student Journey: Registration & First Login"
+  description: "Step-by-step walkthrough for students joining ClassBridge. Covers joining the waitlist or using an invite link from a parent or teacher, completing registration, selecting the Student role, and landing on the Student Dashboard."
+  roles: [student]
+  how_to:
+    - "Step 1: Join via the waitlist or click an invite link from a parent or teacher."
+    - "Step 2: Set your password and complete onboarding as a Student."
+    - "Step 3: You land on the Student Dashboard with your hero greeting."
+    - "Step 4: Review quick action cards for study tools and tasks."
+    - "Step 5: Approve any pending parent link requests from Link Requests."
+  tags: [journey, student, registration, getting-started, walkthrough, onboarding]
+
+- id: journey-S02
+  name: "Student Journey: Generating a Study Guide"
+  description: "How students generate an AI study guide from course materials. Covers opening a material, navigating to the Study Guide tab, optionally entering a focus prompt, generating the guide, and reading the structured content."
+  roles: [student]
+  how_to:
+    - "Step 1: Go to the Study Hub or Course Materials and open a material."
+    - "Step 2: Click the Study Guide tab."
+    - "Step 3: Optionally enter a focus prompt to target specific topics."
+    - "Step 4: Click Generate — the guide builds in the background."
+    - "Step 5: Read the structured guide with key concepts and summaries."
+  tags: [journey, student, study-guide, ai, generation, walkthrough]
+
+- id: journey-S03
+  name: "Student Journey: Taking a Practice Quiz"
+  description: "How students take an AI-generated practice quiz. Covers opening a material, generating a quiz, answering multiple-choice questions, submitting for scoring, and reviewing correct answers with explanations."
+  roles: [student]
+  how_to:
+    - "Step 1: Open a course material and go to the Quiz tab."
+    - "Step 2: Click Generate Quiz (uses 1 AI credit)."
+    - "Step 3: Answer the multiple-choice questions."
+    - "Step 4: Click Submit to see your score."
+    - "Step 5: Review correct answers and explanations for each question."
+  tags: [journey, student, quiz, practice, ai, assessment, walkthrough]
+
+- id: journey-S04
+  name: "Student Journey: Flashcards & Mind Maps"
+  description: "How students use AI-generated flashcards and mind maps for studying. Covers generating flashcards from materials, flipping cards, shuffling, keyboard navigation, and accessing mind map visualizations of key concepts."
+  roles: [student]
+  how_to:
+    - "Step 1: Open a course material and go to the Flashcards tab."
+    - "Step 2: Click Generate Flashcards (uses 1 AI credit)."
+    - "Step 3: Click a card to flip between question and answer."
+    - "Step 4: Use arrow keys to navigate and Shuffle to randomize."
+    - "Step 5: Access mind maps from the material detail page for visual concept overviews."
+  tags: [journey, student, flashcards, mind-map, ai, study-tools, walkthrough]
+
+- id: journey-S05
+  name: "Student Journey: Study Q&A Chatbot"
+  description: "How students use the AI chatbot for study questions. Covers opening the Help chatbot, asking course-related questions, getting contextual answers from your materials, and following up with deeper questions."
+  roles: [student]
+  how_to:
+    - "Step 1: Click the Help or Chatbot icon from the sidebar or dashboard."
+    - "Step 2: Type a study question related to your course materials."
+    - "Step 3: The AI answers using your uploaded materials as context."
+    - "Step 4: Ask follow-up questions to go deeper on a topic."
+    - "Step 5: Use suggested prompts for common study queries."
+  tags: [journey, student, chatbot, qa, ai, study-tools, walkthrough]
+
+- id: journey-S06
+  name: "Student Journey: Notes & Text Highlights"
+  description: "How students take notes and highlight text while studying. Covers opening the notes panel, typing notes with auto-save, selecting text to add to notes, persistent highlights, and creating tasks from notes."
+  roles: [student]
+  how_to:
+    - "Step 1: Open a study guide, quiz, or material detail page."
+    - "Step 2: Click the floating notes button to open the notes panel."
+    - "Step 3: Type notes — they auto-save as you type."
+    - "Step 4: Select text in the content and click 'Add to Notes' to capture key passages."
+    - "Step 5: Highlights persist across sessions for easy review."
+  tags: [journey, student, notes, highlights, study-tools, walkthrough]
+
+- id: journey-S07
+  name: "Student Journey: Tasks, XP Points & Study Streaks"
+  description: "How students manage tasks, earn XP points, and maintain study streaks. Covers viewing assigned tasks, marking tasks complete, earning XP for study activities, tracking your streak on the dashboard, and leveling up."
+  roles: [student]
+  how_to:
+    - "Step 1: Go to Tasks to see assignments and reminders from parents or teachers."
+    - "Step 2: Mark tasks as complete to earn XP points."
+    - "Step 3: Study activities like quizzes and flashcards also earn XP."
+    - "Step 4: View your study streak on the dashboard hero section."
+    - "Step 5: Keep your streak alive by studying daily."
+  tags: [journey, student, tasks, xp, streaks, gamification, walkthrough]
+
+- id: journey-S08
+  name: "Student Journey: Study With Me Pomodoro Timer"
+  description: "How students use the Pomodoro-style study timer. Covers starting a study session, the 25-minute focus interval, break reminders, tracking total study time, and earning XP for completed sessions."
+  roles: [student]
+  how_to:
+    - "Step 1: Open the Study With Me timer from the dashboard or sidebar."
+    - "Step 2: Click Start to begin a 25-minute focus session."
+    - "Step 3: Study until the timer alerts you for a break."
+    - "Step 4: Take a short break, then start another session."
+    - "Step 5: Completed sessions earn XP and count toward your study streak."
+  tags: [journey, student, pomodoro, timer, study-session, focus, walkthrough]
+
+- id: journey-S09
+  name: "Student Journey: Student Dashboard Overview"
+  description: "A tour of the Student Dashboard showing what each section means. Covers the hero greeting with urgency pills, quick action cards for study tools, the Coming Up timeline with upcoming deadlines, and navigation to key pages."
+  roles: [student]
+  how_to:
+    - "Step 1: Log in — the Student Dashboard is your landing page."
+    - "Step 2: View urgency pills showing overdue, due today, and upcoming counts."
+    - "Step 3: Use quick action cards to jump to study tools, tasks, or upload."
+    - "Step 4: Check the Coming Up timeline for upcoming deadlines."
+    - "Step 5: Navigate to Study Hub, Tasks, Messages, and more from the sidebar."
+  tags: [journey, student, dashboard, overview, walkthrough, navigation]
+
+- id: journey-S10
+  name: "Student Journey: Assessment Countdown & Study History"
+  description: "How students track upcoming assessments and review study history. Covers the assessment countdown on the dashboard, viewing quiz history with scores and trends, checking study session logs, and planning study time around due dates."
+  roles: [student]
+  how_to:
+    - "Step 1: Check the dashboard for assessment countdowns showing days until exams."
+    - "Step 2: Go to Quiz History to review past quiz scores and trends."
+    - "Step 3: View Activity History for a log of all study sessions."
+    - "Step 4: Use the calendar to plan study time around upcoming due dates."
+    - "Step 5: Track progress over time to identify areas needing more study."
+  tags: [journey, student, assessment, countdown, quiz-history, study-history, walkthrough]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS — TEACHER (T01–T08)
+# ============================================================
+
+- id: journey-T01
+  name: "Teacher Journey: Registration & Setup"
+  description: "Step-by-step walkthrough for teachers joining ClassBridge. Covers joining the waitlist or using an invite link, completing registration, selecting the Teacher role and teacher type (School Teacher or Private Tutor), and landing on the Teacher Dashboard."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Join via the waitlist or click an invite link from a parent."
+    - "Step 2: Set your password and complete onboarding as a Teacher."
+    - "Step 3: Choose your teacher type: School Teacher or Private Tutor."
+    - "Step 4: You land on the Teacher Dashboard with your courses and tools."
+    - "Step 5: Optionally connect Google Classroom to import existing courses."
+  tags: [journey, teacher, registration, getting-started, walkthrough, onboarding]
+
+- id: journey-T02
+  name: "Teacher Journey: Create a Class & Manage Roster"
+  description: "How teachers create a new class and manage the student roster. Covers creating a course with name and description, adding students by email, viewing the class roster, and removing students."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to Courses and click 'Create Course'."
+    - "Step 2: Enter the course name, description, and settings."
+    - "Step 3: Add students by email address from the roster tab."
+    - "Step 4: Students receive an invitation and appear in the roster once enrolled."
+    - "Step 5: Manage the roster by removing students or updating details."
+  tags: [journey, teacher, create-class, roster, courses, walkthrough]
+
+- id: journey-T03
+  name: "Teacher Journey: Upload Materials & Create Assignments"
+  description: "How teachers upload course materials and create assignments for students. Covers uploading documents, creating assignments with due dates, attaching materials to assignments, and tracking student submissions."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to a course detail page and click Upload Material."
+    - "Step 2: Drag-and-drop files or paste content."
+    - "Step 3: Create an assignment with title, instructions, and due date."
+    - "Step 4: Attach relevant materials to the assignment."
+    - "Step 5: Track student submissions and progress from the course page."
+  tags: [journey, teacher, upload, materials, assignments, walkthrough]
+
+- id: journey-T04
+  name: "Teacher Journey: Syncing Google Classroom"
+  description: "How teachers connect and sync Google Classroom with ClassBridge. Covers authorizing Google, importing courses and rosters, syncing assignments and due dates, and managing multiple Google accounts."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to the Teacher Dashboard and click 'Connect Google Classroom'."
+    - "Step 2: Authorize ClassBridge in the Google consent screen."
+    - "Step 3: Your Google Classroom courses, rosters, and assignments import automatically."
+    - "Step 4: Use the Sync button to pull the latest changes anytime."
+    - "Step 5: Add additional Google accounts from the Google Account Management section."
+  tags: [journey, teacher, google-classroom, sync, integration, walkthrough]
+
+- id: journey-T05
+  name: "Teacher Journey: Communicating with Parents & Students"
+  description: "How teachers communicate with parents and students through in-app messaging. Covers viewing conversations, starting new chats, replying to parent messages, and sending class-wide announcements."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to Messages from the sidebar."
+    - "Step 2: View existing conversations with parents and students."
+    - "Step 3: Click 'New Conversation' to start a chat."
+    - "Step 4: Select a parent or student from your course roster."
+    - "Step 5: Type your message and send — they receive a notification."
+  tags: [journey, teacher, messaging, communication, parents, students, walkthrough]
+
+- id: journey-T06
+  name: "Teacher Journey: Teacher Dashboard Overview"
+  description: "A tour of the Teacher Dashboard showing what each section means. Covers the course list, Google account management, invite tools, recent activity, and quick navigation to key teacher features."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Log in — the Teacher Dashboard is your landing page."
+    - "Step 2: View your courses and student counts."
+    - "Step 3: Manage Google accounts from the integration section."
+    - "Step 4: Use invite tools to bring parents and students to ClassBridge."
+    - "Step 5: Navigate to Courses, Messages, Tasks, and Materials from the sidebar."
+  tags: [journey, teacher, dashboard, overview, walkthrough, navigation]
+
+- id: journey-T07
+  name: "Teacher Journey: Inviting Parents & Students"
+  description: "How teachers invite parents and students to join ClassBridge. Covers the invite flow for new users, sending email invitations, tracking invite status, and linking invited parents to students."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to the Teacher Dashboard invite section."
+    - "Step 2: Click 'Invite Parent' or 'Invite Student'."
+    - "Step 3: Enter the person's email address."
+    - "Step 4: They receive an invitation email with a registration link."
+    - "Step 5: Once they register, they are automatically linked to your class."
+  tags: [journey, teacher, invite, parents, students, walkthrough]
+
+- id: journey-T08
+  name: "Teacher Journey: Viewing Student Progress"
+  description: "How teachers view student progress across courses. Covers the course roster with student stats, viewing quiz scores and study activity, checking task completion rates, and identifying students who may need extra support."
+  roles: [teacher]
+  how_to:
+    - "Step 1: Go to a course detail page and view the student roster."
+    - "Step 2: Click a student to see their individual progress."
+    - "Step 3: Review quiz scores, study guide usage, and flashcard activity."
+    - "Step 4: Check task completion rates and overdue items."
+    - "Step 5: Identify students needing support based on activity and performance data."
+  tags: [journey, teacher, progress, students, analytics, walkthrough]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS — ADMIN (A01–A05)
+# ============================================================
+
+- id: journey-A01
+  name: "Admin Journey: Admin Dashboard Overview"
+  description: "A tour of the Admin Dashboard showing platform-wide statistics and management tools. Covers user counts by role, active session stats, recent registrations, AI usage overview, and quick links to admin tools."
+  roles: [admin]
+  how_to:
+    - "Step 1: Log in as Admin — the Admin Dashboard is your landing page."
+    - "Step 2: Review platform stats: total users, active sessions, registrations."
+    - "Step 3: View user breakdown by role (parents, students, teachers)."
+    - "Step 4: Check AI usage overview for credit consumption trends."
+    - "Step 5: Navigate to user management, waitlist, broadcasts, and audit log."
+  tags: [journey, admin, dashboard, overview, walkthrough, stats]
+
+- id: journey-A02
+  name: "Admin Journey: Managing Users"
+  description: "How admins manage user accounts across the platform. Covers the user management table with search and role filters, viewing user profiles, adjusting AI credit limits, sending individual messages, and handling account issues."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin Dashboard and open User Management."
+    - "Step 2: Search for users by name or email."
+    - "Step 3: Filter by role (parent, student, teacher)."
+    - "Step 4: Click a user to view their profile, adjust AI limits, or send a message."
+    - "Step 5: Handle account issues like password resets or role changes."
+  tags: [journey, admin, user-management, walkthrough]
+
+- id: journey-A03
+  name: "Admin Journey: Broadcast & Individual Messages"
+  description: "How admins send broadcast messages to all users or individual messages to specific users. Covers composing broadcasts, previewing content, targeting by role, viewing broadcast history, and sending direct messages from user profiles."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Messages or the Admin Dashboard broadcast section."
+    - "Step 2: Click 'New Broadcast' to send to all users."
+    - "Step 3: Compose the message and preview before sending."
+    - "Step 4: Optionally target specific roles (e.g., all parents)."
+    - "Step 5: For individual messages, find the user in User Management and click 'Send Message'."
+  tags: [journey, admin, broadcast, messaging, communication, walkthrough]
+
+- id: journey-A04
+  name: "Admin Journey: Managing AI Usage Limits"
+  description: "How admins monitor and manage AI credit usage across the platform. Covers the AI Usage dashboard with overview stats, per-user usage tables, usage history logs, reviewing credit increase requests, and adjusting individual limits."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > AI Usage Management."
+    - "Step 2: View the Overview tab for platform-wide usage stats."
+    - "Step 3: Check the per-user table for individual consumption."
+    - "Step 4: Review the Credit Requests tab for pending increase requests."
+    - "Step 5: Approve, decline, or adjust credit limits for individual users."
+  tags: [journey, admin, ai-usage, credits, limits, management, walkthrough]
+
+- id: journey-A05
+  name: "Admin Journey: Audit Log & FAQ Management"
+  description: "How admins review the audit log and manage FAQ content. Covers browsing the audit log with filters for action type, user, and date, and managing FAQ entries including creating, editing, categorizing, and controlling role visibility."
+  roles: [admin]
+  how_to:
+    - "Step 1: Go to Admin > Audit Log to review platform activity."
+    - "Step 2: Filter by action type (logins, password resets, broadcasts, etc.)."
+    - "Step 3: Search by user or date range for specific events."
+    - "Step 4: Go to Admin > FAQ Management to manage FAQ content."
+    - "Step 5: Create, edit, or reorder FAQ entries with category and role assignments."
+  tags: [journey, admin, audit-log, faq-management, walkthrough]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS — CROSS-ROLE (X01–X02)
+# ============================================================
+
+- id: journey-X01
+  name: "Cross-Role Journey: How Parents, Students & Teachers Work Together"
+  description: "An overview of how the three main roles interact on ClassBridge. Covers the parent-student link, teacher-student course enrollment, parent-teacher messaging, shared course materials, and how tasks and assignments flow between roles."
+  roles: [parent, student, teacher]
+  how_to:
+    - "Step 1: Parents add children and link to student accounts (My Kids > Add Child)."
+    - "Step 2: Teachers create courses and add students to the roster."
+    - "Step 3: Parents and teachers communicate via in-app messaging."
+    - "Step 4: Teachers upload materials and create assignments; students access them in Study Hub."
+    - "Step 5: Parents monitor progress, tasks, and grades from their dashboard."
+  tags: [journey, cross-role, collaboration, parent, student, teacher, walkthrough]
+
+- id: journey-X02
+  name: "Cross-Role Journey: Using ClassBridge on Mobile"
+  description: "How to use ClassBridge on a mobile device. Covers the responsive web design, mobile-optimized navigation with bottom tabs, touch-friendly study tools, mobile notifications, and key differences from the desktop experience."
+  roles: [parent, student, teacher, admin]
+  how_to:
+    - "Step 1: Open classbridge.ca in your mobile browser or use the mobile app."
+    - "Step 2: Navigation uses bottom tabs instead of a sidebar on mobile."
+    - "Step 3: All study tools (guides, quizzes, flashcards) are touch-optimized."
+    - "Step 4: Swipe between cards, tap to flip flashcards, and scroll through content."
+    - "Step 5: Enable notifications in your device settings for real-time alerts."
+  tags: [journey, cross-role, mobile, responsive, walkthrough]

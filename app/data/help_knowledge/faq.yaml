@@ -1204,3 +1204,97 @@
   answer: "Yes. ClassBridge data exports comply with GDPR data portability requirements. The export includes all personal data we hold about you in a standard, machine-readable format. You can also request account deletion from Account Settings."
   roles: [parent, student, teacher]
   tags: [data-export, gdpr, privacy, compliance]
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS
+# ============================================================
+
+- id: faq-journey-1
+  question: "How do I add my child to ClassBridge?"
+  answer: "Follow journey P02: Go to My Kids from the sidebar, click the + icon, enter your child's name and email, and send a link request. Your child approves the request from their student account, and they appear in your My Kids list with their courses and tasks."
+  roles: [parent]
+  tags: [journey, parent, my-kids, link-child, getting-started]
+
+- id: faq-journey-2
+  question: "How do I generate a study guide?"
+  answer: "Follow journey S02: Open a course material from the Study Hub or Course Materials page, click the Study Guide tab, optionally enter a focus prompt, and click Generate. The AI builds a structured guide with key concepts and summaries in the background."
+  roles: [student, parent]
+  tags: [journey, student, study-guide, ai, generation]
+
+- id: faq-journey-3
+  question: "How do I create a class as a teacher?"
+  answer: "Follow journey T02: Go to Courses and click 'Create Course'. Enter the course name, description, and settings. Then add students by email from the roster tab. Students receive an invitation and appear in the roster once enrolled."
+  roles: [teacher]
+  tags: [journey, teacher, create-class, courses, roster]
+
+- id: faq-journey-4
+  question: "How do I connect Google Classroom?"
+  answer: "Follow journey P10 (parents) or T04 (teachers): Go to your dashboard and click 'Connect Google Classroom'. Authorize ClassBridge in the Google consent screen. Your courses and assignments sync automatically. Use the Sync button anytime to pull the latest changes."
+  roles: [parent, teacher]
+  tags: [journey, google-classroom, sync, integration]
+
+- id: faq-journey-5
+  question: "How do I take a practice quiz?"
+  answer: "Follow journey S03: Open a course material, go to the Quiz tab, and click Generate Quiz (uses 1 AI credit). Answer the multiple-choice questions, click Submit to see your score, and review correct answers with explanations."
+  roles: [student, parent]
+  tags: [journey, student, quiz, practice, ai]
+
+- id: faq-journey-6
+  question: "How do I message my child's teacher?"
+  answer: "Follow journey P06: Go to Messages from the sidebar, click 'New Conversation', select a teacher from your linked teachers, type your message, and click Send. You will receive a notification when the teacher replies."
+  roles: [parent]
+  tags: [journey, parent, messaging, teacher, communication]
+
+- id: faq-journey-7
+  question: "How do I invite parents and students to ClassBridge?"
+  answer: "Follow journey T07: Go to the Teacher Dashboard invite section, click 'Invite Parent' or 'Invite Student', enter their email address, and they receive an invitation email with a registration link. Once they register, they are automatically linked to your class."
+  roles: [teacher]
+  tags: [journey, teacher, invite, parents, students]
+
+- id: faq-journey-8
+  question: "How do I use the Pomodoro study timer?"
+  answer: "Follow journey S08: Open the Study With Me timer from the dashboard or sidebar. Click Start to begin a 25-minute focus session. Study until the timer alerts you for a break. Completed sessions earn XP and count toward your study streak."
+  roles: [student]
+  tags: [journey, student, pomodoro, timer, study-session]
+
+- id: faq-journey-9
+  question: "How do I view the audit log as an admin?"
+  answer: "Follow journey A05: Go to Admin > Audit Log to browse platform activity. Filter by action type (logins, password resets, broadcasts), search by user or date range, and review specific security events."
+  roles: [admin]
+  tags: [journey, admin, audit-log, security]
+
+- id: faq-journey-10
+  question: "How do I manage AI usage limits?"
+  answer: "Follow journey A04: Go to Admin > AI Usage Management. View the Overview tab for platform-wide stats, check per-user consumption in the usage table, review credit increase requests, and approve, decline, or adjust limits for individual users."
+  roles: [admin]
+  tags: [journey, admin, ai-usage, credits, limits]
+
+- id: faq-journey-11
+  question: "How do I upload a report card for AI analysis?"
+  answer: "Follow journey P04: Go to Course Materials, click Upload, select your child and choose 'Report Card' as the content type, upload the PDF or image, and the AI automatically analyzes grades and comments showing strengths, areas to improve, and suggested next steps."
+  roles: [parent]
+  tags: [journey, parent, report-card, ai, analysis, grades]
+
+- id: faq-journey-12
+  question: "What are user journey walkthroughs?"
+  answer: "User journey walkthroughs are step-by-step guides that walk you through common tasks on ClassBridge. There are 37 journeys organized by role: 10 for Parents (P01–P10), 10 for Students (S01–S10), 8 for Teachers (T01–T08), 5 for Admins (A01–A05), and 2 Cross-Role (X01–X02). Access them from the Help Center."
+  roles: [parent, student, teacher, admin]
+  tags: [journey, walkthrough, tutorial, help, getting-started]
+
+- id: faq-journey-13
+  question: "How do parents, students, and teachers work together on ClassBridge?"
+  answer: "Follow journey X01: Parents add children and link to student accounts. Teachers create courses and add students. Parents and teachers communicate via messaging. Teachers upload materials and create assignments; students access them in Study Hub. Parents monitor progress from their dashboard."
+  roles: [parent, student, teacher]
+  tags: [journey, cross-role, collaboration, getting-started]
+
+- id: faq-journey-14
+  question: "How do I use ClassBridge on my phone?"
+  answer: "Follow journey X02: Open classbridge.ca in your mobile browser or use the mobile app. Navigation uses bottom tabs on mobile. All study tools are touch-optimized — swipe between cards, tap to flip flashcards. Enable notifications in your device settings for real-time alerts."
+  roles: [parent, student, teacher, admin]
+  tags: [journey, mobile, responsive, cross-role]
+
+- id: faq-journey-15
+  question: "How do I send a broadcast message as an admin?"
+  answer: "Follow journey A03: Go to Messages or the Admin Dashboard broadcast section, click 'New Broadcast', compose your message, preview it, optionally target specific roles, and send. For individual messages, find the user in User Management and click 'Send Message'."
+  roles: [admin]
+  tags: [journey, admin, broadcast, messaging]

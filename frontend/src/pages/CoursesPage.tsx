@@ -19,6 +19,7 @@ import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { AddActionButton } from '../components/AddActionButton';
 import '../components/AddActionButton.css';
 import { ReportBugLink } from '../components/ReportBugLink';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './CoursesPage.css';
 
 const CHILD_COLORS = [
@@ -794,6 +795,7 @@ export function CoursesPage() {
           { label: 'Home', to: '/dashboard' },
           { label: 'Classes' },
         ]} />
+        <JourneyNudgeBanner pageName="courses" />
         {actionError && (
           <div className="error-banner" style={{ background: '#fef2f2', color: '#991b1b', padding: '8px 16px', borderRadius: '8px', marginBottom: 12 }}>
             {actionError}
