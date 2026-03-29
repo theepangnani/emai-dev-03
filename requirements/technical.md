@@ -226,6 +226,22 @@ ClassBridge handles student data subject to FERPA, PIPEDA, and MFIPPA. The follo
 - **Minor Data Protection**: Student accounts (especially those created by parents) require additional protections — no marketing emails, limited data sharing, parental consent for under-13 users.
 - **Audit Logging**: Log access to sensitive data (parent viewing child data, admin viewing user list) for compliance auditing. **Phase 1 implementation complete** — see §6.14. Future: log export, alerting, archival to external storage.
 
+### 10.2 Accessibility (WCAG 2.1 AA)
+
+ClassBridge targets WCAG 2.1 Level AA compliance for all user-facing pages. Added March 2026 based on comprehensive frontend audit.
+
+- **Contrast:** All text meets 4.5:1 contrast ratio on its background (WCAG 1.4.3)
+- **Form Accessibility:** All inputs have labels; errors use `aria-invalid` + `aria-describedby` (WCAG 1.3.1, 3.3.1)
+- **Semantic HTML:** Native `<button>`, `<a>`, `<table>` elements; no `div role="button"` (WCAG 4.1.2)
+- **Motion:** All animations respect `prefers-reduced-motion: reduce` (WCAG 2.3.3)
+- **Touch Targets:** Minimum 44px on touch devices (WCAG 2.5.5)
+- **Responsive:** Standard breakpoints only (480px, 768px, 1024px); minimum 11px font size
+- **Testing:** axe-core in CI pipeline; Lighthouse accessibility score >= 90; manual screen reader testing quarterly
+
+**GitHub Issues:** #2148 (WCAG audit), #2472–#2486 (accessibility batch), #2611–#2619 (audit remediation)
+
+See §6.18.1 in features-part2.md for detailed requirements and acceptance criteria.
+
 ---
 
 ## 11. Success Metrics (KPIs)

@@ -180,25 +180,39 @@ ClassBridge must be accessible and usable on all devices — phones, tablets, an
 #### Phase 1.5: Mobile-Responsive Web (Current)
 Make the existing web application fully responsive and touch-friendly.
 
-**Status:** IN PROGRESS — 15 of 20 CSS files already have `@media` breakpoints (primary: `max-width: 600px`). Five files need breakpoints added: Auth.css, QuizPage.css, NotificationBell.css, TeacherDashboard.css, App.css.
+**Status:** IN PROGRESS — March 2026 audit found 80+ issues. Most CSS files have breakpoints but many use non-standard values. See linked issues below.
+
+**Standard Breakpoints (canonical — all CSS must use ONLY these):**
+- Mobile: 480px
+- Tablet: 768px
+- Desktop: 1024px
 
 **Requirements:**
 - [ ] All pages render correctly at 320px–1440px viewport widths
 - [x] Collapsible sidebar navigation on mobile (hamburger menu)
-- [ ] Full-screen modals on small screens
-- [ ] Minimum 44px touch targets on all interactive elements
-- [ ] Horizontal scroll for wide tables (admin user list, etc.)
+- [x] Viewport meta tag configured correctly
+- [ ] All CSS files use ONLY standard breakpoints: 480px, 768px, 1024px (#2486)
+- [ ] Minimum font size: 11px for all user-visible text at any viewport (#2482)
+- [ ] All page titles (40px+) have mobile scaling media queries (#2482)
+- [ ] Full-screen modals on small screens (#2472)
+- [ ] Minimum 44px touch targets on all interactive elements (#2619)
+- [ ] Horizontal scroll for wide tables with card-view for user-facing tables (#2614)
 - [ ] Touch-friendly calendar interactions (tap instead of drag-drop)
 - [ ] Swipe gestures for flashcards
-- [ ] No horizontal page overflow at any screen size
-- [ ] Viewport meta tag configured correctly
+- [ ] No horizontal page overflow at any screen size (#2613)
+- [ ] Fixed-dimension components use responsive units (min(), clamp(), vw) (#2613)
+- [ ] Touch alternatives for all hover-only interactions (#2612)
+- [ ] Sidebar panels auto-collapse on mobile (#2617)
+- [ ] Shared responsive CSS utility classes in design system (#2616)
+- [ ] No functionality accessible only via :hover — touch alternatives required (#2612)
 
 **Implementation Notes:**
-- Use existing CSS custom properties and `max-width: 600px` breakpoint pattern
+- Use standard breakpoints: 480px (mobile), 768px (tablet), 1024px (desktop) — NOT 600px
 - CSS-only solutions preferred over JavaScript for responsiveness
 - Test with Chrome DevTools device emulation (iPhone SE, iPad, Galaxy S21)
+- Test at 320px, 375px, 414px, 768px, 1024px, 1440px viewport widths
 
-**GitHub Issues:** #152 (mobile responsive web)
+**GitHub Issues:** #152 (mobile responsive web), #2486, #2482, #2612, #2613, #2614, #2616, #2617, #2619
 
 #### Phase 2+: Native Mobile Apps (Future)
 Dedicated Android and iOS applications for enhanced mobile experience.
@@ -208,11 +222,56 @@ Dedicated Android and iOS applications for enhanced mobile experience.
 **Future capabilities:**
 - Native push notifications
 - Offline access to study guides and flashcards
-- Camera integration for scanning assignments/documents
+- Camera integration for scanning assignments/documents (#2615)
 - App store presence for discoverability
 - Home screen install via PWA
 
-**GitHub Issues:** #192 (native mobile apps)
+**GitHub Issues:** #192 (native mobile apps), #2615
+
+### 6.18.1 Accessibility Standards (WCAG 2.1 AA)
+
+ClassBridge targets WCAG 2.1 Level AA compliance for all user-facing pages. March 2026 audit identified 80+ accessibility issues across the frontend.
+
+**Form Accessibility:**
+- [ ] All inputs have associated labels (visible `<label>` with `htmlFor` or `aria-label`) (#2474)
+- [ ] Validation errors use `aria-invalid` and `aria-describedby` (#2474)
+- [ ] Dynamic status changes use `aria-live` regions (#2478)
+- [ ] Register username availability announced to screen readers (#2474)
+
+**Semantic HTML:**
+- [ ] Interactive elements use `<button>`, `<a>`, or native form controls — no `div role="button"` (#2473)
+- [ ] Data tables use `<table>`, `<thead>`, `<th scope>` for tabular data
+- [ ] Modals have `role="dialog"` and `aria-label` (#2472)
+- [ ] All dropdowns/listboxes have proper ARIA roles and labels (#2478)
+
+**Color & Contrast:**
+- [ ] All text meets 4.5:1 contrast ratio (AA) on its background (#2611)
+- [ ] `--color-accent` reserved for large text only; `--color-accent-strong` for small text (#2611)
+- [ ] Color is never the sole indicator of state
+- [ ] All three themes (light, dark, focus) pass contrast checks (#2611)
+
+**Motion & Animation:**
+- [ ] All CSS animations respect `prefers-reduced-motion: reduce` (#2484)
+- [ ] Loading spinners reduce to opacity-only animation (not removed entirely) (#2484)
+- [ ] Decorative entrance animations fully suppressed when reduced motion preferred (#2484)
+
+**Touch & Input:**
+- [ ] All interactive elements have 44px minimum touch target on touch devices (#2619)
+- [ ] Hover-only effects wrapped in `@media (hover: hover)` (#2612)
+- [ ] Skip-to-main-content link functional (already implemented ✓)
+
+**Testing & CI:**
+- [ ] axe-core integrated in CI pipeline (#2148)
+- [ ] Lighthouse accessibility score >= 90 on key pages (#2148)
+- [ ] Manual screen reader testing on Login, Dashboard, Study Guide pages
+- [ ] 200% browser zoom testing on key flows (#2618)
+
+**Known Limitations (documented in #2618):**
+- PWA offline: AI features and messaging require network
+- Gesture support: Only CalendarView has swipe; other views are tap-only
+- Keyboard shortcuts: Desktop-only, visible UI buttons serve as mobile alternatives
+
+**GitHub Issues:** #2148, #2472, #2473, #2474, #2478, #2482, #2484, #2611, #2612, #2618, #2619
 
 ### 6.19 AI Email Communication Agent (Phase 5)
 - Compose messages inside ClassBridge
