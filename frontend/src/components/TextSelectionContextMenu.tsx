@@ -56,13 +56,16 @@ export function TextSelectionContextMenu({
     }
   }, [selectedText, handleClose, onAddNote, onAskChatBot]);
 
+  // Skip contextmenu listener on touch devices — SelectionTooltip handles mobile
+  const isTouchDevice = typeof window !== 'undefined' && navigator.maxTouchPoints > 0;
+
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || isTouchDevice) return;
 
     container.addEventListener('contextmenu', handleContextMenu);
     return () => container.removeEventListener('contextmenu', handleContextMenu);
-  }, [containerRef, handleContextMenu]);
+  }, [containerRef, handleContextMenu, isTouchDevice]);
 
   // Close on click outside or Escape
   useEffect(() => {
