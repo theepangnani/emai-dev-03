@@ -35,6 +35,19 @@
   color: var(--text-secondary, #555);
 }
 
+.tutorial-guide-link {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--text-muted, #999);
+  text-decoration: none;
+  margin-bottom: 12px;
+}
+
+.tutorial-guide-link:hover {
+  color: var(--primary, #6c63ff);
+  text-decoration: underline;
+}
+
 .tutorial-tooltip-footer {
   display: flex;
   justify-content: space-between;
