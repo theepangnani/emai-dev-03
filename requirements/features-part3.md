@@ -4691,3 +4691,127 @@ All course material content tabs now display a consistent metadata bar showing C
 | #2423 | #2408 | Fix: enforce role-based messaging recipient restrictions | 2026-03-27 |
 | #2402 | #2401 | Fix: allow students to view their own school report cards | 2026-03-27 |
 | #2400 | #2397 | Fix: support concurrent report card analysis loading indicators | 2026-03-27 |
+
+---
+
+### 6.125 Help Page User Journey Guide & Role-Based Diagrams (Phase 2) - PLANNED
+
+**Added:** 2026-03-29 | **GitHub Issue:** #2597
+
+Expand the Help Center and Tutorial pages to incorporate the full **ClassBridge User Journey Guide** (v1.0, March 2026) with role-based visual diagrams covering 37 journeys across all user roles.
+
+#### Content Source
+
+- **User Journey Guide:** `ClassBridge_User_Journey_Guide.docx` — complete step-by-step walkthroughs
+- **Diagrams:** 36 SVG/PNG files (cover + p01–p10, s01–s10, t01–t08, a01–a05, x01–x02)
+
+#### Journeys by Role
+
+| Role | ID Range | Count | Topics |
+|------|----------|-------|--------|
+| **Parent** | P01–P10 | 10 | Registration, Add Child, Upload Material, Report Card, Dashboard, Messaging, Tasks, Briefing, Courses, Google Classroom |
+| **Student** | S01–S10 | 10 | Registration, Study Guide, Quiz, Flashcards/Mind Maps, Q&A Chatbot, Notes, XP/Streaks, Pomodoro, Dashboard, Assessment Countdown |
+| **Teacher** | T01–T08 | 8 | Registration, Create Class, Upload Materials, Google Sync, Communication, Dashboard, Invites, Student Progress |
+| **Admin** | A01–A05 | 5 | Dashboard, Users, Broadcasts, AI Limits, Audit/FAQ |
+| **Cross-Role** | X01–X02 | 2 | How Roles Connect, Mobile |
+
+#### Requirements
+
+- [ ] §6.125.1 New "User Journeys" tab/section in Help Center (`/help`), organized by role tabs (#2600)
+- [ ] §6.125.2 Each journey rendered as expandable card: title, description, step-by-step walkthrough, inline SVG diagram (#2600)
+- [ ] §6.125.3 "Ask the Bot" button on each journey card → opens AI chatbot pre-filled with journey context (#2601)
+- [ ] §6.125.4 Diagram assets hosted at `frontend/public/help/journeys/` (SVG preferred) (#2599)
+- [ ] §6.125.5 Journey content indexed in Help KB YAML files for search and AI chatbot RAG (#2602)
+- [ ] §6.125.6 Cross-links from Tutorial page (§6.56) steps to corresponding journey articles (#2603)
+- [ ] §6.125.7 Mobile responsive — diagrams scale, accordion layout on small screens (#2600)
+
+#### Key Files
+- `frontend/src/pages/HelpPage.tsx` — Add Journeys section/tab
+- `app/data/help_knowledge/` — Journey content in KB YAML files
+- `app/services/chatbot_service.py` — Index journey content for RAG
+- `frontend/public/help/journeys/` — SVG/PNG diagram assets (new)
+- `frontend/src/pages/TutorialPage.tsx` — Cross-links to journey articles
+
+---
+
+### 6.126 Proactive Journey Hints — Smart First-Login Popups & Contextual Guidance (Phase 2) - PLANNED
+
+**Added:** 2026-03-29 | **GitHub Issue:** #2598 | **Depends on:** #2597 (§6.125)
+
+Proactively guide users through their ClassBridge journey with smart, contextual hints that appear only when genuinely needed. Includes a first-login welcome modal and subtle page-level nudges linked to User Journey articles (§6.125) and the AI Help Chatbot (§6.59).
+
+**Key design principle:** The system must be **smart, not annoying**. Hints fire based on real user state, never repeat, and respect user behavior signals.
+
+#### Smart Hint Intelligence Rules
+
+1. **State-Based** — Hints fire only when the action is genuinely missing (queries real DB: children count, materials count, quiz attempts). If the user already completed the action, the hint never appears — even if they never saw it.
+2. **Show Once, Remember Forever** — Each hint has a unique key. Once dismissed or completed, permanently suppressed. No "re-enable all hints."
+3. **Frequency Cap** — Max 1 hint per page load. Max 1 per session. Max 1 per calendar day. Snooze = 7 days minimum.
+4. **Progressive Disclosure** — First login: 2-3 next steps only. Days 2-7: max 1 nudge/day. After day 7: only undiscovered features. After day 30: stop all proactive hints entirely.
+5. **Respect Behavior Signals** — Navigate away in <2s: auto-dismiss. Close 2 hints without engaging: 14-day cooldown. "Don't show tips": suppress ALL permanently. Visited Help/Tutorial in last 7 days: suppress nudges (self-directed user).
+6. **Page Context Matching** — Hints only appear on the page where the action can be taken. Never on unrelated pages.
+
+#### First-Login Welcome Modal
+
+- Triggers on first authenticated session (no entries in `journey_hints` table)
+- Role-tailored top 2-3 next steps with diagram thumbnails:
+  - **Parent:** Add Child → Upload Material → Explore Dashboard
+  - **Student:** Dashboard → Study Guide → Practice Quiz
+  - **Teacher:** Create Class → Add Students → Upload Materials
+  - **Admin:** Dashboard Overview → Managing Users
+- Each card: diagram thumbnail + description + "Show me how" (→ Help journey) + "Ask the Bot" (→ chatbot)
+- Footer: "Got it, let me explore" (dismiss) / "Don't show tips" (permanent suppress all)
+
+#### Contextual Journey Nudges
+
+| User State | Nudge | Page | Journey |
+|------------|-------|------|---------|
+| Parent, 0 children | "Add your first child to get started" | Dashboard, My Kids | P02 |
+| Parent, children but 0 materials | "Upload course material for [child]" | Courses | P03 |
+| Parent, not connected to Google | "Connect Google Classroom to auto-sync" | Courses, Settings | P10 |
+| Student, 0 study guides | "Generate your first AI study guide" | Study Hub, Course Detail | S02 |
+| Student, guides but 0 quizzes | "Test yourself with a practice quiz" | Study Guide Detail | S03 |
+| Teacher, 0 courses | "Create your first class" | Dashboard, Courses | T02 |
+| Teacher, course but 0 students | "Add students to your class" | Course Detail | T02 |
+
+**Nudge UI:** Subtle, non-blocking banner below header. Muted color, small text, fade-in animation. Contains: hint text + "Learn more" + "Ask Bot" + dismiss ×. NOT a modal.
+
+#### Backend
+
+**New table:** `journey_hints` — `id, user_id, hint_key (varchar), status (shown|dismissed|completed|snoozed), shown_at, dismissed_at, snooze_until, created_at`
+
+**Endpoints:**
+- `GET /api/journey/hints?page={pageName}` — max 1 applicable hint after all filtering
+- `POST /api/journey/hints/{hint_key}/dismiss` — permanent dismiss
+- `POST /api/journey/hints/{hint_key}/snooze` — snooze 7 days
+- `POST /api/journey/hints/suppress-all` — nuclear option
+
+**Service:** `app/services/journey_hint_service.py` — queries real user state, caches per request
+
+#### Frontend
+
+**Hook:** `useJourneyHint(pageName)` — returns `{ hint, dismiss, snooze, suppressAll }` or null. Session-cached.
+
+#### Requirements Checklist
+
+- [ ] §6.126.1 First-login welcome modal with role-tailored 2-3 next steps and diagram thumbnails (#2607)
+- [ ] §6.126.2 "Show me how" and "Ask the Bot" actions on each hint card (#2607)
+- [ ] §6.126.3 State-based hint detection — queries real user data, not timers (#2605)
+- [ ] §6.126.4 Auto-suppress hint when action is completed (even if hint was never shown) (#2605)
+- [ ] §6.126.5 Permanent dismiss persisted server-side in `journey_hints` table (#2604, #2606)
+- [ ] §6.126.6 Frequency caps: max 1/page, 1/session, 1/day (#2605, #2606)
+- [ ] §6.126.7 "Don't show tips" nuclear option suppresses all hints permanently (#2609)
+- [ ] §6.126.8 Behavior signal detection: 2 closes without engage → 14-day cooldown (#2609)
+- [ ] §6.126.9 Page context matching — hints only on relevant pages (#2608)
+- [ ] §6.126.10 Subtle non-blocking nudge banner (not modal) (#2608)
+- [ ] §6.126.11 30-day account age cutoff — stop all proactive hints (#2605)
+- [ ] §6.126.12 Mobile responsive (#2607, #2608)
+- [ ] §6.126.13 Optional "Getting Started" progress widget on dashboard (low priority) (#2610)
+
+#### Key Files
+- `frontend/src/components/JourneyWelcomeModal.tsx` — First-login popup
+- `frontend/src/components/JourneyNudgeBanner.tsx` — Contextual nudge banner
+- `frontend/src/hooks/useJourneyHint.ts` — Hint state management
+- `app/services/journey_hint_service.py` — Detection logic
+- `app/api/routes/journey.py` — Hint API endpoints
+- `app/models/journey_hint.py` — `journey_hints` table model

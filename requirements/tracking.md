@@ -1080,6 +1080,20 @@ Current feature issues are tracked in GitHub:
 - Issue #1090: Epic: Contextual Notes System — Note-taking on Course Materials (§6.7)
 - Issue #1209: feat: Replace tutorial SVG placeholders with real screenshots
 - Issue #1594: feat: hierarchical study guides — generate child study guides from parent topics
+- Issue #2597: **EPIC** — expand Help page with User Journey Guide & role-based diagrams (§6.125)
+  - Issue #2599: add journey diagram SVG/PNG assets to frontend (§6.125.4)
+  - Issue #2600: User Journeys tab in Help Center with role-based organization (§6.125.1-2)
+  - Issue #2601: Ask the Bot button on journey cards with pre-filled context (§6.125.3)
+  - Issue #2602: index journey content in Help KB YAML for search and chatbot RAG (§6.125.5)
+  - Issue #2603: cross-link Tutorial page steps to Help journey articles (§6.125.6)
+- Issue #2598: **EPIC** — proactive journey hints — smart first-login popups & contextual guidance (§6.126)
+  - Issue #2604: journey_hints DB table, model, and migration (§6.126.5)
+  - Issue #2605: journey hint detection service — state-based hint logic (§6.126.3-4)
+  - Issue #2606: journey hints API endpoints — get, dismiss, snooze, suppress (§6.126.5-7)
+  - Issue #2607: first-login welcome modal with role-tailored journey steps (§6.126.1-2)
+  - Issue #2608: contextual journey nudge banner component (§6.126.9-10)
+  - Issue #2609: behavior signal detection — auto-dismiss, cooldown, nuclear suppress (§6.126.7-8)
+  - Issue #2610: optional Getting Started progress widget on dashboard (§6.126.13)
 - Issue #1740: feat: master/sub class material hierarchy for multi-document uploads (§6.95)
 - ~~Issue #2087: User Bug Report with Screenshot → GitHub Issue + Admin Notification (§6.115)~~ ✅
 - ~~Issue #2089: Error Dialog → Report Bug Link (§6.116)~~ ✅

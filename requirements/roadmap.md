@@ -655,6 +655,31 @@ Sept    🚀 September 2026 Launch
 
 **Total estimated effort:** ~60 working days across 13 weeks (April 7 – July 4) + 2 months buffer.
 
+### Phase 2 (User Journey Guidance & Onboarding) — #2597, #2598
+
+Help users discover and navigate ClassBridge features through an expanded Help page with visual journey guides and smart, non-annoying contextual hints.
+
+**Priority order (12 sub-issues across 2 epics):**
+
+| Step | Issue | Title | Priority | Depends On |
+|------|-------|-------|----------|------------|
+| 1 | #2599 | Add journey diagram SVG/PNG assets | HIGH | — |
+| 2 | #2604 | journey_hints DB table & migration | HIGH | — |
+| 3 | #2600 | User Journeys tab in Help Center | HIGH | #2599 |
+| 4 | #2602 | Index journey content in Help KB YAML | MEDIUM | — |
+| 5 | #2605 | Journey hint detection service | HIGH | #2604 |
+| 6 | #2606 | Journey hints API endpoints | HIGH | #2604, #2605 |
+| 7 | #2607 | First-login welcome modal | HIGH | #2599, #2606 |
+| 8 | #2601 | Ask the Bot on journey cards | MEDIUM | #2600 |
+| 9 | #2608 | Contextual nudge banner | MEDIUM | #2606 |
+| 10 | #2609 | Behavior signal detection (cooldown, nuclear) | MEDIUM | #2605, #2607, #2608 |
+| 11 | #2603 | Tutorial cross-links to journey articles | LOW | #2600 |
+| 12 | #2610 | Getting Started progress widget | LOW | #2605, #2606 |
+
+**Parallel opportunities:** Steps 1+2 can run in parallel. Steps 3+4+5 can run in parallel. Steps 7+8 can run in parallel.
+
+---
+
 ### Phase 2+ (AI Intelligence & Data Platform) — #571-#581
 
 New features that deepen ClassBridge's AI capabilities, build a data foundation for student insights, and reduce platform costs.
