@@ -15,6 +15,7 @@ import { useAIUsage } from '../hooks/useAIUsage';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
 import '../components/AssignmentSubmission.css';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './CourseDetailPage.css';
 
 const CONTENT_TYPES = [
@@ -664,6 +665,7 @@ export function CourseDetailPage() {
           { label: 'Classes', to: '/courses' },
           { label: course?.name || 'Class' },
         ]} />
+        <JourneyNudgeBanner pageName="course-detail" />
 
         {/* Course header */}
         <div className="course-detail-header">
