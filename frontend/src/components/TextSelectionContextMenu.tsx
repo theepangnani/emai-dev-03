@@ -57,7 +57,7 @@ export function TextSelectionContextMenu({
   }, [selectedText, handleClose, onAddNote, onAskChatBot]);
 
   // Skip contextmenu listener on touch devices — SelectionTooltip handles mobile
-  const isTouchPrimary = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  const isTouchPrimary = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
 
   useEffect(() => {
     const container = containerRef.current;
