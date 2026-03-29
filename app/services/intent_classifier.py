@@ -40,6 +40,9 @@ TOPIC_KEYWORDS = [
     "data export",
     "calendar import",
     "theme", "dark mode", "appearance",
+    "journey", "journeys", "walkthrough", "walkthroughs",
+    "getting started", "how to", "tutorial", "step by step",
+    "guide", "user guide",
 ]
 
 
