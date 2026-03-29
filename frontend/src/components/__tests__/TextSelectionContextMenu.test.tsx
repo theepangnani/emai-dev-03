@@ -21,12 +21,28 @@ function renderContextMenu(props: Partial<React.ComponentProps<typeof TextSelect
 
 describe('TextSelectionContextMenu', () => {
   beforeEach(() => {
-    // Ensure non-touch environment by default
-    Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true })
+    // Non-touch by default
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
   })
 
   afterEach(() => {
-    Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true })
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
   })
 
   it('is hidden by default', () => {
@@ -114,8 +130,16 @@ describe('TextSelectionContextMenu', () => {
   })
 
   it('does not show menu on touch devices', () => {
-    // Simulate touch device
-    Object.defineProperty(navigator, 'maxTouchPoints', { value: 1, configurable: true })
+    // Simulate touch device via pointer: coarse
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
 
     renderContextMenu()
 

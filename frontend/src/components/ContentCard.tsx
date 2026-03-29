@@ -118,13 +118,15 @@ const loadMarkdown = () =>
     import('remark-gfm'),
     import('remark-math'),
     import('rehype-raw'),
+    import('rehype-sanitize'),
     import('rehype-katex'),
     import('katex/dist/katex.min.css'),
-  ]).then(([md, gfm, math, raw, katex]) => {
+  ]).then(([md, gfm, math, raw, sanitize, katex]) => {
     const ReactMarkdown = md.default;
     const remarkGfm = gfm.default;
     const remarkMath = math.default;
     const rehypeRaw = raw.default;
+    const rehypeSanitize = sanitize.default;
     const rehypeKatex = katex.default;
 
       function MarkdownRenderer({
@@ -175,7 +177,7 @@ const loadMarkdown = () =>
         return (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeRaw, [rehypeKatex, { throwOnError: false }]]}
+            rehypePlugins={[rehypeRaw, rehypeSanitize, [rehypeKatex, { throwOnError: false }]]}
             components={{ img: imgComponent }}
           >
             {resolved}
