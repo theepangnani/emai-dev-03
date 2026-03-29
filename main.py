@@ -25,6 +25,8 @@ from app.api.routes import study_suggestions
 from app.api.routes import holiday_dates
 from app.api.routes import family_report
 from app.api.routes import teacher_thanks
+from app.api.routes import csv_import
+from app.api.routes import weekly_report
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -2242,6 +2244,8 @@ app.include_router(daily_quiz.router, prefix="/api")
 app.include_router(holiday_dates.router, prefix="/api")
 app.include_router(family_report.router, prefix="/api")
 app.include_router(teacher_thanks.router, prefix="/api")
+app.include_router(csv_import.router, prefix="/api")
+app.include_router(weekly_report.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
