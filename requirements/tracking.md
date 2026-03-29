@@ -1,9 +1,25 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 23, 2026):** 2,240 total issues — 1,943 closed (87%), 297 open (13%)
-- **Features built:** 375+ enhancements closed
-- **Bugs fixed:** 350+ bugs closed
-- **Other closed:** 1,218 (pilot prep, docs, testing, infra, misc)
+**Summary (as of Mar 28, 2026):** ~2,589 total issues — ~2,184 closed (84%), 405 open (16%)
+- **Features built:** 400+ enhancements closed
+- **Bugs fixed:** 400+ bugs closed
+- **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
+
+**Week of Mar 22-28 highlights (163 issues closed):**
+- CSV Template Import (#2167) — template download, CSV upload with preview/validation, bulk import for courses/students/assignments (§6.67.4)
+- Weekly Family Report (#2228) — per-child engagement scores, streaks, quizzes, AI encouragement email (§6.63.1)
+- Study Q&A Chatbot Redesign (#2548, #2561) — header/panel restructure, vertical action rows, input/error redesign, focus-visible accessibility
+- Ask Chat Bot Flow (#2554) — replaced "Generate Study Material" tooltip with direct chatbot injection + auto-submit
+- Admin Dashboard Clickable (#2536, #2544) — Platform Health metrics and Recent Activity items now clickable with keyboard accessibility
+- Study Q&A Image Context (#2532) — source image descriptions passed to chatbot context for diagram citation
+- Study Q&A Access Fix (#2535) — widened access check to match course material trust circle for enrolled students
+- School Report Card Upload (#2286, §6.121) — upload, AI analysis, career path analysis, frontend wiring
+- Course Material Metadata (#2395, §6.123) — clickable popovers for class/tasks in all tabs, mobile bottom sheet
+- Document Privacy (#2269-#2274) — trust-circle access control, audit logging, access log tab
+- Role-Based Messaging Restrictions (#2408, #2423) — enforce recipient restrictions per role
+- Race Condition Fixes (#2567, #2569, #2578) — pendingQuestion useEffect chain, FABContext re-render optimization
+- PR Review Fixes (#2589) — CSV import RBAC, hashed_password, savepoints, file size limit
+- 20+ user-reported bugs fixed (#2520, #2521, #2533, #2570, #2579-#2582)
 
 **Week of Mar 17-23 highlights (156 issues closed):**
 - Streaming Study Guide Generation (#2120) — ChatGPT-like SSE streaming UX

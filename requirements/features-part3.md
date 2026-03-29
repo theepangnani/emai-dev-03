@@ -2788,6 +2788,36 @@ Parent pastes school calendar URL → ClassBridge syncs events, due dates, schoo
 - [ ] Photo Capture: snap & import (#1432)
 - [ ] Email Forwarding: parse school emails (#1433)
 - [ ] Calendar Import: ICS feed sync (#1434)
+- [x] CSV Template Import: bulk import via CSV (#2167) — see §6.67.4
+
+#### 6.67.4 CSV Template Import — Bulk Data Upload (Phase 2) - IMPLEMENTED
+
+**Status:** IMPLEMENTED (2026-03-28, PR #2584)
+**GitHub Issue:** #2167 | **Review Fixes:** PR #2589 (#2585-#2588)
+
+Parents, teachers, and admins can download CSV templates and upload populated files to bulk-import courses, students, and assignments. Reduces manual data entry friction for onboarding.
+
+**Implementation:**
+1. Template download endpoint returns pre-formatted CSV with correct headers per entity type (courses, students, assignments)
+2. CSV upload with client-side preview and validation before server submission
+3. Backend parses CSV, validates rows, creates entities in bulk with per-row error handling
+4. RBAC restricted to parent, teacher, and admin roles (#2587)
+5. 5 MB file size limit on uploads (#2588)
+6. Students created via CSV receive hashed passwords (#2585)
+7. Savepoint-based transaction handling — individual row failures don't roll back prior successful rows (#2586)
+
+**Sub-tasks:**
+- [x] Backend: CSV template download endpoint per entity type
+- [x] Backend: CSV upload, parse, validate, and bulk import service
+- [x] Backend: RBAC enforcement on import endpoints
+- [x] Backend: Per-row savepoint transaction handling
+- [x] Frontend: CSV import page with upload, preview, and validation UI
+- [x] Tests: 10 backend tests for CSV import
+
+**Key files:**
+- `app/api/routes/csv_import.py` — Template download + upload endpoints
+- `app/services/csv_import_service.py` — Parse, validate, bulk create logic
+- `frontend/src/pages/CSVImportPage.tsx` — Upload UI with preview
 
 ### 6.68 AI Integration Strategy — Decision Log
 
@@ -4126,12 +4156,14 @@ Effort-based signal comparing study activity vs upcoming assessments. Displayed 
 - AI recap: "You studied quadratic equations for 25 minutes. Here are 3 things to remember."
 - Weekly session total visible on parent dashboard
 
-### 6.114 Study Guide Contextual Q&A (Phase 2)
+### 6.114 Study Guide Contextual Q&A (Phase 2) - IMPLEMENTED
 
 Context-aware chatbot Q&A when users are viewing a study guide. The existing Help Chatbot automatically switches to "study tutor" mode, using the study guide content as context to answer questions. Users can save responses as new study guides or course materials.
 
 **GitHub Epic:** #2056
 **Sub-issues:** #2057 (backend streaming), #2058 (save endpoints), #2059 (wallet debit), #2060 (frontend chatbot), #2061 (page integration), #2062 (tests), #2063 (docs)
+**Chatbot Redesign:** #2548 (PR), #2538 (header/panel), #2539 (suggestion chips), #2540 (input/error), #2561 (diagram citation)
+**Ask Chat Bot Flow:** #2554 (PR #2574) — replaced "Generate Study Material" with chatbot injection
 
 **Architecture:** Same chatbot UI, smart routing. Frontend sends `study_guide_id` in the existing `/help/chat/stream` request. Backend detects the ID and routes to study Q&A path instead of help RAG pipeline.
 
@@ -4168,6 +4200,17 @@ Context-aware chatbot Q&A when users are viewing a study guide. The existing Hel
 **Save Actions on Assistant Messages (study_qa mode only):**
 1. **Save as Study Guide** — Creates sub-guide (`relationship_type="sub_guide"`, `parent_guide_id` = current guide). No AI credits consumed.
 2. **Save as Class Material** — Creates `CourseContent` with `text_content` in same course. Only available when guide has `course_id`. No AI credits consumed.
+
+**Chatbot UI Redesign (PR #2548, #2561):**
+- Redesigned header with guide title, session ID display, and credit cost indicator
+- Suggestion chips replaced with vertical action rows (inline SVG icons)
+- Input bar redesigned with cleaner error states and focus ring CSS variables
+- Medium-viewport breakpoint (400px chatbot panel) for responsive layout
+- Keyboard focus-visible styles on all interactive elements (action rows, close/clear buttons)
+- Source image descriptions passed to chatbot context for diagram citation (#2532)
+- Access check widened to match course material trust circle (#2535)
+- Dead code cleanup: removed GenerateSubGuideModal after Ask Chat Bot refactor (#2564, #2568)
+- Race condition fix: pendingQuestion useEffect chain and FABContext re-render optimization (#2567, #2569, #2578)
 
 ### 6.115 Streaming Study Guide Generation — ChatGPT-like UX (Phase 1) - COMPLETE
 
@@ -4619,3 +4662,32 @@ All course material content tabs now display a consistent metadata bar showing C
 | #2373 | #2353 | Fix: register `daily_quiz` router — Quiz of the Day 404 | 2026-03-25 |
 | #2364 | #2349 | Fix: ISO date format fallback in `_parse_report_date` | 2026-03-25 |
 | #2374 | #2350 | Fix: populate `creator_name`/`creator_email` in announcement sync | 2026-03-25 |
+
+### 6.124 Bug Fixes & Quality (March 26-28, 2026)
+
+**Bug fixes and improvements deployed in this period:**
+
+| PR | Issue | Description | Date |
+|----|-------|-------------|------|
+| #2584 | #2167, #2228 | Feat: CSV template import and Weekly Family Report | 2026-03-28 |
+| #2589 | #2585-#2588 | Fix: CSV import RBAC, password, savepoints, file size limit | 2026-03-28 |
+| #2574 | #2554 | Feat: replace Generate Study Material with Ask Chat Bot flow | 2026-03-28 |
+| #2578 | #2567, #2569 | Fix: race condition and re-render optimization in chatbot question injection | 2026-03-28 |
+| #2577 | — | Fix: suppress set-state-in-effect lint for intentional chatbot open | 2026-03-28 |
+| #2573 | #2562 | Fix: make access log test fully robust against CI shared DB state | 2026-03-28 |
+| #2561 | #2531 | Fix: Study Q&A — diagram citation, chatbot UI redesign | 2026-03-28 |
+| #2548 | #2538-#2540 | Fix: redesign Study Q&A chatbot UI for usability and simplicity | 2026-03-28 |
+| #2544 | #2536 | Fix: make admin dashboard metrics and activity items clickable | 2026-03-28 |
+| #2537 | #2532, #2535 | Fix: study Q&A — image context, access check for enrolled students | 2026-03-28 |
+| #2530 | #2523, #2528, #2529 | Fix: study Q&A chatbot — import crash, FK join bug, logging, tests | 2026-03-28 |
+| #2524 | #2522, #2526 | Fix: dashboard Quick Actions placement + XP badge layout | 2026-03-28 |
+| #2495 | #2491 | Fix: hide OCR text when source files provide original document | 2026-03-27 |
+| #2469 | #2468 | Fix: add public course bypass to can_access_material() | 2026-03-27 |
+| #2467 | #2465 | Fix: post-merge improvements — docstring, JWT import, PG compat, dedup | 2026-03-27 |
+| #2466 | — | Fix: CI test failures from weekend batch merge | 2026-03-27 |
+| #2453 | #2442-#2444, #2451 | Fix: PR review fixes — streak commit, JWT expiry, email counts, quiz safety | 2026-03-27 |
+| #2441 | — | Integrate: weekend batch — 15 features + all review fixes | 2026-03-27 |
+| #2429 | #2413, #2414 | Refactor: centralize upload constants & update docs to 30 MB | 2026-03-27 |
+| #2423 | #2408 | Fix: enforce role-based messaging recipient restrictions | 2026-03-27 |
+| #2402 | #2401 | Fix: allow students to view their own school report cards | 2026-03-27 |
+| #2400 | #2397 | Fix: support concurrent report card analysis loading indicators | 2026-03-27 |
