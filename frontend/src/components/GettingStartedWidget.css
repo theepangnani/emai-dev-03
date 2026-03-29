@@ -1,0 +1,179 @@
+/* ============================================
+   Getting Started Widget — role-specific progress
+   ============================================ */
+
+.gs-widget {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid transparent;
+  border-image: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm, var(--color-accent))) 1;
+  border-image-slice: 1 0 0 0;
+  border-radius: var(--radius-md, 10px);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  max-width: 360px;
+  animation: gs-widget-fadeIn 0.3s ease;
+}
+
+@keyframes gs-widget-fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.gs-widget__header {
+  margin-bottom: 12px;
+}
+
+.gs-widget__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gs-widget__title {
+  font-family: var(--font-display, inherit);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.gs-widget__dismiss {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+
+.gs-widget__dismiss:hover {
+  color: var(--color-ink);
+  background: var(--color-surface-hover);
+}
+
+.gs-widget__subtitle {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  margin: 4px 0 10px;
+}
+
+/* Progress bar */
+.gs-widget__progress-track {
+  width: 100%;
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gs-widget__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-warm, var(--color-accent)));
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+/* Steps */
+.gs-widget__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gs-widget__step {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gs-widget__step:last-child {
+  border-bottom: none;
+}
+
+.gs-widget__step-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.gs-widget__step-btn:not(:disabled):hover {
+  background: var(--color-surface-hover);
+}
+
+.gs-widget__step-btn:disabled {
+  cursor: default;
+}
+
+.gs-widget__step-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Check circle */
+.gs-widget__check {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-hover, #f4f4f5);
+  border: 2px solid var(--color-border);
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.gs-widget__check--done {
+  background: var(--color-success-bg, #e8f5e9);
+  border-color: var(--color-success, #2e7d32);
+  color: var(--color-success, #2e7d32);
+}
+
+.gs-widget__step-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  line-height: 1.3;
+}
+
+.gs-widget__step--done .gs-widget__step-label {
+  color: var(--color-ink-muted);
+  text-decoration: line-through;
+}
+
+.gs-widget__arrow {
+  flex-shrink: 0;
+  color: var(--color-ink-muted);
+  opacity: 0.4;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.gs-widget__step-btn:not(:disabled):hover .gs-widget__arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* Mobile: full width */
+@media (max-width: 600px) {
+  .gs-widget {
+    max-width: 100%;
+    padding: 14px 16px;
+  }
+}
