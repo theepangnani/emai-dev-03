@@ -4,11 +4,13 @@ import csv
 import io
 import logging
 import re
+import secrets
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.core.security import get_password_hash
 from app.models.assignment import Assignment
 from app.models.course import Course, student_courses
 from app.models.student import Student
@@ -170,29 +172,30 @@ def import_students(db: Session, rows: list[dict[str, str]], created_by_user: Us
             continue
 
         try:
-            user = User(
-                email=email,
-                full_name=name,
-                role=UserRole.STUDENT,
-                roles="student",
-                is_active=True,
-                needs_onboarding=True,
-            )
-            db.add(user)
-            db.flush()
+            with db.begin_nested():
+                temp_password = secrets.token_urlsafe(16)
+                user = User(
+                    email=email,
+                    full_name=name,
+                    role=UserRole.STUDENT,
+                    roles="student",
+                    hashed_password=get_password_hash(temp_password),
+                    is_active=True,
+                    needs_onboarding=True,
+                )
+                db.add(user)
+                db.flush()
 
-            student = Student(
-                user_id=user.id,
-                grade_level=int(grade) if grade else None,
-            )
-            db.add(student)
+                student = Student(
+                    user_id=user.id,
+                    grade_level=int(grade) if grade else None,
+                )
+                db.add(student)
             created += 1
         except Exception as exc:
             errors.append(f"Row {i}: {exc}")
-            db.rollback()
 
-    if not errors:
-        db.commit()
+    db.commit()
 
     return {"created": created, "skipped": skipped, "errors": errors}
 
@@ -218,22 +221,21 @@ def import_courses(db: Session, rows: list[dict[str, str]], created_by_user: Use
             continue
 
         try:
-            course = Course(
-                name=name,
-                description=description,
-                subject=subject,
-                created_by_user_id=created_by_user.id,
-                classroom_type="manual",
-                is_private=True,
-            )
-            db.add(course)
+            with db.begin_nested():
+                course = Course(
+                    name=name,
+                    description=description,
+                    subject=subject,
+                    created_by_user_id=created_by_user.id,
+                    classroom_type="manual",
+                    is_private=True,
+                )
+                db.add(course)
             created += 1
         except Exception as exc:
             errors.append(f"Row {i}: {exc}")
-            db.rollback()
 
-    if not errors:
-        db.commit()
+    db.commit()
 
     return {"created": created, "skipped": skipped, "errors": errors}
 
@@ -271,19 +273,18 @@ def import_assignments(db: Session, rows: list[dict[str, str]], created_by_user:
                 continue
 
         try:
-            assignment = Assignment(
-                title=title,
-                description=description,
-                course_id=course.id,
-                due_date=due_date,
-            )
-            db.add(assignment)
+            with db.begin_nested():
+                assignment = Assignment(
+                    title=title,
+                    description=description,
+                    course_id=course.id,
+                    due_date=due_date,
+                )
+                db.add(assignment)
             created += 1
         except Exception as exc:
             errors.append(f"Row {i}: {exc}")
-            db.rollback()
 
-    if not errors:
-        db.commit()
+    db.commit()
 
     return {"created": created, "skipped": skipped, "errors": errors}

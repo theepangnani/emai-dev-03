@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import require_role
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/import", tags=["CSV Import"])
 async def download_template(
     request: Request,
     template_type: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN)),
 ):
     """Download a blank CSV template with headers."""
     if template_type not in TEMPLATES:
@@ -49,7 +49,7 @@ async def download_template(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def list_templates(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN)),
 ):
     """List available CSV template types with their columns."""
     result = []
@@ -72,7 +72,7 @@ async def upload_csv(
     file: UploadFile = File(...),
     confirm: bool = Query(False, description="Set to true to actually import (otherwise preview only)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role(UserRole.PARENT, UserRole.TEACHER, UserRole.ADMIN)),
 ):
     """Upload and parse/import a CSV file.
 
@@ -88,6 +88,8 @@ async def upload_csv(
     # Read file content
     try:
         content_bytes = await file.read()
+        if len(content_bytes) > 5 * 1024 * 1024:  # 5 MB
+            raise HTTPException(status_code=400, detail="CSV file too large (max 5 MB)")
         content = content_bytes.decode("utf-8-sig")  # Handle BOM from Excel
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="File must be UTF-8 encoded")

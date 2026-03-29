@@ -20,7 +20,6 @@ from app.models.student import Student, parent_students
 from app.models.study_guide import StudyGuide
 from app.models.task import Task
 from app.models.user import User
-from app.models.xp import XpSummary
 from app.schemas.weekly_report import (
     ChildReport,
     ReportChildAssignment,
@@ -29,7 +28,6 @@ from app.schemas.weekly_report import (
     ReportChildTask,
     ReportUpcomingDeadline,
     WeeklyFamilyReportResponse,
-    WeeklyReportSendResponse,
 )
 from app.services.email_service import send_email, wrap_branded_email
 from app.services.streak_service import StreakService

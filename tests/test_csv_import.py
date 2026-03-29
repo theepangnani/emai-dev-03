@@ -186,3 +186,23 @@ def test_import_assignments_success(client, parent_user):
 def test_unauthenticated_access(client):
     resp = client.get("/api/import/templates")
     assert resp.status_code == 401
+
+
+def test_student_forbidden(client, db_session):
+    """Students should not be able to access CSV import endpoints."""
+    from app.models.user import User
+
+    email = "csv_student@test.com"
+    existing = db_session.query(User).filter(User.email == email).first()
+    if not existing:
+        resp = client.post("/api/auth/register", json={
+            "email": email,
+            "password": PASSWORD,
+            "full_name": "CSV Student",
+            "role": "student",
+        })
+        assert resp.status_code in (200, 201), resp.text
+
+    headers = _auth(client, email)
+    assert client.get("/api/import/templates", headers=headers).status_code == 403
+    assert client.get("/api/import/templates/students", headers=headers).status_code == 403
