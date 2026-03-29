@@ -16,6 +16,7 @@ import EmptyState from '../components/EmptyState';
 import { SearchableSelect, MultiSearchableSelect } from '../components/SearchableSelect';
 import type { SearchableOption } from '../components/SearchableSelect';
 import { TeacherCourseManagement } from '../components/TeacherCourseManagement';
+import { GettingStartedWidget } from '../components/GettingStartedWidget';
 import './TeacherDashboard.css';
 import './DashboardGrid.css';
 
@@ -353,6 +354,14 @@ export function TeacherDashboard() {
       {syncMessage && (
         <div className={`sync-message ${syncMessage.includes('failed') ? 'sync-error' : 'sync-success'}`}>{syncMessage}</div>
       )}
+
+      {/* Getting Started progress widget (#2610) */}
+      <GettingStartedWidget
+        completedStepIds={[
+          ...(courses.length > 0 ? ['create_class'] : []),
+          ...(courses.some(c => c.student_count > 0) ? ['add_students'] : []),
+        ]}
+      />
 
       {/* ── 3-Section Dashboard Grid (#1417) ────────────── */}
       <div className="dashboard-redesign">

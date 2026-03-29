@@ -33,6 +33,7 @@ import { QuizOfTheDay } from '../components/QuizOfTheDay';
 
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 
+import { GettingStartedWidget } from '../components/GettingStartedWidget';
 import './StudentDashboard.css';
 import './DashboardGrid.css';
 
@@ -561,6 +562,13 @@ export function StudentDashboard() {
           </Link>
         </div>
       </section>
+
+      {/* Getting Started progress widget (#2610) */}
+      <GettingStartedWidget
+        completedStepIds={[
+          ...(studyGuides.length > 0 ? ['generate_guide'] : []),
+        ]}
+      />
 
       {/* Section: Quick Actions */}
       <section className="dash-section dash-section--actions">

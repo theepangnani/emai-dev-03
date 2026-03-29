@@ -21,6 +21,7 @@ import { GenerationSpinner } from '../components/GenerationSpinner';
 import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { ReportBugLink } from '../components/ReportBugLink';
 import { QuizOfTheDay } from '../components/QuizOfTheDay';
+import { GettingStartedWidget } from '../components/GettingStartedWidget';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -215,6 +216,14 @@ export function ParentDashboard() {
         <>
           {/* Onboarding Setup Checklist (#869) */}
           <SetupChecklist />
+
+          {/* Getting Started progress widget (#2610) */}
+          <GettingStartedWidget
+            completedStepIds={[
+              ...(pd.children.length > 0 ? ['add_child'] : []),
+              ...(pd.courseMaterials.length > 0 ? ['upload_material'] : []),
+            ]}
+          />
 
           {/* Above-grid elements */}
           <div className="dash-above-grid">
