@@ -436,7 +436,15 @@ def check_behavior_signals(db: Session, user_id: int) -> bool:
     ).first():
         return True
 
-    # (d) Account age > 30 days (already checked in get_hint_for_user)
+    # (d) Account age > 30 days
+    user_row = db.query(User.created_at).filter(User.id == user_id).first()
+    if user_row and user_row.created_at:
+        created = user_row.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if (now - created) > timedelta(days=30):
+            return True
+
     return False
 
 
