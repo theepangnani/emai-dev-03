@@ -671,6 +671,7 @@ export function CourseMaterialDetailPage() {
       <div className="cm-error">
         <p>{error || 'Content not found'}</p>
         <FAQErrorHint faqCode={faqCode} />
+        <button className="cm-retry-btn" onClick={() => { setLoading(true); loadData(); }}>Try again</button>
         <Link to="/course-materials" className="cm-back-link">Back to Class Materials</Link>
       </div>
     </DashboardLayout>

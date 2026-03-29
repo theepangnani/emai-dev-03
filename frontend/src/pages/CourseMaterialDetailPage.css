@@ -83,6 +83,23 @@
   border-color: var(--color-accent-strong);
 }
 
+/* ── Retry button ─────────────────────────────── */
+.cm-retry-btn {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--color-accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.cm-retry-btn:hover {
+  opacity: 0.9;
+}
+
 /* ── Back link ────────────────────────────────── */
 .cm-back-link {
   color: var(--color-purple);
