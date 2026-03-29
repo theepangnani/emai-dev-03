@@ -399,3 +399,75 @@ def suppress_all_hints(db: Session, user_id: int) -> None:
 
 get_applicable_hint = get_hint_for_user
 record_shown = record_hint_shown
+
+
+# ---------------------------------------------------------------------------
+# Behavior signal detection (from #2609)
+# ---------------------------------------------------------------------------
+
+COOLDOWN_WINDOW_DAYS = 14
+COOLDOWN_STRIKE_THRESHOLD = 2
+SELF_DIRECTED_WINDOW_DAYS = 7
+SELF_DIRECTED_ACTIONS = ("page_view_help", "page_view_tutorial")
+
+
+def check_behavior_signals(db: Session, user_id: int) -> bool:
+    """Return True if hints should be SUPPRESSED for this user."""
+    from sqlalchemy import desc
+    from app.models.audit_log import AuditLog
+
+    now = datetime.now(timezone.utc)
+
+    # (a) Nuclear suppress
+    suppress_row = db.query(JourneyHint.id).filter(
+        JourneyHint.user_id == user_id,
+        JourneyHint.status == "suppress_all",
+    ).first()
+    if suppress_row:
+        return True
+
+    # (b) Two-strike cooldown
+    cutoff = now - timedelta(days=COOLDOWN_WINDOW_DAYS)
+    recent_hints = db.query(JourneyHint).filter(
+        JourneyHint.user_id == user_id,
+        JourneyHint.created_at >= cutoff,
+    ).order_by(desc(JourneyHint.created_at)).limit(5).all()
+
+    consecutive = 0
+    for h in recent_hints:
+        if h.status == "dismissed":
+            consecutive += 1
+        else:
+            break
+    if consecutive >= COOLDOWN_STRIKE_THRESHOLD:
+        return True
+
+    # (c) Self-directed user
+    self_cutoff = now - timedelta(days=SELF_DIRECTED_WINDOW_DAYS)
+    if db.query(AuditLog.id).filter(
+        AuditLog.user_id == user_id,
+        AuditLog.action.in_(SELF_DIRECTED_ACTIONS),
+        AuditLog.created_at >= self_cutoff,
+    ).first():
+        return True
+
+    # (d) Account age > 30 days (already checked in get_hint_for_user)
+    return False
+
+
+def record_hint_engagement(db: Session, user_id: int, hint_key: str, engaged: bool) -> None:
+    """Record whether the user engaged with or dismissed a hint."""
+    from sqlalchemy import desc
+    hint = db.query(JourneyHint).filter(
+        JourneyHint.user_id == user_id,
+        JourneyHint.hint_key == hint_key,
+    ).order_by(desc(JourneyHint.created_at)).first()
+
+    if hint:
+        hint.status = "engaged" if engaged else "dismissed"
+    else:
+        db.add(JourneyHint(
+            user_id=user_id, hint_key=hint_key,
+            status="engaged" if engaged else "dismissed",
+        ))
+    db.flush()
