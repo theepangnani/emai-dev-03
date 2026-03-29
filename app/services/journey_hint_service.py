@@ -391,3 +391,11 @@ def suppress_all_hints(db: Session, user_id: int) -> None:
         )
         db.add(entry)
         db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Aliases (used by API routes in #2606)
+# ---------------------------------------------------------------------------
+
+get_applicable_hint = get_hint_for_user
+record_shown = record_hint_shown
