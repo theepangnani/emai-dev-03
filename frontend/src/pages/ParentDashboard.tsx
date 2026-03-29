@@ -21,6 +21,7 @@ import { GenerationSpinner } from '../components/GenerationSpinner';
 import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { ReportBugLink } from '../components/ReportBugLink';
 import { QuizOfTheDay } from '../components/QuizOfTheDay';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -172,6 +173,7 @@ export function ParentDashboard() {
       welcomeSubtitle="At-a-glance monitoring, calendar, and quick actions"
       headerSlot={renderHeaderSlot}
     >
+      <JourneyNudgeBanner pageName="dashboard" />
       {pd.dashboardError ? (
         <div className="no-children-state">
           <h3>Unable to Load Dashboard</h3>

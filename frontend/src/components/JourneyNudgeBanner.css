@@ -1,0 +1,116 @@
+.journey-nudge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  background: var(--color-info-bg);
+  border: 1px solid var(--color-info-border);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text);
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.journey-nudge-banner--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.journey-nudge-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.journey-nudge-banner__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--color-info);
+}
+
+.journey-nudge-banner__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journey-nudge-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.journey-nudge-banner__link {
+  font-size: 13px;
+  color: var(--color-info);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.journey-nudge-banner__link:hover {
+  text-decoration: underline;
+}
+
+.journey-nudge-banner__bot-btn {
+  font-size: 13px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-info-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-info);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms;
+}
+
+.journey-nudge-banner__bot-btn:hover {
+  background: var(--color-info-border);
+}
+
+.journey-nudge-banner__dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted, #888);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  transition: background 150ms;
+}
+
+.journey-nudge-banner__dismiss:hover {
+  background: var(--color-hover-bg, rgba(0, 0, 0, 0.06));
+}
+
+/* Mobile: stack layout */
+@media (max-width: 480px) {
+  .journey-nudge-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .journey-nudge-banner__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .journey-nudge-banner__text {
+    white-space: normal;
+  }
+}

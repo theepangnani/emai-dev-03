@@ -17,6 +17,7 @@ import EmptyState from '../components/EmptyState';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
 import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { useAIUsage } from '../hooks/useAIUsage';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import '../components/AddActionButton.css';
 import './StudyGuidesPage.css';
 
@@ -1261,6 +1262,7 @@ export function StudyGuidesPage() {
           { label: 'Home', to: '/dashboard' },
           { label: 'Class Materials' },
         ]} />
+        <JourneyNudgeBanner pageName="study-hub" />
         <AIWarningBanner />
 
         {/* Child selector pills (parent only) + add action button */}

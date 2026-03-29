@@ -24,6 +24,7 @@ import { StudyGuideBreadcrumb } from '../components/StudyGuideBreadcrumb';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
 import '../components/HighlightOverlay.css';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './StudyGuidePage.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -265,6 +266,7 @@ export function StudyGuidePage() {
       {guide.parent_guide_id && (!guide.relationship_type || guide.relationship_type === 'sub_guide') && (
         <StudyGuideBreadcrumb guideId={guide.id} />
       )}
+      <JourneyNudgeBanner pageName="study-guide-detail" />
 
       {/* Header card */}
       <div className="sg-detail-header">

@@ -24,6 +24,7 @@ import { OnTrackBadge } from '../components/OnTrackBadge';
 import { StudyRequestModal } from '../components/StudyRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
+import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -636,6 +637,7 @@ export function MyKidsPage() {
         { label: 'Home', to: '/dashboard' },
         { label: 'My Kids' },
       ]} />
+      <JourneyNudgeBanner pageName="my-kids" />
       {/* Child Tabs */}
       <div className="pd-child-selector-wrapper">
         <div className="pd-child-selector">
