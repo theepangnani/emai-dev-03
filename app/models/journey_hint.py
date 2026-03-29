@@ -10,7 +10,7 @@ class JourneyHint(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     hint_key = Column(String(50), nullable=False)
-    status = Column(String(20), nullable=False, server_default="shown")
+    status = Column(String(20), nullable=False, server_default="shown")  # shown, dismissed, completed, snoozed, suppress_all
     shown_at = Column(DateTime(timezone=True), nullable=True)
     dismissed_at = Column(DateTime(timezone=True), nullable=True)
     snooze_until = Column(DateTime(timezone=True), nullable=True)
