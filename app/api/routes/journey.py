@@ -28,6 +28,19 @@ def get_journey_hint(
     return JourneyHintResult(hint=None)
 
 
+# suppress-all MUST be before {hint_key} routes to avoid path parameter matching
+@router.post("/hints/suppress-all", response_model=JourneyHintAction)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def suppress_all_hints(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Suppress ALL journey hints (nuclear option)."""
+    journey_hint_service.suppress_all_hints(db, current_user.id)
+    return JourneyHintAction(success=True, message="All hints suppressed")
+
+
 @router.post("/hints/{hint_key}/dismiss", response_model=JourneyHintAction)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def dismiss_hint(
@@ -52,15 +65,3 @@ def snooze_hint(
     """Snooze a journey hint for 7 days."""
     journey_hint_service.snooze_hint(db, current_user.id, hint_key)
     return JourneyHintAction(success=True, message="Hint snoozed for 7 days")
-
-
-@router.post("/hints/suppress-all", response_model=JourneyHintAction)
-@limiter.limit("10/minute", key_func=get_user_id_or_ip)
-def suppress_all_hints(
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """Suppress ALL journey hints (nuclear option)."""
-    journey_hint_service.suppress_all_hints(db, current_user.id)
-    return JourneyHintAction(success=True, message="All hints suppressed")

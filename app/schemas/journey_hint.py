@@ -1,27 +1,29 @@
-"""Pydantic schemas for journey hints (#2604, #2609)."""
+"""Pydantic schemas for journey hints."""
 
-from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
 
 
-class JourneyHintBase(BaseModel):
+class JourneyHintResponse(BaseModel):
+    """Single hint returned by GET /api/journey/hints."""
     hint_key: str
-    status: str = "shown"
-    engaged: Optional[bool] = None
+    title: str
+    description: str
+    journey_id: str
+    journey_url: str
+    diagram_url: str
 
 
-class JourneyHintCreate(JourneyHintBase):
-    pass
+class JourneyHintResult(BaseModel):
+    """Wrapper — hint is None when no hint applies."""
+    hint: Optional[JourneyHintResponse] = None
 
 
-class JourneyHintResponse(JourneyHintBase):
-    id: int
-    user_id: int
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+class JourneyHintAction(BaseModel):
+    """Response for dismiss/snooze/suppress-all actions."""
+    success: bool
+    message: str
 
 
 class JourneyHintEngagement(BaseModel):

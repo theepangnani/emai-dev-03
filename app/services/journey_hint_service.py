@@ -103,9 +103,6 @@ HINT_DEFINITIONS: list[dict] = [
     },
 ]
 
-_HINT_MAP: dict[str, dict] = {h["hint_key"]: h for h in HINT_DEFINITIONS}
-
-
 # ---------------------------------------------------------------------------
 # State-detection helpers (one per hint_key)
 # ---------------------------------------------------------------------------
@@ -236,29 +233,8 @@ def get_hint_for_user(
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # ── Global suppression ──────────────────────────────────────────
-    suppress = db.query(JourneyHint).filter(
-        JourneyHint.user_id == user.id,
-        JourneyHint.status == "suppress_all",
-    ).first()
-    if suppress:
-        return None
-
-    # ── Account age > 30 days → no hints ────────────────────────────
-    if user.created_at:
-        created = user.created_at
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        if (now - created) > timedelta(days=30):
-            return None
-
-    # ── Consecutive dismissals check (2+ in last 14 days) ──────────
-    recent_dismissed = db.query(sa_func.count(JourneyHint.id)).filter(
-        JourneyHint.user_id == user.id,
-        JourneyHint.status == "dismissed",
-        JourneyHint.dismissed_at >= now - timedelta(days=14),
-    ).scalar()
-    if recent_dismissed >= 2:
+    # ── Behavior signals (nuclear suppress, cooldown, self-directed, age) ──
+    if check_behavior_signals(db, user.id):
         return None
 
     # ── Already shown a hint today ──────────────────────────────────
@@ -325,13 +301,22 @@ def get_hint_for_user(
 # ---------------------------------------------------------------------------
 
 def record_hint_shown(db: Session, user_id: int, hint_key: str) -> None:
-    """Record that a hint was shown to the user."""
-    entry = JourneyHint(
-        user_id=user_id,
-        hint_key=hint_key,
-        status="shown",
-    )
-    db.add(entry)
+    """Record that a hint was shown to the user (upsert to avoid UniqueConstraint)."""
+    now = datetime.now(timezone.utc)
+    existing = db.query(JourneyHint).filter(
+        JourneyHint.user_id == user_id,
+        JourneyHint.hint_key == hint_key,
+    ).first()
+    if existing:
+        existing.status = "shown"
+        existing.shown_at = now
+    else:
+        db.add(JourneyHint(
+            user_id=user_id,
+            hint_key=hint_key,
+            status="shown",
+            shown_at=now,
+        ))
     db.commit()
 
 
