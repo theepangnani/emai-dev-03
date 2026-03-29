@@ -290,7 +290,7 @@ export function SpeedDialFAB() {
         hasMultipleActions ? (
           <button
             className={`speed-dial-trigger ${dialOpen ? 'speed-dial-trigger--open' : ''}`}
-            onClick={() => setDialOpen(o => !o)}
+            onClick={(e) => { e.stopPropagation(); setDialOpen(o => !o); }}
             aria-label={dialOpen ? 'Close menu' : 'Open menu'}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -309,7 +309,7 @@ export function SpeedDialFAB() {
       )}
 
       {/* Backdrop overlay when dial is open */}
-      {dialOpen && <div className="speed-dial-backdrop" onClick={() => setDialOpen(false)} />}
+      {dialOpen && <div className="speed-dial-backdrop" onClick={() => setDialOpen(false)} onTouchEnd={(e) => { e.preventDefault(); setDialOpen(false); }} />}
     </div>
   );
 }

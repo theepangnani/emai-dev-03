@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TextSelectionContextMenu } from '../TextSelectionContextMenu'
 import { createRef } from 'react'
@@ -20,6 +20,31 @@ function renderContextMenu(props: Partial<React.ComponentProps<typeof TextSelect
 }
 
 describe('TextSelectionContextMenu', () => {
+  beforeEach(() => {
+    // Non-touch by default
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  })
+
+  afterEach(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+  })
+
   it('is hidden by default', () => {
     renderContextMenu()
     expect(screen.queryByText('Add Note')).not.toBeInTheDocument()
@@ -101,6 +126,31 @@ describe('TextSelectionContextMenu', () => {
     expect(screen.getByText('Add Note')).toBeInTheDocument()
 
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByText('Add Note')).not.toBeInTheDocument()
+  })
+
+  it('does not show menu on touch devices', () => {
+    // Simulate touch device via pointer: coarse
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(pointer: coarse)',
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    });
+
+    renderContextMenu()
+
+    vi.spyOn(window, 'getSelection').mockReturnValue({
+      toString: () => 'selected text content',
+      rangeCount: 1,
+    } as unknown as Selection)
+
+    const container = screen.getByTestId('container')
+    fireEvent.contextMenu(container, { clientX: 100, clientY: 200 })
+
     expect(screen.queryByText('Add Note')).not.toBeInTheDocument()
   })
 })

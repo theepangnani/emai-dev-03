@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PomodoroTimer } from '../components/PomodoroTimer';
@@ -31,9 +32,12 @@ export function StudySessionPage() {
   const [sessions, setSessions] = useState<StudySessionItem[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [expandedRecap, setExpandedRecap] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
+      setLoadError(false);
       const [coursesResp, sessionsResp, statsResp] = await Promise.all([
         api.get('/api/courses'),
         api.get('/api/study-sessions', { params: { limit: 10 } }),
@@ -43,7 +47,9 @@ export function StudySessionPage() {
       setSessions(sessionsResp.data.items || []);
       setStats(statsResp.data);
     } catch {
-      // Non-critical — component still renders
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -66,8 +72,24 @@ export function StudySessionPage() {
     <DashboardLayout>
       <div className="study-session-page">
         <h2 className="study-session-title">Study Session</h2>
+        <p className="study-session-subtitle">
+          Start a focused study timer, pick a subject, and earn XP. Track your study sessions over time.
+        </p>
+
+        {loadError && (
+          <div className="study-session-error">
+            <p>Could not load your data. <button onClick={loadData}>Try again</button></p>
+          </div>
+        )}
 
         <PomodoroTimer courses={courses} onSessionComplete={loadData} />
+
+        {courses.length === 0 && !loading && !loadError && (
+          <div className="study-session-empty">
+            <p>You are not enrolled in any classes yet.</p>
+            <Link to="/courses?tab=browse">Browse and join classes</Link>
+          </div>
+        )}
 
         {/* Weekly stats */}
         {stats && (
