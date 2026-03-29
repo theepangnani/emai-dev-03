@@ -450,17 +450,17 @@ def check_behavior_signals(db: Session, user_id: int) -> bool:
 
 def record_hint_engagement(db: Session, user_id: int, hint_key: str, engaged: bool) -> None:
     """Record whether the user engaged with or dismissed a hint."""
-    from sqlalchemy import desc
-    hint = db.query(JourneyHint).filter(
+    existing = db.query(JourneyHint).filter(
         JourneyHint.user_id == user_id,
         JourneyHint.hint_key == hint_key,
-    ).order_by(desc(JourneyHint.created_at)).first()
+    ).first()
 
-    if hint:
-        hint.status = "engaged" if engaged else "dismissed"
+    new_status = "engaged" if engaged else "dismissed"
+    if existing:
+        existing.status = new_status
     else:
         db.add(JourneyHint(
             user_id=user_id, hint_key=hint_key,
-            status="engaged" if engaged else "dismissed",
+            status=new_status,
         ))
     db.flush()

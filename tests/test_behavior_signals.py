@@ -53,12 +53,12 @@ def test_nuclear_suppress_blocks_all_hints(db_session, signal_user):
     # No suppress flag → hints allowed
     assert check_behavior_signals(db_session, signal_user.id) is False
 
-    # Add nuclear suppress
+    # Add nuclear suppress (must match suppress_all_hints() format)
     db_session.add(
         JourneyHint(
             user_id=signal_user.id,
-            hint_key="suppress_all",
-            status="shown",
+            hint_key="__suppress_all__",
+            status="suppress_all",
         )
     )
     db_session.flush()
@@ -79,7 +79,6 @@ def test_two_strike_cooldown_triggers(db_session, signal_user):
             user_id=signal_user.id,
             hint_key="hint_a",
             status="dismissed",
-            engaged=False,
             created_at=datetime.now(timezone.utc) - timedelta(days=1),
         )
     )
@@ -92,7 +91,6 @@ def test_two_strike_cooldown_triggers(db_session, signal_user):
             user_id=signal_user.id,
             hint_key="hint_b",
             status="dismissed",
-            engaged=False,
             created_at=datetime.now(timezone.utc),
         )
     )
@@ -106,15 +104,12 @@ def test_cooldown_resets_on_engagement(db_session, signal_user):
 
     # Dismissed, then engaged, then dismissed — only 1 consecutive → allowed
     now = datetime.now(timezone.utc)
-    for i, (status, engaged) in enumerate(
-        [("dismissed", False), ("engaged", True), ("dismissed", False)]
-    ):
+    for i, status in enumerate(["dismissed", "engaged", "dismissed"]):
         db_session.add(
             JourneyHint(
                 user_id=signal_user.id,
                 hint_key=f"hint_{i}",
                 status=status,
-                engaged=engaged,
                 created_at=now - timedelta(hours=3 - i),
             )
         )
@@ -199,7 +194,6 @@ def test_record_hint_engagement_creates_entry(db_session, signal_user):
         .first()
     )
     assert entry is not None
-    assert entry.engaged is True
     assert entry.status == "engaged"
 
 
@@ -229,5 +223,4 @@ def test_record_hint_engagement_updates_existing(db_session, signal_user):
         )
         .first()
     )
-    assert entry.engaged is False
     assert entry.status == "dismissed"
