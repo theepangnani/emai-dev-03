@@ -457,3 +457,88 @@
     - "Review upcoming deadlines and recent grades"
     - "See AI-suggested actions"
     - "Navigate to specific courses or tasks"
+
+# ============================================================
+# USER JOURNEY WALKTHROUGHS
+# ============================================================
+
+- id: page-journeys
+  route: "/help/journeys"
+  page_name: "User Journey Walkthroughs"
+  description: "Step-by-step guided walkthroughs for every role. Browse 37 journeys covering Parents (P01–P10), Students (S01–S10), Teachers (T01–T08), Admins (A01–A05), and Cross-Role (X01–X02) workflows. Each journey explains a complete task from start to finish."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "Browse journeys filtered by your role"
+    - "Follow step-by-step instructions for any feature"
+    - "Jump to a specific journey by ID (e.g., P02, S05, T04)"
+    - "View related FAQ entries and video tutorials"
+
+- id: page-journeys-parent
+  route: "/help/journeys#parent"
+  page_name: "Parent Journeys"
+  description: "Ten guided walkthroughs for parents covering registration, adding children, uploading materials, report card analysis, dashboard tour, messaging teachers, creating tasks, daily briefings, managing courses, and connecting Google Classroom."
+  roles: [parent]
+  key_actions:
+    - "P01: Registration & First Login"
+    - "P02: Add or Link Your Child"
+    - "P03: Upload Course Material"
+    - "P04: Report Card Upload & AI Analysis"
+    - "P05: Understanding Your Dashboard"
+    - "P06: Messaging Your Child's Teacher"
+    - "P07: Creating Tasks & Reminders"
+    - "P08: Smart Daily Briefing & Help My Kid"
+    - "P09: Managing Courses"
+    - "P10: Connecting Google Classroom"
+
+- id: page-journeys-student
+  route: "/help/journeys#student"
+  page_name: "Student Journeys"
+  description: "Ten guided walkthroughs for students covering registration, study guide generation, practice quizzes, flashcards and mind maps, Q&A chatbot, notes and highlights, tasks and XP, Pomodoro timer, dashboard tour, and assessment countdown."
+  roles: [student]
+  key_actions:
+    - "S01: Registration & First Login"
+    - "S02: Generating a Study Guide"
+    - "S03: Taking a Practice Quiz"
+    - "S04: Flashcards & Mind Maps"
+    - "S05: Study Q&A Chatbot"
+    - "S06: Notes & Text Highlights"
+    - "S07: Tasks, XP Points & Study Streaks"
+    - "S08: Study With Me Pomodoro Timer"
+    - "S09: Student Dashboard Overview"
+    - "S10: Assessment Countdown & Study History"
+
+- id: page-journeys-teacher
+  route: "/help/journeys#teacher"
+  page_name: "Teacher Journeys"
+  description: "Eight guided walkthroughs for teachers covering registration, class creation and rosters, uploading materials, Google Classroom sync, communicating with parents and students, dashboard tour, inviting users, and viewing student progress."
+  roles: [teacher]
+  key_actions:
+    - "T01: Registration & Setup"
+    - "T02: Create a Class & Manage Roster"
+    - "T03: Upload Materials & Create Assignments"
+    - "T04: Syncing Google Classroom"
+    - "T05: Communicating with Parents & Students"
+    - "T06: Teacher Dashboard Overview"
+    - "T07: Inviting Parents & Students"
+    - "T08: Viewing Student Progress"
+
+- id: page-journeys-admin
+  route: "/help/journeys#admin"
+  page_name: "Admin Journeys"
+  description: "Five guided walkthroughs for admins covering dashboard overview, user management, broadcast and individual messaging, AI usage limits, and audit log with FAQ management."
+  roles: [admin]
+  key_actions:
+    - "A01: Admin Dashboard Overview"
+    - "A02: Managing Users"
+    - "A03: Broadcast & Individual Messages"
+    - "A04: Managing AI Usage Limits"
+    - "A05: Audit Log & FAQ Management"
+
+- id: page-journeys-cross-role
+  route: "/help/journeys#cross-role"
+  page_name: "Cross-Role Journeys"
+  description: "Two guided walkthroughs explaining how roles collaborate on ClassBridge and how to use the platform on mobile devices."
+  roles: [parent, student, teacher, admin]
+  key_actions:
+    - "X01: How Parents, Students & Teachers Work Together"
+    - "X02: Using ClassBridge on Mobile"
