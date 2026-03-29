@@ -13,6 +13,7 @@ import { TutorialOverlay, triggerTutorial } from './tutorial/TutorialOverlay';
 import { TUTORIAL_KEYS, PARENT_TUTORIAL_STEPS, STUDENT_TUTORIAL_STEPS, TEACHER_TUTORIAL_STEPS } from './tutorial/tutorialSteps';
 import { SpeedDialFAB } from './SpeedDialFAB';
 import { BugReportModal } from './BugReportModal';
+import { JourneyWelcomeModal } from './JourneyWelcomeModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import '../pages/Dashboard.css';
 
@@ -768,6 +769,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       )}
 
       <BugReportModal open={bugReportOpen} onClose={() => setBugReportOpen(false)} />
+      <JourneyWelcomeModal />
       <SpeedDialFAB />
       </div>
     </>
