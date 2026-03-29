@@ -119,6 +119,12 @@
   flex-shrink: 0;
 }
 
+.tut-section-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 16px 8px;
+}
+
 .tut-chevron {
   display: inline-block;
   font-size: 10px;

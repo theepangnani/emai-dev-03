@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { AskBotButton } from '../components/AskBotButton';
 import { api } from '../api/client';
 import ReactMarkdown from 'react-markdown';
 import './HelpPage.css';
@@ -782,6 +783,10 @@ export function HelpPage() {
                   <span className="tut-section-badge">{section.steps.length} steps</span>
                   <span className={`tut-chevron${isActive ? ' expanded' : ''}`}>&#9654;</span>
                 </button>
+
+                <div className="tut-section-actions">
+                  <AskBotButton journeyId={section.id} journeyTitle={section.title} />
+                </div>
 
                 {isActive && currentSection && (
                   <div className="tut-step-viewer">

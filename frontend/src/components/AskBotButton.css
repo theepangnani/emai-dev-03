@@ -1,0 +1,30 @@
+.ask-bot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color, #d0d0d0);
+  border-radius: 6px;
+  background: var(--card-bg, #fff);
+  color: var(--text-secondary, #555);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.ask-bot-btn:hover {
+  background: var(--hover-bg, #f0f0f0);
+  border-color: var(--primary-color, #0d9488);
+  color: var(--primary-color, #0d9488);
+}
+
+.ask-bot-btn:focus-visible {
+  outline: 2px solid var(--primary-color, #0d9488);
+  outline-offset: 2px;
+}
+
+.ask-bot-btn svg {
+  flex-shrink: 0;
+}
