@@ -42,7 +42,7 @@ export function JourneyNudgeBanner({ pageName }: JourneyNudgeBannerProps) {
   }
 
   const handleAskBot = () => {
-    openChatWithQuestion(hint.message);
+    openChatWithQuestion(hint.title);
     dismiss();
   };
 
@@ -65,11 +65,11 @@ export function JourneyNudgeBanner({ pageName }: JourneyNudgeBannerProps) {
             <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
           </svg>
         </span>
-        <span className="journey-nudge-banner__text">{hint.message}</span>
+        <span className="journey-nudge-banner__text">{hint.title}</span>
       </div>
       <div className="journey-nudge-banner__actions">
         <a
-          href={`/help#journey-${hint.id}`}
+          href={`/help#journey-${hint.journey_id.toLowerCase()}`}
           className="journey-nudge-banner__link"
           onClick={handleLearnMore}
         >
