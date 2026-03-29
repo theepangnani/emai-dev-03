@@ -5,6 +5,8 @@ export interface TourStep {
   title: string;
   content: string;
   position?: 'top' | 'bottom' | 'left' | 'right';
+  /** Optional journey ID — links to the Help page journey article */
+  journeyId?: string;
 }
 
 interface OnboardingTourProps {
