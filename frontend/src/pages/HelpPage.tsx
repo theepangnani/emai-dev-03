@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { JourneyCard } from '../components/JourneyCard';
+import { JOURNEY_SECTIONS, ALL_ROLES } from '../data/journeyData';
 import { api } from '../api/client';
 import ReactMarkdown from 'react-markdown';
 import './HelpPage.css';
@@ -635,6 +637,8 @@ interface HelpArticle {
 
 export function HelpPage() {
   const { user } = useAuth();
+  const [helpTab, setHelpTab] = useState<'guides' | 'journeys'>('guides');
+  const [journeyRoleFilter, setJourneyRoleFilter] = useState<string>('All');
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState(0);
@@ -642,6 +646,11 @@ export function HelpPage() {
   const [searchResults, setSearchResults] = useState<HelpArticle[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
+
+  const filteredJourneys = useMemo(() => {
+    if (journeyRoleFilter === 'All') return JOURNEY_SECTIONS;
+    return JOURNEY_SECTIONS.filter(s => s.role === journeyRoleFilter);
+  }, [journeyRoleFilter]);
 
   const tutorials = useMemo(() => {
     switch (user?.role) {
@@ -730,6 +739,22 @@ export function HelpPage() {
           {isSearching && <span className="help-search-spinner" />}
         </div>
 
+        {/* ── Tab Switcher ── */}
+        <div className="help-tabs">
+          <button
+            className={`help-tab-btn${helpTab === 'guides' ? ' active' : ''}`}
+            onClick={() => setHelpTab('guides')}
+          >
+            Guides &amp; FAQ
+          </button>
+          <button
+            className={`help-tab-btn${helpTab === 'journeys' ? ' active' : ''}`}
+            onClick={() => setHelpTab('journeys')}
+          >
+            User Journeys
+          </button>
+        </div>
+
         {searchQuery.trim() && (
           <div className="help-search-results">
             {searchResults.length === 0 && !isSearching && (
@@ -757,6 +782,7 @@ export function HelpPage() {
           </div>
         )}
 
+        {helpTab === 'guides' && (<>
         <div className="tut-header">
           <h2 className="tut-title">Welcome, {roleName}!</h2>
           <p className="tut-subtitle">
@@ -909,6 +935,53 @@ export function HelpPage() {
           <p>Take our quick 3-5 minute survey and share your thoughts on what features matter most to you.</p>
           <a href="/survey" className="help-survey-btn">Take the Survey</a>
         </div>
+        </>)}
+
+        {helpTab === 'journeys' && (
+          <>
+            <div className="tut-header">
+              <h2 className="tut-title">User Journeys</h2>
+              <p className="tut-subtitle">
+                Step-by-step walkthroughs for every feature, organized by role.
+              </p>
+            </div>
+
+            <div className="journey-role-filters">
+              <button
+                className={`journey-role-btn${journeyRoleFilter === 'All' ? ' active' : ''}`}
+                onClick={() => setJourneyRoleFilter('All')}
+              >
+                All
+              </button>
+              {ALL_ROLES.map(role => (
+                <button
+                  key={role}
+                  className={`journey-role-btn${journeyRoleFilter === role ? ' active' : ''}`}
+                  onClick={() => setJourneyRoleFilter(role)}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+
+            <div className="journey-list">
+              {filteredJourneys.map(section => (
+                <div key={section.role} className="journey-role-group">
+                  {journeyRoleFilter === 'All' && (
+                    <h3 className="journey-role-heading">{section.role}</h3>
+                  )}
+                  {section.journeys.map(journey => (
+                    <JourneyCard
+                      key={journey.id}
+                      journey={journey}
+                      roleBadge={section.role}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

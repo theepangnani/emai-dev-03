@@ -1,0 +1,238 @@
+/* ─── Journey Card ─── */
+
+.journey-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.journey-card.expanded {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent), var(--shadow-soft);
+}
+
+.journey-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.journey-card-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.journey-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.journey-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+}
+
+.journey-card-desc {
+  font-size: 13px;
+  color: var(--color-ink-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.journey-card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-light, rgba(73, 184, 192, 0.1));
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.journey-card-chevron {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.journey-card-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+/* ─── Expanded body ─── */
+
+.journey-card-body {
+  border-top: 1px solid var(--color-border);
+  padding: 20px;
+}
+
+.journey-card-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ─── Steps column ─── */
+
+.journey-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.journey-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.journey-step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.journey-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.journey-step-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0 0 2px;
+}
+
+.journey-step-detail {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+  margin: 0;
+}
+
+.journey-step-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: var(--color-warning-bg, rgba(234, 179, 8, 0.08));
+  border: 1px solid var(--color-warning-border, rgba(234, 179, 8, 0.25));
+  border-radius: var(--radius-md, 8px);
+  padding: 6px 10px;
+  margin-top: 6px;
+}
+
+.journey-step-tip-icon {
+  color: var(--color-warning, #ca8a04);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.journey-step-tip span:last-child {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+/* ─── Diagram column ─── */
+
+.journey-diagram-wrap {
+  background: var(--color-surface-alt, #f8f9fa);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.journey-diagram-img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+
+.journey-diagram-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink-muted);
+  padding: 20px;
+}
+
+.journey-diagram-placeholder svg {
+  opacity: 0.4;
+}
+
+.journey-diagram-placeholder span {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .journey-card-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .journey-diagram-wrap {
+    order: -1;
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .journey-card-header {
+    padding: 14px 16px;
+  }
+
+  .journey-card-title {
+    font-size: 14px;
+  }
+
+  .journey-card-badge {
+    display: none;
+  }
+
+  .journey-card-body {
+    padding: 14px;
+  }
+
+  .journey-step-title {
+    font-size: 13px;
+  }
+
+  .journey-step-detail {
+    font-size: 12px;
+  }
+}
