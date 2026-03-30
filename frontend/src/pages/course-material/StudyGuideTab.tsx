@@ -14,6 +14,7 @@ import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import { ContentMetaBar } from './ContentMetaBar';
 import ParentSummaryCard from '../../components/ParentSummaryCard';
+import StudyGuideSuggestionChips, { type SuggestionTopic } from '../../components/StudyGuideSuggestionChips';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -45,6 +46,8 @@ interface StudyGuideTabProps {
   savedStudyGoal?: string;
   /** Saved study goal text from CourseContent */
   savedStudyGoalText?: string;
+  onGenerateChildGuide?: (topic: string, guideType: string) => Promise<void>;
+  childGuideGenerating?: string | null;
 }
 
 function FocusIcon() {
@@ -91,6 +94,8 @@ export function StudyGuideTab({
   savedDocumentType,
   savedStudyGoal,
   savedStudyGoalText,
+  onGenerateChildGuide,
+  childGuideGenerating,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -223,6 +228,20 @@ export function StudyGuideTab({
               </div>
             </>
           )}
+          {!isStreaming && studyGuide?.suggestion_topics && (() => {
+            try {
+              const topics: SuggestionTopic[] = JSON.parse(studyGuide.suggestion_topics);
+              if (!topics.length) return null;
+              return (
+                <StudyGuideSuggestionChips
+                  topics={topics}
+                  onTopicClick={(t) => onGenerateChildGuide?.(t.label, 'study_guide')}
+                  disabled={atLimit}
+                  generatingTopic={childGuideGenerating}
+                />
+              );
+            } catch { return null; }
+          })()}
           {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">
               {continuing ? (
