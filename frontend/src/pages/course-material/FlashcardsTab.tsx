@@ -244,8 +244,8 @@ export function FlashcardsTab({
             />
           )}
           <div className="cm-empty-tab-icon"><EmptyFlashcardIcon /></div>
-          <h3>No flashcards yet</h3>
-          <p>Generate flashcards to review key concepts from this material with an interactive card deck.</p>
+          <h3>Ready for quick review?</h3>
+          <p>Generate flashcards from this material to review key concepts with an interactive card deck.</p>
           <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
             <button
               className="cm-empty-generate-btn"

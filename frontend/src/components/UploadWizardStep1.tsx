@@ -1,5 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import CreateClassModal from './CreateClassModal';
+import React, { useRef, useMemo, useEffect } from 'react';
 
 import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION } from '../constants/upload';
 
@@ -18,12 +17,6 @@ interface UploadWizardStep1Props {
   onAddPastedImages: (images: File[]) => void;
   onRemovePastedImage: (index: number) => void;
   onClearPastedImages: () => void;
-  // Course selection
-  courses?: { id: number; name: string }[];
-  selectedCourseId?: number | '';
-  onCourseChange?: (id: number | '') => void;
-  onClassCreated?: (course: { id: number; name: string }) => void;
-  courseDisabled?: boolean;
   // State
   isGenerating: boolean;
   error: string;
@@ -55,11 +48,6 @@ function UploadWizardStep1({
   onAddPastedImages,
   onRemovePastedImage,
   onClearPastedImages,
-  courses,
-  selectedCourseId,
-  onCourseChange,
-  onClassCreated,
-  courseDisabled,
   isGenerating,
   error,
   isDragging,
@@ -68,7 +56,6 @@ function UploadWizardStep1({
   onDrop,
 }: UploadWizardStep1Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showCreateClassModal, setShowCreateClassModal] = useState(false);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) onAddFiles(e.target.files);
@@ -102,32 +89,6 @@ function UploadWizardStep1({
 
   return (
     <div className="upload-wizard-step">
-      {/* Course selector */}
-      {courses && onCourseChange && (
-        <div className="uw-course-select">
-          <label>
-            Class
-            <select
-              value={selectedCourseId ?? ''}
-              onChange={(e) => {
-                if (e.target.value === '__create__') {
-                  setShowCreateClassModal(true);
-                } else {
-                  onCourseChange(e.target.value ? Number(e.target.value) : '');
-                }
-              }}
-              disabled={isGenerating || courseDisabled}
-            >
-              <option value="">Select a class</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-              <option value="__create__">+ Create new class...</option>
-            </select>
-          </label>
-        </div>
-      )}
-
       {/* File drop zone — hero element */}
       <input
         ref={fileInputRef}
@@ -236,16 +197,6 @@ function UploadWizardStep1({
           {pastedImages.length >= 10 && <small className="uw-pasted-limit-note">Maximum 10 images</small>}
         </div>
       )}
-
-      {/* Create Class Modal */}
-      <CreateClassModal
-        open={showCreateClassModal}
-        onClose={() => setShowCreateClassModal(false)}
-        onCreated={(newCourse) => {
-          setShowCreateClassModal(false);
-          onClassCreated?.(newCourse);
-        }}
-      />
 
       {/* Error display */}
       {error && (

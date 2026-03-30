@@ -16,7 +16,6 @@ import { ConversationStartersCard } from '../components/briefing/ConversationSta
 import { SectionPanel } from '../components/SectionPanel';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
-import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
 import { ChildXpStats } from '../components/xp/ChildXpStats';
@@ -1411,32 +1410,15 @@ export function MyKidsPage() {
         isGenerating={studyTools.isGenerating}
         courses={wizardChildId ? (wizardCourses ?? (selectedChild === wizardChildId && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)) : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)}
         selectedCourseId={(() => { const wc = wizardChildId ? (wizardCourses ?? (selectedChild === wizardChildId && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined)) : (selectedChild && overview ? overview.courses.map(c => ({ id: c.id, name: c.name })) : undefined); return wc?.length === 1 ? wc[0].id : ''; })()}
-        duplicateCheck={studyTools.duplicateCheck}
-        onViewExisting={() => {
-          const guide = studyTools.duplicateCheck?.existing_guide;
-          if (guide) {
-            studyTools.resetStudyModal();
-            setWizardChildId(null);
-            if (guide.course_content_id) {
-              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-              navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
-            } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
-            else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-            else navigate(`/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
-        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={true}
         childName={(wizardChildId ? children.find(c => c.student_id === wizardChildId)?.full_name : children.find(c => c.student_id === selectedChild)?.full_name)}
         children={children.map(c => ({ id: c.student_id, name: c.full_name }))}
         onChildChange={(studentId: number) => setWizardChildId(studentId)}
       />
-      {studyTools.showLimitModal && <AILimitRequestModal open={studyTools.showLimitModal} onClose={() => studyTools.setShowLimitModal(false)} />}
       {studyTools.backgroundGeneration && (
         <div className={`sd-generation-banner ${studyTools.backgroundGeneration.status}`}>
           {studyTools.backgroundGeneration.status === 'generating' && (
-            <span><GenerationSpinner size="sm" /> Generating {studyTools.backgroundGeneration.type}...</span>
+            <span><GenerationSpinner size="sm" /> Uploading {studyTools.backgroundGeneration.type}...</span>
           )}
           {studyTools.backgroundGeneration.status === 'success' && (
             <>

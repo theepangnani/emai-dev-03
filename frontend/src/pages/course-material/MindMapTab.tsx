@@ -201,8 +201,8 @@ export function MindMapTab({
       ) : (
         <div className="cm-empty-tab">
           <div className="cm-empty-tab-icon"><EmptyMindMapIcon /></div>
-          <h3>No mind map yet</h3>
-          <p>Generate an AI-powered mind map to visualize the key concepts and relationships in this material.</p>
+          <h3>Visualize the key concepts</h3>
+          <p>Generate a mind map to see how the key concepts and relationships in this material connect.</p>
           <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
             <button
               className="cm-empty-generate-btn"

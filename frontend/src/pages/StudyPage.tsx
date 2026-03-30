@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
-import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { getCourseColor } from '../components/calendar/types';
 import { ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
@@ -643,28 +642,6 @@ export function StudyPage() {
         onCourseChange={(id) => {
           if (id !== '') setSelectedCourseId(id);
         }}
-        duplicateCheck={studyTools.duplicateCheck}
-        onViewExisting={() => {
-          const guide = studyTools.duplicateCheck?.existing_guide;
-          if (guide) {
-            studyTools.resetStudyModal();
-            if (guide.course_content_id) {
-              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-              navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
-            } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
-            else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-            else navigate(`/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() =>
-          studyTools.handleGenerateFromModal({
-            title: studyTools.studyModalInitialTitle,
-            content: studyTools.studyModalInitialContent,
-            types: ['study_guide'],
-            mode: 'text',
-          })
-        }
-        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={false}
       />
 
@@ -674,7 +651,7 @@ export function StudyPage() {
           {studyTools.backgroundGeneration.status === 'generating' && (
             <span>
               <span className="sd-gen-spinner" />
-              {' '}Generating {studyTools.backgroundGeneration.type}...
+              {' '}Uploading {studyTools.backgroundGeneration.type}...
             </span>
           )}
           {studyTools.backgroundGeneration.status === 'success' && (
@@ -700,10 +677,6 @@ export function StudyPage() {
           )}
         </div>
       )}
-      <AILimitRequestModal
-        open={studyTools.showLimitModal}
-        onClose={() => studyTools.setShowLimitModal(false)}
-      />
     </DashboardLayout>
   );
 }

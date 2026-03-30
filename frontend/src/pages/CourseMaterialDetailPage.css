@@ -602,6 +602,36 @@
   box-shadow: none;
 }
 
+/* Generation controls in empty state (document type, study goal) */
+.cm-empty-tab--with-controls {
+  text-align: left;
+  align-items: stretch;
+  padding: 40px 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.cm-empty-tab--with-controls h3,
+.cm-empty-tab--with-controls p {
+  text-align: center;
+}
+.cm-empty-tab--with-controls p {
+  max-width: none;
+}
+.cm-empty-tab--with-controls .cm-empty-generate-btn {
+  display: flex;
+  margin: 12px auto 0;
+}
+.cm-generation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 8px 0 16px;
+  padding: 16px;
+  background: var(--color-surface-alt, #f8f9fa);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
 .cm-file-info-card {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);

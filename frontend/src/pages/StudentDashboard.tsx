@@ -13,7 +13,7 @@ import { extractFaqCode } from '../utils/faqUtils';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
-import { AILimitRequestModal } from '../components/AILimitRequestModal';
+
 import { useAuth } from '../context/AuthContext';
 import { logger } from '../utils/logger';
 import EmptyState from '../components/EmptyState';
@@ -780,28 +780,13 @@ export function StudentDashboard() {
         onGenerate={studyTools.handleGenerateFromModal}
         isGenerating={studyTools.isGenerating}
         courses={courses.map(c => ({ id: c.id, name: c.name }))}
-        duplicateCheck={studyTools.duplicateCheck}
-        onViewExisting={() => {
-          const guide = studyTools.duplicateCheck?.existing_guide;
-          if (guide) {
-            studyTools.resetStudyModal();
-            if (guide.course_content_id) {
-              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-              navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
-            } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
-            else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-            else navigate(`/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
-        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
         showParentNote={false}
       />
       {/* Background generation status banner */}
       {studyTools.backgroundGeneration && (
         <div className={`sd-generation-banner ${studyTools.backgroundGeneration.status}`}>
           {studyTools.backgroundGeneration.status === 'generating' && (
-            <span><GenerationSpinner size="sm" /> Generating {studyTools.backgroundGeneration.type}...</span>
+            <span><GenerationSpinner size="sm" /> Uploading {studyTools.backgroundGeneration.type}...</span>
           )}
           {studyTools.backgroundGeneration.status === 'success' && (
             <>
@@ -812,7 +797,7 @@ export function StudentDashboard() {
           )}
           {studyTools.backgroundGeneration.status === 'error' && (
             <>
-              <span>Failed to generate {studyTools.backgroundGeneration.type}{studyTools.backgroundGeneration.error ? `: ${studyTools.backgroundGeneration.error}` : ''}</span>
+              <span>Failed to upload {studyTools.backgroundGeneration.type}{studyTools.backgroundGeneration.error ? `: ${studyTools.backgroundGeneration.error}` : ''}</span>
               <button className="sd-gen-dismiss-btn" onClick={studyTools.dismissBackgroundGeneration}>&times;</button>
             </>
           )}
@@ -935,10 +920,6 @@ export function StudentDashboard() {
           </div>
         </div>
       )}
-      <AILimitRequestModal
-        open={studyTools.showLimitModal}
-        onClose={() => studyTools.setShowLimitModal(false)}
-      />
     </DashboardLayout>
   );
 }

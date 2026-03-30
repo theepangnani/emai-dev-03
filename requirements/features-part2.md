@@ -629,3 +629,64 @@ Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a sin
 - No backend changes required — same `/api/course-contents/upload` and `/api/course-contents/upload-multi` endpoints
 - Same `StudyMaterialGenerateParams` interface; wizard maps to identical payload
 
+### 6.28.7 Upload Wizard Phase 2: Simplified Upload & Decoupled Generation - IN PROGRESS
+
+**Epic:** #2694 | **Phase 1:** #2695 | **Phase 2:** #2696 | **Phase 3:** #2697
+
+Further simplification of the upload wizard to reduce cognitive load for novice users. Decouples file upload from AI study guide generation — users upload first, then choose what to generate from the Class Materials detail page.
+
+**Problem Statement:**
+- Despite the 2-step wizard (6.28), users still struggle to generate study guides
+- The wizard combines upload + AI generation in one modal (8+ decisions)
+- Full 4096-token study guides are generated even when users only skim the output
+
+**Design: Upload-Only Wizard + Detail Page Generation**
+
+#### Step 1 — Select Your Material (Simplified)
+- [x] File drop zone as hero element (drag-drop, paste, multi-file) — same as 6.28.1
+- [x] Text paste with image paste detection — preserved from 6.28.1
+- [x] **Removed:** Course selector (moved to Step 2)
+- [x] **Removed:** "Just Upload" / "Next" dual buttons — single "Next" button only
+
+#### Step 2 — Student & Class (New)
+- [x] Student selector (parent with multiple children) — mandatory
+- [x] Class selector — mandatory (with "Create new class" option)
+- [x] Title field (auto-filled from filename)
+- [x] Master file selection for multi-file uploads
+- [x] Upload summary bar ("3 files ready to upload")
+- [x] **Removed:** Document type selector, study goal selector, AI tool cards, focus prompt
+- [x] Single "Upload" button — no AI generation from wizard
+
+#### Post-Upload Navigation
+- [x] Navigate to `/course-materials/:id` (detail page for uploaded material)
+- [x] No `autoGenerate` flag — user sees their document and chooses what to generate
+- [ ] Default to guide tab with prominent empty state
+
+#### Detail Page Empty State Generation Controls
+- [ ] **StudyGuideTab:** Auto-detected document type selector, study goal dropdown, focus prompt input, "Generate Study Guide" CTA
+- [ ] **QuizTab:** Focus prompt, difficulty selector (easy/medium/hard), "Generate Quiz" CTA
+- [ ] **FlashcardsTab:** Focus prompt, "Generate Flashcards" CTA
+- [ ] **MindMapTab:** Focus prompt, "Generate Mind Map" CTA
+- [ ] All empty states: Clear messaging — "Your document is ready — choose how to study it"
+- [ ] Document type auto-classification on page load (lazy, cached)
+
+#### Progressive Study Guide Generation (Phase 2 — #2696)
+- [ ] Overview-first model: ~1-page high-level overview (max_tokens=1000)
+- [ ] AI appends `--- SUGGESTION_TOPICS ---` with 4-6 key topics (JSON array)
+- [ ] Suggestion chips rendered below overview content
+- [ ] Each chip triggers `generate_child_guide()` — creates sub-guide in existing hierarchy
+- [ ] Sub-guides appear in `SubGuidesPanel`
+- [ ] **Cost model:** ~50% aggregate savings; break-even at 2-3 sub-guides
+
+#### Problem Solver Guide Type (Phase 3 — #2697)
+- [ ] New `problem_solver` guide type for math/science step-by-step solutions
+- [ ] Dedicated prompt template emphasizing worked solutions, common mistakes, practice problems
+- [ ] Renders in study guide tab as variant with type badge (no new tab)
+- [ ] Scope: math, science, logic problems — not general tutoring
+
+#### Upload Progress (Phase 4 — #2698)
+- [ ] Toast/banner on dashboard: "Uploading..." → "Upload complete — View material"
+- [ ] XHR-based progress bar for large files
+- [ ] Cached document classification on `CourseContent` model
+- [ ] Analytics: track sub-guides generated per overview
+
