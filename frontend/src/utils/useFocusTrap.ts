@@ -7,6 +7,8 @@ import { useEffect, useRef } from 'react';
 export function useFocusTrap(open: boolean, onClose?: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -31,7 +33,7 @@ export function useFocusTrap(open: boolean, onClose?: () => void) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
 
@@ -66,7 +68,7 @@ export function useFocusTrap(open: boolean, onClose?: () => void) {
       // Restore focus to previously focused element
       previousFocus.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   return ref;
 }

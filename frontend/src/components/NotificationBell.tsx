@@ -279,7 +279,7 @@ export function NotificationBell() {
 
     {/* Notification Detail Modal - portaled to body to escape header stacking context */}
     {modalNotification && createPortal(
-      <div className="modal-overlay" onClick={() => setModalNotification(null)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalNotification(null); } }} role="button" tabIndex={0}>
+      <div className="modal-overlay" onClick={() => setModalNotification(null)}>
         <div className="notif-modal" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <div className="notif-modal-header">
             <span className="notif-modal-icon" aria-hidden="true">{getTypeIcon(modalNotification.type)}</span>

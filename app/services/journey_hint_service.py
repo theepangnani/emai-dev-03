@@ -397,7 +397,7 @@ SELF_DIRECTED_WINDOW_DAYS = 7
 SELF_DIRECTED_ACTIONS = ("page_view_help", "page_view_tutorial")
 
 
-def check_behavior_signals(db: Session, user_or_id) -> bool:
+def check_behavior_signals(db: Session, user_or_id: "User | int") -> bool:
     """Return True if hints should be SUPPRESSED for this user.
 
     This is the single authoritative location for all suppression checks:

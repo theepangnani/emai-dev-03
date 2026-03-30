@@ -48,8 +48,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={`toast toast-${t.type}`}
+            role="button"
+            tabIndex={0}
             onClick={() => removeToast(t.id)}
-            {...(t.type === 'error' ? { role: 'alert', 'aria-live': 'assertive' } : {})}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeToast(t.id); } }}
+            {...(t.type === 'error' ? { 'aria-live': 'assertive' } : {})}
           >
             <span className="toast-icon">
               {t.type === 'success' ? '\u2713' : t.type === 'error' ? '\u2717' : '\u2139'}

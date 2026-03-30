@@ -143,7 +143,7 @@
 
 /* ── Dark mode ── */
 [data-theme="dark"] .gc-prompt {
-  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, #f0f7ff 100%);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, var(--color-surface-alt, #1e293b) 100%);
   border: 1px solid rgba(125, 211, 252, 0.25);
 }
 
