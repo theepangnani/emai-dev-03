@@ -1803,6 +1803,7 @@ async def generate_child_guide(
                 focus_prompt=body.topic,
                 custom_prompt=effective_custom_prompt,
             )
+            raw_content, _ = parse_suggestion_topics(raw_content)
             raw_content, critical_dates = parse_critical_dates(raw_content)
             generated_content = raw_content
         except ValueError as e:
@@ -1821,6 +1822,7 @@ async def generate_child_guide(
                 focus_prompt=body.topic,
                 num_questions=5,
             )
+            raw_quiz, _ = parse_suggestion_topics(raw_quiz)
             raw_quiz, critical_dates = parse_critical_dates(raw_quiz)
             generated_content = strip_json_fences(raw_quiz)
             # Validate JSON parses
@@ -1843,6 +1845,7 @@ async def generate_child_guide(
                 focus_prompt=body.topic,
                 num_cards=10,
             )
+            raw_cards, _ = parse_suggestion_topics(raw_cards)
             raw_cards, critical_dates = parse_critical_dates(raw_cards)
             generated_content = strip_json_fences(raw_cards)
             # Validate JSON parses
