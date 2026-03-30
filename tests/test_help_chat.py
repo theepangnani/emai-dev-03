@@ -408,3 +408,181 @@ async def test_embedding_service_retries_after_failed_init():
     # After failure, _initialized should still be False so it retries
     assert service._initialized is False, "Service should allow retry after failed init"
     assert service.chunks == [], "Chunks should be empty after failed init"
+
+
+# --- §6.114 Resource links in Q&A tests (#2543) ---
+
+
+def test_build_system_prompt_includes_resource_links():
+    """build_system_prompt includes RELATED RESOURCES section when links are provided."""
+    from app.services.study_qa_service import StudyQAService
+
+    service = StudyQAService()
+
+    class FakeLink:
+        def __init__(self, title, url, resource_type, topic_heading=None, description=None):
+            self.title = title
+            self.url = url
+            self.resource_type = resource_type
+            self.topic_heading = topic_heading
+            self.description = description
+
+    links = [
+        FakeLink("Algebra Basics", "https://youtube.com/watch?v=abc", "youtube", topic_heading="Algebra"),
+        FakeLink("Math Reference", "https://example.com/math", "external_link", description="Helpful reference"),
+    ]
+
+    prompt = service.build_system_prompt(
+        guide_title="Math Guide",
+        guide_content="Content about algebra.",
+        resource_links=links,
+    )
+
+    assert "RELATED RESOURCES" in prompt
+    assert "Algebra Basics" in prompt
+    assert "Math Reference" in prompt
+    assert "youtube.com" in prompt
+    assert "example.com" in prompt
+
+
+def test_build_system_prompt_no_resource_links():
+    """build_system_prompt omits RELATED RESOURCES section when no links are provided."""
+    from app.services.study_qa_service import StudyQAService
+
+    service = StudyQAService()
+    prompt = service.build_system_prompt(
+        guide_title="Math Guide",
+        guide_content="Content about algebra.",
+        resource_links=[],
+    )
+
+    assert "RELATED RESOURCES" not in prompt
+
+
+def test_match_resource_links_keyword_matching():
+    """_match_resource_links returns relevant links based on keyword overlap."""
+    from app.services.study_qa_service import StudyQAService
+
+    class FakeLink:
+        def __init__(self, title, url, resource_type, topic_heading=None, description=None, youtube_video_id=None, thumbnail_url=None):
+            self.title = title
+            self.url = url
+            self.resource_type = resource_type
+            self.topic_heading = topic_heading
+            self.description = description
+            self.youtube_video_id = youtube_video_id
+            self.thumbnail_url = thumbnail_url
+
+    links = [
+        FakeLink("Algebra Basics", "https://youtube.com/watch?v=abc", "youtube", topic_heading="Algebra", youtube_video_id="abc"),
+        FakeLink("Chemistry Lab", "https://youtube.com/watch?v=xyz", "youtube", topic_heading="Chemistry", youtube_video_id="xyz"),
+        FakeLink("Algebra Formulas", "https://example.com/algebra", "external_link", description="Key algebra formulas"),
+    ]
+
+    sources, videos = StudyQAService._match_resource_links("Tell me about algebra basics", links)
+
+    # Should match algebra-related links, not chemistry
+    video_titles = [v["title"] for v in videos]
+    assert "Algebra Basics" in video_titles
+    assert "Algebra Formulas" in video_titles  # external link goes to videos with provider=external
+    assert "Chemistry Lab" not in video_titles
+
+
+def test_match_resource_links_empty_list():
+    """_match_resource_links returns empty lists for no links."""
+    from app.services.study_qa_service import StudyQAService
+
+    sources, videos = StudyQAService._match_resource_links("some question", [])
+    assert sources == []
+    assert videos == []
+
+
+def test_study_qa_stream_returns_resource_links(client, db_session):
+    """Study Q&A stream populates sources/videos in done event from resource_links (#2543)."""
+    from conftest import _auth
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.course import Course
+    from app.models.course_content import CourseContent
+    from app.models.study_guide import StudyGuide
+    from app.models.resource_link import ResourceLink
+
+    hashed = get_password_hash("Password123!")
+
+    owner = User(email="qa_resource_owner@test.com", full_name="Resource Owner", role=UserRole.STUDENT, hashed_password=hashed)
+    db_session.add(owner)
+    db_session.flush()
+
+    course = Course(name="Resource Test Course", created_by_user_id=owner.id)
+    db_session.add(course)
+    db_session.flush()
+
+    cc = CourseContent(course_id=course.id, title="Lesson on Algebra", content_type="notes", created_by_user_id=owner.id)
+    db_session.add(cc)
+    db_session.flush()
+
+    guide = StudyGuide(
+        user_id=owner.id, title="Algebra Guide", content="Study algebra content.",
+        guide_type="study_guide", course_content_id=cc.id,
+    )
+    db_session.add(guide)
+    db_session.flush()
+
+    # Add resource links
+    db_session.add(ResourceLink(
+        course_content_id=cc.id, url="https://youtube.com/watch?v=alg1",
+        resource_type="youtube", title="Algebra Video", topic_heading="Algebra",
+        youtube_video_id="alg1", display_order=0,
+    ))
+    db_session.add(ResourceLink(
+        course_content_id=cc.id, url="https://example.com/algebra-ref",
+        resource_type="external_link", title="Algebra Reference", topic_heading="Algebra",
+        display_order=1,
+    ))
+    db_session.commit()
+
+    async def _fake_stream(**kwargs):
+        assert kwargs.get("resource_links") is not None
+        assert len(kwargs["resource_links"]) == 2
+        # Delegate to real service for done event with resource links
+        from app.services.study_qa_service import StudyQAService
+        svc = StudyQAService()
+        matched_sources, matched_videos = svc._match_resource_links(
+            kwargs["message"], kwargs["resource_links"]
+        )
+        yield {"type": "token", "text": "Here is an algebra answer."}
+        yield {
+            "type": "done", "sources": matched_sources, "videos": matched_videos,
+            "mode": "study_qa", "credits_used": 0.25,
+            "input_tokens": 10, "output_tokens": 5, "estimated_cost_usd": 0.001,
+        }
+
+    with patch("app.services.study_qa_service.study_qa_service.stream_answer", side_effect=_fake_stream), \
+         patch("app.services.ai_usage.check_ai_usage"), \
+         patch("app.services.ai_usage.increment_ai_usage"):
+        headers = _auth(client, "qa_resource_owner@test.com")
+        resp = client.post(
+            "/api/help/chat/stream",
+            json={
+                "message": "Explain algebra",
+                "conversation": [],
+                "page_context": "",
+                "study_guide_id": guide.id,
+            },
+            headers=headers,
+        )
+
+    assert resp.status_code == 200
+    # Parse SSE events
+    import json
+    done_event = None
+    for line in resp.text.split("\n"):
+        if line.startswith("data: "):
+            event = json.loads(line[6:])
+            if event.get("type") == "done":
+                done_event = event
+
+    assert done_event is not None, "Expected a done event in SSE stream"
+    assert len(done_event["videos"]) >= 1, "Expected at least one video link"
+    video_titles = [v["title"] for v in done_event["videos"]]
+    assert "Algebra Video" in video_titles
