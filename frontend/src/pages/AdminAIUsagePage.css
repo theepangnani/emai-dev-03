@@ -643,6 +643,61 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .ai-usage-btn.approve {
+  border-color: #6ee7b7;
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .ai-usage-btn.approve:hover:not(:disabled) {
+  background: #6ee7b7;
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-btn.decline:hover:not(:disabled) {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-btn.reset:hover:not(:disabled) {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-btn.primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-btn.primary:hover:not(:disabled) {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-modal-btn.primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-usage-type-badge.study_guide {
+  background: rgba(125, 211, 252, 0.12);
+  color: #7dd3fc;
+}
+
+[data-theme="dark"] .ai-usage-type-badge.flashcards {
+  background: rgba(110, 231, 183, 0.12);
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .ai-usage-status-badge.pending {
+  background: rgba(253, 230, 138, 0.12);
+}
+
+[data-theme="dark"] .ai-usage-status-badge.approved {
+  background: rgba(110, 231, 183, 0.12);
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .ai-usage-regen-badge {
+  background: rgba(125, 211, 252, 0.12);
+  color: #7dd3fc;
+}
+
 @media (max-width: 480px) {
   .ai-usage-header h2 {
     font-size: 18px;

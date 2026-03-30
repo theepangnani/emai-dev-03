@@ -485,6 +485,37 @@
 }
 
 /* ── Responsive ─────────────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .invite-status-active {
+  background: rgba(110, 231, 183, 0.14);
+}
+
+[data-theme="dark"] .pd-child-tab.active .invite-status-active {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .invite-status-pending {
+  background: rgba(253, 230, 138, 0.14);
+}
+
+[data-theme="dark"] .pd-child-tab.active .invite-status-pending {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .invite-status-email_unverified {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .pd-child-tab.active .invite-status-email_unverified {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .invite-menu-item--danger {
+  color: var(--color-danger, #fca5a5);
+}
+
 @media (max-width: 480px) {
   .mykids-progress-summary {
     padding: 14px;

@@ -237,6 +237,105 @@
 }
 
 /* Mobile breakpoint */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .wd-trigger-btn {
+  background: rgba(167, 139, 250, 0.10);
+  color: #6366f1;
+}
+
+[data-theme="dark"] .wd-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .wd-card-title {
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .wd-close-btn {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .wd-close-btn:hover {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .wd-period {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .wd-greeting {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .wd-empty {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .wd-error {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .wd-error button {
+  color: #818cf8;
+}
+
+[data-theme="dark"] .wd-child {
+  background: var(--color-surface-alt);
+  border-left: 4px solid #818cf8;
+}
+
+[data-theme="dark"] .wd-child-name {
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .wd-child-highlight {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .wd-stat {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .wd-stat strong {
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .wd-overdue-label {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .wd-overdue-list {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .wd-overdue-date {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .wd-summary {
+  background: rgba(167, 139, 250, 0.10);
+  color: #6366f1;
+}
+
+[data-theme="dark"] .wd-send-btn {
+  background: #818cf8;
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .wd-send-btn:hover:not(:disabled) {
+  background: #6366f1;
+}
+
+[data-theme="dark"] .wd-success {
+  color: #34d399;
+}
+
+[data-theme="dark"] .wd-send-error {
+  color: #fca5a5;
+}
+
 @media (max-width: 480px) {
   .wd-card {
     padding: 14px 14px;

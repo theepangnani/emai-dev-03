@@ -223,3 +223,81 @@
   color: var(--color-text-muted, #9ca3af);
   font-weight: 500;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sts-widget {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .sts-chevron {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .sts-slot--morning {
+  border-left: 3px solid #fde68a;
+}
+
+[data-theme="dark"] .sts-slot--afternoon {
+  border-left: 3px solid #7dd3fc;
+}
+
+[data-theme="dark"] .sts-slot--evening {
+  border-left: 3px solid #a78bfa;
+}
+
+[data-theme="dark"] .sts-slot-time {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .sts-slot--morning .sts-slot-bar-fill {
+  background: #fde68a;
+}
+
+[data-theme="dark"] .sts-slot--afternoon .sts-slot-bar-fill {
+  background: #7dd3fc;
+}
+
+[data-theme="dark"] .sts-slot--evening .sts-slot-bar-fill {
+  background: #a78bfa;
+}
+
+[data-theme="dark"] .sts-next {
+  background: var(--color-surface-alt, rgba(110, 231, 183, 0.10));
+}
+
+[data-theme="dark"] .sts-next-label {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .sts-next-time {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .sts-empty {
+  color: var(--color-text-muted, var(--color-muted));
+}
+
+[data-theme="dark"] .sts-chart-label {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .sts-trend.trend-up {
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .sts-trend.trend-down {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .sts-trend.trend-steady {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .sts-bar {
+  background: linear-gradient(to top, #a78bfa, #a78bfa);
+}
+
+[data-theme="dark"] .sts-bar-label {
+  color: var(--color-text-muted, var(--color-muted));
+}

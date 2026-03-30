@@ -291,6 +291,19 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .xph-level-badge {
+  color: var(--color-accent-strong, #818cf8);
+}
+
+[data-theme="dark"] .xph-total-xp {
+  color: var(--color-accent-strong, #818cf8);
+}
+
+[data-theme="dark"] .xph-cell-xp {
+  color: var(--color-success, #6ee7b7);
+}
+
 @media (max-width: 480px) {
   .xph-page {
     padding: 0;

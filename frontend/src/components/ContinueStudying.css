@@ -140,6 +140,12 @@
 }
 
 /* ── Reduced motion ──────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sd-continue-type.quiz {
+  color: var(--color-purple, #c4b5fd);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sd-continue-card {
     transition: none !important;

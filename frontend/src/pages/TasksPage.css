@@ -920,6 +920,51 @@ textarea.form-input {
 /* ============================================
    Responsive — mobile
    ============================================ */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .task-row-btn.remind:not(.reminded):hover {
+  border-color: #fde68a;
+  color: #fde68a;
+  background: rgba(253, 230, 138, 0.10);
+}
+
+[data-theme="dark"] .task-row-btn.request-completion:hover {
+  border-color: var(--primary-color, #818cf8);
+  color: var(--primary-color, #818cf8);
+  background: rgba(167, 139, 250, 0.10);
+}
+
+[data-theme="dark"] .task-row.archived {
+  background: var(--color-background, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .task-group-overdue {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .task-group-overdue .task-group-count {
+  background: rgba(252, 165, 165, 0.14);
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .task-group-today {
+  color: var(--color-warning, #fbbf24);
+}
+
+[data-theme="dark"] .task-group-today .task-group-count {
+  background: rgba(253, 230, 138, 0.14);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .task-group-week .task-group-count {
+  background: rgba(125, 211, 252, 0.14);
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .task-group-completed {
+  color: var(--color-success, #6ee7b7);
+}
+
 @media (max-width: 480px) {
   .task-row-checkbox::before {
     content: '';

@@ -37,7 +37,7 @@ export function JourneyNudgeBanner({ pageName }: JourneyNudgeBannerProps) {
     };
   }, [hint]);
 
-  if (loading || !hint || hint.hint_key === 'welcome_modal') {
+  if (loading || !hint || !hint.hint_key || hint.hint_key === 'welcome_modal') {
     return null;
   }
 

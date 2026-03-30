@@ -32,3 +32,9 @@
   width: 100%;
   box-sizing: border-box;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .waitlist-success-icon {
+  color: var(--color-success, #6ee7b7);
+}

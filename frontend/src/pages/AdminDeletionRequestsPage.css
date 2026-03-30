@@ -183,6 +183,72 @@
 }
 
 /* Mobile */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .admin-deletion-title {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .admin-deletion-desc {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .admin-deletion-filter-select {
+  border: 1px solid var(--border-color, var(--color-muted-border));
+  background: var(--card-bg, var(--color-surface));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .admin-deletion-count {
+  color: var(--text-tertiary, var(--color-muted));
+}
+
+[data-theme="dark"] .admin-deletion-card {
+  background: var(--card-bg, var(--color-surface));
+  border: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .admin-deletion-card-name {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .admin-deletion-card-meta {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .admin-deletion-badge-pending {
+  background: rgba(253, 230, 138, 0.14);
+}
+
+[data-theme="dark"] .admin-deletion-badge-confirmed {
+  background: rgba(252, 165, 165, 0.14);
+}
+
+[data-theme="dark"] .admin-deletion-badge-processed {
+  background: var(--color-border);
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .admin-deletion-btn-process {
+  background: #fca5a5;
+}
+
+[data-theme="dark"] .admin-deletion-btn-process:hover:not(:disabled) {
+  background: #f87171;
+}
+
+[data-theme="dark"] .admin-deletion-empty {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .admin-deletion-loading {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .admin-deletion-error {
+  color: #fca5a5;
+}
+
 @media (max-width: 480px) {
   .admin-deletion-requests {
     padding: 12px;

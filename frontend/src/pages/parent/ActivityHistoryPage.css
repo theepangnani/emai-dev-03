@@ -187,6 +187,78 @@
   color: var(--color-primary, #6366f1);
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .ah-back-btn {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-back-btn:hover {
+  background: var(--color-bg-hover, var(--color-surface-alt));
+  color: var(--color-text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .ah-title {
+  color: var(--color-text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .ah-chip {
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-chip:hover {
+  border-color: var(--color-primary, #a5b4fc);
+  color: var(--color-primary, #a5b4fc);
+}
+
+[data-theme="dark"] .ah-chip-active {
+  background: var(--color-primary, #a5b4fc);
+  border-color: var(--color-primary, #a5b4fc);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ah-state-msg {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-error {
+  color: var(--color-error, #fca5a5);
+}
+
+[data-theme="dark"] .ah-row-clickable:hover {
+  background: var(--color-bg-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .ah-row-title {
+  color: var(--color-text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .ah-row-time {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-row-desc {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-child-badge {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .ah-type-label {
+  color: var(--color-text-tertiary, var(--color-muted));
+}
+
+[data-theme="dark"] .ah-load-more-btn {
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .ah-load-more-btn:hover {
+  border-color: var(--color-primary, #a5b4fc);
+  color: var(--color-primary, #a5b4fc);
+}
+
 @media (max-width: 600px) {
   .ah-page { padding: 16px 12px 32px; }
   .ah-title { font-size: 1.1rem; }

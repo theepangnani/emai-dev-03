@@ -197,6 +197,59 @@
 /* ================================================
    Responsive – Phone (480px)
    ================================================ */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .calendar-import-subtitle {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .calendar-import-input {
+  border: 1px solid var(--border-color, var(--color-muted-border));
+}
+
+[data-theme="dark"] .calendar-import-input:focus {
+  border-color: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .calendar-import-btn {
+  background: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .calendar-import-error {
+  color: var(--danger, #fca5a5);
+  background: rgba(252, 165, 165, 0.10);
+}
+
+[data-theme="dark"] .calendar-feeds-empty {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .calendar-feed-card {
+  border: 1px solid var(--border-color, var(--color-muted-border));
+  background: var(--surface, var(--color-surface));
+}
+
+[data-theme="dark"] .calendar-feed-url {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .calendar-feed-meta {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .calendar-feed-sync-btn {
+  background: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .calendar-feed-delete-btn {
+  color: var(--danger, #fca5a5);
+  border: 1px solid var(--danger, #fca5a5);
+}
+
+[data-theme="dark"] .calendar-feed-delete-btn:hover:not(:disabled) {
+  background: rgba(252, 165, 165, 0.10);
+}
+
 @media (max-width: 480px) {
   .calendar-import {
     padding: 0.75rem;

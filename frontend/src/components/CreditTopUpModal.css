@@ -163,3 +163,34 @@
   padding: 2rem;
   color: var(--text-secondary, #666);
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .credit-pack-card {
+  border: 2px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .credit-pack-card:hover {
+  border-color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .pack-price {
+  color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .btn-pay {
+  background: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .btn-back:hover {
+  color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .payment-error {
+  color: #f87171;
+}
+
+[data-theme="dark"] .success-icon {
+  background: rgba(110, 231, 183, 0.14);
+  color: #34d399;
+}

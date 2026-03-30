@@ -145,6 +145,16 @@
 }
 
 /* ── Responsive: mobile — stack to single column ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .format-card.selected .format-card-icon {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .format-card-badge {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .format-selector {
     margin-bottom: 14px;

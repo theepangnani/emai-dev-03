@@ -1063,6 +1063,22 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .cp-wizard-step-number.reached {
+  background: #a5b4fc;
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .cp-wizard-step-number:not(.reached) {
+  background: var(--color-border);
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .cp-wizard-step-divider {
+  color: var(--color-muted-border);
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   .cp-child-tab,
   .course-list-row,

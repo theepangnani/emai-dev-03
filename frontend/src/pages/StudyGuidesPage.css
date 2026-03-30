@@ -788,6 +788,12 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .guide-share-btn {
+  color: var(--color-surface);
+}
+
+
 @media (max-width: 480px) {
   .guides-child-selector {
     gap: 6px;

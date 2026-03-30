@@ -171,6 +171,18 @@
 }
 
 /* Mobile: full width */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .gs-widget__check {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .gs-widget__check--done {
+  background: var(--color-success-bg, rgba(110, 231, 183, 0.12));
+  border-color: var(--color-success, #6ee7b7);
+  color: var(--color-success, #6ee7b7);
+}
+
 @media (max-width: 600px) {
   .gs-widget {
     max-width: 100%;

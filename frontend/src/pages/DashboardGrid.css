@@ -373,6 +373,19 @@
 
 /* ── Reduced motion ──────────────────────── */
 
+/* ── Dark mode ── */
+[data-theme="dark"] .task-priority-dot.high {
+  background: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .task-priority-dot.medium {
+  background: var(--color-warning, #fde68a);
+}
+
+[data-theme="dark"] .task-priority-dot.low {
+  background: var(--color-success, #6ee7b7);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dash-quick-action {
     transition: none;

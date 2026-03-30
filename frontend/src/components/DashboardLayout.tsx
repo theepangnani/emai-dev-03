@@ -237,15 +237,82 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const { canInstall, installApp } = usePWAInstall();
 
   useEffect(() => {
-    const onReconnecting = () => setReconnecting(true);
-    const onReconnected = () => setReconnecting(false);
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    const onReconnecting = () => {
+      setReconnecting(true);
+      // Safety timeout: auto-dismiss after 45s in case events are lost (#2623)
+      if (safetyTimer) clearTimeout(safetyTimer);
+      safetyTimer = setTimeout(() => setReconnecting(false), 45_000);
+    };
+    const onReconnected = () => {
+      setReconnecting(false);
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    };
     window.addEventListener('api:reconnecting', onReconnecting);
     window.addEventListener('api:reconnected', onReconnected);
     return () => {
       window.removeEventListener('api:reconnecting', onReconnecting);
       window.removeEventListener('api:reconnected', onReconnected);
+      if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, []);
+
+  // WCAG 2.4.2 — update document title on route change
+  useEffect(() => {
+    const PAGE_TITLES: Record<string, string> = {
+      '/dashboard': 'Home',
+      '/my-kids': 'My Kids',
+      '/school-report-cards': 'Report Cards',
+      '/analytics': 'Analytics',
+      '/tasks': 'Tasks',
+      '/messages': 'Messages',
+      '/help': 'Help',
+      '/study': 'Study',
+      '/courses': 'Classes',
+      '/course-materials': 'Materials',
+      '/teacher-communications': 'Teacher Comms',
+      '/admin/waitlist': 'Waitlist',
+      '/admin/survey': 'Survey Results',
+      '/admin/ai-usage': 'AI Usage',
+      '/admin/audit-log': 'Audit Log',
+      '/admin/inspiration': 'Inspiration',
+      '/admin/faq': 'Manage FAQ',
+      '/notifications': 'Notifications',
+      '/link-requests': 'Link Requests',
+      '/quiz-history': 'Quiz History',
+      '/settings/emails': 'Email Settings',
+      '/settings/notifications': 'Notification Preferences',
+      '/settings/account': 'Account Settings',
+      '/settings/data-export': 'Data Export',
+      '/settings/calendar-import': 'Calendar Import',
+      '/faq': 'FAQ',
+      '/ai-tools': 'AI Tools',
+      '/activity': 'Activity History',
+      '/activity/timeline': 'Timeline',
+      '/grades': 'Grades',
+      '/xp/history': 'XP History',
+      '/xp/badges': 'Badges',
+      '/report-card': 'Report Card',
+      '/wallet': 'Wallet',
+      '/parent-briefing-notes': 'Briefing Notes',
+      '/readiness-check': 'Readiness Check',
+    };
+    const title = PAGE_TITLES[location.pathname] || 'ClassBridge';
+    document.title = title === 'ClassBridge' ? title : `${title} — ClassBridge`;
+  }, [location.pathname]);
+
+  // WCAG 2.4.3 — move focus to main content on route change
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const mainEl = document.getElementById('main-content');
+    if (mainEl) {
+      mainEl.focus({ preventScroll: false });
+    }
+  }, [location.pathname]);
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
@@ -428,15 +495,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       </a>
 
       <div className="dashboard">
-        {reconnecting && (
-          <div style={{
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
             background: '#f59e0b', color: '#fff', textAlign: 'center',
-            padding: '8px 16px', fontSize: '14px', fontWeight: 500,
-          }}>
-            Reconnecting to server…
-          </div>
-        )}
+            padding: reconnecting ? '8px 16px' : '0', fontSize: '14px', fontWeight: 500,
+          }}
+        >
+          {reconnecting && 'Reconnecting to server…'}
+        </div>
         <header className="dashboard-header">
           <div className="header-left">
             <button
@@ -496,7 +565,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </header>
 
       {showVerifyBanner && (
-        <div className="verify-email-banner">
+        <div className="verify-email-banner" role="status" aria-live="polite">
           <span>Please verify your email address. Check your inbox for a verification link.</span>
           {resendStatus === 'idle' && (
             <button className="verify-email-banner__resend" onClick={handleResendVerification}>

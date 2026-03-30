@@ -71,3 +71,30 @@
 .on-track-badge:hover .on-track-tooltip {
   display: block;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .on-track-badge--green {
+  background: rgba(110, 231, 183, 0.14);
+}
+
+[data-theme="dark"] .on-track-badge--green .on-track-dot {
+  background: #6ee7b7;
+}
+
+[data-theme="dark"] .on-track-badge--yellow .on-track-dot {
+  background: #fde68a;
+}
+
+[data-theme="dark"] .on-track-badge--red {
+  background: rgba(252, 165, 165, 0.14);
+}
+
+[data-theme="dark"] .on-track-badge--red .on-track-dot {
+  background: #fca5a5;
+}
+
+[data-theme="dark"] .on-track-badge .on-track-tooltip {
+  background: var(--color-ink);
+  color: var(--color-surface-alt);
+}

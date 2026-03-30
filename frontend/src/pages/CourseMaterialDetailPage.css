@@ -1981,6 +1981,38 @@
 }
 
 /* ── Small phones (480px) ────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .cm-retry-btn {
+  background: var(--color-accent, #a5b4fc);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .cm-difficulty-btn.active {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .cm-empty-tab .cm-empty-generate-btn {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .cm-ocr-hint {
+  color: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .cm-meta-popover-task-status--done {
+  background: var(--color-success-bg, rgba(110, 231, 183, 0.12));
+}
+
+[data-theme="dark"] .cm-subguide-status.generating {
+  background: rgba(253, 230, 138, 0.14);
+  border: 1px solid #fde68a;
+}
+
+[data-theme="dark"] .cm-subguide-status.ready {
+  border: 1px solid #34d399;
+}
+
 @media (max-width: 480px) {
   .cm-detail-page {
     max-width: 100%;

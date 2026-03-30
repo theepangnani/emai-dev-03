@@ -703,6 +703,12 @@
 }
 
 /* Mobile responsive */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .admin-activity-summary-row {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
 @media (max-width: 480px) {
   .admin-filters {
     flex-direction: column;

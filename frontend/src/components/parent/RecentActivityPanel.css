@@ -358,6 +358,63 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .pd-activity-header:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .pd-activity-view-all-btn {
+  color: var(--color-primary, #a5b4fc);
+}
+
+[data-theme="dark"] .pd-activity-count-badge {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .pd-activity-row:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .pd-activity-icon-circle svg {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .pd-activity-time {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .pd-activity-description {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .pd-activity-child-badge {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .pd-activity-empty {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .pd-activity-error {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .pd-activity-retry-btn {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .pd-activity-retry-btn:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .pd-activity-skeleton-circle {
+  background: var(--color-border);
+}
+
+[data-theme="dark"] .pd-activity-skeleton-line {
+  background: var(--color-border);
+}
+
 @media (max-width: 480px) {
   .pd-activity-heading {
     font-size: 13px;

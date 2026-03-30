@@ -1037,6 +1037,24 @@
 }
 
 /* ── Reduced motion ──────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .sd-classroom-type-option:hover {
+  border-color: var(--color-primary, #818cf8);
+}
+
+[data-theme="dark"] .sd-classroom-type-option.selected {
+  border-color: var(--color-primary, #818cf8);
+}
+
+[data-theme="dark"] .sd-classroom-type-option input[type="radio"] {
+  accent-color: var(--color-primary, #818cf8);
+}
+
+[data-theme="dark"] .sd-gen-view-btn {
+  color: var(--color-surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sd-action-card,
   .sd-alert-card,

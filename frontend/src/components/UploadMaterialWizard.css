@@ -747,6 +747,95 @@
 
 /* ===== Responsive (Mobile) ===== */
 
+/* ── Dark mode ── */
+[data-theme="dark"] .uw-child-select {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-footer {
+  border-top: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-footer .btn-primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .uw-footer .btn-secondary {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-drop-zone {
+  border: 2px dashed var(--color-border);
+}
+
+[data-theme="dark"] .uw-file-remove:hover {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .uw-textarea {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-paste-hint kbd {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-pasted-thumb {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-pasted-remove {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .uw-course-select select {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-create-course-inline input {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-create-course-inline .btn-primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .uw-create-course-inline .btn-secondary {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-error {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .upload-wizard-info-banner {
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .upload-wizard-naming-preview {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-master-select-item {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .uw-master-select-item:hover {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .uw-master-select-item.selected {
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .uw-master-select-filename {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .uw-field input {
+  border: 1px solid var(--color-border);
+}
+
 @media (max-width: 480px) {
   .upload-wizard-modal {
     max-width: 100%;

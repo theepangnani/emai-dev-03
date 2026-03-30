@@ -58,6 +58,20 @@
   font-size: 0.9rem;
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .wallet-balance-card {
+  border: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .balance-value.total {
+  color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .package-badge {
+  color: var(--primary-color, #818cf8);
+}
+
+
 @media (max-width: 600px) {
   .wallet-balance-card {
     flex-direction: column;

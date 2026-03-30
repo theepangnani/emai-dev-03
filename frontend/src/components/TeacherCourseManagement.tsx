@@ -230,7 +230,7 @@ export function TeacherCourseManagement({
           {filteredCourses.length > 0 ? (
             <div className="tcm-grid">
               {filteredCourses.map((course) => (
-                <div key={course.id} className="tcm-card" onClick={() => navigate(`/courses/${course.id}`)}>
+                <div key={course.id} className="tcm-card" role="button" tabIndex={0} onClick={() => navigate(`/courses/${course.id}`)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/courses/${course.id}`); } }}>
                   <div className="tcm-card-header">
                     <h4 className="tcm-card-name">{course.name}</h4>
                     <span className={`tcm-source-badge source-${course.source}`}>

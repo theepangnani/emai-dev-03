@@ -211,7 +211,10 @@ export function NotificationBell() {
                 <div
                   key={n.id}
                   className={`notification-item ${!n.read ? 'unread' : ''} ${n.requires_ack && !n.acked_at ? 'requires-ack' : ''} ${n.acked_at ? 'acknowledged' : ''}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleNotificationClick(n)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleNotificationClick(n); } }}
                 >
                   <span className="notification-icon" aria-hidden="true">{getTypeIcon(n.type)}</span>
                   <div className="notification-content">
@@ -277,7 +280,7 @@ export function NotificationBell() {
     {/* Notification Detail Modal - portaled to body to escape header stacking context */}
     {modalNotification && createPortal(
       <div className="modal-overlay" onClick={() => setModalNotification(null)}>
-        <div className="notif-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="notif-modal" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <div className="notif-modal-header">
             <span className="notif-modal-icon" aria-hidden="true">{getTypeIcon(modalNotification.type)}</span>
             <h3>{modalNotification.title}</h3>

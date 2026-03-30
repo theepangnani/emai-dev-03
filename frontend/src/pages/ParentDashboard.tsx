@@ -20,7 +20,6 @@ import { SectionPanel } from '../components/SectionPanel';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { ReportBugLink } from '../components/ReportBugLink';
-import { QuizOfTheDay } from '../components/QuizOfTheDay';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { GettingStartedWidget } from '../components/GettingStartedWidget';
 import './ParentDashboard.css';
@@ -397,9 +396,6 @@ export function ParentDashboard() {
               </div>
             )}
           </div>
-
-          {/* ── Quiz of the Day (#2225) ────────────────────── */}
-          <QuizOfTheDay />
 
           {/* ── Assessment Countdown ──────────────────────── */}
           <AssessmentCountdown />

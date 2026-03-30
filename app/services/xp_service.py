@@ -398,15 +398,10 @@ def get_summary(db: Session, student_id: int):
     )
 
     # recent_badges: last 3 earned badges
+    from app.services.badge_service import BADGE_DEFINITIONS
     _BADGE_CATALOG = {
-        "first_upload": {"name": "First Upload", "description": "Upload first document"},
-        "first_guide": {"name": "First Study Guide", "description": "Generate first study guide"},
-        "streak_7": {"name": "7-Day Streak", "description": "Achieve a 7-day streak"},
-        "streak_30": {"name": "30-Day Streak", "description": "Achieve a 30-day streak"},
-        "flashcard_fanatic": {"name": "Flashcard Fanatic", "description": "Review 100 flashcards"},
-        "lms_linker": {"name": "LMS Linker", "description": "Upload 5 docs from LMS"},
-        "exam_ready": {"name": "Exam Ready", "description": "Generate guide from past exam"},
-        "quiz_improver": {"name": "Quiz Improver", "description": "Score higher 3 times"},
+        b["badge_id"]: {"name": b["badge_name"], "description": b["badge_description"], "icon": b["icon"]}
+        for b in BADGE_DEFINITIONS
     }
     recent_badge_rows = (
         db.query(Badge)
@@ -422,7 +417,7 @@ def get_summary(db: Session, student_id: int):
             "id": b.badge_id,
             "name": info["name"],
             "description": info["description"],
-            "icon": b.badge_id,
+            "icon": info.get("icon", b.badge_id),
             "earned": True,
             "earned_at": b.awarded_at.isoformat() if b.awarded_at else None,
         })

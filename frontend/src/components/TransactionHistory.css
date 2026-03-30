@@ -104,3 +104,43 @@
   font-size: 0.85rem;
   color: var(--text-secondary, #666);
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .txn-table th {
+  border-bottom: 2px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .txn-table td {
+  border-bottom: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .txn-badge.package_credit {
+  color: #0ea5e9;
+}
+
+[data-theme="dark"] .txn-badge.purchase_credit {
+  background: rgba(110, 231, 183, 0.14);
+  color: #34d399;
+}
+
+[data-theme="dark"] .txn-badge.debit {
+  background: rgba(252, 165, 165, 0.14);
+  color: #f87171;
+}
+
+[data-theme="dark"] .txn-badge.refund {
+  background: rgba(253, 230, 138, 0.14);
+}
+
+[data-theme="dark"] .amount-positive {
+  color: #34d399;
+}
+
+[data-theme="dark"] .amount-negative {
+  color: #f87171;
+}
+
+[data-theme="dark"] .txn-pagination button {
+  border: 1px solid var(--border-color, var(--color-border));
+}

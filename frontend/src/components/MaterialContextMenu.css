@@ -84,6 +84,16 @@
 }
 
 /* ── Mobile breakpoint ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .material-ctx-trigger:hover {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .material-ctx-trigger.open {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .material-ctx-trigger {
     width: 44px;

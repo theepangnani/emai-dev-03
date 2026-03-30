@@ -173,6 +173,36 @@
 }
 
 /* Mobile: bottom sheet style */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .hsm-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .hsm-close {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .hsm-close:hover {
+  background: var(--color-bg-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .hsm-section-label {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .hsm-item:hover {
+  background: var(--color-bg-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .hsm-item:active {
+  background: var(--color-bg-active, var(--color-border));
+}
+
+[data-theme="dark"] .hsm-item-desc {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
 @media (max-width: 480px) {
   .hsm-overlay {
     align-items: flex-end;

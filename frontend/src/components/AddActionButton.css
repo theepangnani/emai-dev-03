@@ -54,6 +54,12 @@
   white-space: nowrap;
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .title-add-btn::after {
+  color: var(--color-surface);
+}
+
+
 @media (max-width: 768px) {
   .add-action-label {
     display: none;

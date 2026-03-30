@@ -340,6 +340,132 @@
 }
 
 /* Mobile breakpoint */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .briefing-card {
+  background: var(--surface, var(--color-surface));
+  border: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .briefing-greeting {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .briefing-date {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .briefing-all-clear {
+  background: rgba(110, 231, 183, 0.10);
+}
+
+[data-theme="dark"] .briefing-attention-banner {
+  background: rgba(252, 165, 165, 0.10);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+}
+
+[data-theme="dark"] .briefing-child-section {
+  border: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .briefing-child-name {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .briefing-attention-dot {
+  background: #fca5a5;
+}
+
+[data-theme="dark"] .briefing-help-btn {
+  border: 1px solid var(--border, var(--color-border));
+  background: var(--surface, var(--color-surface));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .briefing-help-btn:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-muted-border);
+}
+
+[data-theme="dark"] .help-my-kid-menu {
+  background: var(--surface, var(--color-surface));
+  border: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .help-my-kid-header {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .help-my-kid-item {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .help-my-kid-item:hover {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .help-my-kid-empty {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .help-my-kid-spinner {
+  border: 2px solid var(--color-border);
+  border-top-color: #a5b4fc;
+}
+
+[data-theme="dark"] .briefing-task-label.overdue {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .briefing-task-label.due-today {
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .briefing-task-label.upcoming {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .briefing-badge {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .briefing-badge.overdue {
+  background: #fca5a5;
+}
+
+[data-theme="dark"] .briefing-badge.due-today {
+  background: #fbbf24;
+}
+
+[data-theme="dark"] .briefing-badge.upcoming {
+  background: var(--color-muted);
+}
+
+[data-theme="dark"] .briefing-task-item {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .briefing-task-item-course {
+  color: var(--text-tertiary, var(--color-muted));
+}
+
+[data-theme="dark"] .briefing-study-activity {
+  color: var(--text-secondary, var(--color-ink-muted));
+  border-top: 1px solid var(--border, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .briefing-child-clear {
+  color: #34d399;
+}
+
+[data-theme="dark"] .briefing-skeleton .skeleton {
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, var(--color-border) 50%, var(--color-surface-alt) 75%);
+}
+
+[data-theme="dark"] .briefing-skeleton-child {
+  border: 1px solid var(--color-border);
+}
+
 @media (max-width: 480px) {
   .briefing-card {
     padding: 14px 14px;

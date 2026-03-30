@@ -234,7 +234,8 @@ def get_hint_for_user(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # ── Behavior signals (nuclear suppress, cooldown, self-directed, age) ──
-    if check_behavior_signals(db, user.id):
+    # All suppression logic is consolidated in check_behavior_signals().
+    if check_behavior_signals(db, user):
         return None
 
     # ── Already shown a hint today ──────────────────────────────────
@@ -396,10 +397,27 @@ SELF_DIRECTED_WINDOW_DAYS = 7
 SELF_DIRECTED_ACTIONS = ("page_view_help", "page_view_tutorial")
 
 
-def check_behavior_signals(db: Session, user_id: int) -> bool:
-    """Return True if hints should be SUPPRESSED for this user."""
+def check_behavior_signals(db: Session, user_or_id: "User | int") -> bool:
+    """Return True if hints should be SUPPRESSED for this user.
+
+    This is the single authoritative location for all suppression checks:
+      (a) nuclear suppress_all flag
+      (b) two-strike cooldown (consecutive dismissals)
+      (c) self-directed user (visited help/tutorial recently)
+      (d) account age > 30 days
+
+    Accepts either a User object or a user_id int.
+    """
     from sqlalchemy import desc
     from app.models.audit_log import AuditLog
+
+    # Resolve user object and user_id from flexible input
+    if isinstance(user_or_id, int):
+        user_id = user_or_id
+        user_obj = db.query(User).filter(User.id == user_id).first()
+    else:
+        user_obj = user_or_id
+        user_id = user_obj.id
 
     now = datetime.now(timezone.utc)
 
@@ -437,9 +455,8 @@ def check_behavior_signals(db: Session, user_id: int) -> bool:
         return True
 
     # (d) Account age > 30 days
-    user_row = db.query(User.created_at).filter(User.id == user_id).first()
-    if user_row and user_row.created_at:
-        created = user_row.created_at
+    if user_obj and user_obj.created_at:
+        created = user_obj.created_at
         if created.tzinfo is None:
             created = created.replace(tzinfo=timezone.utc)
         if (now - created) > timedelta(days=30):

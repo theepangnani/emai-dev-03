@@ -176,3 +176,85 @@
   color: var(--color-text-secondary, #64748b);
   white-space: pre-line;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .study-session-title {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .study-session-subtitle {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .study-session-empty {
+  background: var(--color-bg-secondary, var(--color-surface-alt));
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .study-session-empty p {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .study-session-empty a {
+  color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .study-session-error {
+  color: var(--color-error, #fca5a5);
+}
+
+[data-theme="dark"] .study-session-error button {
+  color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .study-session-stat {
+  background: var(--color-bg-secondary, var(--color-surface-alt));
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .study-session-stat-value {
+  color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .study-session-stat-label {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .study-session-history-title {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .study-session-item {
+  background: var(--color-bg, var(--color-surface));
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .study-session-item-subject {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .study-session-item-duration {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .study-session-item-meta {
+  color: var(--color-text-tertiary, var(--color-muted));
+}
+
+[data-theme="dark"] .study-session-item-badge {
+  color: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .study-session-item-xp {
+  color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .study-session-recap-toggle {
+  color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .study-session-recap-preview {
+  background: var(--color-bg-secondary, var(--color-surface-alt));
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}

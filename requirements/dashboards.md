@@ -13,6 +13,8 @@ Each user role has a customized dashboard (dispatcher pattern via `Dashboard.tsx
 
 > **Note:** Phase 4 adds marketplace features (bookings, availability, profiles) to the existing Teacher Dashboard for teachers with `teacher_type=private_tutor`. No separate "Tutor Dashboard" is needed.
 
+> **Note:** Quiz of the Day is **student-facing only** (#2590). It appears on the Student Dashboard but NOT on the Parent Dashboard. Parents do not take quizzes themselves; quiz activity for their children is visible in the My Kids section.
+
 ### Parent Dashboard Layout (v3.1 — Simplified + UX Polish) - IMPLEMENTED
 
 **GitHub Issues:** #540 (parent), #541 (sidebar), #542 (alert banner + pills), #543 (actions + detail panel), #544 (calendar + cleanup), #557 (UX polish: Today's Focus, icon-only sidebar, collapsible panel) — all closed, deployed via PR #545

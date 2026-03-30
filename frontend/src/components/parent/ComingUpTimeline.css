@@ -413,6 +413,22 @@
 }
 
 /* -- Mobile layout -- */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .pd-timeline-type.task {
+  color: var(--color-purple, #c4b5fd);
+}
+
+[data-theme="dark"] .pd-timeline-remind-btn {
+  border: 1px solid #fde68a;
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .pd-timeline-remind-btn:hover:not(:disabled) {
+  background: rgba(253, 230, 138, 0.10);
+  border-color: #fbbf24;
+}
+
 @media (max-width: 768px) {
   .pd-timeline-meta {
     flex-direction: column;

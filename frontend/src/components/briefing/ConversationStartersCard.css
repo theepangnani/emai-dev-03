@@ -185,3 +185,83 @@
 @keyframes conv-spin {
   to { transform: rotate(360deg); }
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .conv-starters-card {
+  background: var(--surface, var(--color-surface));
+  border: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .conv-starters-title {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .conv-starters-refresh {
+  border: 1px solid var(--border, var(--color-border));
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starters-refresh:hover {
+  background: var(--hover-bg, var(--color-surface-alt));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .conv-starters-subtitle {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starter-item {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .conv-starter-item:hover {
+  border-color: var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .conv-starter-quote {
+  color: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .conv-starter-prompt {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .conv-starter-context {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starter-copy {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starter-copy:hover {
+  background: var(--hover-bg, var(--color-surface-alt));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .conv-starter-copy--copied {
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .conv-starters-empty {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starters-error {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .conv-starters-generate {
+  background: var(--color-accent, #a5b4fc);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .conv-starters-loading {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .conv-starters-spinner {
+  border: 2px solid var(--border, var(--color-border));
+  border-top-color: var(--primary, #a5b4fc);
+}

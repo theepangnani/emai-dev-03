@@ -288,6 +288,91 @@
   font-size: 14px;
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .lr-subtitle {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-tabs {
+  border-bottom: 2px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .lr-tab {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-tab:hover {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .lr-tab-active {
+  color: var(--primary-color, #818cf8);
+  border-bottom-color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .lr-tab-count {
+  background: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .lr-card {
+  background: var(--card-bg, var(--color-surface));
+  border: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .lr-card-type {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-card-date {
+  color: var(--text-secondary, var(--color-muted));
+}
+
+[data-theme="dark"] .lr-card-email {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-card-detail {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-card-message {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .lr-card-actions {
+  border-top: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .lr-btn-reject {
+  background: var(--card-bg, var(--color-surface));
+}
+
+[data-theme="dark"] .lr-card-responded {
+  color: var(--text-secondary, var(--color-muted));
+  border-top: 1px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .lr-create-form {
+  background: var(--card-bg, var(--color-surface));
+}
+
+[data-theme="dark"] .lr-create-desc {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .lr-form-field label {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .lr-form-field textarea {
+  border: 1px solid var(--border-color, var(--color-border));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .lr-empty {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
 @media (max-width: 600px) {
   .lr-page-header {
     flex-direction: column;

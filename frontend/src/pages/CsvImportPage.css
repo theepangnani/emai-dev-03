@@ -247,3 +247,94 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .csv-import-step {
+  background: var(--bg-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .csv-import-step.active {
+  background: var(--primary, #818cf8);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .csv-import-step.done {
+  background: var(--success, #6ee7b7);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .csv-import-template-card {
+  border: 2px solid var(--border, var(--color-border));
+  background: var(--bg-primary, var(--color-surface));
+}
+
+[data-theme="dark"] .csv-import-template-card:hover {
+  border-color: var(--primary, #818cf8);
+}
+
+[data-theme="dark"] .csv-import-template-card.selected {
+  border-color: var(--primary, #818cf8);
+}
+
+[data-theme="dark"] .csv-import-download-btn {
+  color: var(--primary, #818cf8);
+}
+
+[data-theme="dark"] .csv-import-upload {
+  border: 2px dashed var(--border, var(--color-border));
+  background: var(--bg-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .csv-import-upload-btn {
+  background: var(--primary, #818cf8);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .csv-import-table-wrap {
+  border: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .csv-import-table td {
+  border-bottom: 1px solid var(--border, var(--color-border));
+}
+
+[data-theme="dark"] .csv-import-table th {
+  background: var(--bg-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .csv-import-errors {
+  background: rgba(252, 165, 165, 0.10);
+  border: 1px solid rgba(252, 165, 165, 0.25);
+}
+
+[data-theme="dark"] .csv-import-errors h4 {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .csv-import-errors ul {
+  color: #f87171;
+}
+
+[data-theme="dark"] .csv-import-success {
+  background: rgba(110, 231, 183, 0.10);
+}
+
+[data-theme="dark"] .csv-import-success h3 {
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .csv-import-success p {
+  color: #34d399;
+}
+
+[data-theme="dark"] .csv-import-actions button {
+  border: 1px solid var(--border, var(--color-border));
+  background: var(--bg-primary, var(--color-surface));
+}
+
+[data-theme="dark"] .csv-import-actions .primary {
+  background: var(--primary, #818cf8);
+  color: var(--color-surface);
+  border-color: var(--primary, #818cf8);
+}

@@ -71,7 +71,7 @@ export function JourneyWelcomeModal() {
   const { user } = useAuth();
   const { openChatWithQuestion } = useFABContext();
   const navigate = useNavigate();
-  const { hint, dismiss, suppressAll } = useJourneyHint('dashboard');
+  const { hint, loading: hintLoading, dismiss, suppressAll } = useJourneyHint('dashboard');
   const [visible, setVisible] = useState(false);
 
   // Show modal when hint is the welcome_modal
@@ -82,20 +82,18 @@ export function JourneyWelcomeModal() {
   }, [hint]);
 
   // Also show on first login if no backend hint (fallback for when API doesn't exist yet)
+  // Wait for the hint API to finish loading before deciding
   useEffect(() => {
-    if (!user) return;
+    if (!user || hintLoading) return;
     const storageKey = `welcome_modal_shown_${user.id}`;
     if (localStorage.getItem(storageKey)) return;
 
-    // Give the hint API a moment to respond; if no hint, show fallback
-    const timer = setTimeout(() => {
-      if (!hint) {
-        setVisible(true);
-        localStorage.setItem(storageKey, '1');
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [user, hint]);
+    // Hint API resolved but returned no hint — show fallback welcome modal
+    if (!hint) {
+      setVisible(true);
+      localStorage.setItem(storageKey, '1');
+    }
+  }, [user, hint, hintLoading]);
 
   // Close on Escape
   useEffect(() => {

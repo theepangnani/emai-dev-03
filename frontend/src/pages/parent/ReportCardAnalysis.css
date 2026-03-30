@@ -391,6 +391,15 @@
   font-size: 1.1rem;
 }
 
+/* Career path loading */
+.rca-career-loading {
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color, #e0e0e0);
+  border-radius: 12px;
+  background: var(--card-bg, #fff);
+}
+
 /* Spinner */
 .rca-spinner {
   display: flex;

@@ -276,6 +276,27 @@
 
 /* ── Reduced motion ───────────────────────── */
 
+/* ── Dark mode ── */
+[data-theme="dark"] .xp-streak--tier-cold .xp-streak-flame {
+  --streak-color: var(--color-muted);
+}
+
+[data-theme="dark"] .xp-streak--tier-warm .xp-streak-flame {
+  --streak-color: #fdba74;
+}
+
+[data-theme="dark"] .xp-streak--tier-hot .xp-streak-flame {
+  --streak-color: #fca5a5;
+}
+
+[data-theme="dark"] .xp-streak--tier-blazing .xp-streak-flame {
+  --streak-color: #fca5a5;
+}
+
+[data-theme="dark"] .xp-streak--tier-legendary .xp-streak-flame {
+  --streak-color: #fde68a;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .xp-streak-flame {
     animation: none !important;

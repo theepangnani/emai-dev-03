@@ -668,6 +668,11 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .cal-touch-ghost {
+  background: var(--color-accent, #7dd3fc);
+}
+
 @media (max-width: 480px) {
   .cal-month-grid,
   .cal-week-grid {

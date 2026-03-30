@@ -98,6 +98,7 @@
 }
 
 /* Mobile responsive */
+
 @media (max-width: 480px) {
   .doc-type-selector__chips {
     gap: 0.375rem;

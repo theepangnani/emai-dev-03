@@ -24,6 +24,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Track outstanding reconnecting request chains so the banner stays visible
+// until ALL chains complete, and always clears even on non-503 failures (#2623)
+let _reconnectingCount = 0;
+function _emitReconnecting() {
+  _reconnectingCount++;
+  window.dispatchEvent(new CustomEvent('api:reconnecting'));
+}
+function _emitReconnected() {
+  _reconnectingCount = Math.max(0, _reconnectingCount - 1);
+  if (_reconnectingCount === 0) {
+    window.dispatchEvent(new CustomEvent('api:reconnected'));
+  }
+}
+
 // Retry on 503 Service Unavailable (deploy readiness gate) (#2034, #2065)
 api.interceptors.response.use(undefined, async (error) => {
   const config = error.config;
@@ -33,25 +47,23 @@ api.interceptors.response.use(undefined, async (error) => {
     (config._retryCount ?? 0) < 5
   ) {
     config._retryCount = (config._retryCount ?? 0) + 1;
-    // Dispatch event so UI can show "reconnecting" indicator
-    window.dispatchEvent(new CustomEvent('api:reconnecting', { detail: { attempt: config._retryCount } }));
+    // Only emit reconnecting on first retry of this chain
+    if (config._retryCount === 1) {
+      _emitReconnecting();
+    }
     // Exponential backoff: 1s, 2s, 4s, 8s, 16s (max ~31s total)
     await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, config._retryCount - 1)));
-    return api(config);
-  }
-  // Clear reconnecting state on final failure
-  if (error.response?.status === 503) {
-    window.dispatchEvent(new CustomEvent('api:reconnected'));
+    try {
+      const result = await api(config);
+      _emitReconnected();
+      return result;
+    } catch (retryError) {
+      // Clear banner even when retry chain ultimately fails (#2623)
+      _emitReconnected();
+      return Promise.reject(retryError);
+    }
   }
   return Promise.reject(error);
-});
-
-// Clear reconnecting indicator on successful response after retries
-api.interceptors.response.use((response) => {
-  if ((response.config as unknown as Record<string, unknown>)._retryCount) {
-    window.dispatchEvent(new CustomEvent('api:reconnected'));
-  }
-  return response;
 });
 
 // Handle auth errors with token refresh

@@ -84,3 +84,33 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .package-card {
+  border: 2px solid var(--border-color, var(--color-border));
+}
+
+[data-theme="dark"] .package-card:hover {
+  border-color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .package-card.current {
+  border-color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .package-card.selected {
+  box-shadow: 0 0 0 2px var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .badge-current {
+  background: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .package-card .price {
+  color: var(--primary-color, #818cf8);
+}
+
+[data-theme="dark"] .btn-enroll {
+  background: var(--primary-color, #818cf8);
+}

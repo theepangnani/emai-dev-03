@@ -329,6 +329,12 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .notif-card {
+  border-left: 3px solid var(--color-accent, #7dd3fc);
+}
+
+
 @media (max-width: 480px) {
   .notif-page-header h3 {
     font-size: 15px;

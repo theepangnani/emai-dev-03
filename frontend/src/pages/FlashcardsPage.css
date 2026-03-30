@@ -391,6 +391,20 @@
 }
 
 /* ── Phone breakpoint ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .mastery-btn.got-it {
+  background: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .mastery-btn.got-it.active {
+  background: var(--color-success-dark, #34d399);
+}
+
+[data-theme="dark"] .fc-stat.mastered .fc-stat-value {
+  color: var(--color-success, #6ee7b7);
+}
+
 @media (max-width: 480px) {
   .flashcards-page {
     padding: 1rem;

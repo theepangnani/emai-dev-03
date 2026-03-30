@@ -44,3 +44,17 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .streaming-cursor {
+  color: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .streaming-generating-badge {
+  color: var(--primary, #a5b4fc);
+}
+
+[data-theme="dark"] .streaming-generating-dot {
+  background: var(--primary, #a5b4fc);
+}

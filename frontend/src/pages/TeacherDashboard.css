@@ -848,6 +848,20 @@
 }
 
 /* Mobile */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .google-account-primary-badge {
+  color: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .text-btn.danger {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .td-gen-view-btn {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .teacher-courses-grid {
     grid-template-columns: 1fr;
