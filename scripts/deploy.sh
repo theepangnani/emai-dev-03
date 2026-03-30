@@ -33,7 +33,7 @@ gcloud run deploy "${SERVICE}" \
   --allow-unauthenticated \
   --add-cloudsql-instances "${PROJECT_ID}:${REGION}:emai-db" \
   --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca,CANONICAL_DOMAIN=www.classbridge.ca,USE_GCS=true,GCS_BUCKET_NAME=classbridge-files,FROM_EMAIL=noreply@classbridge.ca" \
-  --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest" \
+  --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest" \
   --memory 512Mi \
   --cpu 1 \
   --min-instances 1 \
