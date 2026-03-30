@@ -4837,7 +4837,7 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 - Token storage: plaintext in DB (matches existing pattern; future Secret Manager migration for all tokens)
 - Separate OAuth flow via `ParentGmailIntegration` table (parent's personal Gmail may differ from Classroom account)
 - Single cron job every 4 hours (matches `daily_digest_job.py` pattern)
-- Delivery via standard ClassBridge notification (`send_multi_channel_notification`); email sent if parent has email enabled for `school_emails` category in notification preferences
+- Delivery: **one ClassBridge notification per parent per day** containing all school emails summarized together (not one notification per email); uses `send_multi_channel_notification` — email sent if parent has email enabled for `school_emails` category
 - Multi-child support in data model from Day 1; UI restricted in Phase 1
 
 **Phase 1 Features (M1+M2, April-May 2026):**
