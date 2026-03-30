@@ -1,9 +1,16 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 28, 2026):** ~2,589 total issues — ~2,184 closed (84%), 405 open (16%)
+**Summary (as of Mar 29, 2026):** ~2,604 total issues — ~2,184 closed (84%), 420 open (16%)
 - **Features built:** 400+ enhancements closed
 - **Bugs fixed:** 400+ bugs closed
 - **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
+
+**Mar 29 — Parent Email Digest Integration (CB-PEDI-001) planned:**
+- 15 GitHub issues created (#2642-#2656) for §6.127 Parent Email Digest Integration
+- M1 Foundation (April 2026): Gmail OAuth for parents, 3 new DB tables, CRUD routes, setup wizard (#2642-#2647)
+- M2 Core Engine (May 2026): Gmail polling, Claude AI summarization, scheduled job, email template (#2648-#2653)
+- Test suite (#2654), Phase 2 enhancements (#2655), Phase 3 archive (#2656)
+- PRD: CB-PEDI-001-Parent-Email-Digest-PRD-v1.1 — M0 feasibility confirmed (YRDSB forwarding works)
 
 **Week of Mar 22-28 highlights (163 issues closed):**
 - CSV Template Import (#2167) — template download, CSV upload with preview/validation, bulk import for courses/students/assignments (§6.67.4)
