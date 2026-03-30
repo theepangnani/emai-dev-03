@@ -278,13 +278,11 @@
   display: inline-flex;
   gap: 0;
   margin-bottom: 1.5rem;
-  overflow-x: auto;
+  overflow: visible;
   padding: 2px;
   background: var(--color-surface);
   border-radius: 6px;
   border: 1px solid var(--color-border);
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
   width: 100%;
 }
 .cm-tabs::-webkit-scrollbar {
