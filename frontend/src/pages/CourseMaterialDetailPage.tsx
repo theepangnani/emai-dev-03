@@ -195,7 +195,7 @@ export function CourseMaterialDetailPage() {
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const urlTab = searchParams.get('tab') as TabKey | null;
   const [activeTab, setActiveTabState] = useState<TabKey>(
-    urlTab && VALID_TABS.includes(urlTab) ? urlTab : 'guide'
+    urlTab === 'access-log' ? 'document' : (urlTab && VALID_TABS.includes(urlTab) ? urlTab : 'guide')
   );
 
   const setActiveTab = useCallback((tab: TabKey) => {
@@ -210,11 +210,30 @@ export function CourseMaterialDetailPage() {
   // Sync active tab when URL search params change (e.g., back/forward navigation)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey | null;
-    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+    if (tabFromUrl === 'access-log') {
+      setActiveTabState('document');
+      setShowAccessLog(true);
+    } else if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTabState(tabFromUrl);
     }
   }, [searchParams, activeTab]);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
+  const [showMoreDropdown, setShowMoreDropdown] = useState(false);
+  const moreDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close "More Tools" dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (moreDropdownRef.current && !moreDropdownRef.current.contains(e.target as Node)) {
+        setShowMoreDropdown(false);
+      }
+    };
+    if (showMoreDropdown) {
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }
+  }, [showMoreDropdown]);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -714,9 +733,16 @@ export function CourseMaterialDetailPage() {
     { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
-    ...(content.created_by_user_id === user?.id ? [{ key: 'access-log' as TabKey, label: 'Access Log', shortLabel: 'Log', hasContent: true, icon: <AccessLogIcon /> }] : []),
+    // access-log removed from tabs — rendered as collapsible section inside Source Document tab.
+    // Backward compat for ?tab=access-log URLs is handled in the URL sync useEffect.
     { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
+
+  const guideTab = tabs.find(t => t.key === 'guide')!;
+  const docTab = tabs.find(t => t.key === 'document')!;
+  const dropdownTabs = tabs.filter(t => !['guide', 'document'].includes(t.key));
+  const isDropdownActive = dropdownTabs.some(t => t.key === activeTab);
+  const activeDropdownTab = dropdownTabs.find(t => t.key === activeTab);
 
   return (
     <DashboardLayout showBackButton headerSlot={() => null}>
@@ -819,22 +845,58 @@ export function CourseMaterialDetailPage() {
 
         {/* ── Tab navigation ───────────────────────── */}
         <div className="cm-tabs" role="tablist">
-          {tabs.map(tab => (
-            <button
-              key={tab.key}
-              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ' has-content'}${tab.key === 'document' ? ' source-doc' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-              role="tab"
-              aria-selected={activeTab === tab.key}
-            >
-              <span className="cm-tab-icon">{tab.icon}</span>
-              <span className="cm-tab-label">{tab.label}</span>
-              <span className="cm-tab-label-short">{tab.shortLabel}</span>
-              {!tab.hasContent && tab.key !== 'document' && (
-                <span className="cm-tab-empty-dot" />
+          {/* Study Guide - always first */}
+          <button key="guide" className={`cm-tab${activeTab === 'guide' ? ' active' : ''}${!guideTab.hasContent ? ' empty' : ' has-content'}`}
+            onClick={() => setActiveTab('guide')} role="tab" aria-selected={activeTab === 'guide'}>
+            <span className="cm-tab-icon">{guideTab.icon}</span>
+            <span className="cm-tab-label">{guideTab.label}</span>
+            <span className="cm-tab-label-short">{guideTab.shortLabel}</span>
+            {!guideTab.hasContent && <span className="cm-tab-empty-dot" />}
+          </button>
+
+          {/* More Tools dropdown */}
+          {dropdownTabs.length > 0 && (
+            <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
+              <button
+                className={`cm-tab cm-tab-more${isDropdownActive ? ' active' : ''}`}
+                onClick={() => setShowMoreDropdown(v => !v)}
+                aria-haspopup="true"
+                aria-expanded={showMoreDropdown}
+              >
+                <span className="cm-tab-icon">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                </span>
+                <span className="cm-tab-label">{isDropdownActive && activeDropdownTab ? activeDropdownTab.label : 'More Tools'}</span>
+                <span className="cm-tab-label-short">{isDropdownActive && activeDropdownTab ? activeDropdownTab.shortLabel : 'More'}</span>
+                <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {showMoreDropdown && (
+                <div className="cm-more-dropdown" role="menu">
+                  {dropdownTabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+                      role="menuitem"
+                      tabIndex={0}
+                      onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
+                    >
+                      <span className="cm-tab-icon">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {!tab.hasContent && tab.key !== 'document' && <span className="cm-tab-empty-dot" />}
+                    </button>
+                  ))}
+                </div>
               )}
-            </button>
-          ))}
+            </div>
+          )}
+
+          {/* Source Document - always last */}
+          <button key="document" className={`cm-tab${activeTab === 'document' ? ' active' : ''}${!docTab.hasContent ? ' empty' : ' has-content'} source-doc`}
+            onClick={() => setActiveTab('document')} role="tab" aria-selected={activeTab === 'document'}>
+            <span className="cm-tab-icon">{docTab.icon}</span>
+            <span className="cm-tab-label">{docTab.label}</span>
+            <span className="cm-tab-label-short">{docTab.shortLabel}</span>
+          </button>
         </div>
 
         {/* ── Tab content ──────────────────────────── */}
@@ -876,20 +938,30 @@ export function CourseMaterialDetailPage() {
           )}
 
           {activeTab === 'document' && (
-            <DocumentTab
-              content={content}
-              downloading={downloading}
-              onDownload={handleDownload}
-              onShowReplaceModal={() => setShowReplaceModal(true)}
-              onContentUpdated={handleContentUpdated}
-              showToast={showToast}
-              onShowRegenPrompt={() => setShowRegenPrompt(true)}
-              onReloadData={loadData}
-              courseName={content?.course_name}
-              createdAt={content?.created_at}
-              courseId={content?.course_id}
-              linkedTasks={Object.values(linkedTasks).flat()}
-            />
+            <>
+              <DocumentTab
+                content={content}
+                downloading={downloading}
+                onDownload={handleDownload}
+                onShowReplaceModal={() => setShowReplaceModal(true)}
+                onContentUpdated={handleContentUpdated}
+                showToast={showToast}
+                onShowRegenPrompt={() => setShowRegenPrompt(true)}
+                onReloadData={loadData}
+                courseName={content?.course_name}
+                createdAt={content?.created_at}
+                courseId={content?.course_id}
+                linkedTasks={Object.values(linkedTasks).flat()}
+              />
+              {content.created_by_user_id === user?.id && (
+                <div className="cm-access-log-section">
+                  <button className="cm-access-log-toggle" onClick={() => setShowAccessLog(v => !v)}>
+                    <AccessLogIcon /> Access Log {showAccessLog ? '\u25BE' : '\u25B8'}
+                  </button>
+                  {showAccessLog && <AccessLogTab courseContentId={contentId} />}
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'guide' && (
@@ -1002,9 +1074,7 @@ export function CourseMaterialDetailPage() {
             />
           )}
 
-          {activeTab === 'access-log' && content.created_by_user_id === user?.id && (
-            <AccessLogTab courseContentId={contentId} />
-          )}
+          {/* access-log tab redirects to document tab via URL sync useEffect */}
 
         </div>
 
