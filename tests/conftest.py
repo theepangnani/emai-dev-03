@@ -5,6 +5,9 @@ import sys
 import pytest
 from fastapi.testclient import TestClient
 
+# Ensure all SQLAlchemy models are loaded before any test runs (#2686)
+import app.models  # noqa: F401
+
 
 @pytest.fixture(scope="session")
 def test_db_url(tmp_path_factory):

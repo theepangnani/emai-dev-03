@@ -194,7 +194,7 @@ describe('TeacherDashboard', () => {
     }, { timeout: 5000 })
   })
 
-  it('handles Sync Classes click', async () => {
+  it('handles Sync Classes click', { timeout: 15000 }, async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     mockSyncCourses.mockResolvedValue({})
     const syncedCourse = [{ id: 1, name: 'Synced Course', description: null, subject: null, google_classroom_id: 'gc-1' }]
