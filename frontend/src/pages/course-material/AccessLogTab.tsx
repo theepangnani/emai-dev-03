@@ -25,7 +25,7 @@ interface FetchState {
 
 type FetchAction =
   | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; data: { entries: AccessLogEntry[]; total_views: number; total_downloads: number; unique_viewers: number } }
+  | { type: 'FETCH_SUCCESS'; data: { access_log: AccessLogEntry[]; total_views: number; total_downloads: number; unique_viewers: number } }
   | { type: 'FETCH_404' }
   | { type: 'FETCH_ERROR' };
 
@@ -34,7 +34,7 @@ function fetchReducer(state: FetchState, action: FetchAction): FetchState {
     case 'FETCH_START':
       return { ...state, loading: true, error: null, endpointMissing: false };
     case 'FETCH_SUCCESS':
-      return { ...state, loading: false, entries: action.data.entries, totalViews: action.data.total_views, totalDownloads: action.data.total_downloads, uniqueViewers: action.data.unique_viewers };
+      return { ...state, loading: false, entries: action.data.access_log, totalViews: action.data.total_views, totalDownloads: action.data.total_downloads, uniqueViewers: action.data.unique_viewers };
     case 'FETCH_404':
       return { ...state, loading: false, endpointMissing: true };
     case 'FETCH_ERROR':

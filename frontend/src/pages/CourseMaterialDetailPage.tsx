@@ -299,6 +299,8 @@ export function CourseMaterialDetailPage() {
     queryKey: ['resource-links', contentId],
     queryFn: () => resourceLinksApi.list(contentId),
     enabled: contentId > 0,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
   const resourceLinkCount = resourceLinkGroups.reduce((sum, g) => sum + g.links.length, 0);
 

@@ -499,7 +499,7 @@ export interface AccessLogEntry {
 }
 
 export interface AccessLogResponse {
-  entries: AccessLogEntry[];
+  access_log: AccessLogEntry[];
   total_views: number;
   total_downloads: number;
   unique_viewers: number;
