@@ -111,7 +111,7 @@ export function StudyGuideTab({
     const filename = originalFilename || '';
     if (!text && !filename) return;
 
-    classifyDocument(text.slice(0, 500), filename)
+    classifyDocument(text.slice(0, 2000), filename)
       .then((result) => {
         if (cancelled) return;
         setAutoDetectedType(result.document_type);
