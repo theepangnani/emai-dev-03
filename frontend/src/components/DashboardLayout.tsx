@@ -257,6 +257,63 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     };
   }, []);
 
+  // WCAG 2.4.2 — update document title on route change
+  useEffect(() => {
+    const PAGE_TITLES: Record<string, string> = {
+      '/dashboard': 'Home',
+      '/my-kids': 'My Kids',
+      '/school-report-cards': 'Report Cards',
+      '/analytics': 'Analytics',
+      '/tasks': 'Tasks',
+      '/messages': 'Messages',
+      '/help': 'Help',
+      '/study': 'Study',
+      '/courses': 'Classes',
+      '/course-materials': 'Materials',
+      '/teacher-communications': 'Teacher Comms',
+      '/admin/waitlist': 'Waitlist',
+      '/admin/survey': 'Survey Results',
+      '/admin/ai-usage': 'AI Usage',
+      '/admin/audit-log': 'Audit Log',
+      '/admin/inspiration': 'Inspiration',
+      '/admin/faq': 'Manage FAQ',
+      '/notifications': 'Notifications',
+      '/link-requests': 'Link Requests',
+      '/quiz-history': 'Quiz History',
+      '/settings/emails': 'Email Settings',
+      '/settings/notifications': 'Notification Preferences',
+      '/settings/account': 'Account Settings',
+      '/settings/data-export': 'Data Export',
+      '/settings/calendar-import': 'Calendar Import',
+      '/faq': 'FAQ',
+      '/ai-tools': 'AI Tools',
+      '/activity': 'Activity History',
+      '/activity/timeline': 'Timeline',
+      '/grades': 'Grades',
+      '/xp/history': 'XP History',
+      '/xp/badges': 'Badges',
+      '/report-card': 'Report Card',
+      '/wallet': 'Wallet',
+      '/parent-briefing-notes': 'Briefing Notes',
+      '/readiness-check': 'Readiness Check',
+    };
+    const title = PAGE_TITLES[location.pathname] || 'ClassBridge';
+    document.title = title === 'ClassBridge' ? title : `${title} — ClassBridge`;
+  }, [location.pathname]);
+
+  // WCAG 2.4.3 — move focus to main content on route change
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const mainEl = document.getElementById('main-content');
+    if (mainEl) {
+      mainEl.focus({ preventScroll: false });
+    }
+  }, [location.pathname]);
+
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
   const navItems = useMemo(() => {
