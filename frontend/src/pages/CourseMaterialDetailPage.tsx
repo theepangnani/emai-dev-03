@@ -831,7 +831,7 @@ export function CourseMaterialDetailPage() {
             const isDropdownActive = dropdownTabs.some(t => t.key === activeTab);
             const activeDropdownTab = dropdownTabs.find(t => t.key === activeTab);
             return (
-              <div className="cm-tab-more-wrapper" ref={moreDropdownRef}>
+              <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
                 <button
                   className={`cm-tab cm-tab-more${isDropdownActive ? ' active' : ''}`}
                   onClick={() => setShowMoreDropdown(v => !v)}
@@ -846,11 +846,13 @@ export function CourseMaterialDetailPage() {
                   <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
                 {showMoreDropdown && (
-                  <div className="cm-more-dropdown">
+                  <div className="cm-more-dropdown" role="menu">
                     {dropdownTabs.map(tab => (
                       <button
                         key={tab.key}
                         className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+                        role="menuitem"
+                        tabIndex={0}
                         onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
                       >
                         <span className="cm-tab-icon">{tab.icon}</span>
