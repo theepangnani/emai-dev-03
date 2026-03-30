@@ -43,6 +43,7 @@ export function ReportCardAnalysis() {
   const [careerError, setCareerError] = useState<string | null>(null);
 
   const careerPathRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
   // Load student's own report cards
   const loadMyReportCards = useCallback(async () => {
@@ -68,12 +69,13 @@ export function ReportCardAnalysis() {
   useEffect(() => {
     if (isStudent) {
       loadMyReportCards().finally(() => setLoading(false));
-    } else {
+    } else if (!initializedRef.current) {
+      initializedRef.current = true;
       (async () => {
         try {
           const kids = await parentApi.getChildren();
           setChildren(kids);
-          if (kids.length === 1 && !selectedChildId) {
+          if (kids.length === 1) {
             setSearchParams({ child: String(kids[0].student_id) }, { replace: true });
           }
         } catch {
@@ -83,7 +85,7 @@ export function ReportCardAnalysis() {
         }
       })();
     }
-  }, [isStudent, loadMyReportCards, selectedChildId, setSearchParams]);
+  }, [isStudent, loadMyReportCards, setSearchParams]);
 
   // Load report cards when child changes (parent only)
   const loadReportCards = useCallback(async (studentId: number) => {
