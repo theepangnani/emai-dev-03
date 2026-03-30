@@ -196,14 +196,16 @@ export function ParentDashboard() {
               <span className="pd-onboard-card-title">Add Your Child</span>
               <span className="pd-onboard-card-desc">Create a profile or link an existing student account</span>
             </div>
+            {gcEnabled && (
             <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '100ms' }}>
               <span className="pd-onboard-card-step">Step 2</span>
               <span className="pd-onboard-card-icon" aria-hidden="true">🏫</span>
               <span className="pd-onboard-card-title">Connect School</span>
-              <span className="pd-onboard-card-desc">{gcEnabled ? 'Import classes from Google Classroom automatically' : 'Add classes and course materials'}</span>
+              <span className="pd-onboard-card-desc">Import classes from Google Classroom automatically</span>
             </div>
-            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: '200ms' }}>
-              <span className="pd-onboard-card-step">Step 3</span>
+            )}
+            <div className="pd-onboard-card pd-onboard-card-future" role="listitem" style={{ animationDelay: gcEnabled ? '200ms' : '100ms' }}>
+              <span className="pd-onboard-card-step">{gcEnabled ? 'Step 3' : 'Step 2'}</span>
               <span className="pd-onboard-card-icon" aria-hidden="true">📚</span>
               <span className="pd-onboard-card-title">Explore Tools</span>
               <span className="pd-onboard-card-desc">Study guides, tasks &amp; tracking for your child</span>

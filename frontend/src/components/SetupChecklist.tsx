@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useFeature } from '../hooks/useFeatureToggle';
 import './SetupChecklist.css';
 
 interface OnboardingProgress {
@@ -68,6 +69,7 @@ const STEPS: Step[] = [
 
 export function SetupChecklist() {
   const navigate = useNavigate();
+  const gcEnabled = useFeature('google_classroom');
   const [progress, setProgress] = useState<OnboardingProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(false);
@@ -94,13 +96,18 @@ export function SetupChecklist() {
     };
   }, []);
 
+  const visibleSteps = useMemo(
+    () => (gcEnabled ? STEPS : STEPS.filter((s) => s.key !== 'classroom_connected')),
+    [gcEnabled],
+  );
+
   const completedCount = useMemo(() => {
     if (!progress) return 0;
-    return STEPS.filter((s) => progress[s.key]).length;
-  }, [progress]);
+    return visibleSteps.filter((s) => progress[s.key]).length;
+  }, [progress, visibleSteps]);
 
-  const allComplete = completedCount === STEPS.length;
-  const pct = Math.round((completedCount / STEPS.length) * 100);
+  const allComplete = completedCount === visibleSteps.length;
+  const pct = Math.round((completedCount / visibleSteps.length) * 100);
 
   const handleDismiss = async () => {
     setDismissed(true);
@@ -131,7 +138,7 @@ export function SetupChecklist() {
           </button>
         </div>
         <p className="setup-checklist__subtitle">
-          {completedCount} of {STEPS.length} steps complete
+          {completedCount} of {visibleSteps.length} steps complete
         </p>
         <div className="setup-checklist__progress-track" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
           <div className="setup-checklist__progress-fill" style={{ width: `${pct}%` }} />
@@ -139,7 +146,7 @@ export function SetupChecklist() {
       </div>
 
       <ul className="setup-checklist__steps">
-        {STEPS.map((step) => {
+        {visibleSteps.map((step) => {
           const done = progress[step.key];
           return (
             <li key={step.key} className={`setup-checklist__step ${done ? 'setup-checklist__step--done' : ''}`}>
