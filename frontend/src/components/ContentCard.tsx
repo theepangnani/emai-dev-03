@@ -153,7 +153,11 @@ const loadMarkdown = () =>
         }, [courseContentId]);
 
         const resolved = useMemo(() => {
-          let text = normalizeContent(content);
+          // Fix malformed image section separators from AI output
+          let text = content
+            .replace(/^---\s*##/gm, '\n\n##')
+            .replace(/^---\s*!\[/gm, '\n\n![');
+          text = normalizeContent(text);
           if (courseContentId && images.length > 0) {
             text = resolveImageMarkers(text, courseContentId, images);
           }

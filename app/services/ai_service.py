@@ -311,7 +311,9 @@ The source material contains the following images and figures. When a topic you'
 
 Place each image near the relevant content in your study guide. Do not force images where they don't fit — only include them where they add value to the explanation.
 
-IMPORTANT: When referencing values, measurements, angles, or labels that come from these source images/diagrams, explicitly attribute them to the diagram (e.g., "From the diagram, we can see that ∠P = 49°" or "As labeled in the figure, QR = 7 m"). This helps students understand which values are given from the source material vs. which are calculated. Never present diagram-sourced values as unexplained facts."""
+IMPORTANT: When referencing values, measurements, angles, or labels that come from these source images/diagrams, explicitly attribute them to the diagram (e.g., "From the diagram, we can see that ∠P = 49°" or "As labeled in the figure, QR = 7 m"). This helps students understand which values are given from the source material vs. which are calculated. Never present diagram-sourced values as unexplained facts.
+
+Do NOT use "---" (horizontal rule) as a separator before or around image sections. Simply use a blank line followed by a markdown heading like "## Additional Figures"."""
 
     if focus_prompt:
         prompt += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_prompt}. Prioritize these topics in your response while still covering other key material briefly."
