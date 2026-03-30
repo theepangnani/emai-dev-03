@@ -128,10 +128,6 @@ vi.mock('../components/AssessmentCountdown', () => ({
   AssessmentCountdown: () => <div data-testid="assessment-countdown" />,
 }))
 
-vi.mock('../components/QuizOfTheDay', () => ({
-  QuizOfTheDay: () => <div data-testid="quiz-of-the-day" />,
-}))
-
 vi.mock('../components/GoogleClassroomPrompt', () => ({
   GoogleClassroomPrompt: () => <div data-testid="google-classroom-prompt" />,
 }))
