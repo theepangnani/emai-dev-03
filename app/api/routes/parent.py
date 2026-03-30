@@ -473,12 +473,10 @@ def get_parent_dashboard(
         total_tasks=len(tasks),
         child_highlights=child_highlights,
         all_assignments=[
-            AssignmentResponse(
-                id=a.id, title=a.title, description=a.description,
-                course_id=a.course_id, course_name=a.course.name if a.course else None,
-                google_classroom_id=a.google_classroom_id, due_date=a.due_date,
-                max_points=a.max_points, created_at=a.created_at,
-            ) for a in all_assignments
+            AssignmentResponse.model_validate(a, from_attributes=True).model_copy(
+                update={"course_name": a.course.name if a.course else None}
+            )
+            for a in all_assignments
         ],
         all_tasks=task_dicts,
     )
