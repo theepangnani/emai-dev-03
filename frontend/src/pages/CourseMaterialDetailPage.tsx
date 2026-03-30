@@ -691,7 +691,7 @@ export function CourseMaterialDetailPage() {
       if (chipAbortRef.current) return;
       refreshAIUsage();
       showToast('Sub-guide generated — opening now');
-      navigate(newGuide.course_content_id ? `/course-materials/${newGuide.course_content_id}?tab=guide` : `/study/guide/${newGuide.id}`);
+      navigate(`/study/guide/${newGuide.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
       showToast(msg);
