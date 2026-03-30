@@ -341,6 +341,20 @@ async def suggest_resources(
         except Exception:
             pass
 
+    # Batch-validate all YouTube video IDs in parallel (#2750)
+    youtube_ids_to_check = []
+    for item in filtered:
+        vid = item.get("youtube_video_id")
+        if vid and _YOUTUBE_ID_RE.match(vid):
+            youtube_ids_to_check.append(vid)
+
+    yt_results: dict[str, bool] = {}
+    if youtube_ids_to_check:
+        tasks = {vid: _validate_youtube_video(vid) for vid in youtube_ids_to_check}
+        results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+        for vid, result in zip(tasks.keys(), results):
+            yt_results[vid] = result is True
+
     # Store valid resources
     created: list[ResourceLink] = []
     order = 0
@@ -354,7 +368,7 @@ async def suggest_resources(
         if youtube_video_id and not _YOUTUBE_ID_RE.match(youtube_video_id):
             logger.debug("Skipping invalid YouTube video ID format: %s", youtube_video_id)
             continue
-        if youtube_video_id and not await _validate_youtube_video(youtube_video_id):
+        if youtube_video_id and not yt_results.get(youtube_video_id, False):
             logger.debug("Skipping non-existent YouTube video: %s", youtube_video_id)
             continue
 
