@@ -59,6 +59,23 @@ function DeleteIcon() {
   );
 }
 
+function PinIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M9.5 2.5L13.5 6.5L10 10L9 13L3 7L6 6L9.5 2.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M3 13L6.5 9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 1v3M8 12v3M1 8h3M12 8h3M3.5 3.5l2 2M10.5 10.5l2 2M12.5 3.5l-2 2M5.5 10.5l-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 /* ── YouTubeEmbed ───────────────────────────────── */
 
 function YouTubeEmbed({ videoId, title, description }: { videoId: string; title: string | null; description: string | null }) {
@@ -181,6 +198,153 @@ function TopicGroup({
   );
 }
 
+/* ── AI-Suggested Link Card ────────────────────── */
+
+function AISuggestedLinkCard({
+  link,
+  onPin,
+  onDismiss,
+}: {
+  link: ResourceLinkItem;
+  onPin: (id: number) => void;
+  onDismiss: (id: number) => void;
+}) {
+  const displayUrl = link.url.length > 60 ? link.url.slice(0, 57) + '...' : link.url;
+  return (
+    <div className="vl-ai-link-row">
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="vl-link-card"
+      >
+        <div className="vl-link-card-body">
+          <span className="vl-link-icon">
+            <ExternalLinkIcon size={16} />
+          </span>
+          <div className="vl-link-info">
+            <span className="vl-link-title">
+              {link.title || 'Untitled link'}
+              <span className="vl-ai-badge">AI-suggested</span>
+            </span>
+            <span className="vl-link-url">{displayUrl}</span>
+          </div>
+        </div>
+      </a>
+      <button
+        className="vl-pin-btn"
+        title="Pin as permanent resource"
+        onClick={() => onPin(link.id)}
+      >
+        <PinIcon />
+      </button>
+      <button
+        className="vl-delete-btn"
+        title="Dismiss suggestion"
+        onClick={() => onDismiss(link.id)}
+      >
+        <DeleteIcon />
+      </button>
+    </div>
+  );
+}
+
+/* ── AI-Suggested YouTube Card ─────────────────── */
+
+function AISuggestedYouTubeCard({
+  link,
+  onPin,
+  onDismiss,
+}: {
+  link: ResourceLinkItem;
+  onPin: (id: number) => void;
+  onDismiss: (id: number) => void;
+}) {
+  return (
+    <div className="vl-youtube-item">
+      <YouTubeEmbed
+        videoId={link.youtube_video_id!}
+        title={link.title}
+        description={link.description}
+      />
+      <span className="vl-ai-badge vl-ai-badge--floating">AI-suggested</span>
+      <div className="vl-ai-youtube-actions">
+        <button
+          className="vl-pin-btn"
+          title="Pin as permanent resource"
+          onClick={() => onPin(link.id)}
+        >
+          <PinIcon />
+        </button>
+        <button
+          className="vl-delete-btn"
+          title="Dismiss suggestion"
+          onClick={() => onDismiss(link.id)}
+        >
+          <DeleteIcon />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── AI-Suggested Section ──────────────────────── */
+
+function AISuggestedSection({
+  links,
+  onPin,
+  onDismiss,
+}: {
+  links: ResourceLinkItem[];
+  onPin: (id: number) => void;
+  onDismiss: (id: number) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const youtubeLinks = links.filter(l => l.resource_type === 'youtube' && l.youtube_video_id);
+  const otherLinks = links.filter(l => l.resource_type !== 'youtube' || !l.youtube_video_id);
+
+  if (links.length === 0) return null;
+
+  return (
+    <div className="vl-topic-group vl-ai-section">
+      <button className="vl-topic-heading vl-ai-heading" onClick={() => setOpen(v => !v)}>
+        <ChevronIcon open={open} />
+        <SparkleIcon />
+        <span>AI-Suggested Resources</span>
+        <span className="vl-topic-count">{links.length}</span>
+      </button>
+      {open && (
+        <div className="vl-topic-body">
+          {youtubeLinks.length > 0 && (
+            <div className="vl-youtube-grid">
+              {youtubeLinks.map(link => (
+                <AISuggestedYouTubeCard
+                  key={link.id}
+                  link={link}
+                  onPin={onPin}
+                  onDismiss={onDismiss}
+                />
+              ))}
+            </div>
+          )}
+          {otherLinks.length > 0 && (
+            <div className="vl-links-list">
+              {otherLinks.map(link => (
+                <AISuggestedLinkCard
+                  key={link.id}
+                  link={link}
+                  onPin={onPin}
+                  onDismiss={onDismiss}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── AddLinkForm ────────────────────────────────── */
 
 function AddLinkForm({
@@ -270,11 +434,39 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
     queryFn: () => resourceLinksApi.list(courseContentId),
   });
 
+  // Separate teacher links from AI-suggested links
+  const teacherGroups = groups.map(g => ({
+    ...g,
+    links: g.links.filter(l => l.source !== 'ai_suggested'),
+  })).filter(g => g.links.length > 0);
+
+  const aiSuggestedLinks = groups.flatMap(g =>
+    g.links.filter(l => l.source === 'ai_suggested')
+  );
+
   const totalCount = groups.reduce((sum, g) => sum + g.links.length, 0);
 
   const handleDelete = async (linkId: number) => {
     try {
       await resourceLinksApi.delete(linkId);
+      queryClient.invalidateQueries({ queryKey: ['resource-links', courseContentId] });
+    } catch {
+      // silently fail; user can retry
+    }
+  };
+
+  const handlePin = async (linkId: number) => {
+    try {
+      await resourceLinksApi.pin(linkId);
+      queryClient.invalidateQueries({ queryKey: ['resource-links', courseContentId] });
+    } catch {
+      // silently fail; user can retry
+    }
+  };
+
+  const handleDismiss = async (linkId: number) => {
+    try {
+      await resourceLinksApi.dismiss(linkId);
       queryClient.invalidateQueries({ queryKey: ['resource-links', courseContentId] });
     } catch {
       // silently fail; user can retry
@@ -338,7 +530,7 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
         />
       )}
 
-      {groups.map(group => (
+      {teacherGroups.map(group => (
         <TopicGroup
           key={group.topic_heading || '__other'}
           heading={group.topic_heading || 'Other Resources'}
@@ -346,6 +538,12 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
           onDelete={handleDelete}
         />
       ))}
+
+      <AISuggestedSection
+        links={aiSuggestedLinks}
+        onPin={handlePin}
+        onDismiss={handleDismiss}
+      />
     </div>
   );
 }

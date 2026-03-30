@@ -12,6 +12,7 @@ export interface ResourceLinkItem {
   youtube_video_id: string | null;
   display_order: number;
   created_at: string;
+  source: string;
 }
 
 export interface ResourceLinkGroup {
@@ -39,6 +40,15 @@ export const resourceLinksApi = {
 
   delete: async (linkId: number) => {
     await api.delete(`/api/resource-links/${linkId}`);
+  },
+
+  pin: async (linkId: number) => {
+    const response = await api.patch(`/api/resource-links/${linkId}/pin`);
+    return response.data as ResourceLinkItem;
+  },
+
+  dismiss: async (linkId: number) => {
+    await api.delete(`/api/resource-links/${linkId}/dismiss`);
   },
 
   reExtract: async (courseContentId: number) => {
