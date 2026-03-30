@@ -195,7 +195,7 @@ export function CourseMaterialDetailPage() {
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const urlTab = searchParams.get('tab') as TabKey | null;
   const [activeTab, setActiveTabState] = useState<TabKey>(
-    urlTab && VALID_TABS.includes(urlTab) ? urlTab : 'guide'
+    urlTab === 'access-log' ? 'document' : (urlTab && VALID_TABS.includes(urlTab) ? urlTab : 'guide')
   );
 
   const setActiveTab = useCallback((tab: TabKey) => {
@@ -218,7 +218,7 @@ export function CourseMaterialDetailPage() {
     }
   }, [searchParams, activeTab]);
   const [generating, setGenerating] = useState<string | null>(null);
-  const [showAccessLog, setShowAccessLog] = useState(false);
+  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
   const [showMoreDropdown, setShowMoreDropdown] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
 
