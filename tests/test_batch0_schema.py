@@ -325,17 +325,17 @@ class TestHolidayDatesTable:
 
 class TestHolidayCRUDEndpoints:
     def test_list_holidays_empty(self, client, admin_user):
-        """GET /api/admin/holidays returns empty list initially."""
+        """GET /api/holiday-dates returns empty list initially."""
         headers = _auth(client, admin_user.email)
-        resp = client.get("/api/admin/holidays", headers=headers)
+        resp = client.get("/api/holiday-dates", headers=headers)
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
     def test_create_holiday_endpoint(self, client, admin_user):
-        """POST /api/admin/holidays creates a holiday."""
+        """POST /api/holiday-dates creates a holiday."""
         headers = _auth(client, admin_user.email)
         resp = client.post(
-            "/api/admin/holidays",
+            "/api/holiday-dates",
             json={
                 "date": "2026-09-07",
                 "board_code": "YRDSB",
@@ -351,11 +351,11 @@ class TestHolidayCRUDEndpoints:
         assert data["id"] is not None
 
     def test_delete_holiday_endpoint(self, client, admin_user):
-        """DELETE /api/admin/holidays/{id} removes a holiday."""
+        """DELETE /api/holiday-dates/{id} removes a holiday."""
         headers = _auth(client, admin_user.email)
         # Create first
         create_resp = client.post(
-            "/api/admin/holidays",
+            "/api/holiday-dates",
             json={"date": "2026-10-12", "name": "Thanksgiving"},
             headers=headers,
         )
@@ -363,17 +363,17 @@ class TestHolidayCRUDEndpoints:
         holiday_id = create_resp.json()["id"]
 
         # Delete
-        del_resp = client.delete(f"/api/admin/holidays/{holiday_id}", headers=headers)
+        del_resp = client.delete(f"/api/holiday-dates/{holiday_id}", headers=headers)
         assert del_resp.status_code == 204
 
     def test_delete_nonexistent_holiday(self, client, admin_user):
-        """DELETE /api/admin/holidays/99999 returns 404."""
+        """DELETE /api/holiday-dates/99999 returns 404."""
         headers = _auth(client, admin_user.email)
-        resp = client.delete("/api/admin/holidays/99999", headers=headers)
+        resp = client.delete("/api/holiday-dates/99999", headers=headers)
         assert resp.status_code == 404
 
-    def test_non_admin_cannot_access(self, client, teacher_user):
-        """Non-admin users cannot access holiday endpoints."""
+    def test_non_admin_can_read_holidays(self, client, teacher_user):
+        """Non-admin users can read holiday dates (public read, admin write)."""
         headers = _auth(client, teacher_user["user"].email)
-        resp = client.get("/api/admin/holidays", headers=headers)
-        assert resp.status_code == 403
+        resp = client.get("/api/holiday-dates", headers=headers)
+        assert resp.status_code == 200
