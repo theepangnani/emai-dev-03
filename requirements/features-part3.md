@@ -4815,3 +4815,90 @@ Proactively guide users through their ClassBridge journey with smart, contextual
 - `app/services/journey_hint_service.py` — Detection logic
 - `app/api/routes/journey.py` — Hint API endpoints
 - `app/models/journey_hint.py` — `journey_hints` table model
+
+### 6.127 Parent Email Digest Integration (CB-PEDI-001) - PLANNED
+
+Parents connect their personal Gmail via OAuth (`gmail.readonly` scope). Their child's school email (e.g. YRDSB `@gapps.yrdsb.ca`) is forwarded to this personal Gmail. ClassBridge polls the parent's Gmail for emails from the child's school address, then uses Claude AI to summarize them into a configurable daily digest. Operates entirely within the parent's personal Gmail — no DTAP/MFIPPA approval required.
+
+**PRD:** CB-PEDI-001-Parent-Email-Digest-PRD-v1.1
+**M0 Feasibility:** CONFIRMED (March 29, 2026) — YRDSB forwarding enabled, dual-parent filter-based forwarding validated.
+
+**Data Flow:**
+```
+YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [ClassBridge OAuth] → Gmail API poll → Claude AI summarization → Parent Dashboard / Email
+```
+
+**Database Tables:**
+- `parent_gmail_integrations` — parent_id, gmail_address, access_token, refresh_token, child_school_email, child_first_name, is_active, paused_until
+- `parent_digest_settings` — integration_id, digest_enabled, delivery_time, timezone, digest_format, notify_on_empty
+- `digest_delivery_log` — parent_id, integration_id, email_count, digest_content, status
+
+**Architecture Decisions:**
+- Token storage: plaintext in DB (matches existing pattern; future Secret Manager migration for all tokens)
+- Separate OAuth flow via `ParentGmailIntegration` table (parent's personal Gmail may differ from Classroom account)
+- Single cron job every 4 hours (matches `daily_digest_job.py` pattern)
+- Delivery via standard ClassBridge notification (`send_multi_channel_notification`); email sent if parent has email enabled for `school_emails` category in notification preferences
+- Multi-child support in data model from Day 1; UI restricted in Phase 1
+
+**Phase 1 Features (M1+M2, April-May 2026):**
+- [x] M0: YRDSB forwarding feasibility confirmed
+- [ ] F-01: Gmail OAuth 2.0 connection flow for parent accounts (#2644)
+- [ ] F-02: Child email address configuration (#2642, #2643)
+- [ ] F-03: Guided setup wizard with forwarding instructions (#2647)
+- [ ] F-04: Gmail API polling — filter by child school email (#2648)
+- [ ] F-05: Claude AI summarization engine (#2650)
+- [ ] F-06: Configurable digest delivery time (#2645)
+- [ ] F-07: Digest delivery via in-app notification + email (#2651, #2652, #2653)
+- [ ] F-08: Digest toggle ON/OFF with pause duration (#2645)
+- [ ] Backend CRUD routes (#2645)
+- [ ] Notification type + preference category (#2646)
+- [ ] Forwarding verification endpoint (#2649)
+- [ ] Backend test suite (#2654)
+
+**Phase 2 Features (M4, July-August 2026):**
+- [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
+- [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)
+- [ ] F-11: Action items extraction — deadlines, forms, RSVPs surfaced separately (#2655)
+- [ ] F-12: Multi-child support UI (#2655)
+
+**Phase 3 Features (M5, September 2026+):**
+- [ ] F-13: Historical digest archive — searchable in Parent Dashboard (#2656)
+- [ ] F-14: Weekly summary roll-up — weekend digest of full week (#2656)
+
+**Key New Files (planned):**
+- `app/models/parent_gmail_integration.py` — SQLAlchemy models (3 tables)
+- `app/schemas/parent_email_digest.py` — Pydantic schemas
+- `app/api/routes/parent_email_digest.py` — CRUD routes (prefix `/parent-digest`)
+- `app/services/parent_gmail_service.py` — Gmail API polling
+- `app/services/parent_digest_ai_service.py` — Claude Haiku summarization
+- `app/jobs/parent_email_digest_job.py` — Scheduled digest job
+- `app/templates/parent_email_digest.html` — Branded email template
+- `frontend/src/pages/parent/EmailDigestSetupPage.tsx` — 5-step setup wizard
+- `frontend/src/pages/parent/EmailDigestPage.tsx` — Digest view + delivery log
+- `frontend/src/api/parentEmailDigest.ts` — Axios API client
+
+**Files to Modify:**
+- `app/api/routes/google_classroom.py` — Add `purpose="parent_gmail"` OAuth callback branch
+- `app/models/notification.py` — Add `PARENT_EMAIL_DIGEST` to enum
+- `main.py` — Mount router, register scheduler job
+- `frontend/src/pages/AccountSettingsPage.tsx` — Add digest section for parents
+- `frontend/src/pages/NotificationPreferencesPage.tsx` — Add "School Emails" category
+
+**Cost Estimate:**
+- Model: `claude-haiku-4-5` (~$0.001/digest)
+- At 1,000 parents: ~$1/day, ~$30/month
+
+**Compliance:**
+- DTAP: NOT required — operates on parent's personal Gmail only
+- MFIPPA risk: LOW — no direct access to board student accounts
+- OAuth scope: `gmail.readonly` only (no modify/send)
+
+**Milestones:**
+| Milestone | Target | Deliverable |
+|-----------|--------|-------------|
+| M0 | March 2026 | COMPLETE — YRDSB forwarding confirmed |
+| M1 | April 2026 | Gmail OAuth + settings UI + setup wizard |
+| M2 | May 2026 | Digest engine + AI summarizer + scheduler |
+| M3 | June 2026 | Pilot with 5-10 YRDSB families |
+| M4 | July-Aug 2026 | Phase 2: format selector, categorization, multi-child |
+| M5 | September 2026 | Public launch — feature GA |

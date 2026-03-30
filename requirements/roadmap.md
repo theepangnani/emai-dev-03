@@ -271,6 +271,35 @@
 - [ ] **User Cloud Storage Destination** — Users choose to store uploaded materials in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95, #1865-#1871)
 - [ ] **Cloud File Import** — Import files directly from Google Drive or OneDrive into Upload Wizard via tabbed file browser; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96, #1872-#1877)
 
+#### Parent Email Digest Integration (CB-PEDI-001, §6.127) — #2642-#2656
+
+Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school email (YRDSB) forwarded to parent's Gmail. ClassBridge polls Gmail every 4 hours, Claude AI summarizes into daily digest delivered as a standard ClassBridge notification (email if parent has email enabled). No DTAP/MFIPPA required.
+
+**M0 — Feasibility (March 2026):** COMPLETE — YRDSB forwarding confirmed
+**M1 — Foundation (April 2026):**
+- [ ] ParentGmailIntegration database models — 3 new tables (#2642)
+- [ ] Pydantic schemas (#2643)
+- [ ] Gmail OAuth flow for parent personal accounts (#2644)
+- [ ] CRUD API routes — integrations, settings, pause/resume (#2645)
+- [ ] PARENT_EMAIL_DIGEST notification type (#2646)
+- [ ] Email digest setup wizard frontend (#2647)
+
+**M2 — Core Engine (May 2026):**
+- [ ] Gmail polling service (#2648)
+- [ ] Forwarding verification endpoint (#2649)
+- [ ] Claude AI digest summarization service (#2650)
+- [ ] Scheduled digest job — every 4 hours, timezone-aware, ClassBridge notification delivery (#2651)
+- [ ] Branded email template (#2652)
+- [ ] Email digest page + delivery log frontend (#2653)
+- [ ] Backend test suite (#2654)
+
+**M3 — Pilot (June 2026):** 5-10 YRDSB families
+**M4 — Phase 2 (July-August 2026):**
+- [ ] Digest format selector, email categorization, action items extraction, multi-child UI (#2655)
+
+**M5 — Public Launch (September 2026):**
+- [ ] Historical digest archive + weekly roll-up (#2656)
+
 #### UI/UX Audit — Phase 1 Improvements (#668)
 
 **Audit Report:** [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md)
