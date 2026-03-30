@@ -37,11 +37,11 @@ export function useJourneyHint(pageName: string): UseJourneyHintResult {
       }
 
       try {
-        const res = await api.get<JourneyHint>('/api/journey/hints', {
+        const res = await api.get<{ hint: JourneyHint | null }>('/api/journey/hints', {
           params: { page: pageName },
         });
-        if (!cancelled && res.data) {
-          setHint(res.data);
+        if (!cancelled && res.data?.hint) {
+          setHint(res.data.hint);
           // Increment session counter
           sessionStorage.setItem(SESSION_KEY, String(count + 1));
         }
@@ -60,7 +60,7 @@ export function useJourneyHint(pageName: string): UseJourneyHintResult {
     if (!hint) return;
     setHint(null);
     try {
-      await api.post('/api/journey/hints/dismiss', { hint_key: hint.hint_key });
+      await api.post(`/api/journey/hints/${hint.hint_key}/dismiss`);
     } catch {
       // Silently fail — API may not exist yet
     }
@@ -70,7 +70,7 @@ export function useJourneyHint(pageName: string): UseJourneyHintResult {
     if (!hint) return;
     setHint(null);
     try {
-      await api.post('/api/journey/hints/snooze', { hint_key: hint.hint_key });
+      await api.post(`/api/journey/hints/${hint.hint_key}/snooze`);
     } catch {
       // Silently fail
     }
