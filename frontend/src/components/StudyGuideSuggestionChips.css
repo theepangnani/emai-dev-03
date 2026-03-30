@@ -72,3 +72,29 @@
 .sg-chip-label {
   line-height: 1;
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .sg-suggestion-section {
+  border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] .sg-suggestion-header {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .sg-suggestion-chip {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+  color: var(--color-accent);
+}
+
+[data-theme="dark"] .sg-suggestion-chip:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .sg-suggestion-chip--generating {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+}

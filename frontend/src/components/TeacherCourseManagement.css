@@ -372,3 +372,18 @@
     width: 100%;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .tcm-error {
+  background: rgba(252, 165, 165, 0.1);
+  border-color: rgba(252, 165, 165, 0.2);
+}
+
+[data-theme="dark"] .tcm-filter-count {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .tcm-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}

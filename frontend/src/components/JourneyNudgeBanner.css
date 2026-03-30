@@ -114,3 +114,13 @@
     white-space: normal;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .journey-nudge-banner__dismiss {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .journey-nudge-banner__dismiss:hover {
+  background: rgba(255, 255, 255, 0.08);
+}

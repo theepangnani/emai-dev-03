@@ -574,3 +574,34 @@
     gap: 4px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .grades-color-green,
+[data-theme="dark"] .gp-container .grades-color-green {
+  background: rgba(110, 231, 183, 0.14);
+}
+
+[data-theme="dark"] .grades-color-yellow,
+[data-theme="dark"] .gp-container .grades-color-yellow {
+  background: rgba(253, 230, 138, 0.14);
+}
+
+[data-theme="dark"] .grades-color-red,
+[data-theme="dark"] .gp-container .grades-color-red {
+  background: rgba(252, 165, 165, 0.14);
+}
+
+[data-theme="dark"] .gp-overall-letter {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .gp-course-row:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .gp-letter-badge {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.06);
+}

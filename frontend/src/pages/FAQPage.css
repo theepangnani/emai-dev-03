@@ -280,3 +280,16 @@
     font-size: 14px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .faq-badge.cat-google-classroom {
+  background: rgba(125, 211, 252, 0.14);
+}
+
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group textarea {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
