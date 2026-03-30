@@ -64,7 +64,7 @@ export function ContentMetaBar({ courseName, createdAt, linkedTasks = [], course
       {createdAt && (
         <span className="cm-guide-meta-item">
           <span className="cm-guide-meta-label">Created:</span>{' '}
-          {new Date(createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {new Date(createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
         </span>
       )}
       {linkedTasks.length > 0 ? (
