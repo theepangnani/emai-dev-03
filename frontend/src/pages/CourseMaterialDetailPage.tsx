@@ -207,18 +207,21 @@ export function CourseMaterialDetailPage() {
     }, { replace: true });
   }, [setSearchParams]);
 
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
+
   // Sync active tab when URL search params change (e.g., back/forward navigation)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey | null;
     if (tabFromUrl === 'access-log') {
-      setActiveTabState('document');
-      setShowAccessLog(true);
+      if (activeTab !== 'document' || !showAccessLog) {
+        setActiveTabState('document');
+        setShowAccessLog(true);
+      }
     } else if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTabState(tabFromUrl);
     }
-  }, [searchParams, activeTab]);
-  const [generating, setGenerating] = useState<string | null>(null);
-  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
+  }, [searchParams, activeTab, showAccessLog]);
   const [showMoreDropdown, setShowMoreDropdown] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -232,6 +235,16 @@ export function CourseMaterialDetailPage() {
     if (showMoreDropdown) {
       document.addEventListener('mousedown', handler);
       return () => document.removeEventListener('mousedown', handler);
+    }
+  }, [showMoreDropdown]);
+
+  // Auto-focus first menu item when dropdown opens
+  useEffect(() => {
+    if (showMoreDropdown) {
+      requestAnimationFrame(() => {
+        const firstItem = moreDropdownRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]');
+        firstItem?.focus();
+      });
     }
   }, [showMoreDropdown]);
 
@@ -860,8 +873,9 @@ export function CourseMaterialDetailPage() {
               <button
                 className={`cm-tab cm-tab-more${isDropdownActive ? ' active' : ''}`}
                 onClick={() => setShowMoreDropdown(v => !v)}
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 aria-expanded={showMoreDropdown}
+                aria-label="More tools"
               >
                 <span className="cm-tab-icon">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
@@ -871,13 +885,49 @@ export function CourseMaterialDetailPage() {
                 <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
               {showMoreDropdown && (
-                <div className="cm-more-dropdown" role="menu">
+                <div className="cm-more-dropdown" role="menu" onKeyDown={(e) => {
+                  const items = moreDropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+                  if (!items || items.length === 0) return;
+                  const currentIndex = Array.from(items).findIndex(el => el === document.activeElement);
+                  switch (e.key) {
+                    case 'ArrowDown': {
+                      e.preventDefault();
+                      const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+                      items[next].focus();
+                      break;
+                    }
+                    case 'ArrowUp': {
+                      e.preventDefault();
+                      const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+                      items[prev].focus();
+                      break;
+                    }
+                    case 'Home':
+                      e.preventDefault();
+                      items[0].focus();
+                      break;
+                    case 'End':
+                      e.preventDefault();
+                      items[items.length - 1].focus();
+                      break;
+                    case 'Enter':
+                    case ' ':
+                      e.preventDefault();
+                      if (document.activeElement instanceof HTMLButtonElement) {
+                        document.activeElement.click();
+                      }
+                      break;
+                    case 'Tab':
+                      setShowMoreDropdown(false);
+                      break;
+                  }
+                }}>
                   {dropdownTabs.map(tab => (
                     <button
                       key={tab.key}
                       className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
                       role="menuitem"
-                      tabIndex={0}
+                      tabIndex={-1}
                       onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
                     >
                       <span className="cm-tab-icon">{tab.icon}</span>
