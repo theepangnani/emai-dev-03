@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useConfirm } from '../../components/ConfirmModal';
 import { useAuth } from '../../context/AuthContext';
@@ -39,6 +39,8 @@ export function ReportCardAnalysis() {
   const [showCareerPath, setShowCareerPath] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [careerError, setCareerError] = useState<string | null>(null);
+
+  const careerPathRef = useRef<HTMLDivElement>(null);
 
   // Load student's own report cards
   const loadMyReportCards = useCallback(async () => {
@@ -177,6 +179,10 @@ export function ReportCardAnalysis() {
       const resp = await schoolReportCardsApi.careerPath(selectedChildId);
       setCareerPath(resp.data);
       setShowCareerPath(true);
+      // Scroll to results after render
+      setTimeout(() => {
+        careerPathRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
       setCareerError(e.response?.data?.detail || 'Failed to generate career path analysis.');
@@ -272,6 +278,20 @@ export function ReportCardAnalysis() {
             {error && <div className="rca-error">{error}</div>}
             {careerError && <div className="rca-error">{careerError}</div>}
 
+            {/* Career Path Loading Indicator */}
+            {!isStudent && careerLoading && (
+              <div className="rca-career-loading" ref={careerPathRef}>
+                <div className="rca-spinner">Analyzing report cards and generating career path suggestions...</div>
+              </div>
+            )}
+
+            {/* Career Path Analysis Result (shown above report cards for visibility) */}
+            {!isStudent && showCareerPath && careerPath && (
+              <div ref={careerPathRef}>
+                <CareerPathView careerPath={careerPath} onClose={() => setShowCareerPath(false)} />
+              </div>
+            )}
+
             {/* Report cards list */}
             {listLoading ? (
               <div className="rca-spinner">Loading report cards...</div>
@@ -350,10 +370,6 @@ export function ReportCardAnalysis() {
               </div>
             )}
 
-            {/* Career Path Analysis (parent only) */}
-            {!isStudent && showCareerPath && careerPath && (
-              <CareerPathView careerPath={careerPath} onClose={() => setShowCareerPath(false)} />
-            )}
           </>
         )}
 
