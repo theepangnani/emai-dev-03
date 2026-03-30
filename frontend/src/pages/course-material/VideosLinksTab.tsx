@@ -651,6 +651,8 @@ export function VideosLinksTab({ courseContentId, topicName, gradLevel, courseNa
   const { data: groups = [], isLoading } = useQuery<ResourceLinkGroup[]>({
     queryKey: ['resource-links', courseContentId],
     queryFn: () => resourceLinksApi.list(courseContentId),
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: youtubeAvailable } = useQuery({
