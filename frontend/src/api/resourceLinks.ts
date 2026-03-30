@@ -61,6 +61,15 @@ export const resourceLinksApi = {
     await api.delete(`/api/resource-links/${linkId}`);
   },
 
+  pin: async (linkId: number) => {
+    const response = await api.patch(`/api/resource-links/${linkId}/pin`);
+    return response.data as ResourceLinkItem;
+  },
+
+  dismiss: async (linkId: number) => {
+    await api.delete(`/api/resource-links/${linkId}/dismiss`);
+  },
+
   reExtract: async (courseContentId: number) => {
     const response = await api.post(`/api/course-contents/${courseContentId}/extract-links`);
     return response.data as ResourceLinkItem[];
@@ -72,12 +81,12 @@ export const resourceLinksApi = {
   },
 
   pinResource: async (linkId: number) => {
-    const response = await api.patch(`/api/resource-links/${linkId}`, { source: 'teacher_shared' });
+    const response = await api.patch(`/api/resource-links/${linkId}/pin`);
     return response.data as ResourceLinkItem;
   },
 
   dismissResource: async (linkId: number) => {
-    await api.delete(`/api/resource-links/${linkId}`);
+    await api.delete(`/api/resource-links/${linkId}/dismiss`);
   },
 
   checkYoutubeSearchAvailable: async () => {
