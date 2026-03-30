@@ -32,30 +32,30 @@ class TestStudyGuideStrategyService:
         """Should return default template when document_type is None."""
         result = StudyGuideStrategyService.get_prompt_template()
         assert "Key Concepts" in result
-        assert "Practice" in result
+        assert "Problem Types" in result
 
     def test_teacher_notes_template(self):
         """Teacher notes should have exam-focused structure."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="teacher_notes")
-        assert "Key Concepts" in result
-        assert "Likely Exam Topics" in result
+        assert "Key Topics" in result
+        assert "Likely Exam Areas" in result
 
     def test_past_exam_template(self):
         """Past exam should have gap analysis structure."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="past_exam")
-        assert "Gap Analysis" in result
-        assert "Drill Questions" in result
+        assert "Key Gap Areas" in result
+        assert "Topics to Review" in result
 
     def test_project_brief_template(self):
         """Project brief should have rubric decoder structure."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="project_brief")
-        assert "Rubric Decoder" in result
-        assert "Step-by-Step" in result
+        assert "Requirements Summary" in result
+        assert "Key Deliverables" in result
 
     def test_lab_experiment_template(self):
         """Lab experiment should have pre-lab prep structure."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="lab_experiment")
-        assert "Pre-Lab Prep" in result
+        assert "Pre-Lab Essentials" in result
         assert "Variables" in result
 
     def test_study_goal_modifier_appended(self):
@@ -64,7 +64,7 @@ class TestStudyGuideStrategyService:
             document_type="teacher_notes",
             study_goal="upcoming_test",
         )
-        assert "Likely Exam Topics" in result  # From template
+        assert "Likely Exam Areas" in result  # From template
         assert "STUDY GOAL" in result  # From modifier
 
     def test_focus_area_appended(self):
@@ -83,7 +83,7 @@ class TestStudyGuideStrategyService:
             study_goal="final_exam",
             focus_area="Chapter 4-6",
         )
-        assert "Unit Breakdown" in result  # Syllabus template
+        assert "Unit Overview" in result  # Syllabus template
         assert "Final Exam" in result  # Goal modifier
         assert "Chapter 4-6" in result  # Focus area
 
