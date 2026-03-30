@@ -21,3 +21,9 @@
 .report-bug-link svg {
   flex-shrink: 0;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .report-bug-link {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}

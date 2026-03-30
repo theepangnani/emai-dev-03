@@ -909,6 +909,40 @@
 }
 
 /* ── Reduced motion ──────────────────────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .study-upload-btn {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .study-filter-pill.active {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .study-material-card[data-type="quiz"] {
+  border-left-color: #fdba74;
+}
+
+[data-theme="dark"] .study-material-card[data-type="flashcards"] {
+  border-left-color: #a78bfa;
+}
+
+[data-theme="dark"] .study-type-quiz {
+  color: #fdba74;
+}
+
+[data-theme="dark"] .study-type-flashcards {
+  color: #a78bfa;
+}
+
+[data-theme="dark"] .study-action-btn.primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .study-empty-cta {
+  color: var(--color-surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .study-material-card,
   .study-filter-pill,

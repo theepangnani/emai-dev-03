@@ -316,6 +316,48 @@
 }
 
 /* Responsive */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rc-upload-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .rc-upload-drop-zone {
+  border: 2px dashed var(--color-border);
+}
+
+[data-theme="dark"] .rc-upload-file-remove:hover {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .rc-upload-field input {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .rc-upload-error {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .rc-upload-success {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .rc-upload-success p {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .rc-upload-footer {
+  border-top: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .rc-upload-footer .btn-secondary {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .rc-upload-footer .btn-primary {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .rc-upload-modal {
     max-width: 100%;

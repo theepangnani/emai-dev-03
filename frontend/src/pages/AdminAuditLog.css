@@ -230,6 +230,7 @@
 }
 
 /* Mobile */
+
 @media (max-width: 480px) {
   .audit-header h2 {
     font-size: 18px;

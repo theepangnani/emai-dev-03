@@ -201,6 +201,23 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .image-placeholder {
+  border: 1px dashed var(--color-border, var(--color-muted-border));
+}
+
+[data-theme="dark"] .content-card-body details {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .content-card-body details summary {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .content-card-body details[open] summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
 @media (max-width: 480px) {
   .content-card {
     padding: 1rem;

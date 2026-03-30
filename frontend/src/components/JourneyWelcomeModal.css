@@ -191,6 +191,24 @@
 }
 
 /* Mobile: stack cards vertically */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .journey-step-thumbnail {
+  background: var(--color-surface-dim, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .journey-btn-show {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .journey-btn-ask {
+  background: var(--color-surface-dim, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .journey-footer-explore {
+  color: var(--color-surface);
+}
+
 @media (max-width: 768px) {
   .journey-welcome-body {
     grid-template-columns: 1fr;

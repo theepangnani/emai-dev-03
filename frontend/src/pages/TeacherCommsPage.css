@@ -580,6 +580,12 @@
 }
 
 /* Small phones */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .reply-success {
+  color: var(--color-success, #6ee7b7);
+}
+
 @media (max-width: 480px) {
   .comms-toolbar {
     flex-direction: column;

@@ -129,3 +129,43 @@
   color: var(--color-text-muted, #64748b);
   background: var(--color-surface-hover, #f1f5f9);
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .subguides-panel {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .subguides-panel-toggle:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .subguides-chevron {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .subguides-panel-empty {
+  color: var(--color-text-muted, var(--color-ink-muted));
+  border-top: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .subguides-panel-item {
+  border-top: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .subguides-panel-item:hover {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .subguides-panel-item-meta {
+  color: var(--color-text-muted, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .subguides-panel-view-btn:hover {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .subguides-panel-current-label {
+  color: var(--color-text-muted, var(--color-ink-muted));
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}

@@ -28,3 +28,13 @@
 .ask-bot-btn svg {
   flex-shrink: 0;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .ask-bot-btn {
+  background: var(--card-bg, var(--color-surface));
+}
+
+[data-theme="dark"] .ask-bot-btn:hover {
+  background: var(--hover-bg, var(--color-surface-alt));
+}

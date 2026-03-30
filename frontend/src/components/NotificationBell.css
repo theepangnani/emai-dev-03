@@ -392,6 +392,12 @@
   color: var(--color-accent-strong);
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .notif-preferences-link {
+  color: var(--color-ink-muted);
+}
+
+
 @media (max-width: 768px) {
   .notification-dropdown {
     position: fixed;

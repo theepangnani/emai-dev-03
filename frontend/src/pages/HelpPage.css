@@ -608,6 +608,16 @@
   font-family: var(--font-display);
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .tut-dot.completed {
+  background: var(--color-success, #6ee7b7);
+  border-color: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .help-survey-btn {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .help-tabs {
     gap: 2px;

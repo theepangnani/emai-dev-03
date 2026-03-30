@@ -188,6 +188,16 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .pd-child-selector-wrapper::before {
+  background: linear-gradient(to right, var(--color-background, var(--color-surface)) 0%, transparent 100%);
+}
+
+[data-theme="dark"] .pd-child-selector-wrapper::after {
+  background: linear-gradient(to left, var(--color-background, var(--color-surface)) 0%, transparent 100%);
+}
+
+
 @media (max-width: 480px) {
   .pd-child-selector {
     flex-direction: column;

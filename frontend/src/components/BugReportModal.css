@@ -189,3 +189,61 @@
   flex-direction: column;
   gap: 4px;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .modal .bug-report-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .bug-report-form label {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .bug-report-form textarea {
+  border: 1px solid var(--border-color, var(--color-muted-border));
+  background: var(--bg-input, var(--color-surface));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .bug-report-file-input {
+  border: 1px dashed var(--border-color, var(--color-muted-border));
+  background: var(--bg-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .bug-report-preview {
+  border: 1px solid var(--border-color, var(--color-muted-border));
+}
+
+[data-theme="dark"] .bug-report-actions .btn-cancel {
+  background: var(--bg-secondary, var(--color-surface-alt));
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .bug-report-actions .btn-cancel:hover {
+  background: var(--bg-tertiary, var(--color-border));
+}
+
+[data-theme="dark"] .bug-report-actions .btn-submit {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .bug-report-success {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .bug-report-success p {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .bug-report-error {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .bug-report-paste-hint {
+  color: var(--text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .bug-report-remove-preview {
+  background: #fca5a5;
+}

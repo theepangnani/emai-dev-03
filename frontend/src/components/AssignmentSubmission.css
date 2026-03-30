@@ -323,6 +323,12 @@
 }
 
 /* ── Mobile breakpoint ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .submission-drop-zone {
+  background: var(--color-bg, var(--color-surface-alt));
+}
+
 @media (max-width: 480px) {
   .submission-panel {
     padding: 14px 12px;

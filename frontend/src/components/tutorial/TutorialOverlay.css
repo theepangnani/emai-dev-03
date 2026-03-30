@@ -120,6 +120,21 @@
 }
 
 /* ── Responsive: mobile ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .tutorial-tooltip {
+  background: var(--card-bg, var(--color-surface));
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .tutorial-skip-btn:hover {
+  color: var(--text-primary, var(--color-ink));
+}
+
+[data-theme="dark"] .tutorial-next-btn {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .tutorial-tooltip {
     max-width: 260px;

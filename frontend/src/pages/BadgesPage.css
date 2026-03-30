@@ -94,6 +94,36 @@
   color: var(--color-accent-strong, #4f46e5);
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .badges-counter {
+  color: var(--color-accent-strong, #818cf8);
+}
+
+[data-theme="dark"] .badges-error {
+  color: var(--color-danger, #fca5a5);
+}
+
+[data-theme="dark"] .badge-card {
+  border: 1px solid var(--color-border);
+  background: var(--color-card, var(--color-surface));
+}
+
+[data-theme="dark"] .badge-card--earned {
+  border-color: var(--color-accent, #a5b4fc);
+}
+
+[data-theme="dark"] .badge-description {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .badge-status {
+  color: var(--color-text-tertiary, var(--color-muted));
+}
+
+[data-theme="dark"] .badge-card--earned .badge-status {
+  color: var(--color-accent-strong, #818cf8);
+}
+
 @media (max-width: 600px) {
   .badges-grid {
     grid-template-columns: 1fr;

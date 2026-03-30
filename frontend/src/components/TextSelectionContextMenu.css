@@ -43,3 +43,17 @@
   background: var(--color-border, #e2e8f0);
   margin: 0.25rem 0.5rem;
 }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .text-selection-context-menu {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .context-menu-item {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .context-menu-item:hover:not(:disabled) {
+  background: var(--color-surface-hover, var(--color-surface-alt));
+}

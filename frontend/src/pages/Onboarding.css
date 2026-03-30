@@ -239,6 +239,12 @@
 }
 
 /* Mobile */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .auth-button--primary {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .onboarding-card {
     max-width: 100%;

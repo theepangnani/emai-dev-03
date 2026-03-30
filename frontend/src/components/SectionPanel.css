@@ -115,6 +115,11 @@
 
 /* ── Responsive ─────────────────────────── */
 
+/* ── Dark mode ── */
+[data-theme="dark"] .section-panel__count {
+  color: var(--color-surface);
+}
+
 @media (max-width: 767px) {
   .section-panel {
     padding: 16px;

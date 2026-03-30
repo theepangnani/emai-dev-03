@@ -359,6 +359,12 @@
 }
 
 /* ── Phone ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .account-danger-zone {
+  border-color: var(--color-danger-light, rgba(252, 165, 165, 0.25));
+}
+
 @media (max-width: 480px) {
   .account-settings {
     padding: 12px 8px;

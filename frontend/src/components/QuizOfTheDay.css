@@ -402,6 +402,49 @@
 }
 
 /* Mobile */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .qotd-badge {
+  background: var(--color-success-light, rgba(110, 231, 183, 0.12));
+  color: var(--color-success, #6ee7b7);
+}
+
+[data-theme="dark"] .qotd-start-btn {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .qotd-option.selected {
+  background: var(--color-accent-light, rgba(125, 211, 252, 0.12));
+}
+
+[data-theme="dark"] .qotd-option.correct {
+  background: var(--color-success-light, rgba(110, 231, 183, 0.12));
+}
+
+[data-theme="dark"] .qotd-option.selected .qotd-option-letter {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .qotd-option.correct .qotd-option-letter {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .qotd-option.incorrect .qotd-option-letter {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .qotd-feedback.correct {
+  background: var(--color-success-light, rgba(110, 231, 183, 0.12));
+}
+
+[data-theme="dark"] .qotd-submit-btn {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .qotd-next-btn {
+  color: var(--color-surface);
+}
+
 @media (max-width: 480px) {
   .qotd-option {
     padding: 8px 10px;

@@ -9,3 +9,29 @@
 .storage-warning-text { font-size: 0.8rem; color: #f59e0b; margin-top: 0.4rem; }
 .storage-warning-text.critical { color: #ef4444; }
 .storage-detail-text { font-size: 0.8rem; color: var(--text-secondary, #6b7280); margin-top: 0.25rem; }
+
+
+/* ── Dark mode ── */
+[data-theme="dark"] .storage-bar-track {
+  background: var(--color-border);
+}
+
+[data-theme="dark"] .storage-bar-fill {
+  background: #a5b4fc;
+}
+
+[data-theme="dark"] .storage-bar-fill.warning {
+  background: #fde68a;
+}
+
+[data-theme="dark"] .storage-bar-fill.critical {
+  background: #fca5a5;
+}
+
+[data-theme="dark"] .storage-warning-text {
+  color: #fde68a;
+}
+
+[data-theme="dark"] .storage-warning-text.critical {
+  color: #fca5a5;
+}

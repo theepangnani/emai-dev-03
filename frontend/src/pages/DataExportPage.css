@@ -170,6 +170,12 @@
   cursor: not-allowed;
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .data-export-download-btn {
+  background: var(--color-success, #6ee7b7);
+}
+
+
 @media (max-width: 600px) {
   .data-export-item {
     flex-direction: column;

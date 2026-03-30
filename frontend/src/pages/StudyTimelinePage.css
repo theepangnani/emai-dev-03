@@ -215,6 +215,72 @@
 }
 
 /* Responsive */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .st-select {
+  border: 1px solid var(--color-border, var(--color-muted-border));
+}
+
+[data-theme="dark"] .st-chip {
+  border: 1px solid var(--color-border, var(--color-muted-border));
+}
+
+[data-theme="dark"] .st-chip:hover {
+  border-color: var(--color-accent, #60a5fa);
+}
+
+[data-theme="dark"] .st-chip-active {
+  background: var(--color-accent, #60a5fa);
+  border-color: var(--color-accent, #60a5fa);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .st-day-label {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .st-entry-icon {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .st-entry-time {
+  color: var(--color-text-secondary, var(--color-muted));
+}
+
+[data-theme="dark"] .st-entry-course {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+  background: var(--color-bg, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .st-entry-xp {
+  color: #34d399;
+}
+
+[data-theme="dark"] .st-entry-score {
+  color: #c4b5fd;
+}
+
+[data-theme="dark"] .st-error {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .st-empty {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .st-load-more {
+  border: 1px solid var(--color-border, var(--color-muted-border));
+  color: var(--color-accent, #60a5fa);
+}
+
+[data-theme="dark"] .st-load-more:hover {
+  background: var(--color-bg, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .st-count {
+  color: var(--color-text-secondary, var(--color-muted));
+}
+
 @media (max-width: 640px) {
   .st-filters {
     flex-direction: column;

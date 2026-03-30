@@ -140,6 +140,36 @@
 }
 
 /* ── Mobile breakpoint ── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .gc-prompt {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, #f0f7ff 100%);
+  border: 1px solid rgba(125, 211, 252, 0.25);
+}
+
+[data-theme="dark"] .gc-prompt-btn-primary {
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .gc-prompt-btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-muted-border);
+}
+
+[data-theme="dark"] .gc-prompt-btn-secondary:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-muted);
+}
+
+[data-theme="dark"] .gc-prompt-dismiss {
+  color: var(--color-muted);
+}
+
+[data-theme="dark"] .gc-prompt-dismiss:hover {
+  color: var(--color-ink-muted);
+}
+
 @media (max-width: 480px) {
   .gc-prompt {
     flex-direction: column;

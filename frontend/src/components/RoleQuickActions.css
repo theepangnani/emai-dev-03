@@ -232,6 +232,12 @@
 }
 
 /* ── Reduced motion ───────────────────────── */
+
+/* ── Dark mode ── */
+[data-theme="dark"] .rqa-badge {
+  color: var(--color-surface);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rqa-card {
     transition: none !important;

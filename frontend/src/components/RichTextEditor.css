@@ -192,6 +192,49 @@
   }
 }
 
+/* ── Dark mode ── */
+[data-theme="dark"] .rte-container {
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .rte-toolbar {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .rte-btn {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .rte-btn:hover {
+  background: var(--color-hover, var(--color-border));
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .rte-content .tiptap {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .rte-content .tiptap p.is-editor-empty:first-child::before {
+  color: var(--color-text-muted, var(--color-muted));
+}
+
+[data-theme="dark"] .rte-content .tiptap blockquote {
+  color: var(--color-text-secondary, var(--color-ink-muted));
+}
+
+[data-theme="dark"] .rte-content .tiptap code {
+  background: var(--color-surface-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .rte-content .tiptap pre {
+  background: var(--color-surface-secondary, var(--color-surface-alt));
+}
+
+[data-theme="dark"] .rte-content .tiptap hr {
+  border-top: 1px solid var(--color-border);
+}
+
 @media (max-width: 480px) {
   .rte-toolbar {
     gap: 2px;
