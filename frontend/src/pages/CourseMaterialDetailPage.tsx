@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { coursesApi, courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
@@ -276,7 +276,6 @@ export function CourseMaterialDetailPage() {
   );
 
   const contentId = parseInt(id || '0');
-  const location = useLocation();
 
   const toggleNotes = useCallback(() => setShowNotesPanel(v => !v), []);
   useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
@@ -342,21 +341,7 @@ export function CourseMaterialDetailPage() {
       .catch(() => {});
   }, [content?.course_id]);
 
-  // Auto-generate study guide when navigated from dashboard upload with autoGenerate flag
-  useEffect(() => {
-    const navState = location.state as { autoGenerate?: boolean } | null;
-    if (navState?.autoGenerate && content && !stream.isStreaming && stream.status === 'idle') {
-      // Clear the state so refreshing doesn't re-trigger
-      window.history.replaceState({}, '');
-      setActiveTab('guide');
-      stream.startStream({
-        course_content_id: contentId,
-        course_id: content.course_id,
-        title: content.title,
-        content: content.text_content || content.description || '',
-      });
-    }
-  }, [content, location.state]);
+  // Removed: autoGenerate flag handling — generation is now initiated from tab empty states
 
   // Auto-open notes panel if ?notes=open is in URL (#1087)
   useEffect(() => {
@@ -434,7 +419,11 @@ export function CourseMaterialDetailPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleGenerate = async (type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map', difficulty?: string) => {
+  const handleGenerate = async (
+    type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map',
+    difficulty?: string,
+    tabOptions?: { documentType?: string; studyGoal?: string; studyGoalText?: string },
+  ) => {
     if (!content) return;
     if (atLimit) {
       setShowLimitModal(true);
@@ -459,11 +448,14 @@ export function CourseMaterialDetailPage() {
     try {
       const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt, mind_map: mindmapFocusPrompt };
       const fp = promptMap[type].trim() || undefined;
-      // §6.106: Pass strategy context from course content for regeneration
+      // §6.106: Use tab-provided strategy context first, fall back to saved on course content
+      const docType = tabOptions?.documentType || content.document_type || undefined;
+      const sGoal = tabOptions?.studyGoal || content.study_goal || undefined;
+      const sGoalText = tabOptions?.studyGoalText || content.study_goal_text || undefined;
       const strategyFields = {
-        ...(content.document_type ? { document_type: content.document_type } : {}),
-        ...(content.study_goal ? { study_goal: content.study_goal } : {}),
-        ...(content.study_goal_text ? { study_goal_text: content.study_goal_text } : {}),
+        ...(docType ? { document_type: docType } : {}),
+        ...(sGoal ? { study_goal: sGoal } : {}),
+        ...(sGoalText ? { study_goal_text: sGoalText } : {}),
       };
       if (type === 'study_guide') {
         // Use streaming for study guide generation
@@ -876,7 +868,7 @@ export function CourseMaterialDetailPage() {
               generating={generating}
               focusPrompt={guideFocusPrompt}
               onFocusPromptChange={setGuideFocusPrompt}
-              onGenerate={() => handleGenerate('study_guide')}
+              onGenerate={(opts) => handleGenerate('study_guide', undefined, opts)}
               onDelete={handleDeleteGuide}
               hasSourceContent={hasSourceContent}
               linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
@@ -891,6 +883,11 @@ export function CourseMaterialDetailPage() {
               courseName={content?.course_name}
               createdAt={studyGuide?.created_at}
               courseId={content?.course_id}
+              textContent={content?.text_content || content?.description || ''}
+              originalFilename={content?.original_filename || ''}
+              savedDocumentType={content?.document_type || undefined}
+              savedStudyGoal={content?.study_goal || undefined}
+              savedStudyGoalText={content?.study_goal_text || undefined}
             />
           )}
 

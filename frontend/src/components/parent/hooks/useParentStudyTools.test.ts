@@ -19,129 +19,22 @@ vi.mock('../../../api/courses', () => ({
   },
 }))
 
-vi.mock('../../../api/client', () => ({
-  studyApi: {
-    extractTextFromFile: vi.fn(),
-    checkDuplicate: vi.fn().mockResolvedValue({ exists: false }),
-    generateGuide: (...args: unknown[]) => mockGenerateGuide(...args),
-    generateQuiz: vi.fn().mockResolvedValue({ id: 2 }),
-    generateFlashcards: vi.fn().mockResolvedValue({ id: 3 }),
-    generateFromFile: vi.fn().mockResolvedValue({ id: 4 }),
-    generateFromTextAndImages: vi.fn().mockResolvedValue({ id: 5 }),
-  },
-}))
-
-const mockInvalidateAI = vi.fn()
-let mockAtLimit = false
-
-vi.mock('../../../hooks/useAIUsage', () => ({
-  useAIUsage: () => ({
-    atLimit: mockAtLimit,
-    remaining: mockAtLimit ? 0 : 5,
-    invalidate: mockInvalidateAI,
-  }),
-}))
-
-const mockGenerateGuide = vi.fn().mockResolvedValue({ id: 1 })
-
 const mockNavigate = vi.fn()
 
 function createImageFile(name = 'image.png'): File {
   return new File(['fake-image-data'], name, { type: 'image/png' })
 }
 
-describe('useParentStudyTools – error detail surfacing (#1393)', () => {
+describe('useParentStudyTools – upload-only flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAtLimit = false
     mockGetDefault.mockResolvedValue({ id: 100 })
-    mockGenerateGuide.mockResolvedValue({ id: 1 })
+    mockCreate.mockResolvedValue({ id: 1 })
+    mockUploadFile.mockResolvedValue({ id: 2 })
+    mockUploadMultiFiles.mockResolvedValue({ id: 3 })
   })
 
-  it('surfaces API error detail (e.g. AI usage limit) in backgroundGeneration.error', async () => {
-    // Use quiz type — study_guide now navigates to detail page for streaming
-    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce({
-      response: { status: 429, data: { detail: 'AI usage limit reached. You have used all 10 of your credits.' } },
-      message: 'Request failed with status code 429',
-    })
-    const { studyApi: mockedStudyApi } = await import('../../../api/client')
-    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
-
-    const { result } = renderHook(() =>
-      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
-    )
-
-    await act(async () => {
-      await result.current.handleGenerateFromModal({
-        title: 'Test Guide',
-        content: 'Some content',
-        types: ['quiz'],
-        mode: 'text',
-      })
-    })
-
-    await vi.waitFor(() => {
-      expect(result.current.backgroundGeneration).not.toBeNull()
-      expect(result.current.backgroundGeneration!.status).toBe('error')
-      // Must show the actual API detail, not the generic Axios message
-      expect(result.current.backgroundGeneration!.error).toContain('AI usage limit reached')
-    })
-  })
-
-  it('truncates very long error messages to 150 characters', async () => {
-    const longDetail = 'A'.repeat(200)
-    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce({
-      response: { status: 500, data: { detail: longDetail } },
-      message: 'Request failed with status code 500',
-    })
-    const { studyApi: mockedStudyApi } = await import('../../../api/client')
-    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
-
-    const { result } = renderHook(() =>
-      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
-    )
-
-    await act(async () => {
-      await result.current.handleGenerateFromModal({
-        title: 'Test',
-        content: 'Content',
-        types: ['quiz'],
-        mode: 'text',
-      })
-    })
-
-    await vi.waitFor(() => {
-      expect(result.current.backgroundGeneration).not.toBeNull()
-      expect(result.current.backgroundGeneration!.error!.length).toBeLessThanOrEqual(150)
-      expect(result.current.backgroundGeneration!.error).toContain('...')
-    })
-  })
-
-  it('falls back to err.message when no response.data.detail', async () => {
-    const mockGenerateQuiz = vi.fn().mockRejectedValueOnce(new Error('Network Error'))
-    const { studyApi: mockedStudyApi } = await import('../../../api/client')
-    ;(mockedStudyApi as Record<string, unknown>).generateQuiz = mockGenerateQuiz
-
-    const { result } = renderHook(() =>
-      useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
-    )
-
-    await act(async () => {
-      await result.current.handleGenerateFromModal({
-        title: 'Test',
-        content: 'Content',
-        types: ['quiz'],
-        mode: 'text',
-      })
-    })
-
-    await vi.waitFor(() => {
-      expect(result.current.backgroundGeneration).not.toBeNull()
-      expect(result.current.backgroundGeneration!.error).toBe('Network Error')
-    })
-  })
-
-  it('navigates to detail page with autoGenerate for study_guide type', async () => {
+  it('always uses upload-only path regardless of types passed', async () => {
     mockCreate.mockResolvedValue({ id: 42 })
 
     const { result } = renderHook(() =>
@@ -157,18 +50,26 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
       })
     })
 
+    // Should navigate to detail page without autoGenerate
     await vi.waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        '/course-materials/42?tab=guide',
-        expect.objectContaining({ state: expect.objectContaining({ autoGenerate: true }) }),
+        '/course-materials/42',
+        expect.objectContaining({ state: expect.objectContaining({ selectedChild: 1 }) }),
       )
     })
-    // Should NOT run background generation for study guides
-    expect(mockGenerateGuide).not.toHaveBeenCalled()
+
+    // Should create content via text-only path
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        course_id: 100,
+        title: 'Test',
+        text_content: 'Content',
+      }),
+    )
   })
 
-  it('shows limit modal instead of generating when credits exhausted', async () => {
-    mockAtLimit = true
+  it('shows upload error in backgroundGeneration on failure', async () => {
+    mockCreate.mockRejectedValueOnce(new Error('Upload failed'))
 
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
@@ -178,32 +79,29 @@ describe('useParentStudyTools – error detail surfacing (#1393)', () => {
       await result.current.handleGenerateFromModal({
         title: 'Test',
         content: 'Content',
-        types: ['study_guide'],
+        types: [],
         mode: 'text',
       })
     })
 
-    // Should NOT start generation
-    expect(result.current.backgroundGeneration).toBeNull()
-    // Should show the limit modal
-    expect(result.current.showLimitModal).toBe(true)
-    // Should NOT call the API
-    expect(mockGenerateGuide).not.toHaveBeenCalled()
+    await vi.waitFor(() => {
+      expect(result.current.backgroundGeneration).not.toBeNull()
+      expect(result.current.backgroundGeneration!.status).toBe('error')
+      expect(result.current.backgroundGeneration!.error).toBe('Upload failed')
+    })
   })
 })
 
 describe('useParentStudyTools – pasted images upload', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAtLimit = false
     mockGetDefault.mockResolvedValue({ id: 100 })
-    mockGenerateGuide.mockResolvedValue({ id: 1 })
     mockCreate.mockResolvedValue({ id: 1 })
     mockUploadFile.mockResolvedValue({ id: 2 })
     mockUploadMultiFiles.mockResolvedValue({ id: 3 })
   })
 
-  it('uploads single pasted image via uploadFile when no AI types selected', async () => {
+  it('uploads single pasted image via uploadFile', async () => {
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
     )
@@ -219,23 +117,22 @@ describe('useParentStudyTools – pasted images upload', () => {
     })
 
     // Should navigate to the specific course-material detail page
-    expect(mockNavigate).toHaveBeenCalledWith('/course-materials/2', expect.any(Object))
-
-    // Wait for background async to complete
     await vi.waitFor(() => {
-      expect(mockUploadFile).toHaveBeenCalledWith(
-        expect.any(File),
-        100,
-        'Test',
-        'notes',
-      )
+      expect(mockNavigate).toHaveBeenCalledWith('/course-materials/2', expect.any(Object))
     })
+
+    expect(mockUploadFile).toHaveBeenCalledWith(
+      expect.any(File),
+      100,
+      'Test',
+      'notes',
+    )
 
     // Should NOT create empty text-only content
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
-  it('uploads multiple pasted images via uploadMultiFiles when no AI types selected', async () => {
+  it('uploads multiple pasted images via uploadMultiFiles', async () => {
     const { result } = renderHook(() =>
       useParentStudyTools({ selectedChildUserId: 1, navigate: mockNavigate }),
     )

@@ -13,7 +13,6 @@ import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { SetupChecklist } from '../components/SetupChecklist';
 import { RecentActivityPanel } from '../components/parent/RecentActivityPanel';
-import { AILimitRequestModal } from '../components/AILimitRequestModal';
 import { HelpStudyMenu } from '../components/study/HelpStudyMenu';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { SectionPanel } from '../components/SectionPanel';
@@ -763,7 +762,6 @@ export function ParentDashboard() {
                         </div>
                         <div className="pd-day-modal-item-actions">
                           {a.courseId > 0 && <button className="pd-day-modal-action-btn" onClick={() => { pd.closeDayModal(); pd.handleGoToCourse(a.courseId); }}>Class</button>}
-                          <button className="pd-day-modal-study-btn" disabled={pd.generatingStudyId === a.id} onClick={() => { pd.closeDayModal(); pd.handleOneClickStudy(a); }}>{pd.generatingStudyId === a.id ? 'Checking...' : 'Study'}</button>
                         </div>
                       </div>
                     ))}
@@ -863,21 +861,6 @@ export function ParentDashboard() {
         onChildChange={(studentId) => pd.selectChildForWizard(studentId)}
         courses={pd.childCoursesForWizard}
         selectedCourseId={pd.childCoursesForWizard?.length === 1 ? pd.childCoursesForWizard[0].id : ''}
-        duplicateCheck={pd.duplicateCheck}
-        onViewExisting={() => {
-          const guide = pd.duplicateCheck?.existing_guide;
-          if (guide) {
-            pd.resetStudyModal();
-            if (guide.course_content_id) {
-              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-              pd.navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
-            } else if (guide.guide_type === 'quiz') pd.navigate(`/study/quiz/${guide.id}`);
-            else if (guide.guide_type === 'flashcards') pd.navigate(`/study/flashcards/${guide.id}`);
-            else pd.navigate(`/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() => pd.handleGenerateFromModal({ title: pd.studyModalInitialTitle, content: pd.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
-        onDismissDuplicate={() => pd.setDuplicateCheck(null)}
       />
       <CreateTaskModal
         open={pd.showCreateTaskModal}
@@ -885,10 +868,6 @@ export function ParentDashboard() {
         onCreated={() => { pd.setShowCreateTaskModal(false); pd.loadDashboard(); }}
       />
       {pd.confirmModal}
-      <AILimitRequestModal
-        open={pd.showLimitModal}
-        onClose={() => pd.setShowLimitModal(false)}
-      />
       {showHelpStudyMenu && pd.selectedChild != null && (
         <HelpStudyMenu
           studentId={pd.selectedChild}

@@ -6,14 +6,10 @@ import UploadMaterialWizard from '../UploadMaterialWizard'
 // Mock coursesApi used by the wizard on open
 vi.mock('../../api/courses', () => ({
   coursesApi: {
-    list: vi.fn().mockResolvedValue([]),
+    list: vi.fn().mockResolvedValue([{ id: 1, name: 'Math 101' }]),
     create: vi.fn(),
     getDefault: vi.fn().mockResolvedValue({ id: 1 }),
   },
-}))
-
-vi.mock('../../api/study', () => ({
-  classifyDocument: vi.fn().mockResolvedValue({ document_type: 'custom', confidence: 0 }),
 }))
 
 const defaultProps = {
@@ -28,7 +24,7 @@ function makeFile(name: string, sizeMB: number = 1): File {
   return new File([new Uint8Array(bytes)], name, { type: 'application/pdf' })
 }
 
-describe('UploadMaterialWizard — Step 1 (default)', () => {
+describe('UploadMaterialWizard — Step 1 (file/text selection)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -74,33 +70,23 @@ describe('UploadMaterialWizard — Step 1 (default)', () => {
     })
   })
 
-  it('class selector shown only when courses prop provided', async () => {
+  it('no class selector on step 1 (moved to step 2)', () => {
     const courses = [{ id: 1, name: 'Math 101' }]
+    render(<UploadMaterialWizard {...defaultProps} courses={courses} />)
 
-    const { unmount } = render(<UploadMaterialWizard {...defaultProps} courses={courses} />)
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/class/i)).toBeInTheDocument()
-    })
-
-    unmount()
-
-    render(<UploadMaterialWizard {...defaultProps} courses={undefined} />)
-    // coursesApi.list returns [] so no selector should appear
-    await waitFor(() => {
-      expect(screen.queryByLabelText(/class/i)).not.toBeInTheDocument()
-    })
+    // Class selector should not be on step 1
+    expect(screen.queryByLabelText(/^class$/i)).not.toBeInTheDocument()
   })
 })
 
-describe('UploadMaterialWizard — Step 2', () => {
+describe('UploadMaterialWizard — Step 2 (student + class selection)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  async function goToStep2() {
+  async function goToStep2(extraProps = {}) {
     const user = userEvent.setup()
-    render(<UploadMaterialWizard {...defaultProps} />)
+    render(<UploadMaterialWizard {...defaultProps} {...extraProps} />)
 
     // Add a file so Next is enabled
     const input = document.querySelector('input[type="file"]') as HTMLInputElement
@@ -112,43 +98,49 @@ describe('UploadMaterialWizard — Step 2', () => {
     return user
   }
 
-  it('renders 3 tool cards (Study Guide, Quiz, Flashcards)', async () => {
-    await goToStep2()
+  it('shows class selector and title on step 2', async () => {
+    await goToStep2({ courses: [{ id: 1, name: 'Math 101' }] })
 
-    expect(screen.getByText('Study Guide')).toBeInTheDocument()
-    expect(screen.getByText('Practice Quiz')).toBeInTheDocument()
-    expect(screen.getByText('Flashcards')).toBeInTheDocument()
-  })
-
-  it('card toggle on click (selected/deselected)', async () => {
-    const user = await goToStep2()
-
-    const studyGuideCard = screen.getByRole('button', { name: /study guide/i })
-    expect(studyGuideCard).not.toHaveClass('selected')
-
-    await user.click(studyGuideCard)
-    expect(studyGuideCard).toHaveClass('selected')
-
-    await user.click(studyGuideCard)
-    expect(studyGuideCard).not.toHaveClass('selected')
+    await waitFor(() => {
+      expect(screen.getByLabelText(/class/i)).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/title/i)).toBeInTheDocument()
   })
 
   it('title auto-filled from filename', async () => {
-    await goToStep2()
+    await goToStep2({ courses: [{ id: 1, name: 'Math 101' }] })
 
-    const titleInput = screen.getByRole('textbox', { name: /title/i })
+    const titleInput = screen.getByLabelText(/title/i)
     expect(titleInput).toHaveValue('chapter5')
   })
 
-  it('focus prompt field visible when a tool is selected', async () => {
-    const user = await goToStep2()
+  it('shows child selector when multiple children provided', async () => {
+    const children = [
+      { id: 1, name: 'Alice' },
+      { id: 2, name: 'Bob' },
+    ]
+    await goToStep2({ children, onChildChange: vi.fn() })
 
-    expect(screen.queryByLabelText(/focus on/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/student/i)).toBeInTheDocument()
+  })
 
-    const studyGuideCard = screen.getByRole('button', { name: /study guide/i })
-    await user.click(studyGuideCard)
+  it('Upload button calls onGenerate with empty types', async () => {
+    const onGenerate = vi.fn()
+    const user = await goToStep2({
+      onGenerate,
+      courses: [{ id: 1, name: 'Math 101' }],
+    })
 
-    expect(screen.getByLabelText(/focus on/i)).toBeInTheDocument()
+    // Select a course
+    const courseSelect = screen.getByLabelText(/class/i)
+    await user.selectOptions(courseSelect, '1')
+
+    const uploadBtn = screen.getByRole('button', { name: /^upload$/i })
+    await user.click(uploadBtn)
+
+    expect(onGenerate).toHaveBeenCalledOnce()
+    expect(onGenerate.mock.calls[0][0].types).toEqual([])
+    expect(onGenerate.mock.calls[0][0].courseId).toBe(1)
   })
 })
 
@@ -174,7 +166,7 @@ describe('UploadMaterialWizard — shell behaviour', () => {
     expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument()
   })
 
-  it('"Back" arrow returns to step 1', async () => {
+  it('"Back" button on step 2 returns to step 1', async () => {
     const user = userEvent.setup()
     render(<UploadMaterialWizard {...defaultProps} />)
 
@@ -184,70 +176,12 @@ describe('UploadMaterialWizard — shell behaviour', () => {
     await user.click(screen.getByRole('button', { name: /next/i }))
     expect(screen.getByText(/step 2 of 2/i)).toBeInTheDocument()
 
-    // Back button (← arrow)
-    await user.click(screen.getByRole('button', { name: /←/i }))
+    await user.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByText(/step 1 of 2/i)).toBeInTheDocument()
-  })
-
-  it('"Just Upload" calls onGenerate with empty types array', async () => {
-    const onGenerate = vi.fn()
-    const user = userEvent.setup()
-    render(<UploadMaterialWizard {...defaultProps} onGenerate={onGenerate} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    await user.upload(input, makeFile('doc.pdf', 1))
-
-    await user.click(screen.getByRole('button', { name: /just upload/i }))
-
-    expect(onGenerate).toHaveBeenCalledOnce()
-    expect(onGenerate.mock.calls[0][0].types).toEqual([])
-  })
-
-  it('"Upload & Create" calls onGenerate with selected types', async () => {
-    const onGenerate = vi.fn()
-    const user = userEvent.setup()
-    render(<UploadMaterialWizard {...defaultProps} onGenerate={onGenerate} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    await user.upload(input, makeFile('doc.pdf', 1))
-
-    await user.click(screen.getByRole('button', { name: /next/i }))
-
-    await user.click(screen.getByRole('button', { name: /study guide/i }))
-    await user.click(screen.getByRole('button', { name: /upload & create/i }))
-
-    expect(onGenerate).toHaveBeenCalledOnce()
-    expect(onGenerate.mock.calls[0][0].types).toContain('study_guide')
-  })
-
-  it('"Skip" on step 2 calls onGenerate with empty types', async () => {
-    const onGenerate = vi.fn()
-    const user = userEvent.setup()
-    render(<UploadMaterialWizard {...defaultProps} onGenerate={onGenerate} />)
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    await user.upload(input, makeFile('doc.pdf', 1))
-
-    await user.click(screen.getByRole('button', { name: /next/i }))
-    await user.click(screen.getByRole('button', { name: /skip/i }))
-
-    expect(onGenerate).toHaveBeenCalledOnce()
-    expect(onGenerate.mock.calls[0][0].types).toEqual([])
   })
 
   it('showParentNote=true shows parent note text', () => {
     render(<UploadMaterialWizard {...defaultProps} showParentNote={true} />)
     expect(screen.getByText(/your parent will be notified/i)).toBeInTheDocument()
-  })
-
-  it('disabled state during isGenerating', () => {
-    render(<UploadMaterialWizard {...defaultProps} isGenerating={true} />)
-
-    const cancelBtn = screen.getByRole('button', { name: /cancel/i })
-    expect(cancelBtn).toBeDisabled()
-
-    // Just Upload should also be disabled (no content)
-    const justUploadBtn = screen.getByRole('button', { name: /just upload/i })
-    expect(justUploadBtn).toBeDisabled()
   })
 })

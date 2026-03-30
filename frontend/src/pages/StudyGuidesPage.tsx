@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { studyApi, parentApi, courseContentsApi, coursesApi, tasksApi } from '../api/client';
-import type { StudyGuide, DuplicateCheckResponse, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild, SharedWithMeGuide, SharedGuideStatus } from '../api/client';
+import type { StudyGuide, ChildSummary, CourseContentItem, AutoCreatedTask, LinkedCourseChild, SharedWithMeGuide, SharedGuideStatus } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -31,7 +31,6 @@ interface PendingGeneration {
   file?: File;
   files?: File[];  // multi-file: text extraction happens inside startGeneration background task
   pastedImages?: File[];
-  regenerateId?: number;
   courseId?: number;
   courseContentId?: number;
   documentType?: string;
@@ -104,9 +103,7 @@ export function StudyGuidesPage() {
   const [modalMaterials, setModalMaterials] = useState<CourseContentItem[]>([]);
   const [modalMaterialId, setModalMaterialId] = useState<number | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
   const generatingRef = useRef(false);
-  const lastGenerateParamsRef = useRef<StudyMaterialGenerateParams | null>(null);
 
   // In-progress generation placeholders
   const [generatingItems, setGeneratingItems] = useState<GeneratingItem[]>([]);
@@ -651,7 +648,6 @@ export function StudyGuidesPage() {
 
   const resetModal = () => {
     setShowModal(false);
-    setDuplicateCheck(null);
     setModalCourseId(''); setModalMaterialId(''); setModalMaterials([]);
   };
 
@@ -710,11 +706,11 @@ export function StudyGuidesPage() {
             document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText,
           });
         } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({ title: params.title, content: content, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt, document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText });
+          result = await studyApi.generateGuide({ title: params.title, content: content, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt, document_type: params.documentType, study_goal: params.studyGoal, study_goal_text: params.studyGoalText });
         } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({ topic: params.title, content: content, num_questions: 10, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateQuiz({ topic: params.title, content: content, num_questions: 10, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         } else {
-          result = await studyApi.generateFlashcards({ topic: params.title, content: content, num_cards: 15, regenerate_from_id: params.regenerateId, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
+          result = await studyApi.generateFlashcards({ topic: params.title, content: content, num_cards: 15, course_id: params.courseId, course_content_id: params.courseContentId, focus_prompt: params.focusPrompt });
         }
         setGeneratingItems(prev => prev.filter(g => g.tempId !== tempId));
         loadData();
@@ -748,13 +744,11 @@ export function StudyGuidesPage() {
       setShowLimitModal(true);
       return;
     }
-    lastGenerateParamsRef.current = modalParams;
-
     const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
     const isMultiFile = files.length > 1;
 
     // Always close modal immediately — never leave it open in a "Generating..." state.
-    // Background work (duplicate check, extraction, AI generation) continues after close.
+    // Background work (extraction, AI generation) continues after close.
     resetModal();
 
     // Upload-only mode: run upload/extraction in background
@@ -827,18 +821,6 @@ export function StudyGuidesPage() {
         }
       })();
       return;
-    }
-
-    // Duplicate check runs after modal close — if found, re-open modal with warning
-    if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
-      try {
-        const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
-        if (dupResult.exists) {
-          setDuplicateCheck(dupResult);
-          setShowModal(true);
-          return;
-        }
-      } catch { /* continue */ }
     }
 
     // When multiple AI tools are selected and no courseContentId yet,
@@ -924,7 +906,6 @@ export function StudyGuidesPage() {
           file: sharedCourseContentId ? undefined : (isMultiFile ? undefined : modalParams.file),
           files: sharedCourseContentId ? undefined : (isMultiFile ? files : undefined),
           pastedImages: sharedCourseContentId ? undefined : modalParams.pastedImages,
-          regenerateId: duplicateCheck?.existing_guide?.id,
           courseId: modalParams.courseId,
           courseContentId: sharedCourseContentId,
           documentType: modalParams.documentType,
@@ -1761,36 +1742,6 @@ export function StudyGuidesPage() {
         onCourseChange={setModalCourseId}
         selectedMaterialId={modalMaterialId}
         onMaterialChange={setModalMaterialId}
-        duplicateCheck={duplicateCheck}
-        onViewExisting={() => {
-          const guide = duplicateCheck?.existing_guide;
-          if (guide) { resetModal(); setWizardChildId(''); navigateToLegacyGuide(guide); }
-        }}
-        onRegenerate={() => {
-          if (lastGenerateParamsRef.current) {
-            const params = lastGenerateParamsRef.current;
-            setDuplicateCheck(null);
-            resetModal();
-            for (const type of params.types) {
-              startGeneration({
-                title: params.title,
-                content: params.content,
-                type,
-                focusPrompt: params.focusPrompt,
-                mode: params.mode,
-                file: params.file,
-                pastedImages: params.pastedImages,
-                regenerateId: duplicateCheck?.existing_guide?.id,
-                courseId: params.courseId,
-                courseContentId: params.courseContentId,
-                documentType: params.documentType,
-                studyGoal: params.studyGoal,
-                studyGoalText: params.studyGoalText,
-              });
-            }
-          }
-        }}
-        onDismissDuplicate={() => setDuplicateCheck(null)}
         showParentNote={user?.role === 'student'}
         childName={isParent ? (wizardChildId ? children.find(c => c.user_id === wizardChildId || c.student_id === wizardChildId)?.full_name : (children.length === 1 ? children[0].full_name : undefined)) : undefined}
         children={isParent && children.length > 0 ? children.map(c => ({ id: c.student_id, name: c.full_name })) : undefined}

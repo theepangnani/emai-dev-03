@@ -1,10 +1,6 @@
 import { useState } from 'react';
-import { studyApi } from '../../../api/client';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
-import { useAIUsage } from '../../../hooks/useAIUsage';
-import type { DuplicateCheckResponse } from '../../../api/client';
 import type { StudyMaterialGenerateParams } from '../../UploadMaterialWizard';
-import type { CalendarAssignment } from '../../calendar/types';
 
 interface UseParentStudyToolsParams {
   selectedChildUserId: number | null;
@@ -17,148 +13,25 @@ export function useParentStudyTools({
 }: UseParentStudyToolsParams) {
   // Study tools modal state
   const [showStudyModal, setShowStudyModal] = useState(false);
-  const [isGenerating] = useState(false);
-  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResponse | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [studyModalInitialTitle, setStudyModalInitialTitle] = useState('');
   const [studyModalInitialContent, setStudyModalInitialContent] = useState('');
 
-  // AI credits
-  const { atLimit, remaining, invalidate: refreshAIUsage } = useAIUsage();
-  const [showLimitModal, setShowLimitModal] = useState(false);
-
-  // One-click study generation state
-  const [generatingStudyId, setGeneratingStudyId] = useState<number | null>(null);
-
-  // Background generation tracking
+  // Background upload tracking
   const [backgroundGeneration, setBackgroundGeneration] = useState<{
     status: 'generating' | 'success' | 'error';
     type: string;
     resultId?: number;
-    guideId?: number;
-    guideType?: string;
     error?: string;
   } | null>(null);
 
   const resetStudyModal = () => {
     setShowStudyModal(false);
-    setDuplicateCheck(null);
     setStudyModalInitialTitle('');
     setStudyModalInitialContent('');
   };
 
   const dismissBackgroundGeneration = () => setBackgroundGeneration(null);
-
-  const runGenerationInBackground = (params: {
-    title: string;
-    content: string;
-    type: 'study_guide' | 'quiz' | 'flashcards';
-    focusPrompt?: string;
-    mode: string;
-    file?: File;
-    files?: File[];  // multi-file: text extraction happens inside the background task
-    pastedImages?: File[];
-    regenerateId?: number;
-    courseId?: number;
-    courseContentId?: number;
-    documentType?: string;
-    studyGoal?: string;
-    studyGoalText?: string;
-  }) => {
-    const typeLabel = params.type === 'study_guide' ? 'Study Guide' : params.type === 'quiz' ? 'Quiz' : 'Flashcards';
-    setBackgroundGeneration({ status: 'generating', type: typeLabel });
-
-    (async () => {
-      try {
-        // Multi-file: upload via upload-multi to create SourceFile records + hierarchy
-        let content = params.content;
-        if (params.files && params.files.length > 1) {
-          const targetCourseId = await resolveTargetCourseId(params.courseId);
-          const cc = await courseContentsApi.uploadMultiFiles(
-            params.files,
-            targetCourseId,
-            params.title || undefined,
-            'notes',
-          );
-          params.courseContentId = cc.id;
-          content = cc.text_content || '';
-        }
-
-        let result: any;
-        if (params.mode === 'file' && params.file) {
-          result = await studyApi.generateFromFile({
-            file: params.file,
-            title: params.title || undefined,
-            guide_type: params.type,
-            num_questions: params.type === 'quiz' ? 10 : undefined,
-            num_cards: params.type === 'flashcards' ? 15 : undefined,
-            focus_prompt: params.focusPrompt,
-            course_id: params.courseId,
-            course_content_id: params.courseContentId,
-            document_type: params.documentType,
-            study_goal: params.studyGoal,
-            study_goal_text: params.studyGoalText,
-          });
-        } else if (params.pastedImages && params.pastedImages.length > 0) {
-          result = await studyApi.generateFromTextAndImages({
-            content: content || '',
-            images: params.pastedImages,
-            title: params.title || undefined,
-            guide_type: params.type,
-            num_questions: params.type === 'quiz' ? 10 : undefined,
-            num_cards: params.type === 'flashcards' ? 15 : undefined,
-            focus_prompt: params.focusPrompt,
-            course_id: params.courseId,
-            course_content_id: params.courseContentId,
-            document_type: params.documentType,
-            study_goal: params.studyGoal,
-            study_goal_text: params.studyGoalText,
-          });
-        } else if (params.type === 'study_guide') {
-          result = await studyApi.generateGuide({
-            title: params.title || undefined,
-            content: content || undefined,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-            course_id: params.courseId,
-            course_content_id: params.courseContentId,
-            document_type: params.documentType,
-            study_goal: params.studyGoal,
-            study_goal_text: params.studyGoalText,
-          });
-        } else if (params.type === 'quiz') {
-          result = await studyApi.generateQuiz({
-            topic: params.title || undefined,
-            content: content || undefined,
-            num_questions: 10,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-            course_id: params.courseId,
-            course_content_id: params.courseContentId,
-          });
-        } else if (params.type === 'flashcards') {
-          result = await studyApi.generateFlashcards({
-            topic: params.title || undefined,
-            content: content || undefined,
-            num_cards: 15,
-            regenerate_from_id: params.regenerateId,
-            focus_prompt: params.focusPrompt,
-            course_id: params.courseId,
-            course_content_id: params.courseContentId,
-          });
-        }
-
-        const resultId = result?.course_content_id ?? undefined;
-        const guideId = result?.id ?? undefined;
-        const guideType = result?.guide_type ?? params.type;
-        setBackgroundGeneration({ status: 'success', type: typeLabel, resultId, guideId, guideType });
-        refreshAIUsage();
-      } catch (err: any) {
-        const raw = err?.response?.data?.detail || err?.message || 'Generation failed';
-        const detail = typeof raw === 'string' && raw.length > 150 ? raw.slice(0, 147) + '...' : raw;
-        setBackgroundGeneration({ status: 'error', type: typeLabel, error: detail });
-      }
-    })();
-  };
 
   const resolveTargetCourseId = async (overrideCourseId?: number): Promise<number> => {
     if (overrideCourseId) return overrideCourseId;
@@ -170,273 +43,70 @@ export function useParentStudyTools({
     const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
     const isMultiFile = files.length > 1;
 
-    // Always close modal immediately — never leave it open in a "Generating..." state.
-    // Background work (duplicate check, extraction, AI generation) continues after close.
+    // Close modal immediately — upload continues in background
     resetStudyModal();
+    setIsGenerating(true);
+    setBackgroundGeneration({ status: 'generating', type: 'Material' });
 
-    if (modalParams.types.length === 0) {
-      // Upload-only: upload then navigate to the detail page
-      setBackgroundGeneration({ status: 'generating', type: 'Material' });
-      (async () => {
-        try {
-          const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
-          let created: { id: number };
-          if (files.length === 1) {
-            created = await courseContentsApi.uploadFile(
-              files[0],
-              targetCourseId,
-              modalParams.title || undefined,
-              'notes',
-            );
-          } else if (isMultiFile) {
-            created = await courseContentsApi.uploadMultiFiles(
-              files,
-              targetCourseId,
-              modalParams.title || undefined,
-              'notes',
-            );
-          } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
-            // Pasted images: upload as files so backend can store and extract text
-            const imagesToUpload = modalParams.pastedImages;
-            if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
-              created = await courseContentsApi.uploadFile(
-                imagesToUpload[0],
-                targetCourseId,
-                modalParams.title || undefined,
-                'notes',
-              );
-            } else {
-              // Multiple images or images + text: upload all as multi-file
-              const allFiles = [...imagesToUpload];
-              // If there's text content, include it as a text file so it's preserved
-              if (modalParams.content?.trim()) {
-                const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
-                const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
-                allFiles.unshift(textFile);
-              }
-              created = await courseContentsApi.uploadMultiFiles(
-                allFiles,
-                targetCourseId,
-                modalParams.title || undefined,
-                'notes',
-              );
-            }
-          } else {
-            created = await courseContentsApi.create({
-              course_id: targetCourseId,
-              title: modalParams.title || 'Uploaded material',
-              text_content: modalParams.content || undefined,
-              content_type: 'notes',
-            });
-          }
-          setBackgroundGeneration(null);
-          navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
-        } catch {
-          setBackgroundGeneration({ status: 'error', type: 'Material', error: 'Upload failed' });
-        }
-      })();
-      return;
-    }
+    try {
+      const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
+      let created: { id: number };
 
-    // Pre-flight: block AI generation if credits exhausted
-    if (atLimit) {
-      setShowLimitModal(true);
-      return;
-    }
-
-    // Duplicate check runs after modal close — if found, re-open modal with warning
-    if (!isMultiFile && modalParams.types.length === 1 && modalParams.mode === 'text' && !modalParams.pastedImages?.length) {
-      try {
-        const dupResult = await studyApi.checkDuplicate({ title: modalParams.title || undefined, guide_type: modalParams.types[0] });
-        if (dupResult.exists) {
-          setDuplicateCheck(dupResult);
-          setShowStudyModal(true);
-          return;
-        }
-      } catch { /* Continue */ }
-    }
-
-    // When multiple AI tools are selected, pre-create a single CourseContent
-    // so all parallel generation calls share the same material (#1061)
-    let sharedCourseContentId: number | undefined;
-    if (modalParams.types.length > 1) {
-      try {
-        const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
-        if (isMultiFile) {
-          const cc = await courseContentsApi.uploadMultiFiles(
-            files,
+      if (files.length === 1) {
+        created = await courseContentsApi.uploadFile(
+          files[0],
+          targetCourseId,
+          modalParams.title || undefined,
+          'notes',
+        );
+      } else if (isMultiFile) {
+        created = await courseContentsApi.uploadMultiFiles(
+          files,
+          targetCourseId,
+          modalParams.title || undefined,
+          'notes',
+        );
+      } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
+        // Pasted images: upload as files so backend can store and extract text
+        const imagesToUpload = modalParams.pastedImages;
+        if (imagesToUpload.length === 1 && !modalParams.content?.trim()) {
+          created = await courseContentsApi.uploadFile(
+            imagesToUpload[0],
             targetCourseId,
             modalParams.title || undefined,
             'notes',
           );
-          sharedCourseContentId = cc.id;
-        } else if (modalParams.mode === 'file' && files.length === 1) {
-          const cc = await courseContentsApi.uploadFile(
-            files[0],
-            targetCourseId,
-            modalParams.title || undefined,
-            'notes',
-          );
-          sharedCourseContentId = cc.id;
-        } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
-          // Pasted images: upload as files for shared content
-          const allFiles = [...modalParams.pastedImages];
+        } else {
+          // Multiple images or images + text: upload all as multi-file
+          const allFiles = [...imagesToUpload];
           if (modalParams.content?.trim()) {
             const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
             const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
             allFiles.unshift(textFile);
           }
-          if (allFiles.length === 1) {
-            const cc = await courseContentsApi.uploadFile(
-              allFiles[0],
-              targetCourseId,
-              modalParams.title || undefined,
-              'notes',
-            );
-            sharedCourseContentId = cc.id;
-          } else {
-            const cc = await courseContentsApi.uploadMultiFiles(
-              allFiles,
-              targetCourseId,
-              modalParams.title || undefined,
-              'notes',
-            );
-            sharedCourseContentId = cc.id;
-          }
-        } else {
-          const cc = await courseContentsApi.create({
-            course_id: targetCourseId,
-            title: modalParams.title || 'Uploaded material',
-            text_content: modalParams.content || undefined,
-            content_type: 'notes',
-          });
-          sharedCourseContentId = cc.id;
+          created = await courseContentsApi.uploadMultiFiles(
+            allFiles,
+            targetCourseId,
+            modalParams.title || undefined,
+            'notes',
+          );
         }
-      } catch {
-        // If pre-creation fails, fall through — each generation creates its own
-      }
-    }
-
-    const hasStudyGuide = modalParams.types.includes('study_guide');
-    const nonStudyGuideTypes = modalParams.types.filter(t => t !== 'study_guide');
-
-    // Run background generation for non-study-guide types (quiz, flashcards, mind_map)
-    for (const type of nonStudyGuideTypes) {
-      runGenerationInBackground({
-        title: modalParams.title,
-        content: modalParams.content,
-        type,
-        focusPrompt: modalParams.focusPrompt,
-        mode: sharedCourseContentId ? 'text' : (isMultiFile ? 'text' : modalParams.mode),
-        file: sharedCourseContentId ? undefined : (isMultiFile ? undefined : modalParams.file),
-        files: sharedCourseContentId ? undefined : (isMultiFile ? files : undefined),
-        pastedImages: sharedCourseContentId ? undefined : modalParams.pastedImages,
-        regenerateId: duplicateCheck?.existing_guide?.id,
-        courseId: modalParams.courseId,
-        courseContentId: sharedCourseContentId,
-        documentType: modalParams.documentType,
-        studyGoal: modalParams.studyGoal,
-        studyGoalText: modalParams.studyGoalText,
-      });
-    }
-
-    // For study guide: navigate to detail page with autoGenerate flag for streaming UX
-    // For non-study-guide only: navigate to detail page without autoGenerate
-    if (sharedCourseContentId) {
-      if (hasStudyGuide) {
-        navigate(`/course-materials/${sharedCourseContentId}?tab=guide`, {
-          state: { autoGenerate: true, selectedChild: selectedChildUserId },
-        });
       } else {
-        navigate(`/course-materials/${sharedCourseContentId}`, {
-          state: { selectedChild: selectedChildUserId },
+        created = await courseContentsApi.create({
+          course_id: targetCourseId,
+          title: modalParams.title || 'Uploaded material',
+          text_content: modalParams.content || undefined,
+          content_type: 'notes',
         });
       }
-    } else if (hasStudyGuide) {
-      // Single type (study_guide only) without pre-created content — need to upload first
-      (async () => {
-        try {
-          const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
-          let contentId: number;
-          if (isMultiFile) {
-            const cc = await courseContentsApi.uploadMultiFiles(files, targetCourseId, modalParams.title || undefined, 'notes');
-            contentId = cc.id;
-          } else if (modalParams.mode === 'file' && files.length === 1) {
-            const cc = await courseContentsApi.uploadFile(files[0], targetCourseId, modalParams.title || undefined, 'notes');
-            contentId = cc.id;
-          } else if (modalParams.pastedImages && modalParams.pastedImages.length > 0) {
-            const allFiles = [...modalParams.pastedImages];
-            if (modalParams.content?.trim()) {
-              const textBlob = new Blob([modalParams.content], { type: 'text/plain' });
-              const textFile = new File([textBlob], 'pasted-content.txt', { type: 'text/plain' });
-              allFiles.unshift(textFile);
-            }
-            const cc = allFiles.length === 1
-              ? await courseContentsApi.uploadFile(allFiles[0], targetCourseId, modalParams.title || undefined, 'notes')
-              : await courseContentsApi.uploadMultiFiles(allFiles, targetCourseId, modalParams.title || undefined, 'notes');
-            contentId = cc.id;
-          } else {
-            const cc = await courseContentsApi.create({
-              course_id: targetCourseId,
-              title: modalParams.title || 'Uploaded material',
-              text_content: modalParams.content || undefined,
-              content_type: 'notes',
-            });
-            contentId = cc.id;
-          }
-          navigate(`/course-materials/${contentId}?tab=guide`, {
-            state: { autoGenerate: true, selectedChild: selectedChildUserId },
-          });
-        } catch {
-          setBackgroundGeneration({ status: 'error', type: 'Study Guide', error: 'Upload failed' });
-        }
-      })();
-    }
-  };
 
-  const handleOneClickStudy = async (assignment: CalendarAssignment) => {
-    if (generatingStudyId) return;
-    if (atLimit) {
-      setShowLimitModal(true);
-      return;
-    }
-    setGeneratingStudyId(assignment.id);
-    try {
-      const dupResult = await studyApi.checkDuplicate({
-        title: assignment.title,
-        guide_type: 'study_guide',
-      });
-      if (dupResult.exists && dupResult.existing_guide) {
-        const guide = dupResult.existing_guide;
-        let path: string;
-        if (guide.course_content_id) {
-          const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-          path = `/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`;
-        } else if (guide.guide_type === 'quiz') path = `/study/quiz/${guide.id}`;
-        else if (guide.guide_type === 'flashcards') path = `/study/flashcards/${guide.id}`;
-        else path = `/study/guide/${guide.id}`;
-        navigate(path);
-        return;
-      }
-      if (!assignment.description?.trim()) {
-        setStudyModalInitialTitle(assignment.title);
-        setStudyModalInitialContent('');
-        setShowStudyModal(true);
-        return;
-      }
-      runGenerationInBackground({
-        title: assignment.title,
-        content: assignment.description,
-        type: 'study_guide',
-        mode: 'text',
-      });
-      // Don't navigate — user stays on dashboard
+      setBackgroundGeneration({ status: 'success', type: 'Material', resultId: created.id });
+      // Navigate to the detail page — user can generate study guides from there
+      navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
     } catch {
-      setStudyModalInitialTitle(assignment.title);
-      setStudyModalInitialContent(assignment.description || '');
-      setShowStudyModal(true);
+      setBackgroundGeneration({ status: 'error', type: 'Material', error: 'Upload failed' });
     } finally {
-      setGeneratingStudyId(null);
+      setIsGenerating(false);
     }
   };
 
@@ -447,16 +117,7 @@ export function useParentStudyTools({
   const getBackgroundGenerationRoute = (): string => {
     const bg = backgroundGeneration;
     if (!bg) return '/course-materials';
-    if (bg.resultId) {
-      const tabMap: Record<string, string> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards', mind_map: 'mindmap' };
-      const tab = bg.guideType ? tabMap[bg.guideType] || 'guide' : 'guide';
-      return `/course-materials/${bg.resultId}?tab=${tab}`;
-    }
-    if (bg.guideId) {
-      if (bg.guideType === 'quiz') return `/study/quiz/${bg.guideId}`;
-      if (bg.guideType === 'flashcards') return `/study/flashcards/${bg.guideId}`;
-      return `/study/guide/${bg.guideId}`;
-    }
+    if (bg.resultId) return `/course-materials/${bg.resultId}`;
     return '/course-materials';
   };
 
@@ -464,12 +125,9 @@ export function useParentStudyTools({
     // Study Tools
     showStudyModal, setShowStudyModal, isGenerating,
     studyModalInitialTitle, studyModalInitialContent,
-    duplicateCheck, setDuplicateCheck,
     resetStudyModal, handleGenerateFromModal,
-    generatingStudyId, handleOneClickStudy, handleViewStudyGuides,
+    handleViewStudyGuides,
     // Background generation
     backgroundGeneration, dismissBackgroundGeneration, getBackgroundGenerationRoute,
-    // AI credits
-    showLimitModal, setShowLimitModal, atLimit, remaining,
   };
 }

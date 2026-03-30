@@ -311,8 +311,8 @@ export function QuizTab({
             />
           )}
           <div className="cm-empty-tab-icon"><EmptyQuizIcon /></div>
-          <h3>No quiz yet</h3>
-          <p>Generate a practice quiz to test understanding of this material with multiple-choice questions.</p>
+          <h3>Ready to test your knowledge?</h3>
+          <p>Generate a practice quiz from this material with multiple-choice questions and instant feedback.</p>
           <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
             <button
               className="cm-empty-generate-btn"

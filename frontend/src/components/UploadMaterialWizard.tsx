@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import UploadWizardStep1 from './UploadWizardStep1';
-import UploadWizardStep2 from './UploadWizardStep2';
+import CreateClassModal from './CreateClassModal';
 import { coursesApi } from '../api/courses';
 import './UploadMaterialWizard.css';
 
@@ -69,19 +69,15 @@ export default function UploadMaterialWizard({
   const [step, setStep] = useState<1 | 2>(1);
   const [studyTitle, setStudyTitle] = useState('');
   const [studyContent, setStudyContent] = useState('');
-  const [selectedTypes, setSelectedTypes] = useState<Set<StudyMaterialType>>(new Set());
-  const [focusPrompt, setFocusPrompt] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [pastedImages, setPastedImages] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
-  const [documentType, setDocumentType] = useState('');
-  const [studyGoal, setStudyGoal] = useState('');
-  const [studyGoalText, setStudyGoalText] = useState('');
   const [masterFileIndex, setMasterFileIndex] = useState(0);
   const [managedCourses, setManagedCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
   const [internalCourseId, setInternalCourseId] = useState<number | ''>(selectedCourseId ?? '');
   const [internalChildId, setInternalChildId] = useState<number | ''>('');
+  const [showCreateClassModal, setShowCreateClassModal] = useState(false);
 
   const selectedFilesRef = useRef<File[]>([]);
   const prevOpenRef = useRef(false);
@@ -98,10 +94,6 @@ export default function UploadMaterialWizard({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyContent(initialContent);
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedTypes(new Set());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setFocusPrompt('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedFiles([]);
     selectedFilesRef.current = [];
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -114,12 +106,6 @@ export default function UploadMaterialWizard({
     setInternalChildId('');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMasterFileIndex(0);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDocumentType('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyGoal('');
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStudyGoalText('');
 
     // Use provided courses, or fetch them if not provided
     if (courses && courses.length > 0) {
@@ -244,10 +230,10 @@ export default function UploadMaterialWizard({
   };
 
   const hasNoContent = selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
-  const needsCourse = !!(managedCourses && managedCourses.length > 0 && !internalCourseId);
+  const needsCourse = !internalCourseId;
   const needsChild = !!(children && children.length > 1 && !internalChildId);
 
-  const handleSubmit = (withAITools: boolean) => {
+  const handleSubmit = () => {
     const hasFiles = selectedFiles.length > 0;
     const effectiveMode: 'text' | 'file' = hasFiles ? 'file' : 'text';
 
@@ -256,7 +242,7 @@ export default function UploadMaterialWizard({
       return;
     }
 
-    if (managedCourses && managedCourses.length > 0 && !internalCourseId) {
+    if (!internalCourseId) {
       setError('Please select a class');
       return;
     }
@@ -265,8 +251,6 @@ export default function UploadMaterialWizard({
       setError('Please select a child');
       return;
     }
-
-    const types = withAITools ? Array.from(selectedTypes) : [];
 
     // Reorder files so user-selected master is first (#2051)
     let orderedFiles = selectedFiles;
@@ -278,20 +262,17 @@ export default function UploadMaterialWizard({
       ];
     }
 
+    // Upload-only: no AI generation types selected from wizard
     onGenerate({
       title: studyTitle || (orderedFiles.length > 0 ? orderedFiles[0].name.replace(/\.[^/.]+$/, '') : 'Uploaded material'),
       content: studyContent,
-      types,
-      focusPrompt: focusPrompt.trim() || undefined,
+      types: [],
       mode: effectiveMode,
       file: orderedFiles.length === 1 ? orderedFiles[0] : undefined,
       files: orderedFiles.length > 0 ? orderedFiles : undefined,
       pastedImages: pastedImages.length > 0 ? pastedImages : undefined,
       courseId: internalCourseId || undefined,
       courseContentId: selectedMaterialId ? (selectedMaterialId as number) : undefined,
-      documentType: documentType || undefined,
-      studyGoal: studyGoal || undefined,
-      studyGoalText: studyGoalText.trim() || undefined,
     });
   };
 
@@ -305,26 +286,6 @@ export default function UploadMaterialWizard({
           {step === 2 && <button className="uw-back-btn" onClick={() => setStep(1)}>&larr;</button>}
           <div className="uw-header-titles">
             <h2>Upload Class Material</h2>
-            {childName && (!children || children.length <= 1) && (
-              <span className="uw-child-label">for {childName}</span>
-            )}
-            {children && children.length > 1 && onChildChange && (
-              <select
-                className="uw-child-select"
-                value={internalChildId}
-                onChange={(e) => {
-                  const id = Number(e.target.value);
-                  setInternalChildId(id);
-                  setInternalCourseId('');
-                  onChildChange(id);
-                }}
-              >
-                <option value="">Select a child</option>
-                {children.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            )}
           </div>
           <span className="uw-step-indicator">Step {step} of 2</span>
         </div>
@@ -342,11 +303,6 @@ export default function UploadMaterialWizard({
               onAddPastedImages={(imgs) => setPastedImages(prev => [...prev, ...imgs].slice(0, 10))}
               onRemovePastedImage={(idx) => setPastedImages(prev => prev.filter((_, i) => i !== idx))}
               onClearPastedImages={() => setPastedImages([])}
-              courses={managedCourses}
-              selectedCourseId={internalCourseId}
-              onCourseChange={setInternalCourseId}
-              onClassCreated={handleClassCreated}
-              courseDisabled={needsChild}
               isGenerating={isGenerating}
               error={error}
               isDragging={isDragging}
@@ -356,29 +312,140 @@ export default function UploadMaterialWizard({
             />
           )}
           {step === 2 && (
-            <UploadWizardStep2
-              selectedFiles={selectedFiles}
-              studyContent={studyContent}
-              pastedImages={pastedImages}
-              selectedTypes={selectedTypes}
-              onToggleType={(type) => setSelectedTypes(prev => {
-                const next = new Set(prev);
-                if (next.has(type)) next.delete(type); else next.add(type);
-                return next;
-              })}
-              studyTitle={studyTitle}
-              onStudyTitleChange={setStudyTitle}
-              focusPrompt={focusPrompt}
-              onFocusPromptChange={setFocusPrompt}
-              isGenerating={isGenerating}
-              documentType={documentType}
-              onDocumentTypeChange={setDocumentType}
-              studyGoal={studyGoal}
-              studyGoalText={studyGoalText}
-              onStudyGoalChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
-              masterFileIndex={masterFileIndex}
-              onMasterFileIndexChange={setMasterFileIndex}
-            />
+            <div className="upload-wizard-step">
+              {/* Child selector (parent with multiple children) */}
+              {children && children.length > 1 && onChildChange && (
+                <div className="uw-field">
+                  <label htmlFor="uw-child-select">Student</label>
+                  <select
+                    id="uw-child-select"
+                    className="uw-child-select"
+                    value={internalChildId}
+                    onChange={(e) => {
+                      const id = Number(e.target.value);
+                      setInternalChildId(id);
+                      setInternalCourseId('');
+                      onChildChange(id);
+                    }}
+                  >
+                    <option value="">Select a student</option>
+                    {children.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Single child display */}
+              {childName && (!children || children.length <= 1) && (
+                <div className="uw-field">
+                  <label>Student</label>
+                  <div className="uw-static-value">{childName}</div>
+                </div>
+              )}
+
+              {/* Class selector (mandatory) */}
+              <div className="uw-field">
+                <label htmlFor="uw-course-select">Class <span className="uw-required">*</span></label>
+                <select
+                  id="uw-course-select"
+                  value={internalCourseId}
+                  onChange={(e) => {
+                    if (e.target.value === '__create__') {
+                      setShowCreateClassModal(true);
+                    } else {
+                      setInternalCourseId(e.target.value ? Number(e.target.value) : '');
+                    }
+                  }}
+                  disabled={isGenerating || needsChild}
+                >
+                  <option value="">Select a class</option>
+                  {(managedCourses || []).map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                  <option value="__create__">+ Create new class...</option>
+                </select>
+              </div>
+
+              {/* Title field */}
+              <div className="uw-field">
+                <label htmlFor="uw-title">Title</label>
+                <input
+                  id="uw-title"
+                  type="text"
+                  value={studyTitle}
+                  onChange={(e) => setStudyTitle(e.target.value)}
+                  placeholder="e.g., Chapter 5 Review (auto-filled from filename)"
+                  disabled={isGenerating}
+                />
+              </div>
+
+              {/* Master file selection for multi-file uploads (#2051) */}
+              {selectedFiles.length >= 2 && studyTitle && (
+                <div className="upload-wizard-naming-preview">
+                  <p style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.375rem' }}>
+                    Materials that will be created:
+                  </p>
+                  <ul className="uw-master-select-list">
+                    {selectedFiles.map((file, i) => {
+                      const isMaster = i === masterFileIndex;
+                      const fileTitle = file.name.replace(/\.[^/.]+$/, '');
+                      return (
+                        <li
+                          key={i}
+                          className={`uw-master-select-item${isMaster ? ' selected' : ''}`}
+                          onClick={() => { if (!isGenerating) setMasterFileIndex(i); }}
+                          role="radio"
+                          aria-checked={isMaster}
+                          tabIndex={0}
+                          onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isGenerating) { e.preventDefault(); setMasterFileIndex(i); } }}
+                        >
+                          <span className={`uw-master-radio${isMaster ? ' checked' : ''}`} />
+                          <span className="uw-master-select-name">
+                            {isMaster ? (
+                              <><strong>{studyTitle}</strong> <span className="uw-master-label">(master)</span></>
+                            ) : (
+                              <>{fileTitle}</>
+                            )}
+                          </span>
+                          <span className="uw-master-select-filename">{file.name}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Upload summary */}
+              <div className="uw-summary-bar" style={{ marginTop: '0.75rem' }}>
+                <span className="uw-summary-icon">&#x2705;</span>
+                <span className="uw-summary-text">
+                  {selectedFiles.length > 0
+                    ? `${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} ready to upload`
+                    : pastedImages.length > 0
+                      ? `${pastedImages.length} image${pastedImages.length !== 1 ? 's' : ''} ready`
+                      : 'Pasted text ready'}
+                </span>
+              </div>
+
+              {/* Error display */}
+              {error && (
+                <div className="uw-error">
+                  <span className="uw-error-icon">!</span>
+                  <span className="uw-error-message">{error}</span>
+                </div>
+              )}
+
+              {/* Create Class Modal */}
+              <CreateClassModal
+                open={showCreateClassModal}
+                onClose={() => setShowCreateClassModal(false)}
+                onCreated={(newCourse) => {
+                  setShowCreateClassModal(false);
+                  handleClassCreated(newCourse);
+                }}
+              />
+            </div>
           )}
 
           {/* Parent note */}
@@ -402,14 +469,13 @@ export default function UploadMaterialWizard({
           {step === 1 ? (
             <>
               <button className="btn-secondary" onClick={onClose} disabled={isGenerating}>Cancel</button>
-              <button className="btn-link" onClick={() => handleSubmit(false)} disabled={isGenerating || hasNoContent || needsCourse || needsChild}>Just Upload</button>
-              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent || needsCourse || needsChild}>Next &rarr;</button>
+              <button className="btn-primary" onClick={() => setStep(2)} disabled={hasNoContent}>Next &rarr;</button>
             </>
           ) : (
             <>
-              <button className="btn-secondary" onClick={() => handleSubmit(false)} disabled={isGenerating}>Skip</button>
-              <button className="btn-primary" onClick={() => handleSubmit(true)} disabled={isGenerating || selectedTypes.size === 0}>
-                {isGenerating ? 'Generating...' : selectedTypes.size > 1 ? `Upload & Create (${selectedTypes.size})` : 'Upload & Create'}
+              <button className="btn-secondary" onClick={() => setStep(1)} disabled={isGenerating}>Back</button>
+              <button className="btn-primary" onClick={handleSubmit} disabled={isGenerating || needsCourse || needsChild}>
+                {isGenerating ? 'Uploading...' : 'Upload'}
               </button>
             </>
           )}

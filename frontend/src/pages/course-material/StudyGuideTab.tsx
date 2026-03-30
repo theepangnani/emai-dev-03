@@ -1,12 +1,15 @@
-import { Suspense, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
+import { classifyDocument } from '../../api/study';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
+import DocumentTypeSelector from '../../components/DocumentTypeSelector';
+import StudyGoalSelector from '../../components/StudyGoalSelector';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import { ContentMetaBar } from './ContentMetaBar';
@@ -17,7 +20,7 @@ interface StudyGuideTabProps {
   generating: string | null;
   focusPrompt: string;
   onFocusPromptChange: (value: string) => void;
-  onGenerate: () => void;
+  onGenerate: (options?: { documentType?: string; studyGoal?: string; studyGoalText?: string }) => void;
   onDelete: (guide: StudyGuide) => void;
   hasSourceContent: boolean;
   linkedTasks?: TaskItem[];
@@ -32,6 +35,16 @@ interface StudyGuideTabProps {
   courseName?: string | null;
   createdAt?: string | null;
   courseId?: number;
+  /** Text content for auto-classification */
+  textContent?: string;
+  /** Original filename for auto-classification */
+  originalFilename?: string;
+  /** Saved document type from CourseContent */
+  savedDocumentType?: string;
+  /** Saved study goal from CourseContent */
+  savedStudyGoal?: string;
+  /** Saved study goal text from CourseContent */
+  savedStudyGoalText?: string;
 }
 
 function FocusIcon() {
@@ -73,10 +86,45 @@ export function StudyGuideTab({
   courseName,
   createdAt,
   courseId,
+  textContent,
+  originalFilename,
+  savedDocumentType,
+  savedStudyGoal,
+  savedStudyGoalText,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
+
+  // Document type & study goal state for empty state generation controls
+  const [documentType, setDocumentType] = useState(savedDocumentType || '');
+  const [autoDetectedType, setAutoDetectedType] = useState<string | null>(null);
+  const [autoConfidence, setAutoConfidence] = useState(0);
+  const [studyGoal, setStudyGoal] = useState(savedStudyGoal || '');
+  const [studyGoalText, setStudyGoalText] = useState(savedStudyGoalText || '');
+
+  // Auto-detect document type when empty state is shown
+  useEffect(() => {
+    if (studyGuide) return; // Only classify when no guide exists
+    let cancelled = false;
+    const text = (textContent || '').trim();
+    const filename = originalFilename || '';
+    if (!text && !filename) return;
+
+    classifyDocument(text.slice(0, 2000), filename)
+      .then((result) => {
+        if (cancelled) return;
+        setAutoDetectedType(result.document_type);
+        setAutoConfidence(result.confidence);
+        if (!documentType) {
+          setDocumentType(result.document_type);
+        }
+      })
+      .catch(() => { /* auto-detect is best-effort */ });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studyGuide, textContent, originalFilename]);
 
   const handlePrint = () => {
     if (printRef.current) printElement(printRef.current, studyGuide?.title || 'Study Guide');
@@ -106,6 +154,14 @@ export function StudyGuideTab({
     }
   };
 
+  const handleGenerateWithContext = () => {
+    onGenerate({
+      documentType: documentType || undefined,
+      studyGoal: studyGoal || undefined,
+      studyGoalText: studyGoalText.trim() || undefined,
+    });
+  };
+
   return (
     <div className="cm-guide-tab">
       <div className="cm-focus-prompt">
@@ -127,7 +183,7 @@ export function StudyGuideTab({
               <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>
               <button className="cm-action-btn" onClick={handleDownloadPdf} disabled={exporting} title="Download PDF">{'\u{1F4E5}'} {exporting ? 'Exporting...' : 'PDF'}</button>
               <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
-                <button className="cm-action-btn" onClick={onGenerate} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate</button>
+                <button className="cm-action-btn" onClick={() => onGenerate()} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate</button>
                 {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
               </span>
               <button className="cm-action-btn danger" onClick={() => onDelete(studyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
@@ -205,7 +261,7 @@ export function StudyGuideTab({
           )}
         </div>
       ) : (
-        <div className="cm-empty-tab">
+        <div className="cm-empty-tab cm-empty-tab--with-controls">
           {onFormatSelect && (
             <FormatSelector
               selected="study_guide"
@@ -213,12 +269,32 @@ export function StudyGuideTab({
             />
           )}
           <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
-          <h3>No study guide yet</h3>
-          <p>Generate an AI-powered study guide from this material to help with studying and review.</p>
+          <h3>Your document is ready</h3>
+          <p>Generate an AI-powered study guide from this material. Customize the options below for the best results.</p>
+
+          {/* Generation controls */}
+          {hasSourceContent && (
+            <div className="cm-generation-controls">
+              <DocumentTypeSelector
+                defaultType={documentType || autoDetectedType}
+                confidence={autoConfidence}
+                onChange={(type) => setDocumentType(type)}
+                disabled={generating !== null}
+              />
+
+              <StudyGoalSelector
+                defaultGoal={studyGoal || null}
+                defaultFocusText={studyGoalText || null}
+                onChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
+                disabled={generating !== null}
+              />
+            </div>
+          )}
+
           <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
             <button
               className="cm-empty-generate-btn"
-              onClick={onGenerate}
+              onClick={handleGenerateWithContext}
               disabled={generating !== null || !hasSourceContent || atLimit}
             >
               {'\u2728'} Generate Study Guide

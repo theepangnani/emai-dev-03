@@ -5,7 +5,7 @@ import { useFeature } from '../hooks/useFeatureToggle';
 import type { GoogleAccount, InviteResponse, AssignmentItem, TeacherThanksCount } from '../api/client';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
-import { AILimitRequestModal } from '../components/AILimitRequestModal';
+
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import type { InspirationData } from '../components/DashboardLayout';
@@ -742,27 +742,12 @@ export function TeacherDashboard() {
         onGenerate={studyTools.handleGenerateFromModal}
         isGenerating={studyTools.isGenerating}
         courses={courses.map(c => ({ id: c.id, name: c.name }))}
-        duplicateCheck={studyTools.duplicateCheck}
-        onViewExisting={() => {
-          const guide = studyTools.duplicateCheck?.existing_guide;
-          if (guide) {
-            studyTools.resetStudyModal();
-            if (guide.course_content_id) {
-              const tabMap: Record<string, string> = { quiz: 'quiz', flashcards: 'flashcards', study_guide: 'guide', mind_map: 'mindmap' };
-              navigate(`/course-materials/${guide.course_content_id}?tab=${tabMap[guide.guide_type] || 'guide'}`);
-            } else if (guide.guide_type === 'quiz') navigate(`/study/quiz/${guide.id}`);
-            else if (guide.guide_type === 'flashcards') navigate(`/study/flashcards/${guide.id}`);
-            else navigate(`/study/guide/${guide.id}`);
-          }
-        }}
-        onRegenerate={() => studyTools.handleGenerateFromModal({ title: studyTools.studyModalInitialTitle, content: studyTools.studyModalInitialContent, types: ['study_guide'], mode: 'text' })}
-        onDismissDuplicate={() => studyTools.setDuplicateCheck(null)}
       />
       {/* Background generation status banner */}
       {studyTools.backgroundGeneration && (
         <div className={`td-generation-banner ${studyTools.backgroundGeneration.status}`}>
           {studyTools.backgroundGeneration.status === 'generating' && (
-            <span><span className="td-gen-spinner" /> Generating {studyTools.backgroundGeneration.type}...</span>
+            <span><span className="td-gen-spinner" /> Uploading {studyTools.backgroundGeneration.type}...</span>
           )}
           {studyTools.backgroundGeneration.status === 'success' && (
             <>
@@ -779,10 +764,6 @@ export function TeacherDashboard() {
           )}
         </div>
       )}
-      <AILimitRequestModal
-        open={studyTools.showLimitModal}
-        onClose={() => studyTools.setShowLimitModal(false)}
-      />
     </DashboardLayout>
   );
 }

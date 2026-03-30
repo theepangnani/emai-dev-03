@@ -452,8 +452,8 @@ export function useParentDashboard() {
 
     // Calendar
     calendarCollapsed, toggleCalendar, showCalendarTooltip, dismissCalendarTooltip,
-    calendarAssignments, undatedAssignments, generatingStudyId: studyTools.generatingStudyId,
-    handleOneClickStudy: studyTools.handleOneClickStudy, handleGoToCourse, handleViewStudyGuides: studyTools.handleViewStudyGuides, handleTaskDrop: tasks.handleTaskDrop,
+    calendarAssignments, undatedAssignments,
+    handleGoToCourse, handleViewStudyGuides: studyTools.handleViewStudyGuides, handleTaskDrop: tasks.handleTaskDrop,
 
     // Today's Focus
     focusCollapsed, setFocusCollapsed, perChildOverdue, childOverdueCounts,
@@ -507,10 +507,8 @@ export function useParentDashboard() {
     // Study Tools
     showStudyModal: studyTools.showStudyModal, setShowStudyModal: studyTools.setShowStudyModal, isGenerating: studyTools.isGenerating,
     studyModalInitialTitle: studyTools.studyModalInitialTitle, studyModalInitialContent: studyTools.studyModalInitialContent,
-    duplicateCheck: studyTools.duplicateCheck, setDuplicateCheck: studyTools.setDuplicateCheck,
     resetStudyModal: studyTools.resetStudyModal, handleGenerateFromModal: studyTools.handleGenerateFromModal,
     backgroundGeneration: studyTools.backgroundGeneration, dismissBackgroundGeneration: studyTools.dismissBackgroundGeneration, getBackgroundGenerationRoute: studyTools.getBackgroundGenerationRoute,
-    showLimitModal: studyTools.showLimitModal, setShowLimitModal: studyTools.setShowLimitModal,
 
     // Create Task Modal
     showCreateTaskModal: tasks.showCreateTaskModal, setShowCreateTaskModal: tasks.setShowCreateTaskModal, loadDashboard,
