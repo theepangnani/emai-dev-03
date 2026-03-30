@@ -705,13 +705,14 @@ export function CourseMaterialDetailPage() {
     { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
-    ...(content.created_by_user_id === user?.id ? [{ key: 'access-log' as TabKey, label: 'Access Log', shortLabel: 'Log', hasContent: true, icon: <AccessLogIcon /> }] : []),
+    // access-log removed from tabs — rendered as collapsible section inside Source Document tab.
+    // Backward compat for ?tab=access-log URLs is handled in the URL sync useEffect.
     { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
   const guideTab = tabs.find(t => t.key === 'guide')!;
   const docTab = tabs.find(t => t.key === 'document')!;
-  const dropdownTabs = tabs.filter(t => !['guide', 'document', 'access-log'].includes(t.key));
+  const dropdownTabs = tabs.filter(t => !['guide', 'document'].includes(t.key));
   const isDropdownActive = dropdownTabs.some(t => t.key === activeTab);
   const activeDropdownTab = dropdownTabs.find(t => t.key === activeTab);
 
