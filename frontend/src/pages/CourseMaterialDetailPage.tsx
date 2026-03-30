@@ -206,6 +206,14 @@ export function CourseMaterialDetailPage() {
       return next;
     }, { replace: true });
   }, [setSearchParams]);
+
+  // Sync active tab when URL search params change (e.g., back/forward navigation)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') as TabKey | null;
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTabState(tabFromUrl);
+    }
+  }, [searchParams, activeTab]);
   const [generating, setGenerating] = useState<string | null>(null);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
