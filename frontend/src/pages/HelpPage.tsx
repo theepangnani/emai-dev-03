@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useFeature } from '../hooks/useFeatureToggle';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { JourneyCard } from '../components/JourneyCard';
@@ -647,11 +648,20 @@ export function HelpPage() {
   const [searchResults, setSearchResults] = useState<HelpArticle[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [expandedArticle, setExpandedArticle] = useState<string | null>(null);
+  const gcEnabled = useFeature('google_classroom');
 
   const filteredJourneys = useMemo(() => {
-    if (journeyRoleFilter === 'All') return JOURNEY_SECTIONS;
-    return JOURNEY_SECTIONS.filter(s => s.role === journeyRoleFilter);
-  }, [journeyRoleFilter]);
+    let sections = journeyRoleFilter === 'All' ? JOURNEY_SECTIONS : JOURNEY_SECTIONS.filter(s => s.role === journeyRoleFilter);
+    if (!gcEnabled) {
+      sections = sections.map(section => ({
+        ...section,
+        journeys: section.journeys
+          .filter(j => j.id !== 'p10' && j.id !== 't04')
+          .map(j => j.id === 'p09' ? { ...j, steps: j.steps.filter(s => !s.title.includes('Import from Google')) } : j),
+      }));
+    }
+    return sections;
+  }, [journeyRoleFilter, gcEnabled]);
 
   const tutorials = useMemo(() => {
     switch (user?.role) {
