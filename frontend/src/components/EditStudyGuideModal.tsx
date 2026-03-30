@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { studyApi, coursesApi } from '../api/client';
 import type { StudyGuide } from '../api/client';
-import { useFocusTrap } from '../utils/useFocusTrap';
 import { ReportBugLink } from './ReportBugLink';
 import './EditStudyGuideModal.css';
 
