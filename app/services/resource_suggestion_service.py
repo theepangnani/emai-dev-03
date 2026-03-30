@@ -27,6 +27,9 @@ from app.services.ai_usage import log_ai_usage
 
 logger = logging.getLogger(__name__)
 
+# YouTube video IDs are exactly 11 characters: alphanumeric, dash, underscore
+_YOUTUBE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{11}$")
+
 # ---------------------------------------------------------------------------
 # Trusted educational domains
 # ---------------------------------------------------------------------------
@@ -210,9 +213,21 @@ async def _validate_urls(urls: list[str]) -> dict[str, bool]:
             try:
                 results[url] = await asyncio.wait_for(task, timeout=8.0)
             except (asyncio.TimeoutError, Exception):
-                # Best effort — assume valid if we can't check
-                results[url] = True
+                # If we can't validate, mark as invalid to be safe
+                results[url] = False
     return results
+
+
+async def _validate_youtube_video(video_id: str) -> bool:
+    """Check if a YouTube video exists using the oEmbed API."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            )
+            return resp.status_code == 200
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +348,14 @@ async def suggest_resources(
         url = item.get("url", "")
         if not validity.get(url, False):
             logger.debug("Skipping invalid URL: %s", url)
+            continue
+
+        youtube_video_id = item.get("youtube_video_id")
+        if youtube_video_id and not _YOUTUBE_ID_RE.match(youtube_video_id):
+            logger.debug("Skipping invalid YouTube video ID format: %s", youtube_video_id)
+            continue
+        if youtube_video_id and not await _validate_youtube_video(youtube_video_id):
+            logger.debug("Skipping non-existent YouTube video: %s", youtube_video_id)
             continue
 
         resource = ResourceLink(

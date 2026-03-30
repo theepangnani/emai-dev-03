@@ -132,6 +132,7 @@ async def test_suggest_resources_success(mock_db):
         patch("app.services.resource_suggestion_service.get_last_ai_usage") as mock_usage,
         patch("app.services.resource_suggestion_service.log_ai_usage") as mock_log,
         patch("app.services.resource_suggestion_service._validate_urls", new_callable=AsyncMock) as mock_validate,
+        patch("app.services.resource_suggestion_service._validate_youtube_video", new_callable=AsyncMock) as mock_yt,
     ):
         mock_settings.anthropic_api_key = "test-key"
         mock_gen.return_value = (MOCK_AI_RESPONSE, "end_turn")
@@ -144,6 +145,7 @@ async def test_suggest_resources_success(mock_db):
             "https://www.youtube.com/watch?v=abcdef12345": True,
             "https://www.khanacademy.org/math/algebra/quadratics": True,
         }
+        mock_yt.return_value = True
 
         result = await suggest_resources(
             topic="Quadratic Equations",
