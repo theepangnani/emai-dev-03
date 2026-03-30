@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import app.models.teacher  # noqa: F401 — ensure Teacher model is loaded for Course relationship
+
 from app.services.resource_suggestion_service import (
     TRUSTED_DOMAINS,
     _build_prompt,
