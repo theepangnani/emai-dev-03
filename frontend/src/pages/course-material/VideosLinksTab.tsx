@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { resourceLinksApi, type ResourceLinkGroup, type ResourceLinkItem } from '../../api/resourceLinks';
+import { resourceLinksApi, type ResourceLinkGroup, type ResourceLinkItem, type SearchResourceResult } from '../../api/resourceLinks';
 import './VideosLinksTab.css';
 
 interface VideosLinksTabProps {
   courseContentId: number;
+  topicName?: string;
+  gradLevel?: string;
+  courseName?: string;
 }
 
 /* ── Icons ──────────────────────────────────────── */
@@ -55,6 +58,24 @@ function DeleteIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function SearchIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M9.5 2L14 6.5 8.5 12 4 7.5 9.5 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M2 14l3.5-3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   );
 }
@@ -259,15 +280,226 @@ function AddLinkForm({
   );
 }
 
+/* ── SearchResultCard ──────────────────────────── */
+
+function SearchResultCard({
+  result,
+  onPin,
+  onDismiss,
+  pinning,
+}: {
+  result: SearchResourceResult;
+  onPin: (id: number) => void;
+  onDismiss: (id: number) => void;
+  pinning: boolean;
+}) {
+  return (
+    <div className="vl-search-result">
+      {result.youtube_video_id ? (
+        <div className="vl-youtube-card">
+          <div className="vl-youtube-wrapper">
+            <iframe
+              src={`https://www.youtube.com/embed/${result.youtube_video_id}`}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+              title={result.title || 'YouTube video'}
+            />
+          </div>
+          <div className="vl-youtube-info">
+            {result.title && <p className="vl-youtube-title">{result.title}</p>}
+            {result.channel_name && <p className="vl-search-channel">{result.channel_name}</p>}
+            {result.description && <p className="vl-youtube-desc">{result.description}</p>}
+          </div>
+        </div>
+      ) : (
+        <div className="vl-link-card" style={{ cursor: 'default' }}>
+          <div className="vl-link-card-body">
+            <span className="vl-link-icon"><ExternalLinkIcon size={16} /></span>
+            <div className="vl-link-info">
+              <span className="vl-link-title">{result.title || 'Untitled'}</span>
+              {result.channel_name && <span className="vl-search-channel">{result.channel_name}</span>}
+              {result.description && <span className="vl-link-url">{result.description}</span>}
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="vl-search-actions">
+        <button
+          className="cm-action-btn vl-pin-btn"
+          onClick={() => onPin(result.id)}
+          disabled={pinning}
+          title="Pin to saved resources"
+        >
+          <PinIcon /> Pin
+        </button>
+        <button
+          className="vl-delete-btn"
+          onClick={() => onDismiss(result.id)}
+          title="Dismiss"
+        >
+          <DeleteIcon />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── LiveSearchSection ─────────────────────────── */
+
+function LiveSearchSection({
+  courseContentId,
+  initialTopic,
+  gradeLevel,
+  courseName,
+  onResultPinned,
+}: {
+  courseContentId: number;
+  initialTopic: string;
+  gradeLevel?: string;
+  courseName?: string;
+  onResultPinned: () => void;
+}) {
+  const [query, setQuery] = useState(initialTopic);
+  const [results, setResults] = useState<SearchResourceResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(true);
+  const [pinningIds, setPinningIds] = useState<Set<number>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    setSearching(true);
+    setError(null);
+    setSearched(true);
+    try {
+      const data = await resourceLinksApi.searchResources(courseContentId, {
+        topic: query.trim(),
+        grade_level: gradeLevel,
+        course_name: courseName,
+      });
+      setResults(data);
+      setDismissedIds(new Set());
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 429) {
+        setError('YouTube search quota exhausted. Please try again later.');
+      } else {
+        setError('Search failed. Please check your connection and try again.');
+      }
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handlePin = async (linkId: number) => {
+    setPinningIds(prev => new Set(prev).add(linkId));
+    try {
+      await resourceLinksApi.pinResource(linkId);
+      setResults(prev => prev.filter(r => r.id !== linkId));
+      onResultPinned();
+    } catch {
+      // silently fail; user can retry
+    } finally {
+      setPinningIds(prev => {
+        const next = new Set(prev);
+        next.delete(linkId);
+        return next;
+      });
+    }
+  };
+
+  const handleDismiss = async (linkId: number) => {
+    try {
+      await resourceLinksApi.dismissResource(linkId);
+      setDismissedIds(prev => new Set(prev).add(linkId));
+    } catch {
+      // silently fail
+    }
+  };
+
+  const visibleResults = results.filter(r => !dismissedIds.has(r.id));
+
+  return (
+    <div className="vl-topic-group vl-search-section">
+      <button className="vl-topic-heading" onClick={() => setOpen(v => !v)}>
+        <ChevronIcon open={open} />
+        <span>Live Search Results</span>
+        <span className="vl-badge vl-badge--live"><SearchIcon size={11} /> Live search</span>
+      </button>
+      {open && (
+        <div className="vl-topic-body">
+          <div className="vl-search-bar">
+            <input
+              type="text"
+              className="vl-add-input vl-search-input"
+              placeholder="Search topic..."
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
+            />
+            <button
+              className="cm-action-btn primary"
+              onClick={handleSearch}
+              disabled={searching || !query.trim()}
+            >
+              {searching ? 'Searching...' : 'Search again'}
+            </button>
+          </div>
+
+          {searching && (
+            <div className="vl-search-loading">
+              <div className="vl-spinner" />
+              <span>Searching YouTube...</span>
+            </div>
+          )}
+
+          {error && <p className="vl-add-error">{error}</p>}
+
+          {!searching && searched && visibleResults.length === 0 && !error && (
+            <p className="vl-search-empty">No results found. Try a different search term.</p>
+          )}
+
+          {visibleResults.length > 0 && (
+            <div className="vl-youtube-grid">
+              {visibleResults.map(result => (
+                <SearchResultCard
+                  key={result.id}
+                  result={result}
+                  onPin={handlePin}
+                  onDismiss={handleDismiss}
+                  pinning={pinningIds.has(result.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Tab ───────────────────────────────────── */
 
-export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
+export function VideosLinksTab({ courseContentId, topicName, gradLevel, courseName }: VideosLinksTabProps) {
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const { data: groups = [], isLoading } = useQuery<ResourceLinkGroup[]>({
     queryKey: ['resource-links', courseContentId],
     queryFn: () => resourceLinksApi.list(courseContentId),
+  });
+
+  const { data: youtubeAvailable } = useQuery({
+    queryKey: ['youtube-search-available'],
+    queryFn: () => resourceLinksApi.checkYoutubeSearchAvailable(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const totalCount = groups.reduce((sum, g) => sum + g.links.length, 0);
@@ -286,6 +518,10 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
     queryClient.invalidateQueries({ queryKey: ['resource-links', courseContentId] });
   };
 
+  const handleResultPinned = () => {
+    queryClient.invalidateQueries({ queryKey: ['resource-links', courseContentId] });
+  };
+
   if (isLoading) {
     return (
       <div className="cm-tab-card">
@@ -298,20 +534,36 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
     );
   }
 
-  if (totalCount === 0 && !showAddForm) {
+  if (totalCount === 0 && !showAddForm && !showSearch) {
     return (
       <div className="cm-empty-tab">
         <div className="cm-empty-tab-icon"><VideoIcon /></div>
         <h3>No videos or links found</h3>
         <p>No videos or links were found in this material. You can add links manually.</p>
-        <button className="cm-empty-generate-btn" onClick={() => setShowAddForm(true)}>
-          <PlusIcon /> Add Link
-        </button>
+        <div className="vl-empty-actions">
+          <button className="cm-empty-generate-btn" onClick={() => setShowAddForm(true)}>
+            <PlusIcon /> Add Link
+          </button>
+          {youtubeAvailable?.available && (
+            <button className="cm-empty-generate-btn vl-find-more-btn" onClick={() => setShowSearch(true)}>
+              <SearchIcon /> Find More Resources
+            </button>
+          )}
+        </div>
         {showAddForm && (
           <AddLinkForm
             courseContentId={courseContentId}
             onAdded={handleAdded}
             onCancel={() => setShowAddForm(false)}
+          />
+        )}
+        {showSearch && (
+          <LiveSearchSection
+            courseContentId={courseContentId}
+            initialTopic={topicName || ''}
+            gradeLevel={gradLevel}
+            courseName={courseName}
+            onResultPinned={handleResultPinned}
           />
         )}
       </div>
@@ -322,12 +574,22 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
     <div className="vl-tab">
       <div className="vl-toolbar">
         <span className="vl-count">{totalCount} {totalCount === 1 ? 'link' : 'links'}</span>
-        <button
-          className="cm-action-btn"
-          onClick={() => setShowAddForm(v => !v)}
-        >
-          <PlusIcon /> Add Link
-        </button>
+        <div className="vl-toolbar-actions">
+          {youtubeAvailable?.available && (
+            <button
+              className="cm-action-btn vl-find-more-btn"
+              onClick={() => setShowSearch(v => !v)}
+            >
+              <SearchIcon /> Find More Resources
+            </button>
+          )}
+          <button
+            className="cm-action-btn"
+            onClick={() => setShowAddForm(v => !v)}
+          >
+            <PlusIcon /> Add Link
+          </button>
+        </div>
       </div>
 
       {showAddForm && (
@@ -346,6 +608,16 @@ export function VideosLinksTab({ courseContentId }: VideosLinksTabProps) {
           onDelete={handleDelete}
         />
       ))}
+
+      {showSearch && (
+        <LiveSearchSection
+          courseContentId={courseContentId}
+          initialTopic={topicName || ''}
+          gradeLevel={gradLevel}
+          courseName={courseName}
+          onResultPinned={handleResultPinned}
+        />
+      )}
     </div>
   );
 }

@@ -12,6 +12,10 @@ vi.mock('../../../api/resourceLinks', () => ({
     add: vi.fn(),
     delete: vi.fn(),
     reExtract: vi.fn(),
+    searchResources: vi.fn(),
+    pinResource: vi.fn(),
+    dismissResource: vi.fn(),
+    checkYoutubeSearchAvailable: vi.fn(),
   },
 }));
 
@@ -92,6 +96,7 @@ const MIXED_GROUPS: ResourceLinkGroup[] = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: false });
 });
 
 describe('VideosLinksTab', () => {
@@ -200,6 +205,120 @@ describe('VideosLinksTab', () => {
 
     await waitFor(() => {
       expect(screen.getByText('2 links')).toBeInTheDocument();
+    });
+  });
+
+  it('shows Find More Resources button when YouTube search is available', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: true });
+
+    render(<VideosLinksTab courseContentId={100} />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /find more resources/i })).toBeInTheDocument();
+    });
+  });
+
+  it('hides Find More Resources button when YouTube search is unavailable', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: false });
+
+    render(<VideosLinksTab courseContentId={100} />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('2 links')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /find more resources/i })).toBeNull();
+  });
+
+  it('opens live search section on Find More Resources click', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: true });
+    const user = userEvent.setup();
+
+    render(<VideosLinksTab courseContentId={100} />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /find more resources/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /find more resources/i }));
+
+    expect(screen.getByText('Live Search Results')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search topic...')).toBeInTheDocument();
+  });
+
+  it('displays search results after searching', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: true });
+    mockedApi.searchResources.mockResolvedValue([
+      {
+        id: 99,
+        url: 'https://www.youtube.com/watch?v=XYZ789',
+        resource_type: 'youtube',
+        title: 'Search Result Video',
+        description: 'A search result',
+        thumbnail_url: null,
+        youtube_video_id: 'XYZ789',
+        channel_name: 'Math Channel',
+        source: 'api_search',
+      },
+    ]);
+    const user = userEvent.setup();
+
+    render(<VideosLinksTab courseContentId={100} topicName="geometry" />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /find more resources/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /find more resources/i }));
+    await user.click(screen.getByRole('button', { name: /search again/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Search Result Video')).toBeInTheDocument();
+      expect(screen.getByText('Math Channel')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error on quota exhaustion', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: true });
+    mockedApi.searchResources.mockRejectedValue({ response: { status: 429 } });
+    const user = userEvent.setup();
+
+    render(<VideosLinksTab courseContentId={100} topicName="geometry" />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /find more resources/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /find more resources/i }));
+    await user.click(screen.getByRole('button', { name: /search again/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/quota exhausted/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows no results message when search returns empty', async () => {
+    mockedApi.list.mockResolvedValue(MIXED_GROUPS);
+    mockedApi.checkYoutubeSearchAvailable.mockResolvedValue({ available: true });
+    mockedApi.searchResources.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    render(<VideosLinksTab courseContentId={100} topicName="obscuretopic" />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /find more resources/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /find more resources/i }));
+    await user.click(screen.getByRole('button', { name: /search again/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/no results found/i)).toBeInTheDocument();
     });
   });
 });
