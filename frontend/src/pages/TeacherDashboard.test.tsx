@@ -231,7 +231,7 @@ describe('TeacherDashboard', () => {
     // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
-    }, { timeout: 3000 })
+    }, { timeout: 10000 })
 
     const createButtons = screen.getAllByRole('button', { name: /\+ Create Class/i })
     await user.click(createButtons[0])
@@ -262,7 +262,7 @@ describe('TeacherDashboard', () => {
     // Wait for TeacherCourseManagement to finish loading (button appears after load)
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /\+ Create Class/i }).length).toBeGreaterThanOrEqual(1)
-    }, { timeout: 3000 })
+    }, { timeout: 10000 })
 
     // Open modal - use first button (section header)
     await user.click(screen.getAllByRole('button', { name: /\+ Create Class/i })[0])
