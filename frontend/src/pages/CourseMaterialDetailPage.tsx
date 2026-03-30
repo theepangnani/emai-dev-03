@@ -228,6 +228,10 @@ export function CourseMaterialDetailPage() {
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
+  const chipAbortRef = useRef(false);
+  useEffect(() => {
+    return () => { chipAbortRef.current = true; };
+  }, []);
   const { selection, clearSelection } = useTextSelection(contentAreaRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -665,6 +669,7 @@ export function CourseMaterialDetailPage() {
         document_type: content?.document_type || undefined,
         study_goal: content?.study_goal || undefined,
       });
+      if (chipAbortRef.current) return;
       const children = await studyApi.listChildGuides(studyGuide.id);
       setChildGuides(children);
       refreshAIUsage();

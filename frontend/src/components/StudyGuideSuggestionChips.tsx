@@ -38,6 +38,7 @@ export default function StudyGuideSuggestionChips({
               onClick={() => onTopicClick(topic)}
               disabled={disabled || isAnyGenerating}
               title={topic.description}
+              aria-label={`Explore: ${topic.label}`}
             >
               {isThis && <span className="sg-chip-spinner" />}
               <span className="sg-chip-label">{topic.label}</span>
