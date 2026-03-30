@@ -51,6 +51,7 @@ class StudyGuideResponse(BaseModel):
     is_truncated: bool = False
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
+    suggestion_topics: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True

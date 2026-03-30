@@ -1637,6 +1637,22 @@ def _run_migrations_inner(engine):
         except Exception as e:
             logger.warning("study_guides strategy columns migration failed (#1973): %s", e)
 
+        # Progressive study guide — suggestion_topics column (#2696)
+        try:
+            with engine.connect() as conn:
+                inspector_st = sa_inspect(engine)
+                if "study_guides" in inspector_st.get_table_names():
+                    existing_cols = {c["name"] for c in inspector_st.get_columns("study_guides")}
+                    if "suggestion_topics" not in existing_cols:
+                        try:
+                            conn.execute(text("ALTER TABLE study_guides ADD COLUMN suggestion_topics TEXT"))
+                            logger.info("Added 'suggestion_topics' column to study_guides (#2696)")
+                        except Exception:
+                            conn.rollback()
+                        conn.commit()
+        except Exception as e:
+            logger.warning("study_guides suggestion_topics migration failed (#2696): %s", e)
+
         # ── Add missing indexes on frequently-queried columns (#1961) ──
         with engine.connect() as conn:
             _index_statements = [

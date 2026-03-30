@@ -266,7 +266,7 @@ def _build_study_guide_prompt(
     """
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
-    prompt = f"""Create a comprehensive study guide for the following assignment:
+    prompt = f"""Create a concise, one-page overview summary for the following assignment. Keep it high-level — this is an overview for the student to quickly understand the key topics, not a full detailed study guide:
 
 **Assignment:** {assignment_title}
 **Course:** {course_name}{due_info}
@@ -298,7 +298,13 @@ IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source 
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
 If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
 ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
-Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
+Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all.
+
+After any CRITICAL_DATES section (or at the very end if no dates), include a section for deeper exploration:
+--- SUGGESTION_TOPICS ---
+[{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
+
+Generate exactly 4-6 suggestion topics that represent the most important subtopics a student would want to explore in more depth. Each topic should be specific enough to generate a focused sub-guide. Always include this section."""
 
     if images:
         image_list = _build_image_list(images)
@@ -365,7 +371,7 @@ async def generate_study_guide(
         interests=interests,
     )
 
-    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
+    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=1500)
     return content, stop_reason == "max_tokens"
 
 
@@ -436,7 +442,7 @@ async def generate_study_guide_stream(
                 model=settings.claude_model,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=4096,
+                max_tokens=1500,
                 temperature=0.7,
             ) as stream:
                 async for text in stream.text_stream:

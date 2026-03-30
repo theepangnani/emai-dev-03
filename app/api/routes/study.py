@@ -324,6 +324,37 @@ def parse_critical_dates(content: str) -> tuple[str, list[dict]]:
         return clean_content, []
 
 
+SUGGESTION_TOPICS_SEPARATOR = "--- SUGGESTION_TOPICS ---"
+
+
+def parse_suggestion_topics(content: str) -> tuple[str, list[dict]]:
+    """Parse SUGGESTION_TOPICS section from AI response.
+    Returns (clean_content, topics_list).
+    """
+    if SUGGESTION_TOPICS_SEPARATOR not in content:
+        return content, []
+
+    parts = content.split(SUGGESTION_TOPICS_SEPARATOR, 1)
+    clean_content = parts[0].rstrip()
+    topics_raw = parts[1].strip()
+    topics_raw = strip_json_fences(topics_raw)
+
+    try:
+        topics = json.loads(topics_raw)
+        if not isinstance(topics, list):
+            return clean_content, []
+        valid = []
+        for t in topics:
+            if isinstance(t, dict) and t.get("label"):
+                valid.append({
+                    "label": str(t["label"])[:60],
+                    "description": str(t.get("description", ""))[:200],
+                })
+        return clean_content, valid[:6]
+    except (json.JSONDecodeError, TypeError):
+        return clean_content, []
+
+
 # Month name → number mapping for date scanning
 _MONTH_MAP = {
     "jan": 1, "january": 1, "feb": 2, "february": 2,
@@ -646,8 +677,9 @@ async def generate_study_guide_endpoint(
         detail = f"AI generation failed: {type(e).__name__}: {str(e)}"
         raise HTTPException(status_code=500, detail=detail[:500])
 
-    # Parse critical dates from AI response
-    content, critical_dates = parse_critical_dates(raw_content)
+    # Parse suggestion topics and critical dates from AI response
+    content, suggestion_topics = parse_suggestion_topics(raw_content)
+    content, critical_dates = parse_critical_dates(content)
 
     # Post-process to add unplaced images
     if images_metadata:
@@ -688,6 +720,7 @@ async def generate_study_guide_endpoint(
         content_hash=content_hash,
         focus_prompt=body.focus_prompt or None,
         is_truncated=is_truncated,
+        suggestion_topics=json.dumps(suggestion_topics) if suggestion_topics else None,
     )
     db.add(study_guide)
     db.flush()
@@ -2762,7 +2795,8 @@ async def generate_study_guide_stream_endpoint(
             return
 
         # Post-process: parse critical dates, append unplaced images
-        processed_content, critical_dates = parse_critical_dates(full_content)
+        processed_content, suggestion_topics = parse_suggestion_topics(full_content)
+        processed_content, critical_dates = parse_critical_dates(processed_content)
         if images_metadata:
             processed_content = _append_unplaced_images(processed_content, images_metadata)
 
@@ -2775,6 +2809,8 @@ async def generate_study_guide_stream_endpoint(
                     guide.content = processed_content
                     guide.is_truncated = is_truncated
                     guide.content_hash = content_hash
+                    if suggestion_topics:
+                        guide.suggestion_topics = json.dumps(suggestion_topics)
 
                     # Debit AI usage
                     from app.models.user import User as _User
