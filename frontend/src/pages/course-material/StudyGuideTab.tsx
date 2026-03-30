@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
@@ -14,6 +14,7 @@ import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import { ContentMetaBar } from './ContentMetaBar';
 import ParentSummaryCard from '../../components/ParentSummaryCard';
+import StudyGuideSuggestionChips, { type SuggestionTopic } from '../../components/StudyGuideSuggestionChips';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -45,6 +46,8 @@ interface StudyGuideTabProps {
   savedStudyGoal?: string;
   /** Saved study goal text from CourseContent */
   savedStudyGoalText?: string;
+  onGenerateChildGuide?: (topic: string, guideType: string) => Promise<void>;
+  childGuideGenerating?: string | null;
 }
 
 function FocusIcon() {
@@ -91,6 +94,8 @@ export function StudyGuideTab({
   savedDocumentType,
   savedStudyGoal,
   savedStudyGoalText,
+  onGenerateChildGuide,
+  childGuideGenerating,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -153,6 +158,15 @@ export function StudyGuideTab({
       setContinuing(false);
     }
   };
+
+  const parsedSuggestionTopics = useMemo(() => {
+    if (!studyGuide?.suggestion_topics) return [];
+    try {
+      return JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
+    } catch {
+      return [];
+    }
+  }, [studyGuide?.suggestion_topics]);
 
   const handleGenerateWithContext = () => {
     onGenerate({
@@ -222,6 +236,14 @@ export function StudyGuideTab({
                 </ContentCard>
               </div>
             </>
+          )}
+          {!isStreaming && parsedSuggestionTopics.length > 0 && (
+            <StudyGuideSuggestionChips
+              topics={parsedSuggestionTopics}
+              onTopicClick={(t) => onGenerateChildGuide?.(t.label, 'study_guide')}
+              disabled={atLimit}
+              generatingTopic={childGuideGenerating}
+            />
           )}
           {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">

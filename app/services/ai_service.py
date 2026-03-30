@@ -266,7 +266,7 @@ def _build_study_guide_prompt(
     """
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
-    prompt = f"""Create a comprehensive study guide for the following assignment:
+    prompt = f"""Create a concise, one-page overview summary for the following assignment. Keep it high-level — this is an overview for the student to quickly understand the key topics, not a full detailed study guide:
 
 **Assignment:** {assignment_title}
 **Course:** {course_name}{due_info}
@@ -276,18 +276,16 @@ def _build_study_guide_prompt(
 
 Analyze the content above. If it contains math problems, equations, science calculations, or any exercises/questions that require solving, then:
 
-1. **Worked Solutions** - Solve each problem step-by-step with clear explanations
-2. **Key Concepts** - Explain the underlying concepts used in the solutions
-3. **Common Mistakes** - Warn about typical errors students make on these types of problems
-4. **Practice Problems** - 2-3 similar problems for extra practice (with answers)
+1. **Key Problem Types** — Briefly list the types of problems covered and what each requires
+2. **Key Concepts** — Summarize the underlying concepts in a few bullet points
+3. **Common Mistakes** — Warn about typical errors students make on these types of problems
 
 If the content is conceptual/reading material (no problems to solve), then:
 
-1. **Key Concepts** - Main topics and ideas to understand
-2. **Important Terms** - Vocabulary with definitions
-3. **Study Tips** - Strategies for mastering this material
-4. **Practice Questions** - 3-5 questions to test understanding
-5. **Resources** - Suggested areas to review
+1. **Key Topics** — Bullet-point summary of main concepts covered
+2. **Important Terms** — Brief definitions of key vocabulary
+
+Keep the overview to approximately one page. Do not include full solutions, practice problems, or detailed explanations — those will be covered in focused sub-guides.
 
 Format the response in Markdown for easy reading. For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations (e.g., $\\frac{{a}}{{b}}$, $x^2$, $\\sqrt{{n}}$).
 
@@ -298,7 +296,13 @@ IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source 
 Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
 If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
 ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
-Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all."""
+Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all.
+
+After any CRITICAL_DATES section (or at the very end if no dates), include a section for deeper exploration:
+--- SUGGESTION_TOPICS ---
+[{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
+
+Generate exactly 4-6 suggestion topics that represent the most important subtopics a student would want to explore in more depth. Each topic should be specific enough to generate a focused sub-guide. Always include this section."""
 
     if images:
         image_list = _build_image_list(images)
@@ -321,9 +325,9 @@ Do NOT use "---" (horizontal rule) as a separator before or around image section
     if custom_prompt:
         system_prompt = custom_prompt
     else:
-        system_prompt = """You are an expert educational tutor. When given math problems or exercises, solve them
-step-by-step with clear explanations so students can learn the process. For conceptual material, create
-well-organized study guides. Use simple language, practical examples, and clean Markdown formatting."""
+        system_prompt = """You are an expert educational tutor. Create concise overview summaries that help students
+understand what an assignment covers at a high level. Do not solve problems or provide detailed explanations —
+keep it brief and scannable. Use simple language and clean Markdown formatting."""
 
     system_prompt += _interests_instruction(interests)
 
@@ -365,7 +369,7 @@ async def generate_study_guide(
         interests=interests,
     )
 
-    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=4096)
+    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=2000)
     return content, stop_reason == "max_tokens"
 
 
@@ -436,7 +440,7 @@ async def generate_study_guide_stream(
                 model=settings.claude_model,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=4096,
+                max_tokens=2000,
                 temperature=0.7,
             ) as stream:
                 async for text in stream.text_stream:

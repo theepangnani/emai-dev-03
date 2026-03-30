@@ -33,6 +33,7 @@ class StudyGuide(Base):
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary
     curriculum_codes = Column(Text, nullable=True)  # JSON array of {concept, curriculum_code, strand}
+    suggestion_topics = Column(Text, nullable=True)  # JSON array of {label, description}
 
     # Sharing (parent → child)
     shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
