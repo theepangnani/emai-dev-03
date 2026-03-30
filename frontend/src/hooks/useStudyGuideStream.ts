@@ -34,6 +34,17 @@ export interface UseStudyGuideStreamReturn extends StreamState {
 
 const FLUSH_INTERVAL_MS = 80;
 
+/** Strip metadata separators and their JSON payloads from displayed content. */
+function stripMetadataSections(content: string): string {
+  const critIdx = content.indexOf('--- CRITICAL_DATES ---');
+  const sugIdx = content.indexOf('--- SUGGESTION_TOPICS ---');
+  const cutIdx = Math.min(
+    critIdx >= 0 ? critIdx : Infinity,
+    sugIdx >= 0 ? sugIdx : Infinity,
+  );
+  return cutIdx < Infinity ? content.substring(0, cutIdx).trimEnd() : content;
+}
+
 const initialState: StreamState = {
   status: 'idle',
   content: '',
@@ -83,10 +94,10 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
     stopFlushInterval();
     flushIntervalRef.current = setInterval(() => {
       if (!isMountedRef.current) return;
-      const buffered = contentBufferRef.current;
+      const displayed = stripMetadataSections(contentBufferRef.current);
       setState(prev => {
-        if (prev.content === buffered) return prev;
-        return { ...prev, content: buffered };
+        if (prev.content === displayed) return prev;
+        return { ...prev, content: displayed };
       });
     }, FLUSH_INTERVAL_MS);
   }, [stopFlushInterval]);
@@ -99,10 +110,10 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
     stopFlushInterval();
     if (isMountedRef.current) {
       // Flush any remaining buffered content
-      const buffered = contentBufferRef.current;
+      const displayed = stripMetadataSections(contentBufferRef.current);
       setState(prev => ({
         ...prev,
-        content: buffered || prev.content,
+        content: displayed || prev.content,
         status: prev.status === 'done' ? 'done' : 'error',
         error: prev.status === 'done' ? null : 'Stream aborted',
       }));
@@ -202,7 +213,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
                 case 'done': {
                   // Final flush of buffered content
                   stopFlushInterval();
-                  const finalContent = contentBufferRef.current;
+                  const finalContent = stripMetadataSections(contentBufferRef.current);
                   if (isMountedRef.current) {
                     setState(prev => ({
                       ...prev,
@@ -220,7 +231,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
                     setState(prev => ({
                       ...prev,
                       status: 'error',
-                      content: contentBufferRef.current,
+                      content: stripMetadataSections(contentBufferRef.current),
                       error: data.message ?? 'An error occurred during generation.',
                     }));
                   }
@@ -237,7 +248,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
           stopFlushInterval();
           setState(prev => {
             if (prev.status === 'done' || prev.status === 'error') return prev;
-            return { ...prev, status: 'done', content: contentBufferRef.current };
+            return { ...prev, status: 'done', content: stripMetadataSections(contentBufferRef.current) };
           });
         }
       } catch (err: unknown) {
@@ -250,7 +261,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
           setState(prev => ({
             ...prev,
             status: 'error',
-            content: contentBufferRef.current,
+            content: stripMetadataSections(contentBufferRef.current),
             error: 'Could not connect to the server. Please try again.',
           }));
         }
