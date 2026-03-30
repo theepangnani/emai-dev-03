@@ -159,7 +159,7 @@ export function Login() {
           </div>
         )}
 
-        {error && <div className="auth-error">{error}<ReportBugLink errorMessage={error} /></div>}
+        {error && <div className="auth-error" id="login-error" aria-live="polite">{error}<ReportBugLink errorMessage={error} /></div>}
 
         {remainingAttempts !== null && remainingAttempts <= 2 && (
           <div className="auth-warning">

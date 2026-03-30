@@ -11,6 +11,9 @@ interface PasswordInputProps {
   autoComplete?: string;
   minLength?: number;
   disabled?: boolean;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean | 'true' | 'false';
+  'aria-required'?: boolean | 'true' | 'false';
 }
 
 export function PasswordInput({
@@ -23,6 +26,9 @@ export function PasswordInput({
   autoComplete,
   minLength,
   disabled,
+  'aria-describedby': ariaDescribedby,
+  'aria-invalid': ariaInvalid,
+  'aria-required': ariaRequired,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
@@ -39,6 +45,9 @@ export function PasswordInput({
         autoComplete={autoComplete}
         minLength={minLength}
         disabled={disabled}
+        aria-describedby={ariaDescribedby}
+        aria-invalid={ariaInvalid}
+        aria-required={ariaRequired}
       />
       <button
         type="button"
