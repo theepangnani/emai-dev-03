@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.resource_link import ResourceLink
+import app.models.teacher  # noqa: F401 — ensure Teacher model loaded for Course relationship
 from app.services.ai_service import generate_content, get_last_ai_usage
 from app.services.ai_usage import log_ai_usage
 
