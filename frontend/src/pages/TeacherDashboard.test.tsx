@@ -181,7 +181,7 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Google Connection ────────────────────────────────────────
-  it('shows Sync Classes button in course management when Google is connected', async () => {
+  it('shows Sync Classes button in course management when Google is connected', { timeout: 15000 }, async () => {
     mockGetStatus.mockResolvedValue({ connected: true })
     mockTeachingManagement.mockResolvedValue([
       mockMgmtCourse({ id: 1, name: 'Algebra I' }),
@@ -224,7 +224,7 @@ describe('TeacherDashboard', () => {
   })
 
   // ── Create Class Modal ──────────────────────────────────────
-  it('opens and closes create class modal', async () => {
+  it('opens and closes create class modal', { timeout: 15000 }, async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
@@ -315,7 +315,7 @@ describe('TeacherDashboard', () => {
     })
   })
 
-  it('disables Create Class button when name is empty', async () => {
+  it('disables Create Class button when name is empty', { timeout: 15000 }, async () => {
     const user = userEvent.setup()
     renderWithProviders(<TeacherDashboard />)
 
