@@ -9,6 +9,16 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def mask_email(email: str) -> str:
+    """Mask an email address for safe logging: t***@example.com."""
+    if not email or "@" not in email:
+        return "***"
+    local, domain = email.rsplit("@", 1)
+    if len(local) <= 1:
+        return f"*@{domain}"
+    return f"{local[0]}***@{domain}"
+
+
 def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
     """Send via SendGrid API."""
     from sendgrid import SendGridAPIClient
@@ -26,7 +36,7 @@ def _send_via_sendgrid(to_email: str, subject: str, html_content: str) -> bool:
     response = sg.send(message)
     if response.status_code not in (200, 201, 202):
         raise RuntimeError(f"SendGrid returned status {response.status_code}: {response.body}")
-    logger.info(f"Email sent via SendGrid to {to_email} | status={response.status_code}")
+    logger.info("Email sent via SendGrid to %s | status=%s", mask_email(to_email), response.status_code)
     return True
 
 
@@ -43,7 +53,7 @@ def _send_via_smtp(to_email: str, subject: str, html_content: str) -> bool:
         server.login(settings.smtp_user, settings.smtp_password)
         server.send_message(msg)
 
-    logger.info(f"Email sent via SMTP to {to_email} | subject={subject}")
+    logger.info("Email sent via SMTP to %s | subject=%s", mask_email(to_email), subject)
     return True
 
 
