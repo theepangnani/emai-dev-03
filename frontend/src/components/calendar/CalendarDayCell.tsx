@@ -83,7 +83,7 @@ export function CalendarDayCell({ date, isCurrentMonth, assignments, onAssignmen
           />
         ))}
         {overflow > 0 && (
-          <div className="cal-day-more" onClick={() => onDayClick(date)}>
+          <div className="cal-day-more" role="button" tabIndex={0} onClick={() => onDayClick(date)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDayClick(date); } }}>
             +{overflow} more
           </div>
         )}
