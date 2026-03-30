@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { resourceLinksApi, type ResourceLinkGroup, type ResourceLinkItem, type SearchResourceResult } from '../../api/resourceLinks';
 import './VideosLinksTab.css';
@@ -80,9 +80,40 @@ function PinIcon() {
   );
 }
 
+/* ── YouTubeFallbackCard ───────────────────────────── */
+
+function YouTubeFallbackCard({ videoId, title }: { videoId: string; title: string | null }) {
+  return (
+    <div className="vl-youtube-card">
+      <a
+        href={`https://www.youtube.com/watch?v=${videoId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="vl-youtube-fallback"
+      >
+        <VideoIcon />
+        <span className="vl-youtube-fallback-title">{title || 'YouTube Video'}</span>
+        <span className="vl-youtube-fallback-msg">Video may be unavailable — click to open on YouTube</span>
+        <ExternalLinkIcon size={14} />
+      </a>
+    </div>
+  );
+}
+
 /* ── YouTubeEmbed ───────────────────────────────── */
 
-function YouTubeEmbed({ videoId, title, description }: { videoId: string; title: string | null; description: string | null }) {
+function YouTubeEmbed({ videoId, title, description, thumbnailUrl }: { videoId: string; title: string | null; description: string | null; thumbnailUrl?: string | null }) {
+  const [embedFailed, setEmbedFailed] = useState(false);
+
+  const handleIframeError = useCallback(() => {
+    setEmbedFailed(true);
+  }, []);
+
+  // If oEmbed enrichment failed (no thumbnail_url) or embed errored, show fallback
+  if (!thumbnailUrl || embedFailed) {
+    return <YouTubeFallbackCard videoId={videoId} title={title} />;
+  }
+
   return (
     <div className="vl-youtube-card">
       <div className="vl-youtube-wrapper">
@@ -94,6 +125,7 @@ function YouTubeEmbed({ videoId, title, description }: { videoId: string; title:
           allowFullScreen
           loading="lazy"
           title={title || 'YouTube video'}
+          onError={handleIframeError}
         />
       </div>
       <div className="vl-youtube-info">
@@ -168,6 +200,7 @@ function TopicGroup({
                     videoId={link.youtube_video_id!}
                     title={link.title}
                     description={link.description}
+                    thumbnailUrl={link.thumbnail_url}
                   />
                   <button
                     className="vl-delete-btn"
@@ -280,6 +313,7 @@ function AISuggestedYouTubeCard({
         videoId={link.youtube_video_id!}
         title={link.title}
         description={link.description}
+        thumbnailUrl={link.thumbnail_url}
       />
       <span className="vl-ai-badge vl-ai-badge--floating">AI-suggested</span>
       <div className="vl-ai-youtube-actions">
@@ -453,24 +487,28 @@ function SearchResultCard({
   return (
     <div className="vl-search-result">
       {result.youtube_video_id ? (
-        <div className="vl-youtube-card">
-          <div className="vl-youtube-wrapper">
-            <iframe
-              src={`https://www.youtube.com/embed/${result.youtube_video_id}`}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              loading="lazy"
-              title={result.title || 'YouTube video'}
-            />
+        result.thumbnail_url ? (
+          <div className="vl-youtube-card">
+            <div className="vl-youtube-wrapper">
+              <iframe
+                src={`https://www.youtube.com/embed/${result.youtube_video_id}`}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                loading="lazy"
+                title={result.title || 'YouTube video'}
+              />
+            </div>
+            <div className="vl-youtube-info">
+              {result.title && <p className="vl-youtube-title">{result.title}</p>}
+              {result.channel_name && <p className="vl-search-channel">{result.channel_name}</p>}
+              {result.description && <p className="vl-youtube-desc">{result.description}</p>}
+            </div>
           </div>
-          <div className="vl-youtube-info">
-            {result.title && <p className="vl-youtube-title">{result.title}</p>}
-            {result.channel_name && <p className="vl-search-channel">{result.channel_name}</p>}
-            {result.description && <p className="vl-youtube-desc">{result.description}</p>}
-          </div>
-        </div>
+        ) : (
+          <YouTubeFallbackCard videoId={result.youtube_video_id} title={result.title} />
+        )
       ) : (
         <div className="vl-link-card" style={{ cursor: 'default' }}>
           <div className="vl-link-card-body">
