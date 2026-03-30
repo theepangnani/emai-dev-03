@@ -73,6 +73,7 @@ class StudyQAService:
         guide_content: str,
         source_content: str | None = None,
         image_descriptions: str | None = None,
+        resource_links: list | None = None,
     ) -> str:
         content = self._truncate(guide_content, MAX_GUIDE_CHARS)
         source_section = ""
@@ -90,11 +91,91 @@ class StudyQAService:
                 + self._truncate(image_descriptions, MAX_IMAGE_DESC_CHARS)
                 + "\n---"
             )
+        if resource_links:
+            parts = []
+            for link in resource_links:
+                title = getattr(link, "title", None) or "Untitled"
+                url = getattr(link, "url", "")
+                rtype = getattr(link, "resource_type", "external_link")
+                topic = getattr(link, "topic_heading", None) or ""
+                desc = getattr(link, "description", None) or ""
+                entry = f"- [{title}]({url}) ({rtype})"
+                if topic:
+                    entry += f" — Topic: {topic}"
+                if desc:
+                    entry += f" — {desc[:200]}"
+                parts.append(entry)
+            source_section += (
+                "\n\nRELATED RESOURCES (videos and links for this material):\n"
+                "You may reference these resources in your answers when relevant.\n---\n"
+                + "\n".join(parts)
+                + "\n---"
+            )
         return SYSTEM_PROMPT.format(
             guide_title=guide_title,
             guide_content=content,
             source_section=source_section,
         )
+
+    @staticmethod
+    def _match_resource_links(message: str, resource_links: list, max_links: int = 5) -> tuple[list, list]:
+        """Match resource links to user question by keyword overlap. Returns (sources, videos)."""
+        if not resource_links:
+            return [], []
+
+        message_lower = message.lower()
+        message_words = set(message_lower.split())
+
+        scored = []
+        for link in resource_links:
+            # Build searchable text from link metadata
+            searchable = " ".join(filter(None, [
+                getattr(link, "title", None),
+                getattr(link, "topic_heading", None),
+                getattr(link, "description", None),
+            ])).lower()
+            searchable_words = set(searchable.split())
+
+            # Score by word overlap (skip very short/common words)
+            overlap = sum(1 for w in message_words if len(w) > 2 and w in searchable_words)
+            # Boost if any message word appears as substring in title/topic
+            title_topic = " ".join(filter(None, [
+                getattr(link, "title", None),
+                getattr(link, "topic_heading", None),
+            ])).lower()
+            for w in message_words:
+                if len(w) > 3 and w in title_topic:
+                    overlap += 1
+
+            if overlap > 0:
+                scored.append((overlap, link))
+
+        # Sort by score descending, take top N
+        scored.sort(key=lambda x: x[0], reverse=True)
+        top = [link for _, link in scored[:max_links]]
+
+        sources = []
+        videos = []
+        for link in top:
+            rtype = getattr(link, "resource_type", "external_link")
+            title = getattr(link, "title", None) or "Untitled"
+            url = getattr(link, "url", "")
+            if rtype == "youtube":
+                videos.append({
+                    "title": title,
+                    "url": url,
+                    "provider": "youtube",
+                })
+            else:
+                # External links go into videos too — frontend VideoEmbed
+                # renders non-YouTube URLs as clickable <a> tags
+                videos.append({
+                    "title": title,
+                    "url": url,
+                    "provider": "external",
+                })
+
+        return sources, videos
 
     async def stream_answer(
         self,
@@ -105,6 +186,7 @@ class StudyQAService:
         user_id: int,
         conversation_history: list[dict] | None = None,
         image_descriptions: str | None = None,
+        resource_links: list | None = None,
     ):
         """Async generator yielding SSE event dicts for study Q&A.
 
@@ -123,7 +205,9 @@ class StudyQAService:
             }
             return
 
-        system_prompt = self.build_system_prompt(guide_title, guide_content, source_content, image_descriptions)
+        system_prompt = self.build_system_prompt(
+            guide_title, guide_content, source_content, image_descriptions, resource_links
+        )
 
         # Build messages with conversation history
         messages = []
@@ -158,10 +242,15 @@ class StudyQAService:
 
             cost = _calc_cost(HAIKU_MODEL, input_tokens, output_tokens)
 
+            # Match resource links to the user's question
+            matched_sources, matched_videos = self._match_resource_links(
+                message, resource_links or []
+            )
+
             yield {
                 "type": "done",
-                "sources": [],
-                "videos": [],
+                "sources": matched_sources,
+                "videos": matched_videos,
                 "mode": "study_qa",
                 "credits_used": float(CREDITS_PER_QUESTION),
                 "input_tokens": input_tokens,

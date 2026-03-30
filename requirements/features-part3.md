@@ -1613,6 +1613,7 @@ Treat link-rich teacher content as a **Course Material** (same as any uploaded d
 | description | TEXT | Optional description or timestamp notes from source text |
 | thumbnail_url | VARCHAR(2048) | YouTube thumbnail URL (auto-populated) |
 | youtube_video_id | VARCHAR(20) | Extracted YouTube video ID (for embed) |
+| source | VARCHAR(20) | `teacher_shared` (default), `ai_suggested`, `api_search` — added in §6.57.2 |
 | display_order | INTEGER | Ordering within topic group |
 | created_at | DATETIME | Auto-set |
 
@@ -1704,6 +1705,96 @@ Link: https://youtube.com/watch?v=GHI789
 - [x] Frontend: "Videos & Links" tab on CourseMaterialDetailPage (#1323, PR #1335)
 - [x] Frontend: YouTube embed component + topic grouping (#1325, PR #1335)
 - [x] Tests: Link extraction service + API route tests (#1326, PR #1336)
+
+---
+
+### 6.57.2 AI-Suggested External Study Resources (Phase A) — IMPLEMENTED
+
+**Added:** 2026-03-27 | **Implemented:** 2026-03-30 | **Issues:** #2487, #2488, #2489, #2490 | **PR:** #2664
+
+When a study guide is generated, the system automatically suggests relevant external study materials (YouTube videos, educational websites) and populates them into the Videos & Links tab with an "AI-suggested" badge.
+
+#### Changes
+
+1. **`source` column on `resource_links`** — `VARCHAR(20) DEFAULT 'teacher_shared'`. Values: `teacher_shared`, `ai_suggested`, `api_search`. Distinguishes origin of links.
+
+2. **AI Resource Suggestion Service** (`app/services/resource_suggestion_service.py`):
+   - After study guide generation, makes a follow-up AI call (gpt-4o-mini/Claude)
+   - Suggests 5 YouTube videos + 3 web resources for the topic
+   - Ontario curriculum context in prompt
+   - Trusted domain whitelist (Khan Academy, YouTube, Desmos, GeoGebra, PhET, Wikipedia, etc.)
+   - URL validation via HEAD requests (best effort)
+   - Stores results as `resource_links` with `source=ai_suggested`
+   - Token usage tracked in `ai_usage_history`
+   - Fire-and-forget via `asyncio.create_task` (non-blocking)
+   - Deduplicates: removes old AI suggestions before inserting new ones
+
+3. **Frontend: "AI-Suggested Resources" section** in VideosLinksTab:
+   - Separate collapsible section below teacher-shared links
+   - Purple "AI-suggested" badge on each link
+   - Pin action (converts to permanent teacher_shared link)
+   - Dismiss action (removes the suggestion)
+   - Section hidden when no AI-suggested links exist
+
+#### API Endpoints (new)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| PATCH | `/api/resource-links/{id}/pin` | Authenticated | Pin AI/search link as teacher_shared |
+| DELETE | `/api/resource-links/{id}/dismiss` | Authenticated | Dismiss (delete) an AI/search link |
+
+---
+
+### 6.57.3 On-Demand Live Resource Search via YouTube Data API (Phase B) — IMPLEMENTED
+
+**Added:** 2026-03-27 | **Implemented:** 2026-03-30 | **Issues:** #2492, #2493, #2494 | **PR:** #2664
+
+Adds a "Find More Resources" button that performs a live YouTube Data API v3 search for the current topic.
+
+#### Changes
+
+1. **YouTube Data API v3 Integration** (`app/services/live_search_service.py`):
+   - `search_youtube(query, max_results)` — calls YouTube `search.list`
+   - Filters: `type=video`, `videoEmbeddable=true`, `relevanceLanguage=en`
+   - Query built from topic + course + grade + "Ontario curriculum"
+   - Rate limiting: 10 searches per user per hour (in-memory)
+   - Result caching: 24-hour TTL per (topic, grade) key
+   - Error handling: quota exhausted, network failure, invalid API key
+
+2. **Config:** `YOUTUBE_API_KEY` in settings (optional — feature disabled if not set)
+
+3. **API Endpoints (new):**
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/features/youtube-search` | Authenticated | Check if YouTube search is available |
+| POST | `/api/course-contents/{id}/search-resources` | Authenticated | Live YouTube search for topic |
+
+4. **Frontend: "Find More Resources" button** in VideosLinksTab:
+   - Button hidden when API key not configured (feature flag check)
+   - Editable search query (pre-populated with topic)
+   - Loading spinner during search
+   - Green "Live search" badge on results
+   - Pin/dismiss actions on each result
+   - Error states: quota exhausted, network failure, no results
+
+---
+
+### 6.114.1 Study Q&A Chatbot — Surface Resource Links in Answers — IMPLEMENTED
+
+**Added:** 2026-03-28 | **Implemented:** 2026-03-30 | **Issue:** #2543 | **PR:** #2664
+
+When a user asks a question in the Study Q&A chatbot, the AI surfaces relevant resource links from the associated course material alongside its answer.
+
+#### Changes
+
+1. **Backend** (`app/api/routes/help.py`, `app/services/study_qa_service.py`):
+   - `_load_study_guide_for_qa()` now loads `resource_links` for the course content
+   - `RELATED RESOURCES` section appended to AI system prompt
+   - Keyword matching between user question and link metadata (title, topic, description)
+   - Top 5 relevant links returned in `done` SSE event (`sources`/`videos` fields)
+
+2. **Frontend:** No changes needed — existing `useHelpChat.ts` and `VideoEmbed` component already handle the `videos` field from SSE events.
 
 ---
 

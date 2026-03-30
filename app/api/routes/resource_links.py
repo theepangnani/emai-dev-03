@@ -1,9 +1,11 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, can_access_course
+from app.core.config import settings
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.course_content import CourseContent
@@ -19,6 +21,10 @@ from app.services.link_extraction_service import (
     extract_and_enrich_links,
     extract_youtube_video_id,
     enrich_youtube_metadata,
+)
+from app.services.live_search_service import (
+    search_youtube_for_topic,
+    YouTubeSearchResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -205,6 +211,48 @@ def delete_resource_link(
     db.commit()
 
 
+@router.patch(
+    "/resource-links/{link_id}/pin",
+    response_model=ResourceLinkResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def pin_resource_link(
+    request: Request,
+    link_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pin an AI-suggested or API-searched link as a permanent teacher-shared resource."""
+    link = _get_link_or_404(db, link_id)
+    content = _get_content_or_404(db, link.course_content_id)
+    _check_course_access(db, current_user, content)
+
+    link.source = "teacher_shared"
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+@router.delete(
+    "/resource-links/{link_id}/dismiss",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def dismiss_resource_link(
+    request: Request,
+    link_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Dismiss (delete) an AI-suggested or API-searched link."""
+    link = _get_link_or_404(db, link_id)
+    content = _get_content_or_404(db, link.course_content_id)
+    _check_course_access(db, current_user, content)
+
+    db.delete(link)
+    db.commit()
+
+
 @router.post(
     "/course-contents/{content_id}/extract-links",
     response_model=list[ResourceLinkResponse],
@@ -257,3 +305,92 @@ def extract_resource_links(
         db.refresh(link)
 
     return new_links
+
+
+# ---------------------------------------------------------------------------
+# YouTube live search (§6.57.3)
+# ---------------------------------------------------------------------------
+
+
+class SearchResourcesRequest(BaseModel):
+    topic: str
+    grade_level: str
+    course_name: str
+    save: bool = False
+
+
+class SearchResourcesResponse(BaseModel):
+    title: str
+    description: str
+    video_id: str
+    thumbnail_url: str
+    channel_title: str
+
+
+@router.get("/features/youtube-search")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def youtube_search_feature_flag(
+    request: Request,
+    _current_user: User = Depends(get_current_user),
+):
+    """Check whether YouTube search is available (API key configured)."""
+    return {"available": bool(settings.youtube_api_key)}
+
+
+@router.post(
+    "/course-contents/{content_id}/search-resources",
+    response_model=list[SearchResourcesResponse],
+)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def search_resources(
+    request: Request,
+    content_id: int,
+    data: SearchResourcesRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Search YouTube for educational resources related to a course content topic."""
+    content = _get_content_or_404(db, content_id)
+    _check_course_access(db, current_user, content)
+
+    try:
+        results = search_youtube_for_topic(
+            user_id=current_user.id,
+            topic=data.topic,
+            course_name=data.course_name,
+            grade_level=data.grade_level,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS
+            if "Rate limit" in str(exc)
+            else status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        )
+
+    # Optionally save results as resource_links
+    if data.save:
+        for r in results:
+            link = ResourceLink(
+                course_content_id=content_id,
+                url=f"https://www.youtube.com/watch?v={r.video_id}",
+                resource_type="youtube",
+                title=r.title,
+                description=r.description,
+                thumbnail_url=r.thumbnail_url,
+                youtube_video_id=r.video_id,
+                source="api_search",
+            )
+            db.add(link)
+        db.commit()
+
+    return [
+        SearchResourcesResponse(
+            title=r.title,
+            description=r.description,
+            video_id=r.video_id,
+            thumbnail_url=r.thumbnail_url,
+            channel_title=r.channel_title,
+        )
+        for r in results
+    ]

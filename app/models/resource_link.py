@@ -18,6 +18,7 @@ class ResourceLink(Base):
     thumbnail_url = Column(String(2048), nullable=True)
     youtube_video_id = Column(String(20), nullable=True)
     display_order = Column(Integer, default=0)
+    source = Column(String(20), default="teacher_shared", server_default="teacher_shared")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     course_content = relationship("CourseContent", back_populates="resource_links")

@@ -12,6 +12,26 @@ export interface ResourceLinkItem {
   youtube_video_id: string | null;
   display_order: number;
   created_at: string;
+  source?: string;
+  channel_name?: string | null;
+}
+
+export interface SearchResourcesRequest {
+  topic: string;
+  grade_level?: string;
+  course_name?: string;
+}
+
+export interface SearchResourceResult {
+  id: number;
+  url: string;
+  resource_type: string;
+  title: string | null;
+  description: string | null;
+  thumbnail_url: string | null;
+  youtube_video_id: string | null;
+  channel_name: string | null;
+  source: string;
 }
 
 export interface ResourceLinkGroup {
@@ -41,8 +61,36 @@ export const resourceLinksApi = {
     await api.delete(`/api/resource-links/${linkId}`);
   },
 
+  pin: async (linkId: number) => {
+    const response = await api.patch(`/api/resource-links/${linkId}/pin`);
+    return response.data as ResourceLinkItem;
+  },
+
+  dismiss: async (linkId: number) => {
+    await api.delete(`/api/resource-links/${linkId}/dismiss`);
+  },
+
   reExtract: async (courseContentId: number) => {
     const response = await api.post(`/api/course-contents/${courseContentId}/extract-links`);
     return response.data as ResourceLinkItem[];
+  },
+
+  searchResources: async (courseContentId: number, data: SearchResourcesRequest) => {
+    const response = await api.post(`/api/course-contents/${courseContentId}/search-resources`, data);
+    return response.data as SearchResourceResult[];
+  },
+
+  pinResource: async (linkId: number) => {
+    const response = await api.patch(`/api/resource-links/${linkId}/pin`);
+    return response.data as ResourceLinkItem;
+  },
+
+  dismissResource: async (linkId: number) => {
+    await api.delete(`/api/resource-links/${linkId}/dismiss`);
+  },
+
+  checkYoutubeSearchAvailable: async () => {
+    const response = await api.get('/api/features/youtube-search');
+    return response.data as { available: boolean };
   },
 };

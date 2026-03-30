@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     premium_upload_limit_bytes: int = 52428800
     storage_warning_threshold: float = 0.8
 
+    # YouTube Data API v3 (§6.57.3 live search)
+    youtube_api_key: str = ""
+
     # GitHub API (§6.115 bug reports)
     github_token: str = ""
 
