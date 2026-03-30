@@ -5,8 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.models.teacher import Teacher  # noqa: F401 — load Teacher before Course resolves relationship
-from app.models.course import Course  # noqa: F401 — trigger relationship resolution after Teacher loaded
+from app.models import *  # noqa: F401,F403 — load all models to populate SQLAlchemy registry for CI parallel workers
 
 from app.services.resource_suggestion_service import (
     TRUSTED_DOMAINS,
