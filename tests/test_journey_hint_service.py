@@ -1,4 +1,5 @@
 """Tests for the journey hint detection service."""
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -17,7 +18,7 @@ def _make_user(db: Session, role, **overrides):
     from app.models.user import User
     now = datetime.now(timezone.utc)
     defaults = {
-        "email": f"hint-{role.value}-{id(overrides)}@example.com",
+        "email": f"hint-{role.value}-{uuid.uuid4().hex[:8]}@example.com",
         "full_name": f"Test {role.value.title()}",
         "hashed_password": "x",
         "role": role,
