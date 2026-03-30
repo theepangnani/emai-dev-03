@@ -43,9 +43,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="toast-container" aria-live="polite">
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map(t => (
-          <div key={t.id} className={`toast toast-${t.type}`} role="button" tabIndex={0} onClick={() => removeToast(t.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); removeToast(t.id); } }}>
+          <div
+            key={t.id}
+            className={`toast toast-${t.type}`}
+            onClick={() => removeToast(t.id)}
+            {...(t.type === 'error' ? { role: 'alert', 'aria-live': 'assertive' } : {})}
+          >
             <span className="toast-icon">
               {t.type === 'success' ? '\u2713' : t.type === 'error' ? '\u2717' : '\u2139'}
             </span>

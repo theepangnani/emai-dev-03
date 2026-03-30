@@ -438,15 +438,17 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       </a>
 
       <div className="dashboard">
-        {reconnecting && (
-          <div style={{
+        <div
+          role="alert"
+          aria-live="assertive"
+          style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
             background: '#f59e0b', color: '#fff', textAlign: 'center',
-            padding: '8px 16px', fontSize: '14px', fontWeight: 500,
-          }}>
-            Reconnecting to server…
-          </div>
-        )}
+            padding: reconnecting ? '8px 16px' : '0', fontSize: '14px', fontWeight: 500,
+          }}
+        >
+          {reconnecting && 'Reconnecting to server…'}
+        </div>
         <header className="dashboard-header">
           <div className="header-left">
             <button
@@ -506,7 +508,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </header>
 
       {showVerifyBanner && (
-        <div className="verify-email-banner">
+        <div className="verify-email-banner" role="status" aria-live="polite">
           <span>Please verify your email address. Check your inbox for a verification link.</span>
           {resendStatus === 'idle' && (
             <button className="verify-email-banner__resend" onClick={handleResendVerification}>
