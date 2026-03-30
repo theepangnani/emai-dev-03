@@ -10,6 +10,7 @@ import {
 import { walletApi } from '../api/wallet';
 import type { CreditPackageItem } from '../api/wallet';
 import { ReportBugLink } from './ReportBugLink';
+import { useFocusTrap } from '../utils/useFocusTrap';
 import './CreditTopUpModal.css';
 
 // Initialize Stripe once at module scope
@@ -112,15 +113,24 @@ export default function CreditTopUpModal({
     onClose();
   };
 
+  const trapRef = useFocusTrap(open, handleClose);
+
   if (!open) return null;
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="topup-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="topup-modal"
+        ref={trapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="topup-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button className="modal-close" onClick={handleClose}>
           &times;
         </button>
-        <h3>Buy Credits</h3>
+        <h3 id="topup-modal-title">Buy Credits</h3>
 
         {success ? (
           <div className="payment-success">
