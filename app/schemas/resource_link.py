@@ -31,6 +31,7 @@ class ResourceLinkUpdate(BaseModel):
 class ResourceLinkResponse(ResourceLinkBase):
     id: int
     course_content_id: int
+    source: str = "teacher_shared"
     created_at: datetime
 
     class Config:

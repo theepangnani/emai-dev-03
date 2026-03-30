@@ -1107,6 +1107,19 @@ def _run_migrations_inner(engine):
         except Exception:
             conn.rollback()
 
+        # ── resource_links: add source column (#2493) ──
+        if "resource_links" in inspector.get_table_names():
+            existing_cols = {c["name"] for c in inspector.get_columns("resource_links")}
+            if "source" not in existing_cols:
+                try:
+                    conn.execute(text(
+                        "ALTER TABLE resource_links ADD COLUMN source VARCHAR(20) DEFAULT 'teacher_shared'"
+                    ))
+                    conn.commit()
+                    logger.info("Added 'source' column to resource_links (#2493)")
+                except Exception:
+                    conn.rollback()
+
         # ── help_articles: seed data (#1420) ──────────────────────────
         try:
             if "help_articles" in inspector.get_table_names():
