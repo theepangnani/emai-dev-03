@@ -198,3 +198,13 @@ class TestSuppressAll:
         resp = client.get("/api/journey/hints", headers=headers)
         data = resp.json()
         assert data["hint"] is None
+
+    def test_suppress_all_not_routed_to_dismiss(self, client, parent_user):
+        """Regression: suppress-all must not match {hint_key}='suppress-all' (#2628)."""
+        headers = _auth(client, parent_user.email)
+        resp = client.post("/api/journey/hints/suppress-all", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        # If routed to dismiss, message would be "Hint dismissed"
+        assert data["message"] != "Hint dismissed"
+        assert data["message"] == "All hints suppressed"
