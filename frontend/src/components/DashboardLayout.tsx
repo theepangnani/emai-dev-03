@@ -237,13 +237,23 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const { canInstall, installApp } = usePWAInstall();
 
   useEffect(() => {
-    const onReconnecting = () => setReconnecting(true);
-    const onReconnected = () => setReconnecting(false);
+    let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+    const onReconnecting = () => {
+      setReconnecting(true);
+      // Safety timeout: auto-dismiss after 45s in case events are lost (#2623)
+      if (safetyTimer) clearTimeout(safetyTimer);
+      safetyTimer = setTimeout(() => setReconnecting(false), 45_000);
+    };
+    const onReconnected = () => {
+      setReconnecting(false);
+      if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    };
     window.addEventListener('api:reconnecting', onReconnecting);
     window.addEventListener('api:reconnected', onReconnected);
     return () => {
       window.removeEventListener('api:reconnecting', onReconnecting);
       window.removeEventListener('api:reconnected', onReconnected);
+      if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, []);
 
