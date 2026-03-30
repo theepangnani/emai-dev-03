@@ -245,6 +245,7 @@ def get_parent_dashboard(
     if all_course_ids:
         _all_assignments = (
             db.query(Assignment)
+            .options(selectinload(Assignment.course))
             .filter(Assignment.course_id.in_(all_course_ids))
             .order_by(Assignment.due_date.desc())
             .all()
@@ -471,7 +472,12 @@ def get_parent_dashboard(
         total_due_today=total_due_today,
         total_tasks=len(tasks),
         child_highlights=child_highlights,
-        all_assignments=all_assignments,
+        all_assignments=[
+            AssignmentResponse.model_validate(a, from_attributes=True).model_copy(
+                update={"course_name": a.course.name if a.course else None}
+            )
+            for a in all_assignments
+        ],
         all_tasks=task_dicts,
     )
 

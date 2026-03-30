@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { useConfirm } from '../../components/ConfirmModal';
 import { useAuth } from '../../context/AuthContext';
@@ -21,8 +22,9 @@ export function ReportCardAnalysis() {
   const { user } = useAuth();
   const isStudent = user?.role === 'student';
   const { confirm, confirmModal } = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [children, setChildren] = useState<ChildSummary[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const selectedChildId = searchParams.get('child') ? Number(searchParams.get('child')) : null;
   const [reportCards, setReportCards] = useState<SchoolReportCard[]>([]);
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
   const [selectedAnalysis, setSelectedAnalysis] = useState<FullAnalysis | null>(null);
@@ -41,6 +43,7 @@ export function ReportCardAnalysis() {
   const [careerError, setCareerError] = useState<string | null>(null);
 
   const careerPathRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
   // Load student's own report cards
   const loadMyReportCards = useCallback(async () => {
@@ -66,13 +69,14 @@ export function ReportCardAnalysis() {
   useEffect(() => {
     if (isStudent) {
       loadMyReportCards().finally(() => setLoading(false));
-    } else {
+    } else if (!initializedRef.current) {
+      initializedRef.current = true;
       (async () => {
         try {
           const kids = await parentApi.getChildren();
           setChildren(kids);
           if (kids.length === 1) {
-            setSelectedChildId(kids[0].student_id);
+            setSearchParams({ child: String(kids[0].student_id) }, { replace: true });
           }
         } catch {
           // ignore
@@ -81,7 +85,7 @@ export function ReportCardAnalysis() {
         }
       })();
     }
-  }, [isStudent, loadMyReportCards]);
+  }, [isStudent, loadMyReportCards, setSearchParams]);
 
   // Load report cards when child changes (parent only)
   const loadReportCards = useCallback(async (studentId: number) => {
@@ -118,12 +122,18 @@ export function ReportCardAnalysis() {
 
   // Select child handler — ChildSelectorTabs can pass null for "all"
   const handleSelectChild = useCallback((studentId: number | null) => {
-    if (studentId === null && children.length > 0) {
-      setSelectedChildId(children[0].student_id);
-    } else {
-      setSelectedChildId(studentId);
-    }
-  }, [children]);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (studentId === null && children.length > 0) {
+        params.set('child', String(children[0].student_id));
+      } else if (studentId !== null) {
+        params.set('child', String(studentId));
+      } else {
+        params.delete('child');
+      }
+      return params;
+    }, { replace: true });
+  }, [children, setSearchParams]);
 
   // Analyze a report card (parent only)
   const handleAnalyze = useCallback(async (card: SchoolReportCard) => {
