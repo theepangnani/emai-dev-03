@@ -120,16 +120,18 @@ export function ReportCardAnalysis() {
 
   // Select child handler — ChildSelectorTabs can pass null for "all"
   const handleSelectChild = useCallback((studentId: number | null) => {
-    const params = new URLSearchParams(searchParams);
-    if (studentId === null && children.length > 0) {
-      params.set('child', String(children[0].student_id));
-    } else if (studentId !== null) {
-      params.set('child', String(studentId));
-    } else {
-      params.delete('child');
-    }
-    setSearchParams(params, { replace: true });
-  }, [children, searchParams, setSearchParams]);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (studentId === null && children.length > 0) {
+        params.set('child', String(children[0].student_id));
+      } else if (studentId !== null) {
+        params.set('child', String(studentId));
+      } else {
+        params.delete('child');
+      }
+      return params;
+    }, { replace: true });
+  }, [children, setSearchParams]);
 
   // Analyze a report card (parent only)
   const handleAnalyze = useCallback(async (card: SchoolReportCard) => {
