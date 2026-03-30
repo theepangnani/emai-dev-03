@@ -17,41 +17,49 @@ BADGE_DEFINITIONS: list[dict] = [
         "badge_id": "first_upload",
         "badge_name": "First Upload",
         "badge_description": "Upload first document",
+        "icon": "\U0001f4e4",
     },
     {
         "badge_id": "first_guide",
         "badge_name": "First Study Guide",
         "badge_description": "Generate first study guide",
+        "icon": "\U0001f4d6",
     },
     {
         "badge_id": "streak_7",
         "badge_name": "7-Day Streak",
         "badge_description": "Achieve a 7-day streak",
+        "icon": "\U0001f525",
     },
     {
         "badge_id": "streak_30",
         "badge_name": "30-Day Streak",
         "badge_description": "Achieve a 30-day streak",
+        "icon": "\U0001f31f",
     },
     {
         "badge_id": "flashcard_fanatic",
         "badge_name": "Flashcard Fanatic",
         "badge_description": "Review 100 flashcards",
+        "icon": "\U0001f0cf",
     },
     {
         "badge_id": "lms_linker",
         "badge_name": "LMS Linker",
         "badge_description": "Upload 5 docs from LMS",
+        "icon": "\U0001f517",
     },
     {
         "badge_id": "exam_ready",
         "badge_name": "Exam Ready",
         "badge_description": "Generate guide from past exam",
+        "icon": "\U0001f393",
     },
     {
         "badge_id": "quiz_improver",
         "badge_name": "Quiz Improver",
         "badge_description": "Score higher 3 times",
+        "icon": "\U0001f4c8",
     },
 ]
 
