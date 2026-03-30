@@ -37,7 +37,20 @@ function AuthImage({ src, alt }: { src: string; alt?: string }) {
     };
   }, [src]);
 
-  if (error) return null;
+  if (error) return (
+    <div className="auth-image-error" style={{
+      padding: '1.5rem',
+      textAlign: 'center',
+      color: 'var(--text-secondary, #94a3b8)',
+      background: 'var(--bg-muted, #f8fafc)',
+      borderRadius: '0.5rem',
+      border: '1px dashed var(--border-color, #e2e8f0)',
+      fontSize: '0.875rem'
+    }}>
+      <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🖼️</div>
+      Image not available
+    </div>
+  );
   if (!objectUrl)
     return <span className="image-placeholder">{alt || 'Loading image\u2026'}</span>;
   return (
