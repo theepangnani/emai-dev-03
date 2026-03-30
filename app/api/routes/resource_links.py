@@ -211,6 +211,48 @@ def delete_resource_link(
     db.commit()
 
 
+@router.patch(
+    "/resource-links/{link_id}/pin",
+    response_model=ResourceLinkResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def pin_resource_link(
+    request: Request,
+    link_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pin an AI-suggested or API-searched link as a permanent teacher-shared resource."""
+    link = _get_link_or_404(db, link_id)
+    content = _get_content_or_404(db, link.course_content_id)
+    _check_course_access(db, current_user, content)
+
+    link.source = "teacher_shared"
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+@router.delete(
+    "/resource-links/{link_id}/dismiss",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def dismiss_resource_link(
+    request: Request,
+    link_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Dismiss (delete) an AI-suggested or API-searched link."""
+    link = _get_link_or_404(db, link_id)
+    content = _get_content_or_404(db, link.course_content_id)
+    _check_course_access(db, current_user, content)
+
+    db.delete(link)
+    db.commit()
+
+
 @router.post(
     "/course-contents/{content_id}/extract-links",
     response_model=list[ResourceLinkResponse],

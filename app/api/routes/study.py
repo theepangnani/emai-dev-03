@@ -749,6 +749,23 @@ async def generate_study_guide_endpoint(
 
     _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
 
+    # Fire-and-forget AI resource suggestions for NEW guides only (#2489)
+    if not body.regenerate_from_id and resolved_cc_id:
+        try:
+            import asyncio
+            from app.services.resource_suggestion_service import suggest_resources_background
+            from app.db.database import SessionLocal
+            asyncio.create_task(suggest_resources_background(
+                topic=title,
+                course_name=course_name,
+                grade_level="",
+                course_content_id=resolved_cc_id,
+                user_id=current_user.id,
+                db_factory=SessionLocal,
+            ))
+        except Exception as e:
+            logger.warning(f"Resource suggestion task failed to launch: {e}")
+
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
     return resp
@@ -2810,6 +2827,23 @@ async def generate_study_guide_stream_endpoint(
                                 save_db.commit()
                         except Exception as e:
                             logger.warning(f"Failed to persist document type on course content: {e}")
+
+                    # Fire-and-forget AI resource suggestions for NEW guides (#2489)
+                    if not body.regenerate_from_id and resolved_cc_id:
+                        try:
+                            import asyncio as _asyncio
+                            from app.services.resource_suggestion_service import suggest_resources_background
+                            from app.db.database import SessionLocal
+                            _asyncio.create_task(suggest_resources_background(
+                                topic=title,
+                                course_name=course_name,
+                                grade_level="",
+                                course_content_id=resolved_cc_id,
+                                user_id=user_id,
+                                db_factory=SessionLocal,
+                            ))
+                        except Exception as e:
+                            logger.warning(f"Resource suggestion task failed to launch: {e}")
 
                     # Build response
                     resp = StudyGuideResponse.model_validate(guide)
