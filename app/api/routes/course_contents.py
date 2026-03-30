@@ -1208,6 +1208,7 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
 
     elif user.role == UserRole.ADMIN:
         # Admins can see all courses
+        # TODO: At scale, consider pagination or caching for large course counts
         all_courses = db.query(Course.id).all()
         ids.update(r[0] for r in all_courses)
 
