@@ -612,24 +612,6 @@
    Responsive — mobile
    ============================================ */
 
-/* ── Dark Mode ───────────────────────────── */
-
-[data-theme="dark"] .td-link-icon-btn {
-  background: var(--color-surface-alt);
-}
-
-[data-theme="dark"] .td-empty-link-btn {
-  background: var(--color-surface-alt);
-}
-
-[data-theme="dark"] .td-link-tab {
-  background: var(--color-surface-alt);
-}
-
-[data-theme="dark"] .td-link-item:hover {
-  background: var(--color-surface-alt);
-}
-
 @media (max-width: 480px) {
   .td-card {
     padding: 14px;
@@ -747,4 +729,22 @@
   .dashboard-modal-content {
     max-width: calc(100vw - 32px);
   }
+}
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .td-link-icon-btn {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .td-empty-link-btn {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .td-link-tab {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .td-link-item:hover {
+  background: var(--color-surface-alt);
 }

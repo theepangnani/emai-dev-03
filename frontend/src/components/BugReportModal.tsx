@@ -30,6 +30,24 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragState = useRef<{ startX: number; startY: number; panelX: number; panelY: number } | null>(null);
+  const dragHandlersRef = useRef<{ move: (ev: MouseEvent) => void; up: () => void } | null>(null);
+
+  // Merge trapRef and modalRef into a single stable callback ref
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    (trapRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    modalRef.current = node;
+  }, [trapRef]);
+
+  // Clean up drag listeners on unmount
+  useEffect(() => {
+    return () => {
+      if (dragHandlersRef.current) {
+        document.removeEventListener('mousemove', dragHandlersRef.current.move);
+        document.removeEventListener('mouseup', dragHandlersRef.current.up);
+        dragHandlersRef.current = null;
+      }
+    };
+  }, []);
 
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
@@ -59,8 +77,10 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
       setDragging(false);
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
+      dragHandlersRef.current = null;
     };
 
+    dragHandlersRef.current = { move: handleMove, up: handleUp };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
   }, []);
@@ -170,7 +190,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal" ref={(node) => { (trapRef as React.MutableRefObject<HTMLDivElement | null>).current = node; (modalRef as React.MutableRefObject<HTMLDivElement | null>).current = node; }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste} style={position ? { position: 'fixed', left: position.x, top: position.y, margin: 0, transform: 'none' } : undefined}>
+      <div className="modal" ref={mergedRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste} style={position ? { position: 'fixed', left: position.x, top: position.y, margin: 0, transform: 'none' } : undefined}>
         <div className={`bug-report-header${dragging ? ' bug-report-dragging' : ''}`} onMouseDown={handleDragStart}>
           <h2>Report a Bug</h2>
           <button className="bug-report-close" onClick={handleClose} aria-label="Close">&times;</button>

@@ -179,7 +179,7 @@ export function Login() {
               placeholder="you@example.com or username"
               required
               disabled={lockoutSeconds > 0}
-              aria-describedby="login-error"
+              aria-describedby={error ? "login-error" : undefined}
               aria-invalid={!!error}
             />
           </div>
@@ -192,7 +192,7 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={lockoutSeconds > 0}
-              aria-describedby="login-error"
+              aria-describedby={error ? "login-error" : undefined}
               aria-invalid={!!error}
             />
           </div>
