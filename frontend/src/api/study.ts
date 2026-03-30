@@ -37,6 +37,7 @@ export interface StudyGuide {
   document_type?: string | null;
   study_goal?: string | null;
   study_goal_text?: string | null;
+  suggestion_topics?: string | null;
 }
 
 // Sharing types

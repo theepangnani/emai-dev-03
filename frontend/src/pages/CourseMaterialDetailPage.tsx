@@ -247,6 +247,7 @@ export function CourseMaterialDetailPage() {
   }, [selection, clearSelection]);
 
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
+  const [generatingChildTopic, setGeneratingChildTopic] = useState<string | null>(null);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
@@ -654,6 +655,26 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  const handleSuggestionChipClick = async (topic: string, guideType: string) => {
+    if (!studyGuide) return;
+    setGeneratingChildTopic(topic);
+    try {
+      await studyApi.generateChildGuide(studyGuide.id, {
+        topic,
+        guide_type: guideType,
+        document_type: content?.document_type || undefined,
+        study_goal: content?.study_goal || undefined,
+      });
+      const children = await studyApi.listChildGuides(studyGuide.id);
+      setChildGuides(children);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
+      showToast(msg);
+    } finally {
+      setGeneratingChildTopic(null);
+    }
+  };
+
   const handleFormatSelect = useCallback((format: StudyFormat) => {
     const formatToTab: Record<StudyFormat, TabKey | null> = {
       study_guide: 'guide',
@@ -890,6 +911,8 @@ export function CourseMaterialDetailPage() {
               savedDocumentType={content?.document_type || undefined}
               savedStudyGoal={content?.study_goal || undefined}
               savedStudyGoalText={content?.study_goal_text || undefined}
+              onGenerateChildGuide={handleSuggestionChipClick}
+              childGuideGenerating={generatingChildTopic}
             />
           )}
 
