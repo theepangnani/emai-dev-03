@@ -271,3 +271,17 @@
     padding: 24px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .audit-table thead {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .audit-table tbody tr:hover {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .audit-detail-tag {
+  background: var(--color-surface-alt);
+}

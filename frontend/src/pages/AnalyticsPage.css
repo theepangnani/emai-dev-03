@@ -268,3 +268,34 @@
     display: none;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .trend-badge.improving {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+[data-theme="dark"] .trend-badge.declining {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+[data-theme="dark"] .analytics-grades-table tr:hover td {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .analytics-chart-filters button {
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .analytics-chart-filters select {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .analytics-child-selector select {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}

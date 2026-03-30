@@ -82,3 +82,9 @@
     font-size: 7px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .streak-history-dot.active {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
+}
