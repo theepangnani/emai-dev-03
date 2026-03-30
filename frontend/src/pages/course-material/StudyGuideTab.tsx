@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
@@ -159,6 +159,15 @@ export function StudyGuideTab({
     }
   };
 
+  const parsedSuggestionTopics = useMemo(() => {
+    if (!studyGuide?.suggestion_topics) return [];
+    try {
+      return JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
+    } catch {
+      return [];
+    }
+  }, [studyGuide?.suggestion_topics]);
+
   const handleGenerateWithContext = () => {
     onGenerate({
       documentType: documentType || undefined,
@@ -228,20 +237,14 @@ export function StudyGuideTab({
               </div>
             </>
           )}
-          {!isStreaming && studyGuide?.suggestion_topics && (() => {
-            try {
-              const topics: SuggestionTopic[] = JSON.parse(studyGuide.suggestion_topics);
-              if (!topics.length) return null;
-              return (
-                <StudyGuideSuggestionChips
-                  topics={topics}
-                  onTopicClick={(t) => onGenerateChildGuide?.(t.label, 'study_guide')}
-                  disabled={atLimit}
-                  generatingTopic={childGuideGenerating}
-                />
-              );
-            } catch { return null; }
-          })()}
+          {!isStreaming && parsedSuggestionTopics.length > 0 && (
+            <StudyGuideSuggestionChips
+              topics={parsedSuggestionTopics}
+              onTopicClick={(t) => onGenerateChildGuide?.(t.label, 'study_guide')}
+              disabled={atLimit}
+              generatingTopic={childGuideGenerating}
+            />
+          )}
           {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">
               {continuing ? (

@@ -667,6 +667,8 @@ export function CourseMaterialDetailPage() {
       });
       const children = await studyApi.listChildGuides(studyGuide.id);
       setChildGuides(children);
+      refreshAIUsage();
+      showToast('Sub-guide generated successfully');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
       showToast(msg);
