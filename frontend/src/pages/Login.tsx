@@ -144,7 +144,7 @@ export function Login() {
         <p className="auth-subtitle">Sign in to your account</p>
 
         {lockoutSeconds > 0 && (
-          <div className="auth-lockout-banner">
+          <div className="auth-lockout-banner" role="alert">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -162,7 +162,7 @@ export function Login() {
         {error && <div className="auth-error" id="login-error" aria-live="polite">{error}<ReportBugLink errorMessage={error} /></div>}
 
         {remainingAttempts !== null && remainingAttempts <= 2 && (
-          <div className="auth-warning">
+          <div className="auth-warning" aria-live="polite">
             {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining before your account is temporarily locked.
           </div>
         )}
@@ -179,6 +179,8 @@ export function Login() {
               placeholder="you@example.com or username"
               required
               disabled={lockoutSeconds > 0}
+              aria-describedby="login-error"
+              aria-invalid={!!error}
             />
           </div>
 
@@ -190,6 +192,8 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={lockoutSeconds > 0}
+              aria-describedby="login-error"
+              aria-invalid={!!error}
             />
           </div>
 

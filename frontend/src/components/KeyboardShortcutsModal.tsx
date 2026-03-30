@@ -1,4 +1,4 @@
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface KeyboardShortcutsModalProps {
   open: boolean;

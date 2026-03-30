@@ -10,7 +10,7 @@ import {
 import { walletApi } from '../api/wallet';
 import type { CreditPackageItem } from '../api/wallet';
 import { ReportBugLink } from './ReportBugLink';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './CreditTopUpModal.css';
 
 // Initialize Stripe once at module scope

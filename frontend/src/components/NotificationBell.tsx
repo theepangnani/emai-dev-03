@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
 import { usePageVisible } from '../hooks/usePageVisible';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './NotificationBell.css';
 
 export function NotificationBell() {
@@ -14,7 +15,9 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [modalNotification, setModalNotification] = useState<NotificationResponse | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
   const isVisible = usePageVisible();
+  const modalTrapRef = useFocusTrap(!!modalNotification, () => setModalNotification(null));
 
   // Poll unread count every 60 seconds (only when page is visible)
   useEffect(() => {
@@ -23,16 +26,6 @@ export function NotificationBell() {
     const interval = setInterval(loadUnreadCount, 60000);
     return () => clearInterval(interval);
   }, [isVisible]);
-
-  // Close modal on Escape key
-  useEffect(() => {
-    if (!modalNotification) return;
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setModalNotification(null);
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [modalNotification]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -171,7 +164,7 @@ export function NotificationBell() {
   return (
     <>
     <div className="notification-bell" ref={dropdownRef}>
-      <button className="bell-button" onClick={toggleDropdown} aria-label="Notifications">
+      <button ref={bellButtonRef} className="bell-button" onClick={toggleDropdown} aria-label="Notifications">
         <svg
           width="20"
           height="20"
@@ -280,11 +273,11 @@ export function NotificationBell() {
     {/* Notification Detail Modal - portaled to body to escape header stacking context */}
     {modalNotification && createPortal(
       <div className="modal-overlay" onClick={() => setModalNotification(null)}>
-        <div className="notif-modal" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <div ref={modalTrapRef} className="notif-modal" role="dialog" aria-modal="true" aria-labelledby="notif-modal-title" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <div className="notif-modal-header">
             <span className="notif-modal-icon" aria-hidden="true">{getTypeIcon(modalNotification.type)}</span>
-            <h3>{modalNotification.title}</h3>
-            <button className="modal-close" onClick={() => setModalNotification(null)}>
+            <h3 id="notif-modal-title">{modalNotification.title}</h3>
+            <button className="modal-close" onClick={() => setModalNotification(null)} aria-label="Close notifications">
               &times;
             </button>
           </div>

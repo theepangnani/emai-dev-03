@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { schoolReportCardsApi } from '../../api/schoolReportCards';
-import { useFocusTrap } from '../../utils/useFocusTrap';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './ReportCardUploadModal.css';
 
 import { MAX_FILE_SIZE_MB } from '../../constants/upload';

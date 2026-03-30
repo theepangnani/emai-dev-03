@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { bugReportsApi } from '../api/bugReports';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './BugReportModal.css';
 
 interface BugReportModalProps {
