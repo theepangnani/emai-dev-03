@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import UploadWizardStep1 from './UploadWizardStep1';
 import CreateClassModal from './CreateClassModal';
 import { coursesApi } from '../api/courses';
+import { parentApi } from '../api/client';
 import './UploadMaterialWizard.css';
 
 import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION } from '../constants/upload';
@@ -131,12 +132,28 @@ export default function UploadMaterialWizard({
   // Sync managedCourses when courses prop changes while modal is already open
   // (e.g., parent switches child context)
   useEffect(() => {
-    if (!open || !courses || courses.length === 0) return;
+    if (!open || !courses) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setManagedCourses(courses);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setInternalCourseId(courses.length === 1 ? courses[0].id : (selectedCourseId ?? ''));
+    if (courses.length === 1) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInternalCourseId(courses[0].id);
+    }
   }, [open, courses, selectedCourseId]);
+
+  // Fetch courses when child is selected on Step 2 — fallback for async prop pipeline
+  useEffect(() => {
+    if (!open || !internalChildId) return;
+    let cancelled = false;
+    parentApi.getChildOverview(Number(internalChildId)).then((overview) => {
+      if (cancelled || !overview?.courses) return;
+      const mapped = overview.courses.map((c: { id: number; name: string }) => ({ id: c.id, name: c.name }));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setManagedCourses(mapped);
+      if (mapped.length === 1) setInternalCourseId(mapped[0].id);
+    }).catch(() => { /* fallback silently fails — user can still create a class */ });
+    return () => { cancelled = true; };
+  }, [open, internalChildId]);
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const toAdd = Array.from(incoming);
