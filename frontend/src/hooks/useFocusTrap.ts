@@ -30,7 +30,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
     if (e.key !== 'Tab') return;
 
     const focusable = container.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable]',
     );
     if (focusable.length === 0) return;
 
@@ -62,7 +62,7 @@ export function useFocusTrap<T extends HTMLElement = HTMLDivElement>(
     const timer = setTimeout(() => {
       if (!container || container.contains(document.activeElement)) return;
       const focusable = container.querySelectorAll<HTMLElement>(
-        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable]',
       );
       if (focusable.length > 0) {
         focusable[0].focus();

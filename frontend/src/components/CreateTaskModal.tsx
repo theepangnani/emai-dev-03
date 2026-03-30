@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { tasksApi } from '../api/client';
 import type { AssignableUser } from '../api/client';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ReportBugLink } from './ReportBugLink';
 
 interface CreateTaskModalProps {
@@ -81,16 +81,18 @@ export function CreateTaskModal({
           </div>
         )}
         <div className="modal-form">
-          <label>
+          <label htmlFor="create-task-title-input">
             Title *
             <input
               type="text"
+              id="create-task-title-input"
               placeholder="Task title"
               value={title}
               onChange={e => setTitle(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               disabled={creating}
               autoFocus
+              aria-required="true"
             />
           </label>
           <label>

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -58,9 +58,10 @@ export function ConfirmModal({
         <p id="confirm-message" className="confirm-modal-message">{message}</p>
         {onPromptChange && (
           <div className="confirm-modal-prompt">
-            {promptLabel && <label className="confirm-modal-prompt-label">{promptLabel}</label>}
+            {promptLabel && <label className="confirm-modal-prompt-label" htmlFor="confirm-modal-input">{promptLabel}</label>}
             <input
               type="text"
+              id="confirm-modal-input"
               className="confirm-modal-prompt-input"
               placeholder={promptPlaceholder || ''}
               value={promptValue || ''}
