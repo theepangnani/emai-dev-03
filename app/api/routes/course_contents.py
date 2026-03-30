@@ -1207,9 +1207,9 @@ def _get_visible_course_ids(db: Session, user: User, student_user_id: int | None
             ids.update(r[0] for r in taught)
 
     elif user.role == UserRole.ADMIN:
-        # Admin sees courses they personally created (trust-circle model)
-        admin_created = db.query(Course.id).filter(Course.created_by_user_id == user.id).all()
-        ids.update(r[0] for r in admin_created)
+        # Admins can see all courses
+        all_courses = db.query(Course.id).all()
+        ids.update(r[0] for r in all_courses)
 
     return list(ids)
 
