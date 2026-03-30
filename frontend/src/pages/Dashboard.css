@@ -31,19 +31,20 @@
 
 /* Skip to content link for keyboard navigation */
 .skip-to-content {
-  position: absolute;
-  left: -9999px;
-  z-index: 999;
+  position: fixed;
+  top: -100%;
+  left: 16px;
+  z-index: 10000;
   padding: 12px 24px;
   background: var(--color-accent);
   color: white;
   text-decoration: none;
-  border-radius: 0 0 8px 0;
+  border-radius: 0 0 8px 8px;
   font-weight: 600;
+  transition: top 0.15s ease;
 }
 
 .skip-to-content:focus {
-  left: 0;
   top: 0;
 }
 
