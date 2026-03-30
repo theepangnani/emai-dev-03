@@ -298,9 +298,10 @@ async def help_chat_stream(
 # ---------------------------------------------------------------------------
 
 def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
-    """Load a study guide and verify the user has access. Returns (guide, source_text, image_descriptions)."""
+    """Load a study guide and verify the user has access. Returns (guide, source_text, image_descriptions, resource_links)."""
     from app.models.study_guide import StudyGuide
     from app.models.course_content import CourseContent
+    from app.models.resource_link import ResourceLink
 
     guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
@@ -366,7 +367,17 @@ def _load_study_guide_for_qa(guide_id: int, user: User, db: Session):
                 parts.append(f"[IMG-{idx}] {desc}{ctx}")
             image_descriptions = "\n".join(parts)
 
-    return guide, source_text, image_descriptions
+    # Load resource links associated with the course content
+    resource_links = []
+    if cc:
+        resource_links = (
+            db.query(ResourceLink)
+            .filter(ResourceLink.course_content_id == guide.course_content_id)
+            .order_by(ResourceLink.display_order)
+            .all()
+        )
+
+    return guide, source_text, image_descriptions, resource_links
 
 
 async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: User):
@@ -375,7 +386,7 @@ async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: U
     from app.services.study_qa_service import study_qa_service
     from app.services.ai_usage import check_ai_usage, increment_ai_usage
 
-    guide, source_text, image_descriptions = _load_study_guide_for_qa(request.study_guide_id, user, db)
+    guide, source_text, image_descriptions, resource_links = _load_study_guide_for_qa(request.study_guide_id, user, db)
 
     # Credit check
     check_ai_usage(user, db)
@@ -393,6 +404,7 @@ async def _handle_study_qa_stream(request: HelpChatRequest, db: Session, user: U
                 {"role": m.role, "content": m.content}
                 for m in request.conversation
             ],
+            resource_links=resource_links,
         ):
             if event.get("type") == "done":
                 last_done = event
@@ -425,7 +437,7 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
     from app.services.study_qa_service import study_qa_service
     from app.services.ai_usage import check_ai_usage, increment_ai_usage
 
-    guide, source_text, image_descriptions = _load_study_guide_for_qa(request.study_guide_id, user, db)
+    guide, source_text, image_descriptions, resource_links = _load_study_guide_for_qa(request.study_guide_id, user, db)
     check_ai_usage(user, db)
 
     reply_parts = []
@@ -442,6 +454,7 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
             {"role": m.role, "content": m.content}
             for m in request.conversation
         ],
+        resource_links=resource_links,
     ):
         if event.get("type") == "token":
             reply_parts.append(event["text"])
@@ -470,8 +483,11 @@ async def _handle_study_qa_non_streaming(request: HelpChatRequest, db: Session, 
 
     return HelpChatResponse(
         reply="".join(reply_parts),
-        sources=[],
-        videos=[],
+        sources=last_done.get("sources", []) if last_done else [],
+        videos=[
+            VideoResponse(title=v["title"], url=v["url"], provider=v.get("provider", "youtube"))
+            for v in (last_done.get("videos", []) if last_done else [])
+        ],
         mode="study_qa",
         credits_used=float(last_done.get("credits_used", 0.25)) if last_done else 0.25,
         input_tokens=last_done.get("input_tokens") if last_done else None,
