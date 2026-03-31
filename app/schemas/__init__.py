@@ -6,6 +6,12 @@ from app.schemas.waitlist import (
     WaitlistCreate, WaitlistResponse, WaitlistStats, WaitlistAdminUpdate,
 )
 from app.schemas.content_image import ContentImageResponse
+from app.schemas.parent_email_digest import (
+    ParentGmailIntegrationCreate, ParentGmailIntegrationResponse,
+    ParentGmailIntegrationUpdate,
+    ParentDigestSettingsResponse, ParentDigestSettingsUpdate,
+    DigestDeliveryLogResponse,
+)
 from app.schemas.faq import (
     FAQQuestionCreate, FAQQuestionUpdate, FAQQuestionResponse, FAQQuestionDetail,
     FAQQuestionPin, FAQAdminQuestionCreate,
@@ -22,4 +28,8 @@ __all__ = [
     "FAQAnswerCreate", "FAQAnswerUpdate", "FAQAnswerResponse",
     "WaitlistCreate", "WaitlistResponse", "WaitlistStats", "WaitlistAdminUpdate",
     "ContentImageResponse",
+    "ParentGmailIntegrationCreate", "ParentGmailIntegrationResponse",
+    "ParentGmailIntegrationUpdate",
+    "ParentDigestSettingsResponse", "ParentDigestSettingsUpdate",
+    "DigestDeliveryLogResponse",
 ]
