@@ -1,0 +1,434 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { parentEmailDigestApi } from '../api/parentEmailDigest';
+import type { GmailCallbackResponse } from '../api/parentEmailDigest';
+import './EmailDigestSetupWizard.css';
+
+const TIMEZONES = [
+  'America/Toronto',
+  'America/Vancouver',
+  'America/Edmonton',
+  'America/Winnipeg',
+  'America/Halifax',
+  'America/St_Johns',
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'UTC',
+];
+
+const DIGEST_FORMATS = [
+  { value: 'summary', label: 'Summary' },
+  { value: 'detailed', label: 'Detailed' },
+];
+
+const CHANNEL_OPTIONS = [
+  { value: 'email', label: 'Email' },
+  { value: 'in_app', label: 'In-app notification' },
+];
+
+interface EmailDigestSetupWizardProps {
+  open: boolean;
+  onClose: () => void;
+  childName?: string;
+  onComplete?: (integrationId: number) => void;
+}
+
+type WizardStep = 1 | 2 | 3 | 4;
+
+export function EmailDigestSetupWizard({
+  open,
+  onClose,
+  childName,
+  onComplete,
+}: EmailDigestSetupWizardProps) {
+  const [step, setStep] = useState<WizardStep>(1);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Step 1: Gmail connection
+  const [gmailConnected, setGmailConnected] = useState(false);
+  const [connectedEmail, setConnectedEmail] = useState('');
+  const [integrationId, setIntegrationId] = useState<number | null>(null);
+
+  // Step 2: Child info
+  const [childSchoolEmail, setChildSchoolEmail] = useState('');
+  const [childFirstName, setChildFirstName] = useState(childName ?? '');
+
+  // Step 3: Settings
+  const [deliveryTime, setDeliveryTime] = useState('07:00');
+  const [timezone, setTimezone] = useState('America/Toronto');
+  const [digestFormat, setDigestFormat] = useState('summary');
+  const [channels, setChannels] = useState<string[]>(['email']);
+
+  // Focus trap ref
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Reset on open/close
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setError('');
+      setLoading(false);
+      setGmailConnected(false);
+      setConnectedEmail('');
+      setIntegrationId(null);
+      setChildSchoolEmail('');
+      setChildFirstName(childName ?? '');
+      setDeliveryTime('07:00');
+      setTimezone('America/Toronto');
+      setDigestFormat('summary');
+      setChannels(['email']);
+    }
+  }, [open, childName]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [open, onClose]);
+
+  // Listen for OAuth callback message from popup
+  useEffect(() => {
+    if (!open) return;
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'gmail-oauth-callback' && event.data?.code) {
+        handleOAuthCallback(event.data.code);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOAuthCallback = useCallback(async (code: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      const result: GmailCallbackResponse = await parentEmailDigestApi.connectGmail(code);
+      setGmailConnected(true);
+      setConnectedEmail(result.parent_email);
+      setIntegrationId(result.integration_id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect Gmail';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleConnectGmail = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const { auth_url } = await parentEmailDigestApi.getGmailAuthUrl();
+      // Open OAuth in a popup
+      const w = 500;
+      const h = 600;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      window.open(auth_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to get auth URL';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleNextStep = useCallback(async () => {
+    setError('');
+
+    if (step === 1) {
+      if (!gmailConnected) {
+        setError('Please connect your Gmail account first.');
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      if (!childSchoolEmail.trim()) {
+        setError('Please enter your child\'s school email.');
+        return;
+      }
+      if (!childFirstName.trim()) {
+        setError('Please enter your child\'s first name.');
+        return;
+      }
+      // Basic email validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(childSchoolEmail.trim())) {
+        setError('Please enter a valid email address.');
+        return;
+      }
+      setStep(3);
+    } else if (step === 3) {
+      if (channels.length === 0) {
+        setError('Please select at least one notification channel.');
+        return;
+      }
+      setStep(4);
+    } else if (step === 4) {
+      // Complete setup — save settings
+      if (!integrationId) return;
+      setLoading(true);
+      try {
+        await parentEmailDigestApi.updateSettings(integrationId, {
+          delivery_time: deliveryTime,
+          timezone,
+          digest_format: digestFormat,
+          channels,
+        });
+        onComplete?.(integrationId);
+        onClose();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to save settings';
+        setError(msg);
+      } finally {
+        setLoading(false);
+      }
+    }
+  }, [step, gmailConnected, childSchoolEmail, childFirstName, channels, integrationId, deliveryTime, timezone, digestFormat, onComplete, onClose]);
+
+  const handleBack = useCallback(() => {
+    setError('');
+    if (step > 1) setStep((step - 1) as WizardStep);
+  }, [step]);
+
+  const toggleChannel = useCallback((ch: string) => {
+    setChannels(prev =>
+      prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]
+    );
+  }, []);
+
+  if (!open) return null;
+
+  const stepTitles = ['Connect Gmail', 'Child Info', 'Settings', 'Confirm'];
+
+  return (
+    <div className="edw-overlay" onClick={onClose}>
+      <div
+        className="edw-modal"
+        ref={modalRef}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Email Digest Setup"
+      >
+        {/* Header */}
+        <div className="edw-header">
+          <h2>Set Up Email Digest</h2>
+          <button className="edw-close-btn" onClick={onClose} aria-label="Close">&times;</button>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="edw-steps" aria-label={`Step ${step} of 4: ${stepTitles[step - 1]}`}>
+          {[1, 2, 3, 4].map((s, i) => (
+            <span key={s}>
+              {i > 0 && (
+                <span className={`edw-step-line${s <= step ? ' edw-step-line--done' : ''}`} />
+              )}
+              <span
+                className={`edw-step-dot${
+                  s === step ? ' edw-step-dot--active' : s < step ? ' edw-step-dot--done' : ''
+                }`}
+              />
+            </span>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="edw-body">
+          {error && <div className="edw-error">{error}</div>}
+
+          {/* Step 1: Connect Gmail */}
+          {step === 1 && (
+            <>
+              <h3 className="edw-step-title">Connect Your Gmail</h3>
+              <p className="edw-step-desc">
+                We need access to your Gmail to monitor emails from your child&rsquo;s school and
+                create daily digests of important updates.
+              </p>
+              {gmailConnected ? (
+                <div className="edw-connected-badge">
+                  &#10003; Connected as {connectedEmail}
+                </div>
+              ) : (
+                <button
+                  className="edw-connect-btn"
+                  onClick={handleConnectGmail}
+                  disabled={loading}
+                >
+                  {loading ? 'Connecting...' : 'Connect Your Gmail'}
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Step 2: Child's School Email */}
+          {step === 2 && (
+            <>
+              <h3 className="edw-step-title">Child&rsquo;s School Email</h3>
+              <p className="edw-step-desc">
+                Enter your child&rsquo;s school email so we know which emails to include in the digest.
+              </p>
+              <div className="edw-field">
+                <label htmlFor="edw-child-email">School Email Address</label>
+                <input
+                  id="edw-child-email"
+                  type="email"
+                  placeholder="child@school.ca"
+                  value={childSchoolEmail}
+                  onChange={e => setChildSchoolEmail(e.target.value)}
+                  className={error && !childSchoolEmail.trim() ? 'edw-input-error' : ''}
+                  autoFocus
+                />
+                <div className="edw-field-hint">
+                  The email your child uses for school communications.
+                </div>
+              </div>
+              <div className="edw-field">
+                <label htmlFor="edw-child-name">Child&rsquo;s First Name</label>
+                <input
+                  id="edw-child-name"
+                  type="text"
+                  placeholder="First name"
+                  value={childFirstName}
+                  onChange={e => setChildFirstName(e.target.value)}
+                  className={error && !childFirstName.trim() ? 'edw-input-error' : ''}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Step 3: Configure Settings */}
+          {step === 3 && (
+            <>
+              <h3 className="edw-step-title">Configure Your Digest</h3>
+              <p className="edw-step-desc">
+                Choose when and how you want to receive your email digest.
+              </p>
+              <div className="edw-field">
+                <label htmlFor="edw-delivery-time">Delivery Time</label>
+                <input
+                  id="edw-delivery-time"
+                  type="time"
+                  value={deliveryTime}
+                  onChange={e => setDeliveryTime(e.target.value)}
+                />
+              </div>
+              <div className="edw-field">
+                <label htmlFor="edw-timezone">Timezone</label>
+                <select
+                  id="edw-timezone"
+                  value={timezone}
+                  onChange={e => setTimezone(e.target.value)}
+                >
+                  {TIMEZONES.map(tz => (
+                    <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="edw-field">
+                <label htmlFor="edw-format">Digest Format</label>
+                <select
+                  id="edw-format"
+                  value={digestFormat}
+                  onChange={e => setDigestFormat(e.target.value)}
+                >
+                  {DIGEST_FORMATS.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="edw-field">
+                <label>Notification Channels</label>
+                <div className="edw-checkbox-group">
+                  {CHANNEL_OPTIONS.map(ch => (
+                    <label key={ch.value} className="edw-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={channels.includes(ch.value)}
+                        onChange={() => toggleChannel(ch.value)}
+                      />
+                      {ch.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Step 4: Confirmation */}
+          {step === 4 && (
+            <>
+              <h3 className="edw-step-title">Review &amp; Complete</h3>
+              <p className="edw-step-desc">
+                Please review your settings before completing the setup.
+              </p>
+              <div className="edw-summary">
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Gmail Account</span>
+                  <span className="edw-summary-value">{connectedEmail}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Child&rsquo;s Name</span>
+                  <span className="edw-summary-value">{childFirstName}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">School Email</span>
+                  <span className="edw-summary-value">{childSchoolEmail}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Delivery Time</span>
+                  <span className="edw-summary-value">{deliveryTime}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Timezone</span>
+                  <span className="edw-summary-value">{timezone.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Format</span>
+                  <span className="edw-summary-value">
+                    {DIGEST_FORMATS.find(f => f.value === digestFormat)?.label ?? digestFormat}
+                  </span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Channels</span>
+                  <span className="edw-summary-value">
+                    {channels.map(ch => CHANNEL_OPTIONS.find(o => o.value === ch)?.label ?? ch).join(', ')}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="edw-footer">
+          {step > 1 ? (
+            <button className="edw-btn-back" onClick={handleBack} disabled={loading}>
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
+          <button
+            className="edw-btn-next"
+            onClick={handleNextStep}
+            disabled={loading || (step === 1 && !gmailConnected)}
+          >
+            {loading
+              ? 'Saving...'
+              : step === 4
+                ? 'Complete Setup'
+                : 'Next'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default EmailDigestSetupWizard;
