@@ -37,7 +37,12 @@ class EducationService:
             # Students can see courses they're enrolled in
             student = self.db.query(Student).filter(Student.user_id == user.id).first()
             if student:
-                enrolled_ids = [c.id for c in student.courses]
+                enrolled_ids = [
+                    r[0]
+                    for r in self.db.query(student_courses.c.course_id)
+                    .filter(student_courses.c.student_id == student.id)
+                    .all()
+                ]
                 if enrolled_ids:
                     filters.append(Course.id.in_(enrolled_ids))
 
