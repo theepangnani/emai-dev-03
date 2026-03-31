@@ -207,10 +207,9 @@ def gmail_callback(
             refresh_token=tokens["refresh_token"],
         )
         db.add(integration)
-        db.commit()
-        db.refresh(integration)
+        db.flush()  # assign integration.id without committing
 
-        # Auto-create default digest settings
+        # Auto-create default digest settings in the same transaction
         default_settings = ParentDigestSettings(integration_id=integration.id)
         db.add(default_settings)
         db.commit()
