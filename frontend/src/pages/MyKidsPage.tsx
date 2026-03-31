@@ -24,6 +24,7 @@ import { StudyRequestModal } from '../components/StudyRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
+import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -100,6 +101,9 @@ export function MyKidsPage() {
 
   // Award XP modal
   const [awardXpChild, setAwardXpChild] = useState<{ studentId: number; userId: number; name: string } | null>(null);
+
+  // Email digest wizard
+  const [showEmailDigestWizard, setShowEmailDigestWizard] = useState(false);
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
@@ -928,6 +932,10 @@ export function MyKidsPage() {
               <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
               <span>Report Cards</span>
             </button>
+            <button className="dash-quick-action" onClick={() => setShowEmailDigestWizard(true)}>
+              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4E7;</span>
+              <span>Email Digest</span>
+            </button>
           </div>
 
           <div className="dashboard-redesign">
@@ -1452,6 +1460,12 @@ export function MyKidsPage() {
           onSuccess={() => toast(`XP awarded to ${awardXpChild.name}!`, 'success')}
         />
       )}
+      <EmailDigestSetupWizard
+        open={showEmailDigestWizard}
+        onClose={() => setShowEmailDigestWizard(false)}
+        childName={children.find(c => c.student_id === selectedChild)?.full_name}
+        onComplete={() => toast('Email digest set up!', 'success')}
+      />
     </DashboardLayout>
   );
 }
