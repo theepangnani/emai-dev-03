@@ -290,7 +290,7 @@
 }
 
 .cm-tab {
-  flex: 1;
+  flex: none;
   padding: 8px 14px;
   background: none;
   border: none;
