@@ -689,9 +689,9 @@ export function CourseMaterialDetailPage() {
         study_goal: content?.study_goal || undefined,
       });
       if (chipAbortRef.current) return;
-      refreshAIUsage();
       showToast('Sub-guide generated — opening now');
       navigate(`/study/guide/${newGuide.id}`);
+      try { refreshAIUsage(); } catch { /* non-blocking — don't let 401 interfere with navigation */ }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
       showToast(msg);
