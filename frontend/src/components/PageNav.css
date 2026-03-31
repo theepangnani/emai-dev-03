@@ -25,7 +25,7 @@
   border-radius: 8px;
   background: var(--color-accent-light);
   color: var(--color-accent-strong);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 600;
   font-family: var(--font-sans);
   text-decoration: none;
@@ -68,7 +68,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--color-ink-muted);
   overflow: hidden;
   white-space: nowrap;
@@ -84,7 +84,7 @@
 .page-nav-trail-sep {
   color: var(--color-ink-muted);
   opacity: 0.4;
-  font-size: 12px;
+  font-size: var(--text-xs);
   margin: 0 4px;
   font-weight: 300;
 }
@@ -129,11 +129,11 @@
 
   .page-nav-trail-mobile {
     display: flex;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 
   .page-nav-back {
-    font-size: 15px;
+    font-size: var(--text-base);
     padding: 8px 16px 8px 10px;
     width: 100%;
     justify-content: flex-start;

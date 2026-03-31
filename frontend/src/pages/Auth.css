@@ -28,7 +28,7 @@
 }
 
 .auth-title {
-  font-size: 28px;
+  font-size: var(--text-3xl);
   font-weight: 700;
   color: var(--color-ink);
   font-family: var(--font-display);
@@ -48,7 +48,7 @@
   padding: 12px 16px;
   border-radius: 8px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .auth-lockout-banner {
@@ -60,7 +60,7 @@
   padding: 14px 16px;
   border-radius: 8px;
   margin-bottom: 20px;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
@@ -81,7 +81,7 @@
 
 .auth-lockout-hint {
   margin-top: 6px !important;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .auth-lockout-hint a {
@@ -95,7 +95,7 @@
   padding: 10px 14px;
   border-radius: 8px;
   margin-bottom: 16px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
@@ -112,7 +112,7 @@
 }
 
 .form-group label {
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-ink);
 }
@@ -122,7 +122,7 @@
   padding: 12px 16px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  font-size: 16px;
+  font-size: var(--text-base);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -172,7 +172,7 @@
   border: none;
   padding: 14px 24px;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
@@ -209,7 +209,7 @@
 .auth-forgot-link {
   text-align: right;
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .auth-forgot-link a {
@@ -238,7 +238,7 @@
 .auth-divider span {
   padding: 0 16px;
   color: var(--color-ink-muted);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .google-button {
@@ -251,7 +251,7 @@
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
-  font-size: 16px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-ink);
   cursor: pointer;
@@ -289,7 +289,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--color-ink-muted);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -309,7 +309,7 @@
 
 /* Username availability status */
 .username-status {
-  font-size: 13px;
+  font-size: var(--text-sm);
   margin-top: 4px;
   padding: 2px 0;
   line-height: 1.4;
@@ -329,7 +329,7 @@
 
 /* Form hint text */
 .form-hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--color-ink-muted);
   margin-top: 4px;
   line-height: 1.4;
@@ -390,12 +390,12 @@
   }
 
   .auth-title {
-    font-size: 22px;
+    font-size: var(--text-xl);
     margin-bottom: 4px;
   }
 
   .auth-subtitle {
-    font-size: 14px;
+    font-size: var(--text-sm);
     margin-bottom: 16px;
   }
 
@@ -410,27 +410,27 @@
   .form-group input,
   .form-group select {
     padding: 10px 12px;
-    font-size: 15px;
+    font-size: var(--text-base);
     width: 100%;
     box-sizing: border-box;
   }
 
   .auth-button {
     padding: 12px 16px;
-    font-size: 15px;
+    font-size: var(--text-base);
     width: 100%;
     margin-top: 4px;
   }
 
   .auth-error {
     padding: 10px 12px;
-    font-size: 13px;
+    font-size: var(--text-sm);
     margin-bottom: 12px;
   }
 
   .auth-footer {
     margin-top: 16px;
-    font-size: 14px;
+    font-size: var(--text-sm);
   }
 
   .auth-divider {
@@ -439,7 +439,7 @@
 
   .google-button {
     padding: 10px 16px;
-    font-size: 15px;
+    font-size: var(--text-base);
     width: 100%;
     box-sizing: border-box;
   }
@@ -450,6 +450,6 @@
 
   .auth-mode-btn {
     padding: 8px 8px;
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
 }

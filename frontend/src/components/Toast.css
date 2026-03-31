@@ -19,7 +19,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--color-ink);
   cursor: pointer;
   animation: toast-in 0.3s ease;
@@ -27,7 +27,7 @@
 }
 
 .toast-icon {
-  font-size: 16px;
+  font-size: var(--text-base);
   flex-shrink: 0;
   width: 22px;
   height: 22px;
