@@ -49,6 +49,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
     };
   }, []);
 
+  // Empty deps: reads modalRef/dragState via refs (stable), rect is read fresh each call
   const handleDragStart = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
     e.preventDefault();

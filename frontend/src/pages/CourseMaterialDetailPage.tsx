@@ -248,6 +248,45 @@ export function CourseMaterialDetailPage() {
     }
   }, [showMoreDropdown]);
 
+  // Keyboard handler for More Tools dropdown (WAI-ARIA menu pattern)
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const items = moreDropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    if (!items || items.length === 0) return;
+    const currentIndex = Array.from(items).findIndex(el => el === document.activeElement);
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+        items[next].focus();
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+        items[prev].focus();
+        break;
+      }
+      case 'Home':
+        e.preventDefault();
+        items[0].focus();
+        break;
+      case 'End':
+        e.preventDefault();
+        items[items.length - 1].focus();
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLButtonElement) {
+          document.activeElement.click();
+        }
+        break;
+      case 'Tab':
+        setShowMoreDropdown(false);
+        break;
+    }
+  }, []);
+
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showReplaceModal, setShowReplaceModal] = useState(false);
@@ -884,43 +923,7 @@ export function CourseMaterialDetailPage() {
                 <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
               {showMoreDropdown && (
-                <div className="cm-more-dropdown" role="menu" onKeyDown={(e) => {
-                  const items = moreDropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
-                  if (!items || items.length === 0) return;
-                  const currentIndex = Array.from(items).findIndex(el => el === document.activeElement);
-                  switch (e.key) {
-                    case 'ArrowDown': {
-                      e.preventDefault();
-                      const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
-                      items[next].focus();
-                      break;
-                    }
-                    case 'ArrowUp': {
-                      e.preventDefault();
-                      const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
-                      items[prev].focus();
-                      break;
-                    }
-                    case 'Home':
-                      e.preventDefault();
-                      items[0].focus();
-                      break;
-                    case 'End':
-                      e.preventDefault();
-                      items[items.length - 1].focus();
-                      break;
-                    case 'Enter':
-                    case ' ':
-                      e.preventDefault();
-                      if (document.activeElement instanceof HTMLButtonElement) {
-                        document.activeElement.click();
-                      }
-                      break;
-                    case 'Tab':
-                      setShowMoreDropdown(false);
-                      break;
-                  }
-                }}>
+                <div className="cm-more-dropdown" role="menu" onKeyDown={handleDropdownKeyDown}>
                   {dropdownTabs.map(tab => (
                     <button
                       key={tab.key}
