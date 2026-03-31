@@ -377,6 +377,7 @@ export function CourseMaterialDetailPage() {
     enabled: contentId > 0,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchInterval: (query) => (!query.state.data?.length) ? 5_000 : false,
   });
   const resourceLinkCount = resourceLinkGroups.reduce((sum, g) => sum + g.links.length, 0);
 
