@@ -14,7 +14,7 @@ class ParentGmailIntegration(Base):
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     gmail_address = Column(String(255), nullable=False)
-    google_id = Column(String(255), nullable=False)
+    google_id = Column(String(255), nullable=True)
     access_token = Column(String(512), nullable=True)
     refresh_token = Column(String(512), nullable=True)
     child_school_email = Column(String(255), nullable=True)

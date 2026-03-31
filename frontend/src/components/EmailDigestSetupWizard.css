@@ -191,7 +191,7 @@
   gap: 10px;
   padding: 12px 24px;
   background: var(--color-primary, #8b5cf6);
-  color: #fff;
+  color: var(--color-surface, #fff);
   border: none;
   border-radius: var(--radius-md, 10px);
   font-size: 0.95rem;
@@ -283,7 +283,7 @@
 
 .edw-btn-next {
   background: var(--color-primary, #8b5cf6);
-  color: #fff;
+  color: var(--color-surface, #fff);
   border: none;
   padding: 10px 24px;
   border-radius: var(--radius-md, 10px);

@@ -17,8 +17,9 @@ const TIMEZONES = [
 ];
 
 const DIGEST_FORMATS = [
-  { value: 'summary', label: 'Summary' },
-  { value: 'detailed', label: 'Detailed' },
+  { value: 'full', label: 'Full' },
+  { value: 'brief', label: 'Brief' },
+  { value: 'actions_only', label: 'Actions Only' },
 ];
 
 const CHANNEL_OPTIONS = [
@@ -52,6 +53,7 @@ export function EmailDigestSetupWizard({
 
   // OAuth state
   const [oauthState, setOauthState] = useState('');
+  const oauthStateRef = useRef(oauthState);
 
   // Step 2: Child info
   const [childSchoolEmail, setChildSchoolEmail] = useState('');
@@ -60,7 +62,7 @@ export function EmailDigestSetupWizard({
   // Step 3: Settings
   const [deliveryTime, setDeliveryTime] = useState('07:00');
   const [timezone, setTimezone] = useState('America/Toronto');
-  const [digestFormat, setDigestFormat] = useState('summary');
+  const [digestFormat, setDigestFormat] = useState('full');
   const [channels, setChannels] = useState<string[]>(['email']);
 
   // Focus trap ref
@@ -80,7 +82,7 @@ export function EmailDigestSetupWizard({
       setChildFirstName(childName ?? '');
       setDeliveryTime('07:00');
       setTimezone('America/Toronto');
-      setDigestFormat('summary');
+      setDigestFormat('full');
       setChannels(['email']);
     }
   }, [open, childName]);
@@ -95,34 +97,35 @@ export function EmailDigestSetupWizard({
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
+  // Keep ref in sync with state so the message handler always uses the latest value
+  useEffect(() => {
+    oauthStateRef.current = oauthState;
+  }, [oauthState]);
+
   // Listen for OAuth callback message from popup
   useEffect(() => {
     if (!open) return;
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'gmail-oauth-callback' && event.data?.code) {
-        handleOAuthCallback(event.data.code);
+        setLoading(true);
+        setError('');
+        try {
+          const redirectUri = window.location.origin + '/oauth/gmail/callback';
+          const response = await connectGmail(event.data.code, oauthStateRef.current, redirectUri);
+          setGmailConnected(true);
+          setConnectedEmail(response.data.gmail_address ?? '');
+          setIntegrationId(response.data.integration_id ?? null);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to connect Gmail';
+          setError(msg);
+        } finally {
+          setLoading(false);
+        }
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleOAuthCallback = useCallback(async (code: string) => {
-    setLoading(true);
-    setError('');
-    try {
-      const redirectUri = window.location.origin + '/oauth/gmail/callback';
-      const response = await connectGmail(code, oauthState, redirectUri);
-      setGmailConnected(true);
-      setConnectedEmail(response.data.gmail_address ?? '');
-      setIntegrationId(response.data.integration_id ?? null);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to connect Gmail';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [oauthState]);
+  }, [open]);
 
   const handleConnectGmail = useCallback(async () => {
     setLoading(true);

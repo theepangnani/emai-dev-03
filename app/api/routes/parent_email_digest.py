@@ -10,7 +10,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
-import jwt
+import requests as _requests
+from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -46,6 +47,23 @@ def _validate_redirect_uri(uri: str) -> bool:
     return parsed.hostname in ALLOWED_REDIRECT_DOMAINS
 
 
+def _get_owned_integration(
+    db: Session, integration_id: int, user_id: int
+) -> ParentGmailIntegration:
+    """Fetch an integration owned by the given user, or raise 404."""
+    integration = (
+        db.query(ParentGmailIntegration)
+        .filter(
+            ParentGmailIntegration.id == integration_id,
+            ParentGmailIntegration.parent_id == user_id,
+        )
+        .first()
+    )
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return integration
+
+
 def _create_state(user_id: int) -> str:
     """Create a signed JWT state token for CSRF protection."""
     payload = {
@@ -63,7 +81,7 @@ def _consume_state(state: str) -> dict | None:
         if payload.get("type") != "gmail_oauth":
             return None
         return {"user_id": payload["user_id"]}
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+    except (JWTError, Exception):
         return None
 
 
@@ -202,8 +220,6 @@ def gmail_callback(
 
 def _get_gmail_userinfo(access_token: str) -> dict | None:
     """Fetch the authenticated user's info from Google userinfo endpoint."""
-    import requests as _requests
-
     try:
         resp = _requests.get(
             "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -248,17 +264,7 @@ def get_integration(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Get a single Gmail integration by ID (ownership verified)."""
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    return integration
+    return _get_owned_integration(db, integration_id, current_user.id)
 
 
 @router.delete("/integrations/{integration_id}", status_code=204)
@@ -270,16 +276,7 @@ def delete_integration(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Disconnect/delete a Gmail integration."""
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = _get_owned_integration(db, integration_id, current_user.id)
     db.delete(integration)
     db.commit()
 
@@ -294,12 +291,7 @@ def update_integration(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Update integration details (child info, etc.)."""
-    integration = db.query(ParentGmailIntegration).filter(
-        ParentGmailIntegration.id == integration_id,
-        ParentGmailIntegration.parent_id == current_user.id,
-    ).first()
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = _get_owned_integration(db, integration_id, current_user.id)
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(integration, field, value)
@@ -320,16 +312,7 @@ def pause_integration(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Pause digest delivery for an integration."""
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = _get_owned_integration(db, integration_id, current_user.id)
 
     # If no specific time given, pause indefinitely (far future)
     integration.paused_until = paused_until or datetime(2099, 12, 31, tzinfo=timezone.utc)
@@ -347,16 +330,7 @@ def resume_integration(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Resume digest delivery for an integration (clear paused_until)."""
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    integration = _get_owned_integration(db, integration_id, current_user.id)
 
     integration.paused_until = None
     db.commit()
@@ -378,17 +352,7 @@ def get_digest_settings(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Get digest settings for a specific integration."""
-    # Verify integration ownership first
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    _get_owned_integration(db, integration_id, current_user.id)
 
     digest_settings = (
         db.query(ParentDigestSettings)
@@ -410,17 +374,7 @@ def update_digest_settings(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """Update digest settings (delivery_time, timezone, etc.) for an integration."""
-    # Verify integration ownership first
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    _get_owned_integration(db, integration_id, current_user.id)
 
     digest_settings = (
         db.query(ParentDigestSettings)
@@ -497,15 +451,6 @@ def get_delivery_log(
         raise HTTPException(status_code=404, detail="Delivery log not found")
 
     # Verify ownership via the integration
-    integration = (
-        db.query(ParentGmailIntegration)
-        .filter(
-            ParentGmailIntegration.id == log.integration_id,
-            ParentGmailIntegration.parent_id == current_user.id,
-        )
-        .first()
-    )
-    if not integration:
-        raise HTTPException(status_code=404, detail="Delivery log not found")
+    _get_owned_integration(db, log.integration_id, current_user.id)
 
     return log
