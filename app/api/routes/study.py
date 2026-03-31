@@ -1784,13 +1784,19 @@ async def generate_child_guide(
         "flashcards": "Flashcards",
     }
 
-    # Deduplicate: return existing if same hash was created recently
+    # Deduplicate: check for existing sub-guide with same parent + topic
     title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
+    existing_child = db.query(StudyGuide).filter(
+        StudyGuide.parent_guide_id == guide_id,
+        StudyGuide.guide_type == body.guide_type,
+        StudyGuide.generation_context == body.topic,
+        StudyGuide.archived_at.is_(None),
+    ).first()
+    if existing_child:
+        return StudyGuideResponse.model_validate(existing_child)
+
     study_service = StudyService(db)
     content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
-    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
-    if existing:
-        return existing
 
     generated_content = ""
     is_truncated = False
