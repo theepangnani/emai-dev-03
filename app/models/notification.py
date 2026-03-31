@@ -21,6 +21,7 @@ class NotificationType(str, enum.Enum):
     PROJECT_DUE = "project_due"
     STUDY_GUIDE_SHARED = "study_guide_shared"
     SURVEY_COMPLETED = "survey_completed"
+    PARENT_EMAIL_DIGEST = "parent_email_digest"
 
 
 class Notification(Base):

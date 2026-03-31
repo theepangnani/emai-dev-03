@@ -157,6 +157,7 @@ export function NotificationBell() {
       case 'parent_request': return '👨‍👩‍👧';
       case 'assessment_upcoming': return '📋';
       case 'project_due': return '🎯';
+      case 'parent_email_digest': return '📧';
       default: return '🔔';
     }
   };

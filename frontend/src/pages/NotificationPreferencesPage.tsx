@@ -9,6 +9,7 @@ const CATEGORIES: { key: keyof AdvancedNotificationPreferences; label: string; d
   { key: 'study_guides', label: 'Study Guides', description: 'Study guide creation, material uploads' },
   { key: 'tasks', label: 'Tasks', description: 'Task due dates and reminders' },
   { key: 'system', label: 'System', description: 'System announcements and admin broadcasts' },
+  { key: 'parent_email_digest', label: 'Parent Email Digest', description: 'Daily email summaries for parents' },
 ];
 
 export function NotificationPreferencesPage() {
