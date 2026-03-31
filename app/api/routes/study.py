@@ -1784,6 +1784,14 @@ async def generate_child_guide(
         "flashcards": "Flashcards",
     }
 
+    # Deduplicate: return existing if same hash was created recently
+    title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
+    study_service = StudyService(db)
+    content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
+    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
+    if existing:
+        return existing
+
     generated_content = ""
     is_truncated = False
     critical_dates: list[dict] = []
@@ -1869,7 +1877,6 @@ async def generate_child_guide(
 
     # Enforce limit and save
     enforce_study_guide_limit(db, current_user)
-    title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
     study_guide = StudyGuide(
         user_id=current_user.id,
         course_id=parent_guide.course_id,
@@ -1883,6 +1890,7 @@ async def generate_child_guide(
         generation_context=body.topic,
         focus_prompt=body.custom_prompt,
         is_truncated=is_truncated,
+        content_hash=content_hash,
     )
     db.add(study_guide)
     db.flush()
