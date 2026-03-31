@@ -227,7 +227,7 @@ def _get_gmail_userinfo(access_token: str) -> dict | None:
         )
         if resp.ok:
             return resp.json()
-    except Exception:
+    except _requests.RequestException:
         logger.exception("Failed to fetch Gmail userinfo")
     return None
 

@@ -5,6 +5,7 @@ to ClassBridge for email digest polling (gmail.readonly scope).
 """
 
 import logging
+from urllib.parse import urlencode
 
 import requests
 
@@ -41,8 +42,6 @@ def get_gmail_auth_url(redirect_uri: str, state: str | None = None) -> str:
     }
     if state:
         params["state"] = state
-
-    from urllib.parse import urlencode
 
     return f"{GOOGLE_AUTH_URI}?{urlencode(params)}"
 
