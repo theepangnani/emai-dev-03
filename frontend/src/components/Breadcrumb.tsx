@@ -23,7 +23,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
             {item.to ? (
               <Link to={item.to} className="breadcrumb-link">{item.label}</Link>
             ) : (
-              <span className="breadcrumb-current">{item.label}</span>
+              <span className="breadcrumb-current" aria-current="page">{item.label}</span>
             )}
           </span>
         ))}

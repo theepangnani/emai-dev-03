@@ -201,7 +201,9 @@ const NAV_SVG: Record<string, React.ReactNode> = {
 };
 
 const NavIcon = ({ name }: { name: string }) => {
-  return NAV_SVG[name] || <span>{name[0]}</span>;
+  const icon = NAV_SVG[name];
+  if (!icon) return <span aria-hidden="true">{name[0]}</span>;
+  return <span aria-hidden="true">{icon}</span>;
 };
 
 // Quick action SVG icons — maps sidebar action labels to nav SVGs
