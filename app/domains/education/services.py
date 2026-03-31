@@ -27,21 +27,23 @@ class EducationService:
         Returns:
             List of visible courses based on user role and relationships
         """
-        # Public courses are visible to all
-        filters = [Course.is_private == False]  # noqa: E712
-
-        # Users can always see courses they created
-        filters.append(Course.created_by_user_id == user.id)
-
         if user.role == UserRole.STUDENT:
-            # Students can see courses they're enrolled in
+            # Students only see courses they created or are enrolled in
+            filters = [Course.created_by_user_id == user.id]
             student = self.db.query(Student).filter(Student.user_id == user.id).first()
             if student:
                 enrolled_ids = [c.id for c in student.courses]
                 if enrolled_ids:
                     filters.append(Course.id.in_(enrolled_ids))
+            return self.db.query(Course).filter(or_(*filters)).all()
 
-        elif user.role == UserRole.PARENT:
+        # Public courses are visible to teachers and parents
+        filters = [Course.is_private == False]  # noqa: E712
+
+        # Users can always see courses they created
+        filters.append(Course.created_by_user_id == user.id)
+
+        if user.role == UserRole.PARENT:
             # Parents can see courses assigned to their children
             child_student_ids = (
                 self.db.query(parent_students.c.student_id)
