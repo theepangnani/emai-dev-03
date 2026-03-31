@@ -1,65 +1,71 @@
 import { api } from './client';
 
+// Types matching backend schemas
 export interface EmailDigestIntegration {
   id: number;
-  parent_email: string;
-  child_school_email: string;
-  child_first_name: string;
-  status: string;
+  parent_id: number;
+  gmail_address: string;
+  google_id: string | null;
+  child_school_email: string | null;
+  child_first_name: string | null;
+  connected_at: string;
+  last_synced_at: string | null;
+  is_active: boolean;
+  paused_until: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface EmailDigestSettings {
+  id: number;
   integration_id: number;
+  digest_enabled: boolean;
   delivery_time: string;
   timezone: string;
   digest_format: string;
-  channels: string[];
+  delivery_channels: string;
+  notify_on_empty: boolean;
+  updated_at: string;
 }
 
 export interface GmailAuthUrlResponse {
-  auth_url: string;
+  authorization_url: string;
+  state: string;
 }
 
 export interface GmailCallbackResponse {
-  integration_id: number;
-  parent_email: string;
   status: string;
+  gmail_address: string | null;
+  integration_id: number | null;
 }
 
-export const parentEmailDigestApi = {
-  getGmailAuthUrl: async () => {
-    const response = await api.get('/api/parent/email-digest/gmail/auth-url');
-    return response.data as GmailAuthUrlResponse;
-  },
+// API functions
+export const getGmailAuthUrl = (redirect_uri: string) =>
+  api.get<GmailAuthUrlResponse>('/api/parent/email-digest/gmail/auth-url', {
+    params: { redirect_uri },
+  });
 
-  connectGmail: async (code: string) => {
-    const response = await api.post('/api/parent/email-digest/gmail/callback', { code });
-    return response.data as GmailCallbackResponse;
-  },
+export const connectGmail = (code: string, state: string, redirect_uri: string) =>
+  api.post<GmailCallbackResponse>('/api/parent/email-digest/gmail/callback', {
+    code,
+    state,
+    redirect_uri,
+  });
 
-  listIntegrations: async () => {
-    const response = await api.get('/api/parent/email-digest/integrations');
-    return response.data as EmailDigestIntegration[];
-  },
+export const updateIntegration = (integrationId: number, data: Partial<Pick<EmailDigestIntegration, 'child_school_email' | 'child_first_name' | 'is_active' | 'paused_until'>>) =>
+  api.patch<EmailDigestIntegration>(`/api/parent/email-digest/integrations/${integrationId}`, data);
 
-  getSettings: async (integrationId: number) => {
-    const response = await api.get(`/api/parent/email-digest/settings/${integrationId}`);
-    return response.data as EmailDigestSettings;
-  },
+export const listIntegrations = () =>
+  api.get<EmailDigestIntegration[]>('/api/parent/email-digest/integrations');
 
-  updateSettings: async (integrationId: number, data: Partial<Omit<EmailDigestSettings, 'integration_id'>>) => {
-    const response = await api.put(`/api/parent/email-digest/settings/${integrationId}`, data);
-    return response.data as EmailDigestSettings;
-  },
+export const getSettings = (integrationId: number) =>
+  api.get<EmailDigestSettings>(`/api/parent/email-digest/settings/${integrationId}`);
 
-  pauseIntegration: async (id: number) => {
-    const response = await api.post(`/api/parent/email-digest/integrations/${id}/pause`);
-    return response.data;
-  },
+export const updateSettings = (integrationId: number, data: Partial<EmailDigestSettings>) =>
+  api.put<EmailDigestSettings>(`/api/parent/email-digest/settings/${integrationId}`, data);
 
-  resumeIntegration: async (id: number) => {
-    const response = await api.post(`/api/parent/email-digest/integrations/${id}/resume`);
-    return response.data;
-  },
-};
+export const pauseIntegration = (integrationId: number) =>
+  api.post<EmailDigestIntegration>(`/api/parent/email-digest/integrations/${integrationId}/pause`);
+
+export const resumeIntegration = (integrationId: number) =>
+  api.post<EmailDigestIntegration>(`/api/parent/email-digest/integrations/${integrationId}/resume`);

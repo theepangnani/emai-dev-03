@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 
 class ParentGmailIntegrationBase(BaseModel):
     gmail_address: str
-    child_school_email: str
-    child_first_name: str
+    child_school_email: Optional[str] = None
+    child_first_name: Optional[str] = None
 
 
 class ParentGmailIntegrationCreate(ParentGmailIntegrationBase):
@@ -82,7 +82,7 @@ class DigestDeliveryLogResponse(BaseModel):
     digest_content: Optional[str] = None
     digest_length_chars: Optional[int] = None
     delivered_at: datetime
-    channels_used: str
+    channels_used: Optional[str] = None
     status: str
 
     model_config = ConfigDict(from_attributes=True)

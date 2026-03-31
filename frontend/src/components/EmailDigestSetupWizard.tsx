@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { parentEmailDigestApi } from '../api/parentEmailDigest';
-import type { GmailCallbackResponse } from '../api/parentEmailDigest';
+import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings } from '../api/parentEmailDigest';
 import './EmailDigestSetupWizard.css';
 
 const TIMEZONES = [
@@ -51,6 +50,9 @@ export function EmailDigestSetupWizard({
   const [connectedEmail, setConnectedEmail] = useState('');
   const [integrationId, setIntegrationId] = useState<number | null>(null);
 
+  // OAuth state
+  const [oauthState, setOauthState] = useState('');
+
   // Step 2: Child info
   const [childSchoolEmail, setChildSchoolEmail] = useState('');
   const [childFirstName, setChildFirstName] = useState(childName ?? '');
@@ -73,6 +75,7 @@ export function EmailDigestSetupWizard({
       setGmailConnected(false);
       setConnectedEmail('');
       setIntegrationId(null);
+      setOauthState('');
       setChildSchoolEmail('');
       setChildFirstName(childName ?? '');
       setDeliveryTime('07:00');
@@ -108,29 +111,32 @@ export function EmailDigestSetupWizard({
     setLoading(true);
     setError('');
     try {
-      const result: GmailCallbackResponse = await parentEmailDigestApi.connectGmail(code);
+      const redirectUri = window.location.origin + '/oauth/gmail/callback';
+      const response = await connectGmail(code, oauthState, redirectUri);
       setGmailConnected(true);
-      setConnectedEmail(result.parent_email);
-      setIntegrationId(result.integration_id);
+      setConnectedEmail(response.data.gmail_address ?? '');
+      setIntegrationId(response.data.integration_id ?? null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to connect Gmail';
       setError(msg);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [oauthState]);
 
   const handleConnectGmail = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const { auth_url } = await parentEmailDigestApi.getGmailAuthUrl();
+      const redirectUri = window.location.origin + '/oauth/gmail/callback';
+      const { data } = await getGmailAuthUrl(redirectUri);
+      setOauthState(data.state);
       // Open OAuth in a popup
       const w = 500;
       const h = 600;
       const left = window.screenX + (window.outerWidth - w) / 2;
       const top = window.screenY + (window.outerHeight - h) / 2;
-      window.open(auth_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+      window.open(data.authorization_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to get auth URL';
       setError(msg);
@@ -162,6 +168,22 @@ export function EmailDigestSetupWizard({
         setError('Please enter a valid email address.');
         return;
       }
+      // Save child info to the integration
+      if (integrationId) {
+        setLoading(true);
+        try {
+          await updateIntegration(integrationId, {
+            child_school_email: childSchoolEmail.trim(),
+            child_first_name: childFirstName.trim(),
+          });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to save child info';
+          setError(msg);
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+      }
       setStep(3);
     } else if (step === 3) {
       if (channels.length === 0) {
@@ -174,11 +196,11 @@ export function EmailDigestSetupWizard({
       if (!integrationId) return;
       setLoading(true);
       try {
-        await parentEmailDigestApi.updateSettings(integrationId, {
+        await updateSettings(integrationId, {
           delivery_time: deliveryTime,
           timezone,
           digest_format: digestFormat,
-          channels,
+          delivery_channels: channels.join(','),
         });
         onComplete?.(integrationId);
         onClose();

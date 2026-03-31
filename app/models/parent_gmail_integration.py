@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -17,11 +17,11 @@ class ParentGmailIntegration(Base):
     google_id = Column(String(255), nullable=False)
     access_token = Column(String(512), nullable=True)
     refresh_token = Column(String(512), nullable=True)
-    child_school_email = Column(String(255), nullable=False)
+    child_school_email = Column(String(255), nullable=True)
     child_first_name = Column(String(100), nullable=True)
     connected_at = Column(DateTime(timezone=True), server_default=func.now())
     last_synced_at = Column(DateTime(timezone=True), nullable=True)
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, server_default=text("true"), default=True)
     paused_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -36,12 +36,12 @@ class ParentDigestSettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    digest_enabled = Column(Boolean, default=True)
+    digest_enabled = Column(Boolean, server_default=text("true"), default=True)
     delivery_time = Column(String(5), default="07:00")
     timezone = Column(String(50), default="America/Toronto")
     digest_format = Column(String(20), default="full")
     delivery_channels = Column(String(50), default="in_app,email")
-    notify_on_empty = Column(Boolean, default=False)
+    notify_on_empty = Column(Boolean, server_default=text("false"), default=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     integration = relationship("ParentGmailIntegration", back_populates="digest_settings")

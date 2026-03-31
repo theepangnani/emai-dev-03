@@ -5,11 +5,12 @@ digest settings, and delivery logs.
 """
 
 import logging
-import secrets
 import time
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -26,6 +27,7 @@ from app.models.parent_gmail_integration import (
 from app.models.user import User, UserRole
 from app.schemas.parent_email_digest import (
     ParentGmailIntegrationResponse,
+    ParentGmailIntegrationUpdate,
     ParentDigestSettingsResponse,
     ParentDigestSettingsUpdate,
     DigestDeliveryLogResponse,
@@ -36,32 +38,33 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/parent/email-digest", tags=["Parent Email Digest"])
 
-# In-memory OAuth state store (nonce → {user_id, created_at})
-_oauth_states: dict[str, dict] = {}
-_STATE_TTL = 600  # 10 minutes
+ALLOWED_REDIRECT_DOMAINS = ["classbridge.ca", "www.classbridge.ca", "localhost"]
+
+
+def _validate_redirect_uri(uri: str) -> bool:
+    parsed = urlparse(uri)
+    return parsed.hostname in ALLOWED_REDIRECT_DOMAINS
 
 
 def _create_state(user_id: int) -> str:
-    """Generate a cryptographic state token for CSRF protection."""
-    now = time.time()
-    # Clean expired entries
-    expired = [k for k, v in _oauth_states.items() if now - v["created_at"] > _STATE_TTL]
-    for k in expired:
-        _oauth_states.pop(k, None)
-
-    nonce = secrets.token_urlsafe(32)
-    _oauth_states[nonce] = {"user_id": user_id, "created_at": now}
-    return nonce
+    """Create a signed JWT state token for CSRF protection."""
+    payload = {
+        "user_id": user_id,
+        "exp": int(time.time()) + 600,  # 10 min
+        "type": "gmail_oauth",
+    }
+    return jwt.encode(payload, settings.secret_key, algorithm="HS256")
 
 
-def _consume_state(nonce: str) -> dict | None:
-    """Validate and consume a state token. Returns context or None."""
-    entry = _oauth_states.pop(nonce, None)
-    if not entry:
+def _consume_state(state: str) -> dict | None:
+    """Validate a JWT state token. Returns context or None."""
+    try:
+        payload = jwt.decode(state, settings.secret_key, algorithms=["HS256"])
+        if payload.get("type") != "gmail_oauth":
+            return None
+        return {"user_id": payload["user_id"]}
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
-    if time.time() - entry["created_at"] > _STATE_TTL:
-        return None
-    return entry
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +86,7 @@ class GmailCallbackRequest(BaseModel):
 class GmailCallbackResponse(BaseModel):
     status: str
     gmail_address: str | None = None
+    integration_id: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +105,11 @@ def gmail_auth_url(
     The frontend should redirect the user to the returned URL. After consent,
     Google will redirect back to the provided redirect_uri with a code and state.
     """
+    if not _validate_redirect_uri(redirect_uri):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect_uri domain",
+        )
     state = _create_state(current_user.id)
     url = get_gmail_auth_url(redirect_uri=redirect_uri, state=state)
     return GmailAuthUrlResponse(authorization_url=url, state=state)
@@ -118,6 +127,11 @@ def gmail_callback(
     Creates or updates a ParentGmailIntegration record linking the parent's
     ClassBridge account to their personal Gmail for email digest polling.
     """
+    if not _validate_redirect_uri(body.redirect_uri):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid redirect_uri domain",
+        )
     # Validate state
     state_ctx = _consume_state(body.state)
     if not state_ctx:
@@ -164,6 +178,8 @@ def gmail_callback(
         existing.access_token = tokens["access_token"]
         existing.refresh_token = tokens["refresh_token"]
         existing.connected_at = datetime.now(timezone.utc)
+        db.commit()
+        return GmailCallbackResponse(status="ok", gmail_address=gmail_address, integration_id=existing.id)
     else:
         integration = ParentGmailIntegration(
             parent_id=current_user.id,
@@ -173,9 +189,15 @@ def gmail_callback(
             refresh_token=tokens["refresh_token"],
         )
         db.add(integration)
+        db.commit()
+        db.refresh(integration)
 
-    db.commit()
-    return GmailCallbackResponse(status="ok", gmail_address=gmail_address)
+        # Auto-create default digest settings
+        default_settings = ParentDigestSettings(integration_id=integration.id)
+        db.add(default_settings)
+        db.commit()
+
+        return GmailCallbackResponse(status="ok", gmail_address=gmail_address, integration_id=integration.id)
 
 
 def _get_gmail_userinfo(access_token: str) -> dict | None:
@@ -260,6 +282,30 @@ def delete_integration(
         raise HTTPException(status_code=404, detail="Integration not found")
     db.delete(integration)
     db.commit()
+
+
+@router.patch("/integrations/{integration_id}", response_model=ParentGmailIntegrationResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_integration(
+    request: Request,
+    integration_id: int,
+    data: ParentGmailIntegrationUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Update integration details (child info, etc.)."""
+    integration = db.query(ParentGmailIntegration).filter(
+        ParentGmailIntegration.id == integration_id,
+        ParentGmailIntegration.parent_id == current_user.id,
+    ).first()
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(integration, field, value)
+    db.commit()
+    db.refresh(integration)
+    return integration
 
 
 @router.post("/integrations/{integration_id}/pause", response_model=ParentGmailIntegrationResponse)
