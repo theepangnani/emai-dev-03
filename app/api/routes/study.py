@@ -1601,6 +1601,14 @@ def list_child_guides(
             child_user_ids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_ids)).all()] if child_ids else []
             if guide.user_id not in child_user_ids:
                 raise HTTPException(status_code=404, detail="Study guide not found")
+        elif current_user.role == UserRole.STUDENT:
+            # Students can see guides tagged to their enrolled courses
+            if guide.course_id:
+                enrolled_course_ids = get_student_enrolled_course_ids(db, current_user.id)
+                if guide.course_id not in enrolled_course_ids:
+                    raise HTTPException(status_code=404, detail="Study guide not found")
+            else:
+                raise HTTPException(status_code=404, detail="Study guide not found")
         else:
             raise HTTPException(status_code=404, detail="Study guide not found")
 
@@ -1784,13 +1792,20 @@ async def generate_child_guide(
         "flashcards": "Flashcards",
     }
 
-    # Deduplicate: return existing if same hash was created recently
+    # Deduplicate: check for existing sub-guide with same parent + topic
     title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
+    existing_child = db.query(StudyGuide).filter(
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.parent_guide_id == guide_id,
+        StudyGuide.guide_type == body.guide_type,
+        StudyGuide.generation_context == body.topic,
+        StudyGuide.archived_at.is_(None),
+    ).first()
+    if existing_child:
+        return StudyGuideResponse.model_validate(existing_child)
+
     study_service = StudyService(db)
     content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
-    existing = study_service.find_recent_duplicate(current_user.id, content_hash)
-    if existing:
-        return existing
 
     generated_content = ""
     is_truncated = False
