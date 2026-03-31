@@ -502,7 +502,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           aria-live="assertive"
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-            background: '#f59e0b', color: '#fff', textAlign: 'center',
+            background: 'var(--color-warning)', color: 'var(--color-surface)', textAlign: 'center',
             padding: reconnecting ? '8px 16px' : '0', fontSize: '14px', fontWeight: 500,
           }}
         >

@@ -17,7 +17,7 @@
   border-radius: 50%;
   border: none;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,7 +55,7 @@
 /* Single-action mode (just chat, no speed dial) */
 .speed-dial-trigger--single {
   overflow: hidden;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 16px;
 }
 
@@ -122,7 +122,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--color-surface);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
@@ -142,7 +142,7 @@
 /* Notes sub-action */
 .speed-dial-action--notes > svg {
   background: var(--color-accent-strong, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   padding: 13px;
   box-sizing: content-box;
 }
@@ -172,8 +172,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
-  border: 2px solid #fff;
+  background: var(--color-danger);
+  border: 2px solid var(--color-surface);
 }
 
 .speed-dial-action--notes {
