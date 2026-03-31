@@ -129,7 +129,7 @@
 
 .bug-report-actions .btn-submit {
   background: var(--color-accent-strong, #2d6eb5);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .bug-report-actions .btn-submit:hover {
@@ -155,7 +155,7 @@
 }
 
 .bug-report-error {
-  color: #dc2626;
+  color: var(--color-danger);
   font-size: 13px;
   margin-top: -8px;
 }
@@ -180,8 +180,8 @@
   height: 24px;
   border-radius: 50%;
   border: none;
-  background: #dc2626;
-  color: white;
+  background: var(--color-danger);
+  color: var(--color-surface);
   font-size: 14px;
   cursor: pointer;
   display: flex;
