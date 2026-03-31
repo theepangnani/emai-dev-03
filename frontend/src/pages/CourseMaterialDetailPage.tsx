@@ -740,10 +740,11 @@ export function CourseMaterialDetailPage() {
         document_type: content?.document_type || undefined,
         study_goal: content?.study_goal || undefined,
       });
-      if (chipAbortRef.current) return;
       showToast('Sub-guide generated — opening now');
       navigate(`/study/guide/${newGuide.id}`);
-      try { refreshAIUsage(); } catch (e) { console.warn('Failed to refresh AI usage:', e); }
+      if (!chipAbortRef.current) {
+        try { refreshAIUsage(); } catch (e) { console.warn('Failed to refresh AI usage after chip navigation:', e); }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
       showToast(msg);
