@@ -300,6 +300,8 @@ export function CourseMaterialDetailPage() {
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const chipAbortRef = useRef(false);
+  const resourceLinksPollStartRef = useRef<number>(Date.now());
+  useEffect(() => { resourceLinksPollStartRef.current = Date.now(); }, [contentId]);
   useEffect(() => {
     return () => { chipAbortRef.current = true; };
   }, []);
@@ -377,6 +379,12 @@ export function CourseMaterialDetailPage() {
     enabled: contentId > 0,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && data.length > 0) return false;
+      if (Date.now() - resourceLinksPollStartRef.current > 120_000) return false;
+      return 5000;
+    },
   });
   const resourceLinkCount = resourceLinkGroups.reduce((sum, g) => sum + g.links.length, 0);
 
