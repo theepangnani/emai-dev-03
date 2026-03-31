@@ -1,7 +1,7 @@
 /* DailyBriefingCard */
 .briefing-card {
   background: var(--surface, #fff);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 20px 24px;
   margin-bottom: 16px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -27,7 +27,7 @@
   gap: 8px;
   padding: 12px 16px;
   background: #f0fdf4;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: #166534;
   font-weight: 500;
   font-size: 0.95rem;
@@ -44,7 +44,7 @@
   padding: 8px 12px;
   background: #fef2f2;
   border: 1px solid #fecaca;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: #991b1b;
   font-size: 0.85rem;
   font-weight: 500;
@@ -54,7 +54,7 @@
 /* Per-child section */
 .briefing-child-section {
   border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 14px 16px;
   margin-bottom: 10px;
 }
@@ -90,7 +90,7 @@
 
 .briefing-help-btn {
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border, #e5e7eb);
   background: var(--surface, #fff);
   color: var(--text-primary, #374151);
@@ -119,7 +119,7 @@
   max-width: 320px;
   background: var(--surface, #fff);
   border: 1px solid var(--border, #e5e7eb);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   padding: 6px 0;
 }
@@ -215,7 +215,7 @@
   justify-content: center;
   min-width: 20px;
   height: 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 0.75rem;
   font-weight: 700;
   padding: 0 6px;
@@ -269,7 +269,7 @@
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.5s infinite;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 @keyframes skeleton-shimmer {
@@ -291,7 +291,7 @@
 
 .briefing-skeleton-child {
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 14px 16px;
   margin-bottom: 10px;
 }
@@ -469,7 +469,7 @@
 @media (max-width: 480px) {
   .briefing-card {
     padding: 14px 14px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     margin-bottom: 10px;
   }
 

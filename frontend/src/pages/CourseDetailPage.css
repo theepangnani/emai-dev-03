@@ -40,7 +40,7 @@
   display: inline-block;
   font-size: 13px;
   padding: 3px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent-light);
   color: var(--color-accent-strong);
   font-weight: 500;
@@ -50,7 +50,7 @@
   display: inline-block;
   font-size: 11px;
   padding: 3px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
 }
 
@@ -81,7 +81,7 @@
   gap: 4px;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
@@ -97,7 +97,7 @@
   padding: 10px 14px;
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   line-height: 1.5;
   border: 1px solid var(--color-warning-border);
@@ -172,7 +172,7 @@
 .courses-btn {
   padding: 8px 16px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -318,7 +318,7 @@
   margin-top: 20px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 24px;
   display: flex;
   flex-direction: column;
@@ -362,7 +362,7 @@
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   margin-left: 4px;
 }
 
@@ -456,7 +456,7 @@
   padding: 4px 10px;
   background: var(--color-accent-light);
   color: var(--color-accent-strong);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   text-decoration: none;
 }
@@ -495,7 +495,7 @@
   align-items: flex-start;
   gap: 16px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
 
@@ -555,7 +555,7 @@
 /* Upload drop zone — refined to match dashboard aesthetic */
 .upload-drop-zone {
   border: 2px dashed var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 32px 20px;
   text-align: center;
   cursor: pointer;
@@ -655,7 +655,7 @@
   display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 600;
   background: var(--color-accent-light);
   color: var(--color-accent-strong);
@@ -686,7 +686,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
 
@@ -717,7 +717,7 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-ink-muted);
   transition: all 0.2s;
@@ -747,7 +747,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
 
@@ -800,7 +800,7 @@
   color: var(--color-ink-muted);
   background: var(--color-surface-alt);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   white-space: nowrap;
 }
 
@@ -920,7 +920,7 @@
 
   .course-section-panel {
     padding: 14px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     margin-top: 12px;
   }
 
@@ -1028,7 +1028,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   margin-left: 6px;
 }
 
