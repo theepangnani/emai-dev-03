@@ -14,7 +14,7 @@ const TYPE_GROUPS: { key: string; label: string; types: string[] }[] = [
   { key: 'tasks', label: 'Tasks & Assignments', types: ['assignment_due', 'task_due', 'project_due', 'assessment_upcoming'] },
   { key: 'messages', label: 'Messages', types: ['message', 'link_request', 'parent_request'] },
   { key: 'study', label: 'Study Tools', types: ['study_guide_created', 'material_uploaded'] },
-  { key: 'system', label: 'System', types: ['system', 'grade_posted'] },
+  { key: 'system', label: 'System', types: ['system', 'grade_posted', 'parent_email_digest'] },
 ];
 
 const getTypeIcon = (type: string) => {
@@ -30,6 +30,7 @@ const getTypeIcon = (type: string) => {
     case 'parent_request': return '\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67';
     case 'assessment_upcoming': return '\uD83D\uDCCB';
     case 'project_due': return '\uD83C\uDFAF';
+    case 'parent_email_digest': return '\uD83D\uDCE7';
     default: return '\uD83D\uDD14';
   }
 };

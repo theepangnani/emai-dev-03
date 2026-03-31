@@ -47,6 +47,7 @@ export interface AdvancedNotificationPreferences {
   study_guides: ChannelPreference;
   tasks: ChannelPreference;
   system: ChannelPreference;
+  parent_email_digest: ChannelPreference;
 }
 
 export interface NotificationSuppressionResponse {
