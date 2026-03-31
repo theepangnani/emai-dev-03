@@ -1601,6 +1601,14 @@ def list_child_guides(
             child_user_ids = [r[0] for r in db.query(Student.user_id).filter(Student.id.in_(child_ids)).all()] if child_ids else []
             if guide.user_id not in child_user_ids:
                 raise HTTPException(status_code=404, detail="Study guide not found")
+        elif current_user.role == UserRole.STUDENT:
+            # Students can see guides tagged to their enrolled courses
+            if guide.course_id:
+                enrolled_course_ids = get_student_enrolled_course_ids(db, current_user.id)
+                if guide.course_id not in enrolled_course_ids:
+                    raise HTTPException(status_code=404, detail="Study guide not found")
+            else:
+                raise HTTPException(status_code=404, detail="Study guide not found")
         else:
             raise HTTPException(status_code=404, detail="Study guide not found")
 
