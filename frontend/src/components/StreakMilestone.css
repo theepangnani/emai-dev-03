@@ -99,3 +99,10 @@
     min-height: 44px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .streak-milestone {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.12), rgba(34, 211, 238, 0.04));
+  border-color: rgba(34, 211, 238, 0.3);
+}

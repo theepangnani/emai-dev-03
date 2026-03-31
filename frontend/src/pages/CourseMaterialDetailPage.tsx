@@ -207,18 +207,21 @@ export function CourseMaterialDetailPage() {
     }, { replace: true });
   }, [setSearchParams]);
 
+  const [generating, setGenerating] = useState<string | null>(null);
+  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
+
   // Sync active tab when URL search params change (e.g., back/forward navigation)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as TabKey | null;
     if (tabFromUrl === 'access-log') {
-      setActiveTabState('document');
-      setShowAccessLog(true);
+      if (activeTab !== 'document' || !showAccessLog) {
+        setActiveTabState('document');
+        setShowAccessLog(true);
+      }
     } else if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
       setActiveTabState(tabFromUrl);
     }
-  }, [searchParams, activeTab]);
-  const [generating, setGenerating] = useState<string | null>(null);
-  const [showAccessLog, setShowAccessLog] = useState(urlTab === 'access-log');
+  }, [searchParams, activeTab, showAccessLog]);
   const [showMoreDropdown, setShowMoreDropdown] = useState(false);
   const moreDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -234,6 +237,55 @@ export function CourseMaterialDetailPage() {
       return () => document.removeEventListener('mousedown', handler);
     }
   }, [showMoreDropdown]);
+
+  // Auto-focus first menu item when dropdown opens
+  useEffect(() => {
+    if (showMoreDropdown) {
+      requestAnimationFrame(() => {
+        const firstItem = moreDropdownRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]');
+        firstItem?.focus();
+      });
+    }
+  }, [showMoreDropdown]);
+
+  // Keyboard handler for More Tools dropdown (WAI-ARIA menu pattern)
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const items = moreDropdownRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    if (!items || items.length === 0) return;
+    const currentIndex = Array.from(items).findIndex(el => el === document.activeElement);
+    switch (e.key) {
+      case 'ArrowDown': {
+        e.preventDefault();
+        const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+        items[next].focus();
+        break;
+      }
+      case 'ArrowUp': {
+        e.preventDefault();
+        const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+        items[prev].focus();
+        break;
+      }
+      case 'Home':
+        e.preventDefault();
+        items[0].focus();
+        break;
+      case 'End':
+        e.preventDefault();
+        items[items.length - 1].focus();
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLButtonElement) {
+          document.activeElement.click();
+        }
+        break;
+      case 'Tab':
+        setShowMoreDropdown(false);
+        break;
+    }
+  }, []);
 
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -740,6 +792,7 @@ export function CourseMaterialDetailPage() {
   const guideTab = tabs.find(t => t.key === 'guide')!;
   const docTab = tabs.find(t => t.key === 'document')!;
   const dropdownTabs = tabs.filter(t => !['guide', 'document'].includes(t.key));
+  const isDropdownActive = dropdownTabs.some(t => t.key === activeTab);
   const activeDropdownTab = dropdownTabs.find(t => t.key === activeTab);
 
   return (
@@ -843,47 +896,51 @@ export function CourseMaterialDetailPage() {
 
         {/* ── Tab navigation ───────────────────────── */}
         <div className="cm-tabs" role="tablist">
-          {/* Study Guide — dropdown contains all study tools */}
-          <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
-            <button
-              className={`cm-tab${activeTab !== 'document' ? ' active' : ' has-content'}`}
-              onClick={() => { if (activeTab !== 'document') { setShowMoreDropdown(v => !v); } else { setActiveTab('guide'); } }}
-              aria-haspopup="true"
-              aria-expanded={showMoreDropdown}
-            >
-              <span className="cm-tab-icon">{activeTab !== 'guide' && activeTab !== 'document' && activeDropdownTab ? activeDropdownTab.icon : guideTab.icon}</span>
-              <span className="cm-tab-label">{activeTab !== 'guide' && activeTab !== 'document' && activeDropdownTab ? activeDropdownTab.label : 'Study Guide'}</span>
-              <span className="cm-tab-label-short">{activeTab !== 'guide' && activeTab !== 'document' && activeDropdownTab ? activeDropdownTab.shortLabel : 'Guide'}</span>
-              <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            {showMoreDropdown && (
-              <div className="cm-more-dropdown" role="menu">
-                <button
-                  className={`cm-more-dropdown-item${activeTab === 'guide' ? ' active' : ''}${!guideTab.hasContent ? ' empty' : ''}`}
-                  role="menuitem"
-                  tabIndex={0}
-                  onClick={() => { setActiveTab('guide'); setShowMoreDropdown(false); }}
-                >
-                  <span className="cm-tab-icon">{guideTab.icon}</span>
-                  <span>{guideTab.label}</span>
-                  {!guideTab.hasContent && <span className="cm-tab-empty-dot" />}
-                </button>
-                {dropdownTabs.map(tab => (
-                  <button
-                    key={tab.key}
-                    className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
-                    role="menuitem"
-                    tabIndex={0}
-                    onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
-                  >
-                    <span className="cm-tab-icon">{tab.icon}</span>
-                    <span>{tab.label}</span>
-                    {!tab.hasContent && tab.key !== 'document' && <span className="cm-tab-empty-dot" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Study Guide - always first */}
+          <button key="guide" className={`cm-tab${activeTab === 'guide' ? ' active' : ''}${!guideTab.hasContent ? ' empty' : ' has-content'}`}
+            onClick={() => setActiveTab('guide')} role="tab" aria-selected={activeTab === 'guide'}>
+            <span className="cm-tab-icon">{guideTab.icon}</span>
+            <span className="cm-tab-label">{guideTab.label}</span>
+            <span className="cm-tab-label-short">{guideTab.shortLabel}</span>
+            {!guideTab.hasContent && <span className="cm-tab-empty-dot" />}
+          </button>
+
+          {/* More Tools dropdown */}
+          {dropdownTabs.length > 0 && (
+            <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
+              <button
+                className={`cm-tab cm-tab-more${isDropdownActive ? ' active' : ''}`}
+                onClick={() => setShowMoreDropdown(v => !v)}
+                aria-haspopup="menu"
+                aria-expanded={showMoreDropdown}
+                aria-label="More tools"
+              >
+                <span className="cm-tab-icon">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                </span>
+                <span className="cm-tab-label">{isDropdownActive && activeDropdownTab ? activeDropdownTab.label : 'More Tools'}</span>
+                <span className="cm-tab-label-short">{isDropdownActive && activeDropdownTab ? activeDropdownTab.shortLabel : 'More'}</span>
+                <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {showMoreDropdown && (
+                <div className="cm-more-dropdown" role="menu" onKeyDown={handleDropdownKeyDown}>
+                  {dropdownTabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
+                    >
+                      <span className="cm-tab-icon">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {!tab.hasContent && tab.key !== 'document' && <span className="cm-tab-empty-dot" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Source Document - always visible */}
           <button key="document" className={`cm-tab${activeTab === 'document' ? ' active' : ''}${!docTab.hasContent ? ' empty' : ' has-content'} source-doc`}

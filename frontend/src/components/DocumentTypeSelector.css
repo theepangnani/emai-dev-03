@@ -109,3 +109,15 @@
     font-size: 0.8rem;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .doc-type-chip--selected {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .doc-type-chip--selected:hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GenerationSpinner } from './GenerationSpinner';
 import { ReportBugLink } from './ReportBugLink';
 import type { StudyGuideCreateParams } from '../hooks/useStudyGuideStream';

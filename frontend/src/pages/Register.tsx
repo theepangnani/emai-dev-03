@@ -358,11 +358,15 @@ export function Register() {
                   autoComplete="username"
                 />
                 {formData.username.trim().length >= 3 && (
-                  <div className={`username-status ${
-                    usernameStatus.checking ? 'checking' :
-                    usernameStatus.available === true ? 'available' :
-                    usernameStatus.available === false ? 'taken' : ''
-                  }`}>
+                  <div
+                    className={`username-status ${
+                      usernameStatus.checking ? 'checking' :
+                      usernameStatus.available === true ? 'available' :
+                      usernameStatus.available === false ? 'taken' : ''
+                    }`}
+                    role="status"
+                    aria-live="polite"
+                  >
                     {usernameStatus.message}
                   </div>
                 )}

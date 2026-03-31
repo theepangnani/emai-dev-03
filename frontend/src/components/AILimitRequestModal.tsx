@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { aiUsageApi } from '../api/aiUsage';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ReportBugLink } from './ReportBugLink';
 import './AILimitRequestModal.css';
 

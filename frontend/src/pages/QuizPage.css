@@ -472,3 +472,17 @@
   }
 }
 
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .option:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .results-card {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .question-card {
+  border: 1px solid var(--color-border);
+}
+

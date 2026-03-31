@@ -218,3 +218,17 @@
     font-size: 13px;
   }
 }
+
+/* ── Dark Mode ───────────────────────────── */
+
+[data-theme="dark"] .grades-color-green {
+  background: rgba(110, 231, 183, 0.14);
+}
+
+[data-theme="dark"] .grades-color-yellow {
+  background: rgba(253, 230, 138, 0.14);
+}
+
+[data-theme="dark"] .grades-color-red {
+  background: rgba(252, 165, 165, 0.14);
+}

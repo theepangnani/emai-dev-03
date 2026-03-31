@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { bugReportsApi } from '../api/bugReports';
-import { useFocusTrap } from '../utils/useFocusTrap';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import './BugReportModal.css';
 
 interface BugReportModalProps {
@@ -25,6 +25,67 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
   const fileRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(open, onClose);
 
+  // Drag state
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const dragState = useRef<{ startX: number; startY: number; panelX: number; panelY: number } | null>(null);
+  const dragHandlersRef = useRef<{ move: (ev: MouseEvent) => void; up: () => void } | null>(null);
+
+  // Merge trapRef and modalRef into a single stable callback ref
+  const mergedRef = useCallback((node: HTMLDivElement | null) => {
+    (trapRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    modalRef.current = node;
+  }, [trapRef]);
+
+  // Clean up drag listeners on unmount
+  useEffect(() => {
+    return () => {
+      if (dragHandlersRef.current) {
+        document.removeEventListener('mousemove', dragHandlersRef.current.move);
+        document.removeEventListener('mouseup', dragHandlersRef.current.up);
+        dragHandlersRef.current = null;
+      }
+    };
+  }, []);
+
+  // Empty deps: reads modalRef/dragState via refs (stable), rect is read fresh each call
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    const modal = modalRef.current;
+    if (!modal) return;
+    const rect = modal.getBoundingClientRect();
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      panelX: rect.left,
+      panelY: rect.top,
+    };
+    setDragging(true);
+
+    const handleMove = (ev: MouseEvent) => {
+      if (!dragState.current) return;
+      const dx = ev.clientX - dragState.current.startX;
+      const dy = ev.clientY - dragState.current.startY;
+      const newX = Math.max(-rect.width + 100, Math.min(window.innerWidth - 100, dragState.current.panelX + dx));
+      const newY = Math.max(0, Math.min(window.innerHeight - 50, dragState.current.panelY + dy));
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleUp = () => {
+      dragState.current = null;
+      setDragging(false);
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      dragHandlersRef.current = null;
+    };
+
+    dragHandlersRef.current = { move: handleMove, up: handleUp };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  }, []);
+
   // Prefill description when modal opens
   useEffect(() => {
     if (open && prefillDescription) {
@@ -48,6 +109,7 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
     setError('');
     setSuccess(false);
     setHoneypot('');
+    setPosition(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -129,8 +191,8 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
 
   return (
     <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal" ref={trapRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste}>
-        <div className="bug-report-header">
+      <div className="modal" ref={mergedRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste} style={position ? { position: 'fixed', left: position.x, top: position.y, margin: 0, transform: 'none' } : undefined}>
+        <div className={`bug-report-header${dragging ? ' bug-report-dragging' : ''}`} onMouseDown={handleDragStart}>
           <h2>Report a Bug</h2>
           <button className="bug-report-close" onClick={handleClose} aria-label="Close">&times;</button>
         </div>
