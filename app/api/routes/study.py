@@ -1795,6 +1795,7 @@ async def generate_child_guide(
     # Deduplicate: check for existing sub-guide with same parent + topic
     title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
     existing_child = db.query(StudyGuide).filter(
+        StudyGuide.user_id == current_user.id,
         StudyGuide.parent_guide_id == guide_id,
         StudyGuide.guide_type == body.guide_type,
         StudyGuide.generation_context == body.topic,
