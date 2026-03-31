@@ -27,7 +27,7 @@
 .analytics-child-selector select {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   background: var(--color-surface);
   color: var(--color-text);
@@ -44,7 +44,7 @@
 .analytics-summary-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 1.25rem;
   text-align: center;
 }
@@ -66,7 +66,7 @@
   display: inline-block;
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-top: 0.35rem;
   font-weight: 500;
 }
@@ -90,7 +90,7 @@
 .analytics-chart-section {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -112,7 +112,7 @@
 .analytics-chart-filters button {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text-secondary);
   font-size: 0.8rem;
@@ -129,7 +129,7 @@
 .analytics-chart-filters select {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.8rem;
   background: var(--color-surface);
   color: var(--color-text);
@@ -139,7 +139,7 @@
 .analytics-ai-section {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -156,7 +156,7 @@
   background: var(--color-accent);
   color: var(--color-surface);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -176,7 +176,7 @@
   margin-top: 1rem;
   padding: 1rem;
   background: var(--color-surface-header, var(--color-surface));
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   line-height: 1.6;
 }

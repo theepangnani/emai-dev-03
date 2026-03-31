@@ -111,6 +111,14 @@ body:has(.modal-overlay) {
   --shadow-lift: 0 12px 30px rgba(19, 27, 46, 0.12);
   --shadow-xl: 0 20px 40px rgba(19, 27, 46, 0.18);
 
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
   /* Radii */
   --radius-xs: 4px;
   --radius-sm: 8px;
