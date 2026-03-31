@@ -948,12 +948,14 @@ export function CourseMaterialDetailPage() {
                 courseId={content?.course_id}
                 linkedTasks={Object.values(linkedTasks).flat()}
               />
-              <div className="cm-access-log-section">
-                <button className="cm-access-log-toggle" onClick={() => setShowAccessLog(v => !v)}>
-                  <AccessLogIcon /> Access Log {showAccessLog ? '\u25BE' : '\u25B8'}
-                </button>
-                {showAccessLog && <AccessLogTab courseContentId={contentId} />}
-              </div>
+              {(content.created_by_user_id === user?.id || isParent) && (
+                <div className="cm-access-log-section">
+                  <button className="cm-access-log-toggle" onClick={() => setShowAccessLog(v => !v)}>
+                    <AccessLogIcon /> Access Log {showAccessLog ? '\u25BE' : '\u25B8'}
+                  </button>
+                  {showAccessLog && <AccessLogTab courseContentId={contentId} />}
+                </div>
+              )}
             </>
           )}
 
