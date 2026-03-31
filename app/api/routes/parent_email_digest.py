@@ -81,7 +81,7 @@ def _consume_state(state: str) -> dict | None:
         if payload.get("type") != "gmail_oauth":
             return None
         return {"user_id": payload["user_id"]}
-    except (JWTError, Exception):
+    except JWTError:
         return None
 
 
