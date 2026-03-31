@@ -46,6 +46,7 @@ from app.models.study_session import StudySession
 from app.models.bug_report import BugReport
 from app.models.daily_quiz import DailyQuiz
 from app.models.journey_hint import JourneyHint
+from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog
 
 
 __all__ = [
@@ -118,4 +119,7 @@ __all__ = [
     "BugReport",
     "DailyQuiz",
     "JourneyHint",
+    "ParentGmailIntegration",
+    "ParentDigestSettings",
+    "DigestDeliveryLog",
 ]
