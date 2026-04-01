@@ -690,15 +690,22 @@ class _RefreshRequest(_BaseModel):
 @limiter.limit("10/minute")
 def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token."""
+    ip = request.client.host if request.client else None
     payload = decode_refresh_token(body.refresh_token)
     if not payload or "sub" not in payload:
+        _logger.warning("token_refresh: invalid or expired refresh token from %s", ip)
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     user_id = int(payload["sub"])
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
+        _logger.warning("token_refresh: user %s not found or inactive from %s", user_id, ip)
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
+    _logger.info("token_refresh: user %s refreshed access token from %s", user.id, ip)
+    log_action(db, user_id=user.id, action="token_refresh", resource_type="user",
+               resource_id=user.id, ip_address=ip)
+    db.commit()
     new_access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=new_access_token)
 
