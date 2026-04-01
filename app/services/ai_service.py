@@ -283,28 +283,22 @@ def _build_study_guide_prompt(
     """
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
-    prompt = f"""Create a concise, one-page overview summary for the following assignment. Keep it high-level — this is an overview for the student to quickly understand the key topics, not a full detailed study guide:
+    prompt = f"""Create a brief overview summary for the following assignment. This is a quick orientation — NOT a full study guide. The student will explore specific topics in depth via suggestion chips below.
 
 **Assignment:** {assignment_title}
 **Course:** {course_name}{due_info}
 
-**Description:**
+**Source Material:**
 {assignment_description}
 
-Analyze the content above. If it contains math problems, equations, science calculations, or any exercises/questions that require solving, then:
+Write a concise summary (3-5 sentences) that answers:
+- What is this material about?
+- What are the main topics/skills covered?
+- What should the student focus on?
 
-1. **Key Problem Types** — Briefly list the types of problems covered and what each requires
-2. **Key Concepts** — Summarize the underlying concepts in a few bullet points
-3. **Common Mistakes** — Warn about typical errors students make on these types of problems
+Keep it SHORT — think "back of the book" summary, not a chapter. Do not include detailed explanations, worked examples, formulas, or problem solutions. Those belong in the focused sub-guides.
 
-If the content is conceptual/reading material (no problems to solve), then:
-
-1. **Key Topics** — Bullet-point summary of main concepts covered
-2. **Important Terms** — Brief definitions of key vocabulary
-
-Keep the overview to approximately one page. Do not include full solutions, practice problems, or detailed explanations — those will be covered in focused sub-guides.
-
-Format the response in Markdown for easy reading. For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations (e.g., $\\frac{{a}}{{b}}$, $x^2$, $\\sqrt{{n}}$).
+Format in Markdown. For math references, use LaTeX ($...$) but keep them minimal — just name the concepts, don't explain them.
 
 IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
 --- CRITICAL_DATES ---

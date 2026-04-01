@@ -671,7 +671,7 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [ ] Document type auto-classification on page load (lazy, cached)
 
 #### Progressive Study Guide Generation (Phase 2 — #2696)
-- [ ] Overview-first model: ~1-page high-level overview (max_tokens=1000)
+- [x] Overview-first model: brief 3-5 sentence summary + suggestion chips (max_tokens=1200)
 - [ ] AI appends `--- SUGGESTION_TOPICS ---` with 4-6 key topics (JSON array)
 - [ ] Suggestion chips rendered below overview content
 - [ ] Each chip triggers `generate_child_guide()` — creates sub-guide in existing hierarchy
