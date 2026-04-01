@@ -742,6 +742,7 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSuggestionChipClick = (topic: string, _guideType: string) => {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
