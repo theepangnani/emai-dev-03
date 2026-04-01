@@ -408,22 +408,28 @@ def list_delivery_logs(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """List delivery logs for the current parent (paginated, optionally filtered by integration)."""
-    # Get all integration IDs owned by this parent
-    parent_integration_ids = [
-        row[0]
-        for row in db.query(ParentGmailIntegration.id)
+    # Subquery for integration IDs owned by this parent (avoids loading all IDs into memory)
+    parent_integration_ids_subquery = (
+        db.query(ParentGmailIntegration.id)
         .filter(ParentGmailIntegration.parent_id == current_user.id)
-        .all()
-    ]
-    if not parent_integration_ids:
-        return []
+        .subquery()
+    )
 
     query = db.query(DigestDeliveryLog).filter(
-        DigestDeliveryLog.integration_id.in_(parent_integration_ids)
+        DigestDeliveryLog.integration_id.in_(parent_integration_ids_subquery)
     )
 
     if integration_id is not None:
-        if integration_id not in parent_integration_ids:
+        # Verify the integration belongs to this parent
+        owns_integration = (
+            db.query(ParentGmailIntegration.id)
+            .filter(
+                ParentGmailIntegration.id == integration_id,
+                ParentGmailIntegration.parent_id == current_user.id,
+            )
+            .first()
+        )
+        if not owns_integration:
             raise HTTPException(status_code=403, detail="Not authorized to view logs for this integration")
         query = query.filter(DigestDeliveryLog.integration_id == integration_id)
 
