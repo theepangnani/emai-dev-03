@@ -74,12 +74,12 @@ export function AdminAIUsagePage() {
 
   // Load summary + request count on mount
   useEffect(() => {
-    adminAIUsageApi.getSummary().then(setSummary).catch(() => {});
-    adminAIUsageApi.getCostSummary().then(setCostSummary).catch(() => {});
+    adminAIUsageApi.getSummary().then(setSummary).catch((err) => console.error('Failed to load AI usage summary:', err));
+    adminAIUsageApi.getCostSummary().then(setCostSummary).catch((err) => console.error('Failed to load cost summary:', err));
     // Pre-fetch pending request count for badge
     adminAIUsageApi.listRequests({ status: 'pending', skip: 0, limit: 1 })
       .then((data) => setRequestsTotal(data.total))
-      .catch(() => {});
+      .catch((err) => console.error('Failed to load pending requests:', err));
   }, []);
 
   // Load users

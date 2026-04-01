@@ -83,8 +83,8 @@ export function FAQDetailPage() {
     try {
       await faqApi.pinQuestion(question.id, !question.is_pinned);
       loadQuestion();
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
     }
   };
 

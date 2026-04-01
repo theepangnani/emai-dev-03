@@ -31,7 +31,7 @@ export function AdminInspirationPage() {
     try {
       const data = await inspirationApi.list(roleFilter ? { role: roleFilter } : undefined);
       setMessages(data);
-    } catch { /* */ }
+    } catch (err) { console.error('Failed to load inspiration messages:', err); }
     finally { setLoading(false); }
   };
 

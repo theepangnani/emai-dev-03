@@ -28,8 +28,10 @@ export function GradesPage() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   // Filter state from URL params
-  const filterCourseId = searchParams.get('course') ? Number(searchParams.get('course')) : null;
-  const filterStudentId = searchParams.get('student') ? Number(searchParams.get('student')) : null;
+  const rawCourseId = searchParams.get('course') ? Number(searchParams.get('course')) : null;
+  const filterCourseId = rawCourseId !== null && !isNaN(rawCourseId) ? rawCourseId : null;
+  const rawStudentId = searchParams.get('student') ? Number(searchParams.get('student')) : null;
+  const filterStudentId = rawStudentId !== null && !isNaN(rawStudentId) ? rawStudentId : null;
 
   // Load grade summary
   const loadSummary = useCallback(async (studentId?: number, courseIdToExpand?: number | null) => {
