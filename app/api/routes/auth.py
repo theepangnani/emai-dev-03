@@ -12,7 +12,7 @@ from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest, USERNAME_PATTERN
 from app.schemas.invite import AcceptInviteRequest
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, decode_password_reset_token_payload, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
 from app.api.deps import get_current_user, oauth2_scheme
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
@@ -806,9 +806,18 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
 @limiter.limit("5/minute")
 def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Reset a user's password using a valid reset token."""
-    email = decode_password_reset_token(body.token)
-    if not email:
+    from app.models.token_blacklist import TokenBlacklist
+
+    payload = decode_password_reset_token_payload(body.token)
+    if not payload or not payload.get("sub"):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    email = payload["sub"]
+    jti = payload.get("jti")
+
+    # Prevent token reuse: check if already used
+    if jti and db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first():
+        raise HTTPException(status_code=400, detail="This reset link has already been used")
 
     user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
     if not user:
@@ -819,6 +828,18 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
         raise HTTPException(status_code=400, detail=pw_error)
 
     user.hashed_password = get_password_hash(body.new_password)
+
+    # Blacklist the token so it cannot be reused
+    if jti:
+        exp = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc)
+        db.add(TokenBlacklist(
+            jti=jti,
+            user_id=user.id,
+            expires_at=expires_at,
+            reason="password_reset",
+        ))
+
     log_action(db, user_id=user.id, action="password_reset", resource_type="user",
                resource_id=user.id, ip_address=request.client.host if request.client else None)
     db.commit()
