@@ -845,5 +845,12 @@ Additionally, 47 open issues migrated from emai-class-bridge (#2143-#2189) and 9
 
 See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for full setup and verification guide.
 
+#### Suggestion Chip Streaming — April 1, 2026 — PR #2812
+
+- [x] **Streaming generation for suggestion chips** — Replaced synchronous `generateChildGuide()` with `stream.startStream()` SSE; content appears word-by-word in Study Guide tab instead of 10-30s blocking wait (#2806, PR #2812) (IMPLEMENTED)
+- [ ] **Streaming endpoint parent_guide_id support** — Add `parent_guide_id` to `StudyGuideCreate` schema so streaming sub-guides maintain parent-child hierarchy (#2810)
+- [ ] **Scroll to tab content on chip click** — Auto-scroll to Study Guide tab when streaming starts (#2811)
+- [ ] **Reduce initial max_tokens to 750** — Overview+chips pattern: 750 tokens for initial guide (~3-5s), 2000 for chip deep dives (#2823)
+
 ---
 
