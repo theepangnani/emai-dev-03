@@ -2095,7 +2095,6 @@ try:
 except Exception as e:
     logger.warning("journey_hints migration (#2604) failed: %s", e)
 
-<<<<<<< HEAD
 # ── Enum → String(50) migration (#2788) ────────────────────
 if "sqlite" not in settings.database_url:
     _enum_migrations = [
