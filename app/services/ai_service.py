@@ -343,6 +343,7 @@ async def generate_study_guide(
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
     interests: list[str] | None = None,
+    max_tokens: int = 750,
 ) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
@@ -369,7 +370,7 @@ async def generate_study_guide(
         interests=interests,
     )
 
-    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=2000)
+    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=max_tokens)
     return content, stop_reason == "max_tokens"
 
 
@@ -385,6 +386,7 @@ async def generate_study_guide_stream(
     document_type: str | None = None,
     study_goal: str | None = None,
     study_goal_text: str | None = None,
+    max_tokens: int = 750,
 ) -> AsyncGenerator[dict, None]:
     """Async generator that streams study guide content via Anthropic streaming API.
 
@@ -440,7 +442,7 @@ async def generate_study_guide_stream(
                 model=settings.claude_model,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=2000,
+                max_tokens=max_tokens,
                 temperature=0.7,
             ) as stream:
                 async for text in stream.text_stream:
