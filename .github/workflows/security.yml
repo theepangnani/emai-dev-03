@@ -1,12 +1,15 @@
 name: Security Scanning
 
 on:
-  push:
+  schedule:
+    - cron: '0 6 * * *'
+  pull_request:
     branches: [master]
     paths-ignore:
       - '*.md'
       - 'docs/**'
       - '.gitignore'
+  workflow_dispatch:
 
 concurrency:
   group: security
