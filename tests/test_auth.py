@@ -68,7 +68,7 @@ class TestRegistration:
 
         resp2 = _register(client, email)
         assert resp2.status_code == 400
-        assert "already registered" in resp2.json()["detail"].lower()
+        assert "could not be completed" in resp2.json()["detail"].lower()
 
     def test_register_teacher_creates_teacher_record(self, client, db_session):
         from app.models.teacher import Teacher
@@ -361,4 +361,4 @@ class TestCaseInsensitiveEmailLogin:
         assert resp1.status_code == 200
         resp2 = _register(client, "DUPCASE@EXAMPLE.COM")
         assert resp2.status_code == 400
-        assert "already registered" in resp2.json()["detail"].lower()
+        assert "could not be completed" in resp2.json()["detail"].lower()

@@ -153,7 +153,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
+                detail="Registration could not be completed. If you already have an account, please try logging in.",
             )
 
     # Check if username already exists
@@ -162,7 +162,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         if existing_username:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken",
+                detail="Registration could not be completed. If you already have an account, please try logging in.",
             )
 
     # Resolve Google tokens from server-side store (not from client)
@@ -458,13 +458,11 @@ async def login(
                    ip_address=ip)
         db.commit()
 
-        # Build error detail with remaining attempts info
-        remaining = settings.lockout_tier1_attempts - failed if failed < settings.lockout_tier1_attempts else 0
-        detail = "Incorrect email/username or password"
-        if 0 < remaining <= 2:
-            detail += f". {remaining} attempt(s) remaining before account lockout."
-        elif remaining == 0 and lockout_seconds:
-            detail = f"Account locked due to too many failed attempts. Try again in {lockout_seconds // 60} minutes."
+        # Build error detail (generic to prevent user enumeration)
+        if lockout_seconds:
+            detail = "Account temporarily locked. Please try again later."
+        else:
+            detail = "Incorrect credentials. Please try again."
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
