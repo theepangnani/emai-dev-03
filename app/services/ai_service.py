@@ -28,9 +28,9 @@ DOCUMENT_TYPE_MAX_TOKENS = {
     "worksheet": 1500, "test": 1500, "exam": 1500, "quiz_doc": 1500,
     "lab_report": 1200,
     "textbook": 750, "notes": 750,
-    "newsletter": 500, "announcement": 500,
+    "newsletter": 750, "announcement": 750,
 }
-DEFAULT_STUDY_GUIDE_MAX_TOKENS = 750
+DEFAULT_STUDY_GUIDE_MAX_TOKENS = 1200
 SUB_GUIDE_MAX_TOKENS = 1200
 
 
