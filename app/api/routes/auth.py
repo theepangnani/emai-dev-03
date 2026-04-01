@@ -855,12 +855,12 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
     email = payload["sub"]
     jti = payload.get("jti")
 
-    # Prevent token reuse: check if already used
-    if jti and db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first():
-        raise HTTPException(status_code=400, detail="This reset link has already been used")
-
     user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
     if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Prevent token reuse: check if already used (after user lookup to avoid enumeration)
+    if jti and db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first():
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     pw_error = validate_password_strength(body.new_password)
