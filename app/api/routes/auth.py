@@ -493,15 +493,23 @@ async def login(
     )
 
 
+from pydantic import BaseModel as _PydanticBase
+
+
+class _LogoutRequest(_PydanticBase):
+    refresh_token: str | None = None
+
+
 @router.post("/logout")
 def logout(
     request: Request,
+    body: _LogoutRequest | None = None,
     token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Revoke the current access token so it can no longer be used."""
-    from jose import jwt as _jwt
+    """Revoke the current access token and optionally the refresh token."""
+    from jose import jwt as _jwt, JWTError as _JWTError
     from app.models.token_blacklist import TokenBlacklist
 
     try:
@@ -517,11 +525,33 @@ def logout(
                 reason="logout",
             )
             db.add(blacklist_entry)
-            log_action(db, user_id=current_user.id, action="logout", resource_type="user",
-                       resource_id=current_user.id, ip_address=request.client.host if request.client else None)
-            db.commit()
-    except Exception:
+    except _JWTError:
         pass  # Best-effort; token is short-lived anyway
+
+    # Also blacklist the refresh token if provided
+    if body and body.refresh_token:
+        try:
+            rt_payload = _jwt.decode(body.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
+            if rt_payload.get("type") == "refresh":
+                rt_jti = rt_payload.get("jti")
+                rt_exp = rt_payload.get("exp")
+                if rt_jti and rt_exp:
+                    rt_expires_at = datetime.fromtimestamp(rt_exp, tz=timezone.utc)
+                    db.add(TokenBlacklist(
+                        jti=rt_jti,
+                        user_id=current_user.id,
+                        expires_at=rt_expires_at,
+                        reason="logout",
+                    ))
+        except _JWTError:
+            pass  # Best-effort
+
+    try:
+        log_action(db, user_id=current_user.id, action="logout", resource_type="user",
+                   resource_id=current_user.id, ip_address=request.client.host if request.client else None)
+        db.commit()
+    except Exception:
+        pass  # Best-effort
 
     return {"message": "Logged out successfully"}
 
@@ -679,10 +709,7 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     return Token(access_token=access_token, refresh_token=refresh_token, onboarding_completed=True)
 
 
-from pydantic import BaseModel as _BaseModel
-
-
-class _RefreshRequest(_BaseModel):
+class _RefreshRequest(_PydanticBase):
     refresh_token: str
 
 
@@ -690,9 +717,16 @@ class _RefreshRequest(_BaseModel):
 @limiter.limit("10/minute")
 def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token."""
+    from app.api.deps import _is_token_blacklisted
+
     payload = decode_refresh_token(body.refresh_token)
     if not payload or "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # Reject blacklisted refresh tokens (e.g. after logout)
+    rt_jti = payload.get("jti")
+    if rt_jti and _is_token_blacklisted(db, rt_jti):
+        raise HTTPException(status_code=401, detail="Refresh token has been revoked")
 
     user_id = int(payload["sub"])
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
