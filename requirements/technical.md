@@ -254,6 +254,29 @@ See §6.18.1 in features-part2.md for detailed requirements and acceptance crite
 
 ---
 
+### 10.3 CI/CD Pipeline Standards (#2841–#2846)
+
+GitHub Actions CI/CD must stay within the **2,000 min/month free tier** for Linux runners. Target: **under 40 min/day** (~1,200 min/month).
+
+#### Deploy Pipeline (`deploy.yml`)
+- **Rate limit:** Max 10 **successful** deploys/day (failures do not count). Manual `workflow_dispatch` bypasses the limit.
+- **Debounce:** 60-second sleep at workflow start; `cancel-in-progress: true` kills debouncing runs cheaply on rapid pushes.
+- **Path-based detection:** `dorny/paths-filter@v3` detects backend (`app/`, `tests/`, `requirements.txt`, `main.py`), frontend (`frontend/`), and infra (`Dockerfile`, `.github/`) changes. Tests are skipped when irrelevant files change.
+- **Single test runner:** Backend tests (pytest) and frontend tests (lint + vitest) run sequentially in one job to reduce billed minutes (one runner vs two).
+- **Path ignore:** `*.md`, `docs/**`, `.gitignore` changes do not trigger the workflow.
+- **Concurrency:** Group `deploy` with `cancel-in-progress: true`.
+- **Caching:** Python pip, npm, and Docker layer caching (type=gha) are required.
+
+#### Security Pipeline (`security.yml`)
+- **Triggers:** Daily schedule (6 AM UTC cron) + pull requests targeting master + manual dispatch. **Not** triggered per-push to master.
+- **Jobs:** `python-security` (bandit SAST + pip-audit from requirements file, no full install), `gitleaks` (secret scanning, full history), `npm-audit` (lockfile audit, no `npm ci`).
+- **Concurrency:** Group `security` with `cancel-in-progress: true`.
+- **Known CVE exceptions** must be documented inline with justification.
+
+**GitHub Issues:** #2841 (rate-limit fix), #2842 (security schedule), #2843 (merge test jobs), #2844 (consolidate security), #2845 (path filtering), #2846 (debounce)
+
+---
+
 ## 11. Success Metrics (KPIs)
 
 - Parent engagement rate
