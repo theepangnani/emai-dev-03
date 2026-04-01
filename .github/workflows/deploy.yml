@@ -31,7 +31,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TODAY=$(date -u +%Y-%m-%dT00:00:00Z)
-          COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?created=>=$TODAY&status=completed&per_page=100" --jq '.total_count')
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?created=>=$TODAY&conclusion=success&per_page=100" --jq '.total_count')
           echo "Runs today: $COUNT"
           if [ "$COUNT" -ge 10 ]; then
             echo "::error::Daily limit of 10 automatic deploys reached. Use 'Run workflow' button for manual deploy."
