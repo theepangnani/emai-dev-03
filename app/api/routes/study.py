@@ -46,7 +46,7 @@ from app.schemas.study import (
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
 from app.services.ai_usage import check_ai_usage, increment_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -662,6 +662,7 @@ async def generate_study_guide_endpoint(
             focus_prompt=body.focus_prompt,
             images=images_metadata,
             interests=_get_user_interests(current_user),
+            max_tokens=get_max_tokens_for_document_type(body.document_type),
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
@@ -1825,6 +1826,7 @@ async def generate_child_guide(
                 course_name="General",
                 focus_prompt=body.topic,
                 custom_prompt=effective_custom_prompt,
+                max_tokens=SUB_GUIDE_MAX_TOKENS,
             )
             raw_content, _ = parse_suggestion_topics(raw_content)
             raw_content, critical_dates = parse_critical_dates(raw_content)
@@ -2801,6 +2803,7 @@ async def generate_study_guide_stream_endpoint(
                 document_type=doc_type,
                 study_goal=study_goal_val,
                 study_goal_text=study_goal_text_val,
+                max_tokens=get_max_tokens_for_document_type(doc_type),
             ):
                 if event["event"] == "chunk":
                     yield f"event: chunk\ndata: {json.dumps({'text': event['data']})}\n\n"
