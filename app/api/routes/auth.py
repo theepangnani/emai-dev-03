@@ -351,12 +351,12 @@ def check_username(username: str, db: Session = Depends(get_db)):
 
 def _get_lockout_duration(failed_attempts: int) -> int | None:
     """Return lockout duration in seconds based on failed attempt count, or None."""
-    if failed_attempts >= 15:
-        return 24 * 60 * 60   # 24 hours
-    elif failed_attempts >= 10:
-        return 60 * 60        # 1 hour
-    elif failed_attempts >= 5:
-        return 15 * 60        # 15 minutes
+    if failed_attempts >= settings.lockout_tier3_attempts:
+        return settings.lockout_tier3_seconds
+    elif failed_attempts >= settings.lockout_tier2_attempts:
+        return settings.lockout_tier2_seconds
+    elif failed_attempts >= settings.lockout_tier1_attempts:
+        return settings.lockout_tier1_seconds
     return None
 
 
@@ -436,7 +436,7 @@ async def login(
             user.locked_until = now + timedelta(seconds=lockout_seconds)
 
         # Create admin notification at 15+ failed attempts
-        if failed >= 15 and failed % 15 == 0:
+        if failed >= settings.lockout_tier3_attempts and failed % settings.lockout_tier3_attempts == 0:
             try:
                 from app.models.notification import Notification, NotificationType
                 admins = db.query(User).filter(User.roles.contains("admin")).all()
@@ -459,7 +459,7 @@ async def login(
         db.commit()
 
         # Build error detail with remaining attempts info
-        remaining = 5 - failed if failed < 5 else 0
+        remaining = settings.lockout_tier1_attempts - failed if failed < settings.lockout_tier1_attempts else 0
         detail = "Incorrect email/username or password"
         if 0 < remaining <= 2:
             detail += f". {remaining} attempt(s) remaining before account lockout."

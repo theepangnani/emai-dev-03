@@ -76,8 +76,8 @@ def decode_refresh_token(token: str) -> dict | None:
 
 
 def create_password_reset_token(email: str) -> str:
-    """Create a JWT for password reset (1-hour expiry)."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    """Create a JWT for password reset (configurable expiry)."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.pwd_reset_token_expire_hours)
     to_encode = {"sub": email, "exp": expire, "type": "password_reset"}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -94,8 +94,8 @@ def decode_password_reset_token(token: str) -> str | None:
 
 
 def create_email_verification_token(email: str) -> str:
-    """Create a JWT for email verification (24-hour expiry)."""
-    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    """Create a JWT for email verification (configurable expiry)."""
+    expire = datetime.now(timezone.utc) + timedelta(hours=settings.email_verify_token_expire_hours)
     to_encode = {"sub": email, "exp": expire, "type": "email_verify"}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -119,8 +119,8 @@ def create_deletion_confirmation_token(user_id: int) -> str:
 
 
 def create_unsubscribe_token(user_id: int) -> str:
-    """Create a JWT for one-click email unsubscribe (365-day expiry, CASL)."""
-    expire = datetime.now(timezone.utc) + timedelta(days=365)
+    """Create a JWT for one-click email unsubscribe (configurable expiry, CASL)."""
+    expire = datetime.now(timezone.utc) + timedelta(days=settings.unsubscribe_token_expire_days)
     to_encode = {"sub": str(user_id), "exp": expire, "type": "unsubscribe"}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
