@@ -814,3 +814,36 @@ Additionally, 47 open issues migrated from emai-class-bridge (#2143-#2189) and 9
 
 ---
 
+#### Accessibility Audit Fixes (P1-Major) — March 31, 2026 — PR #2780
+
+- [x] **Navigation ARIA patterns** — aria-expanded on hamburger, role=menu/menuitem on role switcher with arrow key nav + Escape, aria-current="page" on active nav, aria-hidden on mobile overlay background (#2476) (IMPLEMENTED)
+- [x] **Missing labels & heading hierarchy** — aria-hidden on decorative SVG nav icons, aria-label + aria-pressed on RichTextEditor toolbar buttons, aria-current="page" on Breadcrumb (#2478) (IMPLEMENTED)
+- [x] **Focus-visible states** — :focus-visible styles on .role-switcher-option, .logout-button, Toast elements (#2479) (IMPLEMENTED)
+
+#### Design System Consistency Fixes (P1-Major) — March 31, 2026 — PR #2780
+
+- [x] **Hardcoded colors → CSS variables** — Replaced hex/rgba in SearchableSelect.css, BugReportModal.css, SpeedDialFAB.css, AuthContext.tsx, DashboardLayout.tsx with var(--color-*) tokens (#2480) (IMPLEMENTED)
+- [x] **Spacing tokens + border-radius standardization** — Added --space-xs through --space-2xl tokens; replaced hardcoded border-radius across 10 files with --radius-* tokens (#2481, PR #2778) (IMPLEMENTED)
+- [x] **Font type scale (rem)** — Added --text-xs through --text-3xl tokens; converted px font-sizes to rem in Auth.css, Dashboard.css, Toast.css, PageNav.css, NotificationBell.css (#2482) (IMPLEMENTED)
+
+#### Performance Fixes — March 31, 2026 — PR #2780
+
+- [x] **Optimize student enrollment query** — Replaced lazy-load `[c.id for c in student.courses]` with direct join table query on student_courses (#2774, PR #2779) (IMPLEMENTED)
+- [x] **Stop polling resource links after timeout** — Added 2-minute max-poll timeout via useRef + refetchInterval callback (#2773, PR #2775) (IMPLEMENTED)
+
+#### Bug Fixes — March 31, 2026 — PR #2780
+
+- [x] **Chip navigation fails** — Moved navigate() before refreshAIUsage(); wrapped refresh in try/catch with console.warn (#2759) (IMPLEMENTED)
+- [x] **Empty catch block on refreshAIUsage** — Added console.warn in catch block for chip handler (#2761) (IMPLEMENTED)
+
+#### Gmail OAuth Verification (Planned — July-September 2026)
+
+- [ ] **Privacy policy update** — Update classbridge.ca/privacy to cover Gmail data usage for email digest (#2797)
+- [ ] **Terms of Service update** — Update classbridge.ca/terms for Gmail integration (#2798)
+- [ ] **OAuth callback page** — Frontend route at /oauth/gmail/callback for popup flow (#2799)
+- [ ] **CASA Tier 2 audit + Google verification** — Security assessment for gmail.readonly scope (~$4,500-15,000, 4-8 weeks) (#2800)
+
+See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for full setup and verification guide.
+
+---
+
