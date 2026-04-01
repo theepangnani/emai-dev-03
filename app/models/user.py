@@ -31,8 +31,8 @@ class User(Base):
 
     # Google OAuth
     google_id = Column(String(255), unique=True, nullable=True)
-    google_access_token = Column(String(512), nullable=True)
-    google_refresh_token = Column(String(512), nullable=True)
+    google_access_token = Column(String(2048), nullable=True)
+    google_refresh_token = Column(String(1024), nullable=True)
     google_granted_scopes = Column(String(1024), nullable=True)  # comma-separated granted scopes
 
     # Notification preferences

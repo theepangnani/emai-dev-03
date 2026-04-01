@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 2
 
+    # Token encryption (Fernet key for encrypting OAuth tokens at rest)
+    token_encryption_key: str = ""
+
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""

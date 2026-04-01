@@ -10,6 +10,7 @@ from app.models.notification import Notification, NotificationType
 from app.services.gmail_monitor import fetch_teacher_emails
 from app.services.classroom_monitor import fetch_classroom_announcements
 from app.services.ai_service import summarize_teacher_communication
+from app.core.encryption import encrypt_token, decrypt_token
 from app.services.google_classroom import GMAIL_READONLY_SCOPE
 
 logger = logging.getLogger(__name__)
@@ -29,17 +30,17 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
     else:
         try:
             emails, creds = fetch_teacher_emails(
-                user.google_access_token,
-                user.google_refresh_token,
+                decrypt_token(user.google_access_token),
+                decrypt_token(user.google_refresh_token),
                 after_timestamp=user.gmail_last_sync,
             )
 
             # Commit token updates immediately to release User row lock before
             # slow AI summarization calls below (#866).
-            if creds.token != user.google_access_token:
-                user.google_access_token = creds.token
+            if creds.token != decrypt_token(user.google_access_token):
+                user.google_access_token = encrypt_token(creds.token)
                 if creds.refresh_token:
-                    user.google_refresh_token = creds.refresh_token
+                    user.google_refresh_token = encrypt_token(creds.refresh_token)
             user.gmail_last_sync = datetime.now(timezone.utc)
             db.commit()
 
@@ -96,15 +97,15 @@ async def sync_user_communications(user_id: int, db: Session) -> dict:
     # 2. Sync Classroom announcements
     try:
         announcements, creds = fetch_classroom_announcements(
-            user.google_access_token,
-            user.google_refresh_token,
+            decrypt_token(user.google_access_token),
+            decrypt_token(user.google_refresh_token),
         )
 
         # Commit token updates immediately (#866)
-        if creds.token != user.google_access_token:
-            user.google_access_token = creds.token
+        if creds.token != decrypt_token(user.google_access_token):
+            user.google_access_token = encrypt_token(creds.token)
             if creds.refresh_token:
-                user.google_refresh_token = creds.refresh_token
+                user.google_refresh_token = encrypt_token(creds.refresh_token)
         user.classroom_last_sync = datetime.now(timezone.utc)
         db.commit()
 

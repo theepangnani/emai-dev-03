@@ -173,8 +173,9 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         import time as _time
         pending = _pending_google_tokens.pop(user_data.google_id, None)
         if pending and (_time.time() - pending["created_at"]) < _PENDING_TTL:
-            google_access_token = pending["access_token"]
-            google_refresh_token = pending.get("refresh_token")
+            from app.core.encryption import encrypt_token
+            google_access_token = encrypt_token(pending["access_token"])
+            google_refresh_token = encrypt_token(pending.get("refresh_token"))
 
     # Determine if this is a roleless registration (onboarding deferred)
     has_roles = bool(user_data.roles)
