@@ -108,6 +108,9 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Rate limiting storage (memory:// for dev, redis://host:port for prod)
+    rate_limit_storage_url: str = "memory://"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
