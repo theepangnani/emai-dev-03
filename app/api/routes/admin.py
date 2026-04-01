@@ -437,36 +437,56 @@ def send_broadcast(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     """Send a broadcast message to all active users with email."""
-    active_users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
+    # Count recipients first, then process in batches to avoid loading all users at once
+    recipient_count = db.query(func.count(User.id)).filter(User.is_active == True).scalar()  # noqa: E712
 
     # Create broadcast record
     broadcast = Broadcast(
         sender_id=current_user.id,
         subject=data.subject,
         body=data.body,
-        recipient_count=len(active_users),
+        recipient_count=recipient_count,
         email_count=0,
     )
     db.add(broadcast)
     db.flush()
 
-    # Create in-app notifications + conversation messages for all active users
+    # Process users in batches to avoid memory exhaustion
+    BATCH_SIZE = 200
     message_content = f"[Broadcast] {data.subject}\n\n{data.body}"
-    for user in active_users:
-        db.add(Notification(
-            user_id=user.id,
-            type=NotificationType.SYSTEM,
-            title=data.subject,
-            content=data.body,
-        ))
-        # Also create a conversation message so it appears in Messages page
-        if user.id != current_user.id:
-            conv = _get_or_create_conversation(db, current_user.id, user.id, subject=data.subject)
-            db.add(Message(
-                conversation_id=conv.id,
-                sender_id=current_user.id,
-                content=message_content,
+    email_recipients: list[tuple[str, str]] = []
+    offset = 0
+
+    while True:
+        batch = (
+            db.query(User)
+            .filter(User.is_active == True)  # noqa: E712
+            .order_by(User.id)
+            .offset(offset)
+            .limit(BATCH_SIZE)
+            .all()
+        )
+        if not batch:
+            break
+
+        for user in batch:
+            db.add(Notification(
+                user_id=user.id,
+                type=NotificationType.SYSTEM,
+                title=data.subject,
+                content=data.body,
             ))
+            if user.id != current_user.id:
+                conv = _get_or_create_conversation(db, current_user.id, user.id, subject=data.subject)
+                db.add(Message(
+                    conversation_id=conv.id,
+                    sender_id=current_user.id,
+                    content=message_content,
+                ))
+            if user.email:
+                email_recipients.append((user.email, user.full_name))
+
+        offset += BATCH_SIZE
 
     log_action(
         db,
@@ -474,16 +494,9 @@ def send_broadcast(
         action="broadcast_send",
         resource_type="broadcast",
         resource_id=broadcast.id,
-        details={"subject": data.subject, "recipient_count": len(active_users)},
+        details={"subject": data.subject, "recipient_count": recipient_count},
         ip_address=request.client.host if request.client else None,
     )
-
-    # Extract email data BEFORE commit (avoids N+1 lazy loads after expire_on_commit)
-    email_recipients = [
-        (user.email, user.full_name)
-        for user in active_users
-        if user.email
-    ]
 
     db.commit()
 
@@ -504,7 +517,7 @@ def send_broadcast(
     db.commit()
     db.refresh(broadcast)
 
-    logger.info("Broadcast %d: sent %d emails to %d users", broadcast.id, email_count, len(active_users))
+    logger.info("Broadcast %d: sent %d emails to %d users", broadcast.id, email_count, recipient_count)
     return broadcast
 
 
