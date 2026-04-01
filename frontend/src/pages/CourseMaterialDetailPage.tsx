@@ -615,6 +615,7 @@ export function CourseMaterialDetailPage() {
       loadData();
       refreshAIUsage();
       setGenerating(null);
+      setGeneratingChildTopic(null);
       // Check for auto-created tasks
       if (stream.guideId) {
         tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
@@ -628,6 +629,7 @@ export function CourseMaterialDetailPage() {
     }
     if (stream.status === 'error') {
       setGenerating(null);
+      setGeneratingChildTopic(null);
       if (stream.error) {
         showToast(stream.error);
       }
@@ -740,27 +742,20 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  const handleSuggestionChipClick = async (topic: string, guideType: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSuggestionChipClick = (topic: string, _guideType: string) => {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
-    try {
-      const newGuide = await studyApi.generateChildGuide(studyGuide.id, {
-        topic,
-        guide_type: guideType,
-        document_type: content?.document_type || undefined,
-        study_goal: content?.study_goal || undefined,
-      });
-      showToast('Sub-guide generated — opening now');
-      navigate(`/study/guide/${newGuide.id}`);
-      if (!chipAbortRef.current) {
-        try { refreshAIUsage(); } catch (e) { console.warn('Failed to refresh AI usage after chip navigation:', e); }
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
-      showToast(msg);
-    } finally {
-      setGeneratingChildTopic(null);
-    }
+    setActiveTab('guide');
+    stream.startStream({
+      course_content_id: content?.id || undefined,
+      course_id: content?.course_id || undefined,
+      title: content?.title || 'Study Guide',
+      content: studyGuide.content?.substring(0, 8000) || '',
+      focus_prompt: topic,
+      document_type: content?.document_type || undefined,
+      study_goal: content?.study_goal || undefined,
+    });
   };
 
   const handleFormatSelect = useCallback((format: StudyFormat) => {

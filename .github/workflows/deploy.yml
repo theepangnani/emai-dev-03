@@ -3,7 +3,15 @@ name: Deploy to Cloud Run
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
   workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
 
 env:
   PROJECT_ID: emai-dev-01
@@ -14,7 +22,24 @@ env:
   TESTING: "1"
 
 jobs:
+  rate-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check daily run count
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TODAY=$(date -u +%Y-%m-%dT00:00:00Z)
+          COUNT=$(gh api "repos/${{ github.repository }}/actions/workflows/deploy.yml/runs?created=>=$TODAY&status=completed&per_page=100" --jq '.total_count')
+          echo "Runs today: $COUNT"
+          if [ "$COUNT" -ge 10 ]; then
+            echo "::error::Daily limit of 10 automatic deploys reached. Use 'Run workflow' button for manual deploy."
+            exit 1
+          fi
+
   test-backend:
+    needs: [rate-limit]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,6 +58,7 @@ jobs:
         run: pytest tests/ --tb=short -q -n auto --dist loadfile
 
   test-frontend:
+    needs: [rate-limit]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +84,7 @@ jobs:
         working-directory: frontend
 
   deploy:
-    needs: [test-backend, test-frontend]
+    needs: [rate-limit, test-backend, test-frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
