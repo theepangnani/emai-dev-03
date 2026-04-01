@@ -42,7 +42,17 @@ export function QuizPage() {
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
-        const parsedQuestions = JSON.parse(data.content) as QuizQuestion[];
+        let parsedQuestions: QuizQuestion[];
+        try {
+          parsedQuestions = JSON.parse(data.content) as QuizQuestion[];
+        } catch {
+          setError('Quiz content is corrupted. Please try regenerating this quiz.');
+          return;
+        }
+        if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
+          setError('Quiz content is corrupted. Please try regenerating this quiz.');
+          return;
+        }
         setQuestions(parsedQuestions);
       } catch (err) {
         setError('Failed to load quiz');
