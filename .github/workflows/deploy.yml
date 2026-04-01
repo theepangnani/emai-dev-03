@@ -77,12 +77,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python 3.13
+        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.infra == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: pip
 
       - name: Set up Node.js 20
+        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -114,7 +116,12 @@ jobs:
 
   deploy:
     needs: [rate-limit, detect-changes, test]
-    if: always() && needs.rate-limit.result == 'success' && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    # Run deploy when: rate-limit passed, detect-changes succeeded, and test either passed or was skipped (no relevant changes)
+    if: >-
+      always() &&
+      needs.rate-limit.result == 'success' &&
+      needs.detect-changes.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
