@@ -25,9 +25,16 @@ def _is_token_blacklisted(db: Session, jti: str) -> bool:
     result = db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first() is not None
     _blacklist_cache[jti] = (result, now)
 
-    # Prune old entries periodically (keep cache small)
+    # Prune expired entries periodically (keep cache small)
     if len(_blacklist_cache) > 10000:
-        _blacklist_cache.clear()
+        expired = [k for k, (_, ts) in _blacklist_cache.items() if (now - ts) >= _BLACKLIST_CACHE_TTL]
+        for k in expired:
+            del _blacklist_cache[k]
+        # Safety cap: if still too large after TTL eviction, evict oldest half
+        if len(_blacklist_cache) > 50000:
+            sorted_keys = sorted(_blacklist_cache, key=lambda k: _blacklist_cache[k][1])
+            for k in sorted_keys[:len(sorted_keys) // 2]:
+                del _blacklist_cache[k]
 
     return result
 
