@@ -44,8 +44,13 @@ class CourseContent(Base):
     display_order = Column(Integer, default=0, server_default="0")
 
     # Material hierarchy (#1740)
+<<<<<<< HEAD
     parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
     is_master = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+=======
+    parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True, index=True)
+    is_master = Column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+>>>>>>> origin/fix/2794-model-consistency
     material_group_id = Column(Integer, nullable=True)
 
     # Upload source tracking (#2010)

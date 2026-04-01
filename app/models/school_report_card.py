@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, Date, Float, ForeignKey, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -58,7 +58,7 @@ class SchoolReportCardAnalysis(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    report_card = relationship("SchoolReportCard", backref="analyses")
+    report_card = relationship("SchoolReportCard", backref=backref("analyses", cascade="all, delete-orphan"))
     student = relationship("Student")
 
     __table_args__ = (
