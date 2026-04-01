@@ -45,7 +45,7 @@ class CourseContent(Base):
 
     # Material hierarchy (#1740)
     parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
-    is_master = Column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
+    is_master = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     material_group_id = Column(Integer, nullable=True)
 
     # Upload source tracking (#2010)
