@@ -5,6 +5,12 @@
 - **Bugs fixed:** 400+ bugs closed
 - **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
 
+**Apr 1 — GitHub Actions Optimization & Repo Privacy:**
+- Issue #2817: Security scanning restricted to master-only pushes (PR #2813)
+- Issue #2818: Path filters, concurrency groups, and 10/day auto-deploy limit added (PR #2815)
+- Issue #2819: Repository changed to private visibility
+- Rationale: Private repo bills Actions minutes from 2,000 min/month free tier; optimizations prevent exceeding budget
+
 **Mar 29 — Parent Email Digest Integration (CB-PEDI-001) planned:**
 - 15 GitHub issues created (#2642-#2656) for §6.127 Parent Email Digest Integration
 - M1 Foundation (April 2026): Gmail OAuth for parents, 3 new DB tables, CRUD routes, setup wizard (#2642-#2647)
@@ -569,6 +575,9 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #14: Google OAuth verification~~ ✅
 - ~~Issue #24: Register classbridge.ca domain~~ ✅
 - ~~Issue #353: Infrastructure: Database Backup & Disaster Recovery for Production~~ ✅
+- ~~Issue #2817: CI: Restrict security scanning to master-only pushes~~ ✅ (PR #2813)
+- ~~Issue #2818: CI: Add path filters, concurrency, and daily run limit to GitHub Actions~~ ✅ (PR #2815)
+- ~~Issue #2819: Repo: Make emai-dev-03 private~~ ✅
 
 ### Security & Hardening
 - ~~Issue #63: Require SECRET_KEY and fail fast if missing~~ ✅ (fixed in #179)
