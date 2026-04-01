@@ -99,11 +99,49 @@ Parents connect their personal Gmail via OAuth (`gmail.readonly`). Their child's
 - **Production mode (unverified):** Any user can consent, but sees a **"Google hasn't verified this app"** warning. Users must click "Advanced" → "Go to ClassBridge (unsafe)" to proceed. Fine for pilot.
 - **Production mode (verified):** Clean consent screen, no warnings. Required for public launch.
 
-### Verification Timeline
+### Verification Timeline & Roadmap
 
-- Start the verification process **~8 weeks before public launch** (M5 — September 2026)
-- Requires: privacy policy URL, homepage URL, justification, CASA Tier 2 security assessment
-- CASA assessment providers: https://appdefensealliance.dev/casa/tier-2
+| Phase | Timeline | Verification needed? | User experience |
+|-------|----------|---------------------|-----------------|
+| Developer testing | Now | No — app owner can always consent | Normal |
+| YRDSB pilot (5-10 families) | June 2026 | No — users click through warning | "Unverified app" warning screen |
+| Start verification process | **July 2026** | Submit application | — |
+| Full public launch | September 2026 | **Yes — must be verified** | Clean consent screen, no warnings |
+
+### What Pilot Parents Will See (Unverified)
+
+1. "Google hasn't verified this app" warning screen
+2. Click **"Advanced"** at bottom-left
+3. Click **"Go to classbridge.ca (unsafe)"**
+4. Normal Gmail consent screen appears — approve `gmail.readonly`
+
+This looks alarming but is fully functional. Brief pilot parents to expect it.
+
+### Verification Requirements (for public launch)
+
+| Requirement | Cost | Time | Action |
+|-------------|------|------|--------|
+| Privacy policy URL | Free | 1 day | Publish at classbridge.ca/privacy |
+| Homepage URL | Free | Done | classbridge.ca already live |
+| Justification text | Free | 10 min | Already drafted (see Step 2 above) |
+| **CASA Tier 2 security assessment** | **~$4,500-15,000 USD** | **4-8 weeks** | Engage assessor by July 2026 |
+
+### Google-Approved CASA Assessors
+
+- **Leviathan Security** — https://www.leviathansecurity.com
+- **Bishop Fox** — https://bishopfox.com
+- **NCC Group** — https://www.nccgroup.com
+- Full directory: https://appdefensealliance.dev/casa/directory
+
+### Recommended Action Items
+
+1. **Now (April 2026):** Test with your own Gmail, no verification needed
+2. **June 2026:** Pilot with 5-10 YRDSB families using unverified mode
+3. **July 1, 2026:** Publish privacy policy at classbridge.ca/privacy
+4. **July 1, 2026:** Submit Google OAuth verification application
+5. **July 1, 2026:** Engage CASA Tier 2 assessor (budget ~$4,500-15,000)
+6. **August 2026:** Complete CASA assessment + Google review
+7. **September 2026:** Verified app — public launch with clean consent screen
 
 ---
 
