@@ -229,6 +229,55 @@
 - [x] **Frontend unit tests** — 258 tests across 18 files (vitest) (#154) ✅
 - [x] **Missing route tests** — No tests for: google_classroom, study, messages, notifications, teacher_communications, admin, invites, course_contents routes (#155) (IMPLEMENTED)
 - [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
+- [x] **Integration tests** — Auth flow, course visibility, parent-child linking (14 tests) (#2805, PR #2816)
+
+#### Codebase Review — Security & Quality Hardening (March 31, 2026, PR #2816)
+
+Full codebase review resolved 20 issues across security, correctness, performance, and DB consistency:
+
+**Security (Critical):**
+- [x] **Configurable rate limiting** — Switch from in-memory to Redis-backed storage for Cloud Run (#2221)
+- [x] **OAuth token encryption** — Fernet encryption at rest + column widening (#2781)
+- [x] **Refresh token blacklisting** — Logout revokes both access and refresh tokens (#2784)
+- [x] **Token blacklist cache fix** — TTL-based eviction replaces clear-all at 10K (#2785)
+- [x] **Password reset single-use** — JTI blacklisting prevents token reuse (#2790)
+- [x] **Prevent user enumeration** — Generic error messages on login/register (#2791)
+- [x] **Rate limit gaps** — Added to verify-email and unsubscribe endpoints (#2792)
+- [x] **Configurable security params** — Token TTLs and lockout thresholds via env vars (#2802)
+- [x] **Email verify TTL** — Reduced from 24h to 4h (configurable) (#2804)
+- [x] **Audit logging** — Token refresh endpoint now logged (#2803)
+- [x] **Password reset enumeration** — Uniform error messages, reordered checks (#2820)
+- [x] **Security scanning** — Restored PR trigger on CI workflow (#2821)
+
+**Correctness:**
+- [x] **Parent course visibility** — Parents with no children no longer see all public courses (#2786)
+- [x] **Safe JSON.parse** — QuizPage/FlashcardsPage crash on malformed content fixed (#2787)
+- [x] **AnalyticsPage stale closures** — Fixed useEffect dependency arrays (#2789)
+- [x] **Frontend correctness** — Token parsing, silent errors, NaN handling across 6 pages (#2795)
+
+**Performance:**
+- [x] **Pagination** — Added to courses, admin broadcast, teacher/student search (#312)
+- [x] **N+1 queries** — Fixed in message fan-out and delivery log listing (#2793)
+
+**DB Consistency:**
+- [x] **Enum→String migration** — 4 columns migrated for PostgreSQL compatibility (#2788)
+- [x] **Model consistency** — DateTime timezone, 8 FK indexes, cascade rules (#2794)
+- [x] **Boolean defaults** — Standardized to lowercase text("false") (#2801)
+
+**Unfixed Suggestions (tracked):**
+- [ ] Extract migrations from main.py (#2824)
+- [ ] Integration test fixtures (#2825)
+- [ ] Redundant decrypt_token optimization (#2826)
+- [ ] CSRF on onboarding endpoint (#2827)
+- [ ] Add updated_at to ~14 models (#2828)
+- [ ] CASCADE on DigestDeliveryLog FK (#2829)
+- [ ] Compound index on link_requests (#2830)
+- [ ] Validate timezone/delivery_time in digest settings (#2831)
+- [ ] Validate digest_format with Literal type (#2832)
+- [ ] Complete auth audit logging (#2833)
+- [ ] JWT localStorage XSS risk (#69, updated)
+- [ ] list_conversations pagination (#2807)
+- [ ] Remaining Enum columns (#2809)
 
 ### Phase 1.5 (Calendar Extension, Content, Mobile & School Integration)
 - [x] Mobile-responsive web application (fix CSS gaps, breakpoints, touch support) (IMPLEMENTED)
