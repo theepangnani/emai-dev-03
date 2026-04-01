@@ -185,7 +185,7 @@ src/domains/{context}/
 - **Availability:** 99.9% uptime
 - **Performance:** <2s response time
 - **Scalability:** 100k+ users
-- **Security:** Encryption in transit and at rest
+- **Security:** Encryption in transit and at rest; OAuth tokens encrypted at rest via Fernet (`app/core/encryption.py`); configurable rate limiting (Redis-backed in production); single-use password reset tokens; generic error messages to prevent user enumeration
 - **Compliance:** FERPA, MFIPPA, PIPEDA, GDPR (if applicable)
 
 ### 10.0 Performance Standards (#1954–#1967)
@@ -211,6 +211,16 @@ src/domains/{context}/
 
 #### 10.0.5 Token & Auth Performance
 - Token blacklist lookups SHOULD be cached in-memory (LRU, TTL ≤ 60s) to avoid +1 DB query per authenticated request.
+- Cache eviction MUST use TTL-based pruning (not bulk clear) to preserve revoked token state (#2785).
+- Refresh tokens MUST be blacklisted on logout alongside access tokens (#2784).
+- Password reset tokens MUST be single-use via JTI blacklisting (#2790).
+
+#### 10.0.6 Security Configuration (PR #2816)
+- **Rate limiting:** Configurable via `RATE_LIMIT_STORAGE_URL` env var (default `memory://`, use `redis://` in production). Falls back gracefully if Redis unavailable.
+- **Token encryption:** OAuth tokens encrypted at rest via Fernet. Set `TOKEN_ENCRYPTION_KEY` env var (base64-encoded 32-byte key). Graceful plaintext fallback if unset.
+- **Token TTLs:** All configurable via env vars: `PWD_RESET_TOKEN_EXPIRE_HOURS` (default 1), `EMAIL_VERIFY_TOKEN_EXPIRE_HOURS` (default 4), `UNSUBSCRIBE_TOKEN_EXPIRE_DAYS` (default 30).
+- **Account lockout:** Configurable tiers via env vars: `LOCKOUT_TIER1_ATTEMPTS`/`LOCKOUT_TIER1_SECONDS` (5/900), `LOCKOUT_TIER2_*` (10/3600), `LOCKOUT_TIER3_*` (15/86400).
+- **User enumeration prevention:** All auth error messages MUST be generic (no email existence hints, no attempt counts, no lockout durations).
 
 #### 10.0.6 Pagination
 - List endpoints returning unbounded results MUST support pagination or enforce a default LIMIT. Parent dashboard, admin user lists, and search results must not load full tables into memory.

@@ -231,9 +231,10 @@
 - [ ] **PostgreSQL test coverage** — Tests run on SQLite only; misses NOT NULL, Enum, and type divergences (e.g., users.email bug) (#156)
 - [x] **Integration tests** — Auth flow, course visibility, parent-child linking (14 tests) (#2805, PR #2816)
 
-#### Codebase Review — Security & Quality Hardening (March 31, 2026, PR #2816)
+#### Codebase Review — Security & Quality Hardening (March 31, 2026, PR #2816) ✅ DEPLOYED
 
-Full codebase review resolved 20 issues across security, correctness, performance, and DB consistency:
+Full codebase review resolved 22 issues across security, correctness, performance, and DB consistency.
+Deployed to production April 1, 2026. All issues closed.
 
 **Security (Critical):**
 - [x] **Configurable rate limiting** — Switch from in-memory to Redis-backed storage for Cloud Run (#2221)
