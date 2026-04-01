@@ -125,10 +125,25 @@ def search_teachers(
     current_user: User = Depends(get_current_user),
 ):
     """Search teachers by name or email. Returns both platform and shadow teachers."""
+    from sqlalchemy import or_
+    from app.core.utils import escape_like
+
     results = []
-    query = db.query(Teacher)
-    teachers = query.all()
     q_lower = q.strip().lower()
+    query = db.query(Teacher).options(selectinload(Teacher.user))
+
+    if q_lower:
+        term = f"%{escape_like(q_lower)}%"
+        query = query.outerjoin(User, Teacher.user_id == User.id).filter(
+            or_(
+                Teacher.full_name.ilike(term),
+                Teacher.google_email.ilike(term),
+                User.full_name.ilike(term),
+                User.email.ilike(term),
+            )
+        )
+
+    teachers = query.limit(50).all()
     for t in teachers:
         name = None
         email = None
@@ -139,8 +154,6 @@ def search_teachers(
             name = t.user.full_name
             email = t.user.email
         if not name:
-            continue
-        if q_lower and q_lower not in (name or "").lower() and q_lower not in (email or "").lower():
             continue
         results.append({
             "id": t.id,
@@ -160,23 +173,32 @@ def search_students_for_course(
     current_user: User = Depends(get_current_user),
 ):
     """Search students by name or email for course enrollment."""
-    from app.models.user import User as UserModel
+    from sqlalchemy import or_
+    from app.core.utils import escape_like
+
     results = []
-    students = db.query(Student).all()
     q_lower = q.strip().lower()
+    query = db.query(Student).join(User, Student.user_id == User.id)
+
+    if q_lower:
+        term = f"%{escape_like(q_lower)}%"
+        query = query.filter(
+            or_(
+                User.full_name.ilike(term),
+                User.email.ilike(term),
+            )
+        )
+
+    students = query.limit(50).all()
     for s in students:
-        user = db.query(UserModel).filter(UserModel.id == s.user_id).first()
+        user = db.query(User).filter(User.id == s.user_id).first()
         if not user:
-            continue
-        name = user.full_name or ""
-        email = user.email or ""
-        if q_lower and q_lower not in name.lower() and q_lower not in email.lower():
             continue
         results.append({
             "id": s.id,
             "user_id": user.id,
-            "name": name,
-            "email": email,
+            "name": user.full_name or "",
+            "email": user.email or "",
         })
     return results[:20]
 
@@ -311,6 +333,8 @@ def browse_courses(
     search: str = Query("", max_length=200, description="Search by name or description"),
     subject: str = Query("", max_length=100, description="Filter by subject"),
     teacher_name: str = Query("", max_length=200, alias="teacher_name", description="Filter by teacher name"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.STUDENT)),
 ):
@@ -346,14 +370,14 @@ def browse_courses(
             )
         )
 
-    courses = query.order_by(Course.name).all()
-
-    # Exclude already-enrolled courses
+    # Exclude already-enrolled courses at the DB level
     student = db.query(Student).filter(Student.user_id == current_user.id).first()
     if student:
         enrolled_ids = {c.id for c in student.courses}
-        courses = [c for c in courses if c.id not in enrolled_ids]
+        if enrolled_ids:
+            query = query.filter(Course.id.notin_(enrolled_ids))
 
+    courses = query.order_by(Course.name).offset(skip).limit(limit).all()
     return courses
 
 
