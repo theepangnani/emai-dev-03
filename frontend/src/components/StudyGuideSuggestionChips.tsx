@@ -34,14 +34,14 @@ export default function StudyGuideSuggestionChips({
           return (
             <button
               key={topic.label}
-              className={`sg-suggestion-chip ${isThis ? 'sg-suggestion-chip--generating' : ''}`}
+              className={`sg-suggestion-chip ${isThis ? 'sg-suggestion-chip--generating' : ''} ${topic.label === 'Ask Bot' ? 'sg-suggestion-chip--ask-bot' : ''}`}
               onClick={() => onTopicClick(topic)}
-              disabled={disabled || isAnyGenerating}
+              disabled={topic.label === 'Ask Bot' ? false : (disabled || isAnyGenerating)}
               title={topic.description}
-              aria-label={`Explore: ${topic.label}`}
+              aria-label={topic.label === 'Ask Bot' ? 'Ask the AI chatbot' : `Explore: ${topic.label}`}
             >
               {isThis && <span className="sg-chip-spinner" />}
-              <span className="sg-chip-label">{topic.label}</span>
+              <span className="sg-chip-label">{topic.label === 'Ask Bot' ? '\u{1F916} Ask Bot' : topic.label}</span>
             </button>
           );
         })}

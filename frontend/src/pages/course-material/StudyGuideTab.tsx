@@ -162,7 +162,11 @@ export function StudyGuideTab({
   const parsedSuggestionTopics = useMemo(() => {
     if (!studyGuide?.suggestion_topics) return [];
     try {
-      return JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
+      const topics = JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
+      return [
+        ...topics,
+        { label: 'Ask Bot', description: 'Ask the AI chatbot any question about this material' },
+      ];
     } catch {
       return [];
     }
@@ -240,7 +244,14 @@ export function StudyGuideTab({
           {!isStreaming && parsedSuggestionTopics.length > 0 && (
             <StudyGuideSuggestionChips
               topics={parsedSuggestionTopics}
-              onTopicClick={(t) => onGenerateChildGuide?.(t.label, 'study_guide')}
+              onTopicClick={(t) => {
+                if (t.label === 'Ask Bot') {
+                  const fabBtn = document.querySelector('.speed-dial-fab-btn') as HTMLButtonElement;
+                  if (fabBtn) fabBtn.click();
+                  return;
+                }
+                onGenerateChildGuide?.(t.label, 'study_guide');
+              }}
               disabled={atLimit}
               generatingTopic={childGuideGenerating}
             />

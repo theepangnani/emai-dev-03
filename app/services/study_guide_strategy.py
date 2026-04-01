@@ -23,47 +23,25 @@ STUDY_GOALS = {
 }
 
 # Prompt template map: keyed by document_type
-# Each template defines the expected output structure (overview-first: concise bullet points)
+# Each template produces a concise 3-5 sentence overview; detailed content belongs in sub-guides.
 PROMPT_TEMPLATES: dict[str, str] = {
-    "teacher_notes": """Based on these teacher notes/handout, create a brief study guide overview:
-1. **Summary of Key Topics** — Brief bullet-point overview of the main topics covered
-2. **Likely Exam Areas** — Bullet points of topics most likely to appear on tests""",
+    "teacher_notes": """Based on these teacher notes, write a 3-5 sentence summary of what topics are covered and what students should focus on. Do NOT include detailed explanations, formulas, or worked examples — those will be covered in focused sub-guides the student can explore via suggestion chips.""",
 
-    "course_syllabus": """Based on this course syllabus/outline, create a brief study guide overview:
-1. **Unit Overview** — Bullet-point list of each unit/topic with key objectives
-2. **Study Priorities** — Top topics ranked by importance/weight""",
+    "course_syllabus": """Based on this course syllabus, write a 3-5 sentence summary of the course structure, key units, and what students should prioritize. Do NOT include full unit breakdowns, detailed objectives, or scheduling — those will be covered in focused sub-guides.""",
 
-    "past_exam": """Based on this past exam/test, create a brief study guide overview:
-1. **Key Gap Areas** — Bullet points of topics tested and common patterns
-2. **Topics to Review** — Brief list of areas that likely need attention""",
+    "past_exam": """Based on this past exam, write a 3-5 sentence summary identifying the key topics tested and areas students should review. Do NOT reproduce questions or provide solutions — those will be covered in focused sub-guides.""",
 
-    "mock_exam": """Based on this practice/mock exam, create a brief study guide overview:
-1. **Key Concepts Tested** — Bullet-point list of what each question tests
-2. **Common Pitfalls** — Brief list of typical mistakes to watch for""",
+    "mock_exam": """Based on this practice/mock exam, write a 3-5 sentence summary of the concepts tested and common pitfalls to watch for. Do NOT include answer walkthroughs or detailed explanations — those will be covered in focused sub-guides.""",
 
-    "project_brief": """Based on this project brief/assignment rubric, create a brief study guide overview:
-1. **Requirements Summary** — Bullet points of each rubric criterion in plain language
-2. **Key Deliverables** — Brief list of what needs to be completed""",
+    "project_brief": """Based on this project brief or assignment rubric, write a 3-5 sentence summary of what the project requires and what criteria matter most. Do NOT include step-by-step plans or detailed rubric breakdowns — those will be covered in focused sub-guides.""",
 
-    "lab_experiment": """Based on this lab/experiment material, create a brief study guide overview:
-1. **Pre-Lab Essentials** — Bullet points of what to know before starting
-2. **Key Variables** — Brief list of independent, dependent, and controlled variables""",
+    "lab_experiment": """Based on this lab/experiment material, write a 3-5 sentence summary of the experiment's purpose, key variables, and what students need to prepare. Do NOT include full procedures, safety protocols, or analysis templates — those will be covered in focused sub-guides.""",
 
-    "textbook_excerpt": """Based on this textbook excerpt/reading, create a brief study guide overview:
-1. **Main Ideas** — Bullet-point summary of the key concepts
-2. **Key Terms** — Brief list of important vocabulary""",
+    "textbook_excerpt": """Based on this textbook excerpt, write a 3-5 sentence summary of the main ideas and key terms introduced. Do NOT include detailed explanations, definitions, or worked examples — those will be covered in focused sub-guides.""",
 }
 
 # Default template when document_type is None or "custom"
-DEFAULT_TEMPLATE = """Analyze the content above and create a brief study guide overview:
-
-If it contains math problems, equations, or exercises that require solving:
-1. **Key Concepts** — Bullet points of the underlying concepts involved
-2. **Problem Types** — Brief list of the types of problems present
-
-If the content is conceptual/reading material:
-1. **Key Concepts** — Bullet-point overview of main topics and ideas
-2. **Important Terms** — Brief list of key vocabulary"""
+DEFAULT_TEMPLATE = """Analyze the content and write a 3-5 sentence summary of what this material covers and what the student should focus on. Do NOT include detailed explanations, worked examples, formulas, or reproduce the source content. Those belong in focused sub-guides the student can explore via suggestion chips."""
 
 # Study goal modifiers: appended to the template based on study goal
 GOAL_MODIFIERS: dict[str, str] = {
