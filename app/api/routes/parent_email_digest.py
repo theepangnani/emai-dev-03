@@ -33,6 +33,7 @@ from app.schemas.parent_email_digest import (
     ParentDigestSettingsUpdate,
     DigestDeliveryLogResponse,
 )
+from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
 
 logger = logging.getLogger(__name__)
@@ -193,8 +194,8 @@ def gmail_callback(
     if existing:
         existing.gmail_address = gmail_address
         existing.google_id = google_id
-        existing.access_token = tokens["access_token"]
-        existing.refresh_token = tokens["refresh_token"]
+        existing.access_token = encrypt_token(tokens["access_token"])
+        existing.refresh_token = encrypt_token(tokens["refresh_token"])
         existing.connected_at = datetime.now(timezone.utc)
         db.commit()
         return GmailCallbackResponse(status="ok", gmail_address=gmail_address, integration_id=existing.id)
@@ -203,8 +204,8 @@ def gmail_callback(
             parent_id=current_user.id,
             gmail_address=gmail_address,
             google_id=google_id,
-            access_token=tokens["access_token"],
-            refresh_token=tokens["refresh_token"],
+            access_token=encrypt_token(tokens["access_token"]),
+            refresh_token=encrypt_token(tokens["refresh_token"]),
         )
         db.add(integration)
         db.flush()  # assign integration.id without committing
@@ -408,22 +409,28 @@ def list_delivery_logs(
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
     """List delivery logs for the current parent (paginated, optionally filtered by integration)."""
-    # Get all integration IDs owned by this parent
-    parent_integration_ids = [
-        row[0]
-        for row in db.query(ParentGmailIntegration.id)
+    # Subquery for integration IDs owned by this parent (avoids loading all IDs into memory)
+    parent_integration_ids_subquery = (
+        db.query(ParentGmailIntegration.id)
         .filter(ParentGmailIntegration.parent_id == current_user.id)
-        .all()
-    ]
-    if not parent_integration_ids:
-        return []
+        .subquery()
+    )
 
     query = db.query(DigestDeliveryLog).filter(
-        DigestDeliveryLog.integration_id.in_(parent_integration_ids)
+        DigestDeliveryLog.integration_id.in_(parent_integration_ids_subquery)
     )
 
     if integration_id is not None:
-        if integration_id not in parent_integration_ids:
+        # Verify the integration belongs to this parent
+        owns_integration = (
+            db.query(ParentGmailIntegration.id)
+            .filter(
+                ParentGmailIntegration.id == integration_id,
+                ParentGmailIntegration.parent_id == current_user.id,
+            )
+            .first()
+        )
+        if not owns_integration:
             raise HTTPException(status_code=403, detail="Not authorized to view logs for this integration")
         query = query.filter(DigestDeliveryLog.integration_id == integration_id)
 

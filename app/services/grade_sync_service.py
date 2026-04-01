@@ -10,6 +10,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.encryption import decrypt_token
 from app.models.analytics import GradeRecord
 from app.models.assignment import Assignment, StudentAssignment
 from app.models.course import Course, student_courses
@@ -51,9 +52,9 @@ def sync_grades_for_course(user: User, course: Course, db: Session) -> dict:
     # Fetch all coursework items for this course
     try:
         coursework_list, credentials = get_course_work(
-            user.google_access_token,
+            decrypt_token(user.google_access_token),
             course.google_classroom_id,
-            user.google_refresh_token,
+            decrypt_token(user.google_refresh_token),
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
@@ -101,10 +102,10 @@ def sync_grades_for_course(user: User, course: Course, db: Session) -> dict:
         # Fetch submissions for this coursework
         try:
             submissions, credentials = get_student_submissions(
-                user.google_access_token,
+                decrypt_token(user.google_access_token),
                 course.google_classroom_id,
                 cw_id,
-                user.google_refresh_token,
+                decrypt_token(user.google_refresh_token),
             )
             update_user_tokens(user, credentials, db)
         except Exception as e:

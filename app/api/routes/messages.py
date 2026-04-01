@@ -159,24 +159,34 @@ def _fan_out_to_admins(
     if not other_admins:
         return
 
-    for admin in other_admins:
-        # Find or create conversation between sender and this admin
-        conv = (
-            db.query(Conversation)
-            .filter(
-                or_(
-                    and_(
-                        Conversation.participant_1_id == sender.id,
-                        Conversation.participant_2_id == admin.id,
-                    ),
-                    and_(
-                        Conversation.participant_1_id == admin.id,
-                        Conversation.participant_2_id == sender.id,
-                    ),
-                )
+    admin_ids = [a.id for a in other_admins]
+
+    # Bulk-fetch all existing conversations between sender and other admins
+    existing_convs = (
+        db.query(Conversation)
+        .filter(
+            or_(
+                and_(
+                    Conversation.participant_1_id == sender.id,
+                    Conversation.participant_2_id.in_(admin_ids),
+                ),
+                and_(
+                    Conversation.participant_1_id.in_(admin_ids),
+                    Conversation.participant_2_id == sender.id,
+                ),
             )
-            .first()
         )
+        .all()
+    )
+
+    # Index conversations by admin ID for O(1) lookup
+    conv_by_admin: dict[int, Conversation] = {}
+    for c in existing_convs:
+        other_id = c.participant_2_id if c.participant_1_id == sender.id else c.participant_1_id
+        conv_by_admin[other_id] = c
+
+    for admin in other_admins:
+        conv = conv_by_admin.get(admin.id)
         if not conv:
             conv = Conversation(
                 participant_1_id=sender.id,

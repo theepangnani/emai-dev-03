@@ -12,9 +12,9 @@ class StudyGuide(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     # Optional references to source content
-    assignment_id = Column(Integer, ForeignKey("assignments.id", ondelete="SET NULL"), nullable=True)
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
-    course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
+    assignment_id = Column(Integer, ForeignKey("assignments.id", ondelete="SET NULL"), nullable=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True)
+    course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Content
     title = Column(String(255), nullable=False)
@@ -25,7 +25,7 @@ class StudyGuide(Base):
 
     # Versioning
     version = Column(Integer, nullable=False, default=1)
-    parent_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
+    parent_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True, index=True)
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
     relationship_type = Column(String(20), nullable=False, default="version", server_default="version")  # "version" or "sub_guide"
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation

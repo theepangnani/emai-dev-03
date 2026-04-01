@@ -12,12 +12,12 @@ from app.models.student import Student, parent_students, RelationshipType
 from app.models.invite import Invite, InviteType
 from app.schemas.user import UserCreate, UserResponse, Token, ForgotPasswordRequest, ResetPasswordRequest, OnboardingRequest, EmailVerifyRequest, USERNAME_PATTERN
 from app.schemas.invite import AcceptInviteRequest
-from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_refresh_token, validate_password_strength, create_password_reset_token, decode_password_reset_token, decode_password_reset_token_payload, create_email_verification_token, decode_email_verification_token, UNUSABLE_PASSWORD_HASH
 from app.api.deps import get_current_user, oauth2_scheme
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, get_client_ip, get_user_id_or_ip
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -153,7 +153,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
+                detail="Registration could not be completed. If you already have an account, please try logging in.",
             )
 
     # Check if username already exists
@@ -162,7 +162,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         if existing_username:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken",
+                detail="Registration could not be completed. If you already have an account, please try logging in.",
             )
 
     # Resolve Google tokens from server-side store (not from client)
@@ -173,8 +173,9 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         import time as _time
         pending = _pending_google_tokens.pop(user_data.google_id, None)
         if pending and (_time.time() - pending["created_at"]) < _PENDING_TTL:
-            google_access_token = pending["access_token"]
-            google_refresh_token = pending.get("refresh_token")
+            from app.core.encryption import encrypt_token
+            google_access_token = encrypt_token(pending["access_token"])
+            google_refresh_token = encrypt_token(pending.get("refresh_token"))
 
     # Determine if this is a roleless registration (onboarding deferred)
     has_roles = bool(user_data.roles)
@@ -351,12 +352,12 @@ def check_username(username: str, db: Session = Depends(get_db)):
 
 def _get_lockout_duration(failed_attempts: int) -> int | None:
     """Return lockout duration in seconds based on failed attempt count, or None."""
-    if failed_attempts >= 15:
-        return 24 * 60 * 60   # 24 hours
-    elif failed_attempts >= 10:
-        return 60 * 60        # 1 hour
-    elif failed_attempts >= 5:
-        return 15 * 60        # 15 minutes
+    if failed_attempts >= settings.lockout_tier3_attempts:
+        return settings.lockout_tier3_seconds
+    elif failed_attempts >= settings.lockout_tier2_attempts:
+        return settings.lockout_tier2_seconds
+    elif failed_attempts >= settings.lockout_tier1_attempts:
+        return settings.lockout_tier1_seconds
     return None
 
 
@@ -436,7 +437,7 @@ async def login(
             user.locked_until = now + timedelta(seconds=lockout_seconds)
 
         # Create admin notification at 15+ failed attempts
-        if failed >= 15 and failed % 15 == 0:
+        if failed >= settings.lockout_tier3_attempts and failed % settings.lockout_tier3_attempts == 0:
             try:
                 from app.models.notification import Notification, NotificationType
                 admins = db.query(User).filter(User.roles.contains("admin")).all()
@@ -458,13 +459,11 @@ async def login(
                    ip_address=ip)
         db.commit()
 
-        # Build error detail with remaining attempts info
-        remaining = 5 - failed if failed < 5 else 0
-        detail = "Incorrect email/username or password"
-        if 0 < remaining <= 2:
-            detail += f". {remaining} attempt(s) remaining before account lockout."
-        elif remaining == 0 and lockout_seconds:
-            detail = f"Account locked due to too many failed attempts. Try again in {lockout_seconds // 60} minutes."
+        # Build error detail (generic to prevent user enumeration)
+        if lockout_seconds:
+            detail = "Account temporarily locked. Please try again later."
+        else:
+            detail = "Incorrect credentials. Please try again."
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -493,15 +492,23 @@ async def login(
     )
 
 
+from pydantic import BaseModel as _PydanticBase
+
+
+class _LogoutRequest(_PydanticBase):
+    refresh_token: str | None = None
+
+
 @router.post("/logout")
 def logout(
     request: Request,
+    body: _LogoutRequest | None = None,
     token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Revoke the current access token so it can no longer be used."""
-    from jose import jwt as _jwt
+    """Revoke the current access token and optionally the refresh token."""
+    from jose import jwt as _jwt, JWTError as _JWTError
     from app.models.token_blacklist import TokenBlacklist
 
     try:
@@ -517,11 +524,33 @@ def logout(
                 reason="logout",
             )
             db.add(blacklist_entry)
-            log_action(db, user_id=current_user.id, action="logout", resource_type="user",
-                       resource_id=current_user.id, ip_address=request.client.host if request.client else None)
-            db.commit()
-    except Exception:
+    except _JWTError:
         pass  # Best-effort; token is short-lived anyway
+
+    # Also blacklist the refresh token if provided
+    if body and body.refresh_token:
+        try:
+            rt_payload = _jwt.decode(body.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
+            if rt_payload.get("type") == "refresh":
+                rt_jti = rt_payload.get("jti")
+                rt_exp = rt_payload.get("exp")
+                if rt_jti and rt_exp:
+                    rt_expires_at = datetime.fromtimestamp(rt_exp, tz=timezone.utc)
+                    db.add(TokenBlacklist(
+                        jti=rt_jti,
+                        user_id=current_user.id,
+                        expires_at=rt_expires_at,
+                        reason="logout",
+                    ))
+        except _JWTError:
+            pass  # Best-effort
+
+    try:
+        log_action(db, user_id=current_user.id, action="logout", resource_type="user",
+                   resource_id=current_user.id, ip_address=request.client.host if request.client else None)
+        db.commit()
+    except Exception:
+        pass  # Best-effort
 
     return {"message": "Logged out successfully"}
 
@@ -679,10 +708,7 @@ def accept_invite(data: AcceptInviteRequest, request: Request, db: Session = Dep
     return Token(access_token=access_token, refresh_token=refresh_token, onboarding_completed=True)
 
 
-from pydantic import BaseModel as _BaseModel
-
-
-class _RefreshRequest(_BaseModel):
+class _RefreshRequest(_PydanticBase):
     refresh_token: str
 
 
@@ -690,15 +716,28 @@ class _RefreshRequest(_BaseModel):
 @limiter.limit("10/minute")
 def refresh_access_token(request: Request, body: _RefreshRequest, db: Session = Depends(get_db)):
     """Exchange a valid refresh token for a new access token."""
+    from app.api.deps import _is_token_blacklisted
+    ip = request.client.host if request.client else None
     payload = decode_refresh_token(body.refresh_token)
     if not payload or "sub" not in payload:
+        _logger.warning("token_refresh: invalid or expired refresh token from %s", ip)
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # Reject blacklisted refresh tokens (e.g. after logout)
+    rt_jti = payload.get("jti")
+    if rt_jti and _is_token_blacklisted(db, rt_jti):
+        raise HTTPException(status_code=401, detail="Refresh token has been revoked")
 
     user_id = int(payload["sub"])
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
+        _logger.warning("token_refresh: user %s not found or inactive from %s", user_id, ip)
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
+    _logger.info("token_refresh: user %s refreshed access token from %s", user.id, ip)
+    log_action(db, user_id=user.id, action="token_refresh", resource_type="user",
+               resource_id=user.id, ip_address=ip)
+    db.commit()
     new_access_token = create_access_token(data={"sub": str(user.id)})
     return Token(access_token=new_access_token)
 
@@ -724,7 +763,8 @@ def _render(template: str, **kwargs: str) -> str:
 
 
 @router.get("/unsubscribe/{token}")
-def unsubscribe(token: str, db: Session = Depends(get_db)):
+@limiter.limit("5/minute", key_func=get_client_ip)
+def unsubscribe(token: str, request: Request, db: Session = Depends(get_db)):
     """One-click email unsubscribe (CASL compliance, #2022). No auth required."""
     from app.core.security import decode_unsubscribe_token
     from fastapi.responses import HTMLResponse
@@ -806,12 +846,21 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
 @limiter.limit("5/minute")
 def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Reset a user's password using a valid reset token."""
-    email = decode_password_reset_token(body.token)
-    if not email:
+    from app.models.token_blacklist import TokenBlacklist
+
+    payload = decode_password_reset_token_payload(body.token)
+    if not payload or not payload.get("sub"):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    email = payload["sub"]
+    jti = payload.get("jti")
 
     user = db.query(User).filter(func.lower(User.email) == email.lower()).first()
     if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Prevent token reuse: check if already used (after user lookup to avoid enumeration)
+    if jti and db.query(TokenBlacklist.id).filter(TokenBlacklist.jti == jti).first():
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     pw_error = validate_password_strength(body.new_password)
@@ -819,6 +868,18 @@ def reset_password(body: ResetPasswordRequest, request: Request, db: Session = D
         raise HTTPException(status_code=400, detail=pw_error)
 
     user.hashed_password = get_password_hash(body.new_password)
+
+    # Blacklist the token so it cannot be reused
+    if jti:
+        exp = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc)
+        db.add(TokenBlacklist(
+            jti=jti,
+            user_id=user.id,
+            expires_at=expires_at,
+            reason="password_reset",
+        ))
+
     log_action(db, user_id=user.id, action="password_reset", resource_type="user",
                resource_id=user.id, ip_address=request.client.host if request.client else None)
     db.commit()
@@ -939,6 +1000,7 @@ def get_onboarding_status(
 
 
 @router.post("/verify-email")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def verify_email(body: EmailVerifyRequest, request: Request, db: Session = Depends(get_db)):
     """Verify a user's email address using a token from the verification email."""
     email = decode_email_verification_token(body.token)

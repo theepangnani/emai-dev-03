@@ -50,7 +50,17 @@ export function FlashcardsPage() {
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
-        const parsedCards = JSON.parse(data.content) as Flashcard[];
+        let parsedCards: Flashcard[];
+        try {
+          parsedCards = JSON.parse(data.content) as Flashcard[];
+        } catch {
+          setError('Flashcard content is corrupted. Please try regenerating these flashcards.');
+          return;
+        }
+        if (!Array.isArray(parsedCards) || parsedCards.length === 0) {
+          setError('Flashcard content is corrupted. Please try regenerating these flashcards.');
+          return;
+        }
         setAllCards(parsedCards);
         setCards(parsedCards);
       } catch (err) {

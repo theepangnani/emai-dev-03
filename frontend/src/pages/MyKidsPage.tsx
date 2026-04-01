@@ -188,7 +188,8 @@ export function MyKidsPage() {
         } else {
           // Restore persisted child selection from sessionStorage
           const storedUserId = sessionStorage.getItem('selectedChildId');
-          const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
+          const parsedUserId = storedUserId ? Number(storedUserId) : NaN;
+          const storedMatch = !isNaN(parsedUserId) ? kids.find(k => k.user_id === parsedUserId) : null;
           if (storedMatch) {
             setSelectedChild(storedMatch.student_id);
           } else if (kids.length === 1) {

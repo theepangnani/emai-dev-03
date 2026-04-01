@@ -297,6 +297,7 @@ def create_course_content(
             title=data.title,
             text_content=source_text,
             course_name=course.name,
+            document_type=getattr(data, "document_type", None),
         )
 
     return _to_response(content, db)
@@ -314,6 +315,7 @@ def _run_ai_generation_background(
     title: str,
     text_content: str,
     course_name: str,
+    document_type: str | None = None,
 ):
     """Background task: generate an AI study material for uploaded content.
 
@@ -322,7 +324,7 @@ def _run_ai_generation_background(
     import asyncio
 
     async def _generate():
-        from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards
+        from app.services.ai_service import generate_study_guide, generate_quiz, generate_flashcards, get_max_tokens_for_document_type
         from app.services.ai_usage import increment_ai_usage
         from app.models.study_guide import StudyGuide
         from app.models.user import User
@@ -369,6 +371,7 @@ def _run_ai_generation_background(
                     custom_prompt=ai_custom_prompt or None,
                     interests=_interests,
                     images=images_metadata or None,
+                    max_tokens=get_max_tokens_for_document_type(document_type),
                 )
                 guide = StudyGuide(
                     user_id=user_id,
@@ -652,6 +655,7 @@ async def upload_course_content_file(
             title=title or filename,
             text_content=extracted_text,
             course_name=course.name,
+            document_type=document_type,
         )
 
     return _to_response(content, db)
@@ -946,6 +950,7 @@ async def upload_multi_files(
             title=content_title,
             text_content=combined_text,
             course_name=course.name,
+            document_type=document_type,
         )
 
     return _to_response(content, db)

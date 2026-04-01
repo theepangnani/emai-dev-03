@@ -156,8 +156,9 @@ export function DataExportPage() {
                       <button
                         className="data-export-download-btn"
                         onClick={() => {
-                          const token = exp.download_url!.split('/exports/')[1]?.split('/download')[0];
-                          if (token) handleDownload(token);
+                          const parts = exp.download_url!.split('/exports/');
+                          const token = parts[1]?.split('/download')[0];
+                          if (token && token.length > 0) handleDownload(token);
                         }}
                         disabled={downloading !== null}
                       >

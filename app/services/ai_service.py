@@ -24,6 +24,23 @@ _MODEL_PRICING: dict[str, tuple[float, float]] = {
 }
 
 
+DOCUMENT_TYPE_MAX_TOKENS = {
+    "worksheet": 1500, "test": 1500, "exam": 1500, "quiz_doc": 1500,
+    "lab_report": 1200,
+    "textbook": 750, "notes": 750,
+    "newsletter": 500, "announcement": 500,
+}
+DEFAULT_STUDY_GUIDE_MAX_TOKENS = 750
+SUB_GUIDE_MAX_TOKENS = 1200
+
+
+def get_max_tokens_for_document_type(document_type: str | None) -> int:
+    """Return appropriate max_tokens based on document complexity."""
+    if not document_type:
+        return DEFAULT_STUDY_GUIDE_MAX_TOKENS
+    return DOCUMENT_TYPE_MAX_TOKENS.get(document_type, DEFAULT_STUDY_GUIDE_MAX_TOKENS)
+
+
 def get_last_ai_usage() -> dict | None:
     """Return token usage dict from the most recent generate_content call in this context."""
     return _last_ai_usage.get()
@@ -343,6 +360,7 @@ async def generate_study_guide(
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
     interests: list[str] | None = None,
+    max_tokens: int | None = None,
 ) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
@@ -369,7 +387,8 @@ async def generate_study_guide(
         interests=interests,
     )
 
-    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=2000)
+    effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
+    content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=effective_max_tokens)
     return content, stop_reason == "max_tokens"
 
 
@@ -385,6 +404,7 @@ async def generate_study_guide_stream(
     document_type: str | None = None,
     study_goal: str | None = None,
     study_goal_text: str | None = None,
+    max_tokens: int | None = None,
 ) -> AsyncGenerator[dict, None]:
     """Async generator that streams study guide content via Anthropic streaming API.
 
@@ -428,6 +448,7 @@ async def generate_study_guide_stream(
             interests=interests,
         )
 
+    effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
     max_retries = 2
     start_time = time.time()
 
@@ -440,7 +461,7 @@ async def generate_study_guide_stream(
                 model=settings.claude_model,
                 system=system_prompt,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=2000,
+                max_tokens=effective_max_tokens,
                 temperature=0.7,
             ) as stream:
                 async for text in stream.text_stream:

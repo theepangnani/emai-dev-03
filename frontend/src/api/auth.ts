@@ -46,7 +46,10 @@ export const authApi = {
   },
 
   logout: async () => {
-    const response = await api.post('/api/auth/logout');
+    const refreshToken = localStorage.getItem('refresh_token');
+    const response = await api.post('/api/auth/logout', {
+      refresh_token: refreshToken,
+    });
     return response.data;
   },
 

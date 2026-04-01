@@ -27,6 +27,22 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 2
 
+    # Security token TTLs
+    pwd_reset_token_expire_hours: int = 1
+    email_verify_token_expire_hours: int = 4
+    unsubscribe_token_expire_days: int = 30
+
+    # Account lockout tiers
+    lockout_tier1_attempts: int = 5
+    lockout_tier1_seconds: int = 900      # 15 min
+    lockout_tier2_attempts: int = 10
+    lockout_tier2_seconds: int = 3600     # 1 hour
+    lockout_tier3_attempts: int = 15
+    lockout_tier3_seconds: int = 86400    # 24 hours
+
+    # Token encryption (Fernet key for encrypting OAuth tokens at rest)
+    token_encryption_key: str = ""
+
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""
@@ -107,6 +123,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
+
+    # Rate limiting storage (memory:// for dev, redis://host:port for prod)
+    rate_limit_storage_url: str = "memory://"
 
     class Config:
         env_file = ".env"

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
+import { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -59,52 +59,15 @@ export function AnalyticsPage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Load children for parents
-  useEffect(() => {
-    if (!isParent) return;
-    parentApi.getChildren().then((kids) => {
-      setChildren(kids);
-      if (kids.length > 0 && !selectedStudentId) {
-        const storedUserId = sessionStorage.getItem('selectedChildId');
-        const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
-        setSelectedStudentId(storedMatch ? storedMatch.student_id : kids[0].student_id);
-      }
-    }).catch(() => { /* handled by main load */ });
-  }, [isParent]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Load analytics data when student is selected
-  useEffect(() => {
-    if (!selectedStudentId) {
-      if (!isParent) {
-        // Student viewing own data — student_id not needed, API resolves it
-        loadData(undefined);
-      }
-      return;
-    }
-    loadData(selectedStudentId);
-  }, [selectedStudentId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reload trends when filters change
-  useEffect(() => {
-    if (!selectedStudentId && isParent) return;
-    loadTrends(selectedStudentId ?? undefined);
-  }, [trendDays, trendCourseFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadData(studentId: number | undefined) {
+  const loadData = useCallback(async (studentId: number | undefined) => {
     setLoading(true);
     setError('');
     try {
       const sid = studentId ?? 0; // 0 won't be sent if undefined in API
       const [summaryData, trendsData, gradesData] = await Promise.all([
-        studentId !== undefined
-          ? analyticsApi.getSummary(sid)
-          : analyticsApi.getSummary(sid),
-        studentId !== undefined
-          ? analyticsApi.getTrends(sid, trendCourseFilter, trendDays)
-          : analyticsApi.getTrends(sid, trendCourseFilter, trendDays),
-        studentId !== undefined
-          ? analyticsApi.getGrades(sid)
-          : analyticsApi.getGrades(sid),
+        analyticsApi.getSummary(sid),
+        analyticsApi.getTrends(sid, trendCourseFilter, trendDays),
+        analyticsApi.getGrades(sid),
       ]);
 
       setSummary(summaryData);
@@ -117,9 +80,9 @@ export function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [trendCourseFilter, trendDays]);
 
-  async function loadTrends(studentId: number | undefined) {
+  const loadTrends = useCallback(async (studentId: number | undefined) => {
     if (studentId === undefined && isParent) return;
     try {
       const sid = studentId ?? 0;
@@ -129,7 +92,38 @@ export function AnalyticsPage() {
     } catch {
       // Keep existing data on filter error
     }
-  }
+  }, [isParent, trendCourseFilter, trendDays]);
+
+  // Load children for parents
+  useEffect(() => {
+    if (!isParent) return;
+    parentApi.getChildren().then((kids) => {
+      setChildren(kids);
+      if (kids.length > 0 && !selectedStudentId) {
+        const storedUserId = sessionStorage.getItem('selectedChildId');
+        const storedMatch = storedUserId ? kids.find(k => k.user_id === Number(storedUserId)) : null;
+        setSelectedStudentId(storedMatch ? storedMatch.student_id : kids[0].student_id);
+      }
+    }).catch(() => { /* handled by main load */ });
+  }, [isParent, selectedStudentId]);
+
+  // Load analytics data when student is selected
+  useEffect(() => {
+    if (!selectedStudentId) {
+      if (!isParent) {
+        // Student viewing own data — student_id not needed, API resolves it
+        loadData(undefined);
+      }
+      return;
+    }
+    loadData(selectedStudentId);
+  }, [selectedStudentId, isParent, loadData]);
+
+  // Reload trends when filters change
+  useEffect(() => {
+    if (!selectedStudentId && isParent) return;
+    loadTrends(selectedStudentId ?? undefined);
+  }, [trendDays, trendCourseFilter, selectedStudentId, isParent, loadTrends]);
 
   // Chart data: group trend points by course for multi-line chart
   const trendChartData = useMemo(() => {

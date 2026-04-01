@@ -2095,9 +2095,8 @@ try:
 except Exception as e:
     logger.warning("journey_hints migration (#2604) failed: %s", e)
 
+<<<<<<< HEAD
 # ── Enum → String(50) migration (#2788) ────────────────────
-# PostgreSQL Enum columns store enum NAMES not values; migrate to VARCHAR(50)
-# for cross-DB portability. SQLite already stores text, so PG-only.
 if "sqlite" not in settings.database_url:
     _enum_migrations = [
         ("notifications", "type", "notificationtype"),
@@ -2108,7 +2107,6 @@ if "sqlite" not in settings.database_url:
     for _tbl, _col, _enum_name in _enum_migrations:
         try:
             with engine.connect() as conn:
-                # Convert column from native PG ENUM to VARCHAR(50), lowering names to values
                 conn.execute(text(
                     f"ALTER TABLE {_tbl} ALTER COLUMN {_col} TYPE VARCHAR(50) USING LOWER({_col}::text)"
                 ))
@@ -2117,16 +2115,58 @@ if "sqlite" not in settings.database_url:
         except Exception as e:
             logger.warning("Enum migration for %s.%s (#2788) skipped: %s", _tbl, _col, e)
 
-    # Drop orphaned PG ENUM types after column conversion
     for _enum_name in ["notificationtype", "communicationtype", "emailtype", "invitetype"]:
         try:
             with engine.connect() as conn:
                 conn.execute(text(f"DROP TYPE IF EXISTS {_enum_name}"))
                 conn.commit()
-                logger.info("Dropped PG ENUM type %s (#2788)", _enum_name)
         except Exception as e:
             logger.warning("Failed to drop ENUM type %s (#2788): %s", _enum_name, e)
 
+# ── #2794: DateTime timezone + missing indexes migration ──────────────
+try:
+    with engine.connect() as conn:
+        if "sqlite" not in settings.database_url:
+            conn.execute(text("ALTER TABLE detected_events ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE detected_events ALTER COLUMN created_at SET DEFAULT NOW()"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN created_at SET DEFAULT NOW()"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN updated_at SET DEFAULT NOW()"))
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN responded_at TYPE TIMESTAMPTZ USING responded_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN created_at SET DEFAULT NOW()"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_assignment ON study_guides(assignment_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_course ON study_guides(course_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_parent_guide ON study_guides(parent_guide_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_course ON tasks(course_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_course_content ON tasks(course_content_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_study_guide ON tasks(study_guide_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_note ON tasks(note_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_course_contents_parent ON course_contents(parent_content_id)"))
+        conn.commit()
+        logger.info("Model consistency migration complete (#2794)")
+except Exception as e:
+    logger.warning("Model consistency migration (#2794) failed: %s", e)
+
+# --- Widen OAuth token columns to accommodate encrypted tokens (#2781) ---
+if "sqlite" not in settings.database_url:
+    _token_col_changes = [
+        ("users", "google_access_token", "VARCHAR(2048)"),
+        ("users", "google_refresh_token", "VARCHAR(1024)"),
+        ("parent_gmail_integrations", "access_token", "VARCHAR(2048)"),
+        ("parent_gmail_integrations", "refresh_token", "VARCHAR(1024)"),
+        ("teacher_google_accounts", "access_token", "VARCHAR(2048)"),
+        ("teacher_google_accounts", "refresh_token", "VARCHAR(1024)"),
+    ]
+    for _tbl, _col, _new_type in _token_col_changes:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE {_tbl} ALTER COLUMN {_col} TYPE {_new_type}"))
+                conn.commit()
+                logger.info("Widened %s.%s to %s (#2781)", _tbl, _col, _new_type)
+        except Exception as e:
+            logger.debug("Token column resize %s.%s skipped: %s", _tbl, _col, e)
 
 _is_prod = "sqlite" not in settings.database_url
 
