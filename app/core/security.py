@@ -94,7 +94,7 @@ def decode_password_reset_token(token: str) -> str | None:
 
 
 def create_email_verification_token(email: str) -> str:
-    """Create a JWT for email verification (configurable expiry)."""
+    """Create a JWT for email verification (configurable, default 4h)."""
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.email_verify_token_expire_hours)
     to_encode = {"sub": email, "exp": expire, "type": "email_verify"}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
