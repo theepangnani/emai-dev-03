@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     lockout_tier3_attempts: int = 15
     lockout_tier3_seconds: int = 86400    # 24 hours
 
+    # Token encryption (Fernet key for encrypting OAuth tokens at rest)
+    token_encryption_key: str = ""
+
     # Google OAuth
     google_client_id: str = ""
     google_client_secret: str = ""

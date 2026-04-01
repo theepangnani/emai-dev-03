@@ -24,6 +24,7 @@ from app.api.deps import get_current_user, require_role
 from app.services.audit_service import log_action
 from app.services.email_service import add_inspiration_to_email, send_email_sync, wrap_branded_email
 from app.core.config import settings
+from app.core.encryption import encrypt_token, decrypt_token
 from app.core.security import create_access_token
 from app.schemas.course_announcement import CourseAnnouncementResponse
 
@@ -93,11 +94,16 @@ def _consume_oauth_state(nonce: str) -> dict | None:
 
 def update_user_tokens(user: User, credentials, db: Session):
     """Update user's Google tokens if they were refreshed."""
-    if credentials.token != user.google_access_token:
-        user.google_access_token = credentials.token
+    if credentials.token != decrypt_token(user.google_access_token):
+        user.google_access_token = encrypt_token(credentials.token)
         if credentials.refresh_token:
-            user.google_refresh_token = credentials.refresh_token
+            user.google_refresh_token = encrypt_token(credentials.refresh_token)
         db.commit()
+
+
+def _user_tokens(user: User) -> tuple[str | None, str | None]:
+    """Return decrypted (access_token, refresh_token) for a user."""
+    return decrypt_token(user.google_access_token), decrypt_token(user.google_refresh_token)
 
 
 def _store_granted_scopes(user: User, granted_scopes_str: str) -> None:
@@ -191,9 +197,9 @@ def google_callback(
                         .first()
                     )
                     if existing_acct:
-                        existing_acct.access_token = tokens["access_token"]
+                        existing_acct.access_token = encrypt_token(tokens["access_token"])
                         if tokens.get("refresh_token"):
-                            existing_acct.refresh_token = tokens["refresh_token"]
+                            existing_acct.refresh_token = encrypt_token(tokens["refresh_token"])
                     else:
                         is_first = db.query(TeacherGoogleAccount).filter(
                             TeacherGoogleAccount.teacher_id == teacher.id
@@ -203,8 +209,8 @@ def google_callback(
                             google_id=user_info["id"],
                             google_email=google_email,
                             display_name=user_info.get("name", ""),
-                            access_token=tokens["access_token"],
-                            refresh_token=tokens.get("refresh_token"),
+                            access_token=encrypt_token(tokens["access_token"]),
+                            refresh_token=encrypt_token(tokens.get("refresh_token")),
                             is_primary=is_first,
                         )
                         db.add(new_acct)
@@ -216,9 +222,9 @@ def google_callback(
                     ).first()
                     if not existing_owner:
                         user.google_id = user_info["id"]
-                    user.google_access_token = tokens["access_token"]
+                    user.google_access_token = encrypt_token(tokens["access_token"])
                     if tokens.get("refresh_token"):
-                        user.google_refresh_token = tokens["refresh_token"]
+                        user.google_refresh_token = encrypt_token(tokens["refresh_token"])
                     _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                     db.commit()
                     params = urlencode({"google_connected": "true", "account_added": "true"})
@@ -238,8 +244,8 @@ def google_callback(
                     return RedirectResponse(url=f"{settings.frontend_url}/dashboard?{params}")
 
                 user.google_id = user_info["id"]
-                user.google_access_token = tokens["access_token"]
-                user.google_refresh_token = tokens.get("refresh_token")
+                user.google_access_token = encrypt_token(tokens["access_token"])
+                user.google_refresh_token = encrypt_token(tokens.get("refresh_token"))
                 _store_granted_scopes(user, tokens.get("granted_scopes", ""))
                 db.commit()
 
@@ -256,9 +262,9 @@ def google_callback(
         if user:
             if found_by_google_id:
                 # google_id already matches — just refresh tokens
-                user.google_access_token = tokens["access_token"]
+                user.google_access_token = encrypt_token(tokens["access_token"])
                 if tokens.get("refresh_token"):
-                    user.google_refresh_token = tokens["refresh_token"]
+                    user.google_refresh_token = encrypt_token(tokens["refresh_token"])
             else:
                 # Found by email — check for google_id conflict before linking
                 existing_owner = db.query(User).filter(
@@ -267,13 +273,13 @@ def google_callback(
                 if existing_owner:
                     # google_id belongs to a different user — use that user instead
                     user = existing_owner
-                    user.google_access_token = tokens["access_token"]
+                    user.google_access_token = encrypt_token(tokens["access_token"])
                     if tokens.get("refresh_token"):
-                        user.google_refresh_token = tokens["refresh_token"]
+                        user.google_refresh_token = encrypt_token(tokens["refresh_token"])
                 else:
                     user.google_id = user_info["id"]
-                    user.google_access_token = tokens["access_token"]
-                    user.google_refresh_token = tokens.get("refresh_token")
+                    user.google_access_token = encrypt_token(tokens["access_token"])
+                    user.google_refresh_token = encrypt_token(tokens.get("refresh_token"))
             _store_granted_scopes(user, tokens.get("granted_scopes", ""))
             db.commit()
             db.refresh(user)
@@ -360,9 +366,10 @@ def get_google_courses(
             faq_code=GOOGLE_NOT_CONNECTED,
         )
 
+    access_tok, refresh_tok = _user_tokens(current_user)
     courses, credentials = list_courses(
-        current_user.google_access_token,
-        current_user.google_refresh_token,
+        access_tok,
+        refresh_tok,
     )
 
     # Update tokens if refreshed
@@ -536,10 +543,11 @@ def _resolve_teacher_for_course(
 ) -> Teacher | None:
     """Fetch teachers from Google Classroom and resolve/create a Teacher record."""
     try:
+        at, rt = _user_tokens(user)
         google_teachers, credentials = list_course_teachers(
-            user.google_access_token,
+            at,
             google_course_id,
-            user.google_refresh_token,
+            rt,
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
@@ -601,9 +609,10 @@ def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None =
                         from teacher type and applies to all synced courses.
     """
     try:
+        at, rt = _user_tokens(user)
         google_courses, credentials = list_courses(
-            user.google_access_token,
-            user.google_refresh_token,
+            at,
+            rt,
         )
     except Exception as e:
         logger.warning(f"Failed to list Google courses for user {user.id}: {e}")
@@ -704,10 +713,11 @@ def _sync_courses_for_user(user: User, db: Session, classroom_type: str | None =
 def _sync_materials_for_course(course: Course, user: User, db: Session) -> int:
     """Sync courseWorkMaterials from Google Classroom into CourseContent. Returns count synced."""
     try:
+        at, rt = _user_tokens(user)
         materials, credentials = get_course_work_materials(
-            user.google_access_token,
+            at,
             course.google_classroom_id,
-            user.google_refresh_token,
+            rt,
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
@@ -773,10 +783,11 @@ def _sync_materials_for_course(course: Course, user: User, db: Session) -> int:
 def _sync_assignments_for_course(course: Course, user: User, db: Session) -> int:
     """Auto-sync assignments from Google Classroom during course sync. Returns count of new assignments."""
     try:
+        at, rt = _user_tokens(user)
         google_assignments, credentials = get_course_work(
-            user.google_access_token,
+            at,
             course.google_classroom_id,
-            user.google_refresh_token,
+            rt,
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
@@ -819,10 +830,11 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
     import json
 
     try:
+        at, rt = _user_tokens(user)
         google_announcements, credentials = list_course_announcements(
-            user.google_access_token,
+            at,
             course.google_classroom_id,
-            user.google_refresh_token,
+            rt,
         )
         update_user_tokens(user, credentials, db)
     except Exception as e:
@@ -831,7 +843,8 @@ def _sync_announcements_for_course(course: Course, user: User, db: Session) -> i
 
     # Build a Classroom service for user profile lookups
     try:
-        service, _ = get_classroom_service(user.google_access_token, user.google_refresh_token)
+        at, rt = _user_tokens(user)
+        service, _ = get_classroom_service(at, rt)
     except Exception:
         service = None
 
@@ -983,10 +996,11 @@ def get_google_assignments(
             detail="User not connected to Google Classroom",
         )
 
+    at, rt = _user_tokens(current_user)
     coursework, credentials = get_course_work(
-        current_user.google_access_token,
+        at,
         course_id,
-        current_user.google_refresh_token,
+        rt,
     )
 
     # Update tokens if refreshed
@@ -1023,10 +1037,11 @@ def sync_google_assignments(
         )
 
     # Fetch assignments from Google
+    at, rt = _user_tokens(current_user)
     google_assignments, credentials = get_course_work(
-        current_user.google_access_token,
+        at,
         google_course_id,
-        current_user.google_refresh_token,
+        rt,
     )
 
     # Update tokens if refreshed

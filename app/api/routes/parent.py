@@ -756,11 +756,14 @@ def discover_children_google(
     if not current_user.google_access_token:
         return DiscoverChildrenResponse(discovered=[], google_connected=False, courses_searched=0)
 
-    logger.info(f"Parent {current_user.id} ({current_user.email}) starting Google discovery, has_refresh_token={bool(current_user.google_refresh_token)}")
+    from app.core.encryption import encrypt_token, decrypt_token
+    _at = decrypt_token(current_user.google_access_token)
+    _rt = decrypt_token(current_user.google_refresh_token)
+    logger.info(f"Parent {current_user.id} ({current_user.email}) starting Google discovery, has_refresh_token={bool(_rt)}")
     try:
         courses, credentials = list_courses(
-            current_user.google_access_token,
-            current_user.google_refresh_token,
+            _at,
+            _rt,
         )
         logger.info(f"Parent {current_user.id} found {len(courses)} Google Classroom courses")
     except Exception as e:
@@ -768,10 +771,10 @@ def discover_children_google(
         return DiscoverChildrenResponse(discovered=[], google_connected=True, courses_searched=0)
 
     # Update tokens if refreshed
-    if credentials.token != current_user.google_access_token:
-        current_user.google_access_token = credentials.token
+    if credentials.token != _at:
+        current_user.google_access_token = encrypt_token(credentials.token)
         if credentials.refresh_token:
-            current_user.google_refresh_token = credentials.refresh_token
+            current_user.google_refresh_token = encrypt_token(credentials.refresh_token)
         db.commit()
 
     # Collect student emails from all courses
@@ -784,9 +787,9 @@ def discover_children_google(
             continue
         try:
             students, credentials = list_course_students(
-                current_user.google_access_token,
+                decrypt_token(current_user.google_access_token),
                 course_id,
-                current_user.google_refresh_token,
+                decrypt_token(current_user.google_refresh_token),
             )
             for s in students:
                 profile = s.get("profile", {})

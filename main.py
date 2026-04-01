@@ -2095,6 +2095,7 @@ try:
 except Exception as e:
     logger.warning("journey_hints migration (#2604) failed: %s", e)
 
+<<<<<<< HEAD
 # ── Enum → String(50) migration (#2788) ────────────────────
 if "sqlite" not in settings.database_url:
     _enum_migrations = [
@@ -2147,6 +2148,25 @@ try:
         logger.info("Model consistency migration complete (#2794)")
 except Exception as e:
     logger.warning("Model consistency migration (#2794) failed: %s", e)
+
+# --- Widen OAuth token columns to accommodate encrypted tokens (#2781) ---
+if "sqlite" not in settings.database_url:
+    _token_col_changes = [
+        ("users", "google_access_token", "VARCHAR(2048)"),
+        ("users", "google_refresh_token", "VARCHAR(1024)"),
+        ("parent_gmail_integrations", "access_token", "VARCHAR(2048)"),
+        ("parent_gmail_integrations", "refresh_token", "VARCHAR(1024)"),
+        ("teacher_google_accounts", "access_token", "VARCHAR(2048)"),
+        ("teacher_google_accounts", "refresh_token", "VARCHAR(1024)"),
+    ]
+    for _tbl, _col, _new_type in _token_col_changes:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE {_tbl} ALTER COLUMN {_col} TYPE {_new_type}"))
+                conn.commit()
+                logger.info("Widened %s.%s to %s (#2781)", _tbl, _col, _new_type)
+        except Exception as e:
+            logger.debug("Token column resize %s.%s skipped: %s", _tbl, _col, e)
 
 _is_prod = "sqlite" not in settings.database_url
 

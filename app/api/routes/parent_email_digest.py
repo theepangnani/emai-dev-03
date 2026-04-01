@@ -33,6 +33,7 @@ from app.schemas.parent_email_digest import (
     ParentDigestSettingsUpdate,
     DigestDeliveryLogResponse,
 )
+from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
 
 logger = logging.getLogger(__name__)
@@ -193,8 +194,8 @@ def gmail_callback(
     if existing:
         existing.gmail_address = gmail_address
         existing.google_id = google_id
-        existing.access_token = tokens["access_token"]
-        existing.refresh_token = tokens["refresh_token"]
+        existing.access_token = encrypt_token(tokens["access_token"])
+        existing.refresh_token = encrypt_token(tokens["refresh_token"])
         existing.connected_at = datetime.now(timezone.utc)
         db.commit()
         return GmailCallbackResponse(status="ok", gmail_address=gmail_address, integration_id=existing.id)
@@ -203,8 +204,8 @@ def gmail_callback(
             parent_id=current_user.id,
             gmail_address=gmail_address,
             google_id=google_id,
-            access_token=tokens["access_token"],
-            refresh_token=tokens["refresh_token"],
+            access_token=encrypt_token(tokens["access_token"]),
+            refresh_token=encrypt_token(tokens["refresh_token"]),
         )
         db.add(integration)
         db.flush()  # assign integration.id without committing
