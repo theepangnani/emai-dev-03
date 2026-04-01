@@ -197,7 +197,7 @@ def _collect_notifications(db: Session, user: User) -> list[dict]:
     return [
         {
             "id": n.id,
-            "type": n.type.value if n.type else None,
+            "type": n.type if n.type else None,
             "title": n.title,
             "content": n.content,
             "link": n.link,
@@ -290,7 +290,7 @@ def _collect_teacher_communications(db: Session, user: User) -> list[dict]:
     return [
         {
             "id": c.id,
-            "type": c.type.value if c.type else None,
+            "type": c.type if c.type else None,
             "subject": c.subject,
             "body": c.body,
             "snippet": c.snippet,

@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -18,7 +18,7 @@ class StudentEmail(Base):
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     email = Column(String(255), nullable=False)
-    email_type = Column(Enum(EmailType), nullable=False, default=EmailType.PERSONAL)
+    email_type = Column(String(50), nullable=False, default=EmailType.PERSONAL.value)
     is_primary = Column(Boolean, default=False, nullable=False)
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
