@@ -236,17 +236,17 @@ class TestAdminUnlock:
 
 
 class TestRemainingAttemptsInfo:
-    """Test that remaining attempts info is returned to the client."""
+    """Test that failed login returns generic message (no attempt count to prevent enumeration)."""
 
-    def test_remaining_attempts_shown_after_3_failures(self, client, db_session):
+    def test_failed_login_returns_generic_message(self, client, db_session):
         user = _create_user(db_session, "lockout_remaining@test.com")
         _fail_login(client, user.email, 3)
 
-        # 4th failure should show remaining attempts
+        # 4th failure should show generic message (no attempt count per #2791)
         resp = client.post("/api/auth/login", data={"username": user.email, "password": "WrongPassword999!"})
         assert resp.status_code == 401
         detail = resp.json()["detail"]
-        assert "attempt" in detail.lower() or "remaining" in detail.lower()
+        assert "incorrect credentials" in detail.lower()
 
 
 class TestNonexistentUser:
