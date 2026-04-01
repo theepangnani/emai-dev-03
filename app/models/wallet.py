@@ -4,7 +4,7 @@ Digital Wallet models — Wallet, PackageTier, WalletTransaction, CreditPackage.
 Part of the Digital Wallet & Subscription System (§6.60, #1384).
 """
 from sqlalchemy import (
-    Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text,
+    Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text, text,
 )
 from sqlalchemy.sql import func
 
@@ -26,7 +26,7 @@ class Wallet(Base):
     package = Column(String(20), default="free", nullable=False)
     package_credits = Column(Numeric(10, 2), default=0, nullable=False)
     purchased_credits = Column(Numeric(10, 2), default=0, nullable=False)
-    auto_refill_enabled = Column(Boolean, default=False, server_default="FALSE")
+    auto_refill_enabled = Column(Boolean, default=False, server_default=text("false"))
     auto_refill_threshold_cents = Column(Integer, default=0)
     auto_refill_amount_cents = Column(Integer, default=500)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -46,7 +46,7 @@ class PackageTier(Base):
     name = Column(String(20), unique=True, nullable=False)
     monthly_credits = Column(Numeric(10, 2), nullable=False)
     price_cents = Column(Integer, nullable=False, default=0)
-    is_active = Column(Boolean, default=True, server_default="TRUE", index=True)
+    is_active = Column(Boolean, default=True, server_default=text("true"), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -81,5 +81,5 @@ class CreditPackage(Base):
     name = Column(String(50), nullable=False)
     credits = Column(Numeric(10, 2), nullable=False)
     price_cents = Column(Integer, nullable=False)
-    is_active = Column(Boolean, default=True, server_default="TRUE", index=True)
+    is_active = Column(Boolean, default=True, server_default=text("true"), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
