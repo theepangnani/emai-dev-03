@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     # Security token TTLs
     pwd_reset_token_expire_hours: int = 1
     email_verify_token_expire_hours: int = 4
-    unsubscribe_token_expire_days: int = 365
+    unsubscribe_token_expire_days: int = 30
 
     # Account lockout tiers
     lockout_tier1_attempts: int = 5

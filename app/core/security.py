@@ -130,7 +130,7 @@ def create_deletion_confirmation_token(user_id: int) -> str:
 
 
 def create_unsubscribe_token(user_id: int) -> str:
-    """Create a JWT for one-click email unsubscribe (configurable expiry, CASL)."""
+    """Create a JWT for one-click email unsubscribe (configurable, default 30d, CASL)."""
     expire = datetime.now(timezone.utc) + timedelta(days=settings.unsubscribe_token_expire_days)
     to_encode = {"sub": str(user_id), "exp": expire, "type": "unsubscribe"}
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)

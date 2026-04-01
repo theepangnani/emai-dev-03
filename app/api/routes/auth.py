@@ -17,7 +17,7 @@ from app.api.deps import get_current_user, oauth2_scheme
 from app.services.audit_service import log_action
 from app.services.email_service import send_email_sync, add_inspiration_to_email
 from app.core.config import settings
-from app.core.rate_limit import limiter
+from app.core.rate_limit import limiter, get_client_ip, get_user_id_or_ip
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -758,7 +758,8 @@ def _render(template: str, **kwargs: str) -> str:
 
 
 @router.get("/unsubscribe/{token}")
-def unsubscribe(token: str, db: Session = Depends(get_db)):
+@limiter.limit("5/minute", key_func=get_client_ip)
+def unsubscribe(token: str, request: Request, db: Session = Depends(get_db)):
     """One-click email unsubscribe (CASL compliance, #2022). No auth required."""
     from app.core.security import decode_unsubscribe_token
     from fastapi.responses import HTMLResponse
@@ -994,6 +995,7 @@ def get_onboarding_status(
 
 
 @router.post("/verify-email")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def verify_email(body: EmailVerifyRequest, request: Request, db: Session = Depends(get_db)):
     """Verify a user's email address using a token from the verification email."""
     email = decode_email_verification_token(body.token)
