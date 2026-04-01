@@ -5,7 +5,7 @@ Part of the Gamification System (#2000).
 """
 from sqlalchemy import (
     Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String,
-    UniqueConstraint,
+    UniqueConstraint, text,
 )
 from sqlalchemy.sql import func
 
@@ -85,8 +85,8 @@ class StreakLog(Base):
     )
     log_date = Column(Date, nullable=False)
     qualifying_action = Column(String(30), nullable=True)
-    freeze_used = Column(Boolean, nullable=False, default=False, server_default="FALSE")
-    is_holiday = Column(Boolean, nullable=False, default=False, server_default="FALSE")
+    freeze_used = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+    is_holiday = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     streak_value = Column(Integer, nullable=True)
     multiplier = Column(Float, nullable=True)
 

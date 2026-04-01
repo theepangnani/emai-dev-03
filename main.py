@@ -2095,6 +2095,39 @@ try:
 except Exception as e:
     logger.warning("journey_hints migration (#2604) failed: %s", e)
 
+# ── Enum → String(50) migration (#2788) ────────────────────
+# PostgreSQL Enum columns store enum NAMES not values; migrate to VARCHAR(50)
+# for cross-DB portability. SQLite already stores text, so PG-only.
+if "sqlite" not in settings.database_url:
+    _enum_migrations = [
+        ("notifications", "type", "notificationtype"),
+        ("teacher_communications", "type", "communicationtype"),
+        ("student_emails", "email_type", "emailtype"),
+        ("invites", "invite_type", "invitetype"),
+    ]
+    for _tbl, _col, _enum_name in _enum_migrations:
+        try:
+            with engine.connect() as conn:
+                # Convert column from native PG ENUM to VARCHAR(50), lowering names to values
+                conn.execute(text(
+                    f"ALTER TABLE {_tbl} ALTER COLUMN {_col} TYPE VARCHAR(50) USING LOWER({_col}::text)"
+                ))
+                conn.commit()
+                logger.info("Migrated %s.%s from ENUM to VARCHAR(50) (#2788)", _tbl, _col)
+        except Exception as e:
+            logger.warning("Enum migration for %s.%s (#2788) skipped: %s", _tbl, _col, e)
+
+    # Drop orphaned PG ENUM types after column conversion
+    for _enum_name in ["notificationtype", "communicationtype", "emailtype", "invitetype"]:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"DROP TYPE IF EXISTS {_enum_name}"))
+                conn.commit()
+                logger.info("Dropped PG ENUM type %s (#2788)", _enum_name)
+        except Exception as e:
+            logger.warning("Failed to drop ENUM type %s (#2788): %s", _enum_name, e)
+
+
 _is_prod = "sqlite" not in settings.database_url
 
 # Readiness flag — set to True after startup_event() completes.
