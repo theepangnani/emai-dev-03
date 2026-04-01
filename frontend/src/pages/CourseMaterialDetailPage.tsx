@@ -301,7 +301,6 @@ export function CourseMaterialDetailPage() {
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const chipAbortRef = useRef(false);
   const resourceLinksPollStartRef = useRef<number>(Date.now());
-  useEffect(() => { resourceLinksPollStartRef.current = Date.now(); }, [contentId]);
   useEffect(() => {
     return () => { chipAbortRef.current = true; };
   }, []);
@@ -354,6 +353,9 @@ export function CourseMaterialDetailPage() {
   );
 
   const contentId = parseInt(id || '0');
+
+  // Reset polling timer when content changes
+  useEffect(() => { resourceLinksPollStartRef.current = Date.now(); }, [contentId]);
 
   const toggleNotes = useCallback(() => setShowNotesPanel(v => !v), []);
   useRegisterNotesFAB(contentId ? { courseContentId: contentId, isOpen: showNotesPanel, onToggle: toggleNotes } : null);
