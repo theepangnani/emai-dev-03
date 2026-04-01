@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum, Index
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -18,7 +18,7 @@ class TeacherCommunication(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    type = Column(Enum(CommunicationType), nullable=False)
+    type = Column(String(50), nullable=False)
 
     # Source identification (dedup key)
     source_id = Column(String(255), nullable=False, index=True)
