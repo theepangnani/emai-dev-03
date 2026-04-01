@@ -32,10 +32,10 @@ class Task(Base):
     archived_at = Column(DateTime(timezone=True), nullable=True)
 
     # Linked entities (optional)
-    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True)
-    course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
-    study_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True)
-    note_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
+    course_id = Column(Integer, ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True)
+    course_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True, index=True)
+    study_guide_id = Column(Integer, ForeignKey("study_guides.id", ondelete="SET NULL"), nullable=True, index=True)
+    note_id = Column(Integer, ForeignKey("notes.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # Legacy columns kept for backwards compat (SQLite can't DROP COLUMN easily)
     parent_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

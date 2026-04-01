@@ -19,8 +19,8 @@ class StudyRequest(Base):
     message = Column(String(500), nullable=True)  # Parent's note
     status = Column(String(20), nullable=False, default="pending")  # pending, accepted, deferred, completed
     student_response = Column(String(500), nullable=True)  # Student's reply
-    responded_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=func.now())
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     parent = relationship("User", foreign_keys=[parent_id])
     student = relationship("User", foreign_keys=[student_id])

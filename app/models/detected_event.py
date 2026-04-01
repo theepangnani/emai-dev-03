@@ -17,4 +17,4 @@ class DetectedEvent(Base):
     event_date = Column(Date, nullable=False)
     source = Column(String(30), nullable=False, default="document_parse")  # document_parse, google_classroom
     dismissed = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

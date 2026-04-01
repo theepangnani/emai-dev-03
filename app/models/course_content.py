@@ -44,7 +44,7 @@ class CourseContent(Base):
     display_order = Column(Integer, default=0, server_default="0")
 
     # Material hierarchy (#1740)
-    parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True)
+    parent_content_id = Column(Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True, index=True)
     is_master = Column(Boolean, nullable=False, default=False, server_default=text("FALSE"))
     material_group_id = Column(Integer, nullable=True)
 

@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
-
 from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy.sql import func
+
 from app.db.database import Base
 
 
@@ -14,5 +14,5 @@ class HelpArticle(Base):
     category = Column(String(100), nullable=False, index=True)
     role = Column(String(100), nullable=True, index=True)  # comma-separated roles or NULL for all
     display_order = Column(Integer, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

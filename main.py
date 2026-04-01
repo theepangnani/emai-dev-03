@@ -2095,6 +2095,36 @@ try:
 except Exception as e:
     logger.warning("journey_hints migration (#2604) failed: %s", e)
 
+# ── #2794: DateTime timezone + missing indexes migration ──────────────
+try:
+    with engine.connect() as conn:
+        if "sqlite" not in settings.database_url:
+            # DateTime → TIMESTAMPTZ for detected_events.created_at
+            conn.execute(text("ALTER TABLE detected_events ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE detected_events ALTER COLUMN created_at SET DEFAULT NOW()"))
+            # DateTime → TIMESTAMPTZ for help_articles.created_at / updated_at
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN created_at SET DEFAULT NOW()"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE help_articles ALTER COLUMN updated_at SET DEFAULT NOW()"))
+            # DateTime → TIMESTAMPTZ for study_requests.responded_at / created_at
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN responded_at TYPE TIMESTAMPTZ USING responded_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC'"))
+            conn.execute(text("ALTER TABLE study_requests ALTER COLUMN created_at SET DEFAULT NOW()"))
+        # Missing FK indexes (#2794)
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_assignment ON study_guides(assignment_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_course ON study_guides(course_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_study_guides_parent_guide ON study_guides(parent_guide_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_course ON tasks(course_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_course_content ON tasks(course_content_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_study_guide ON tasks(study_guide_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_tasks_note ON tasks(note_id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_course_contents_parent ON course_contents(parent_content_id)"))
+        conn.commit()
+        logger.info("Model consistency migration complete (#2794)")
+except Exception as e:
+    logger.warning("Model consistency migration (#2794) failed: %s", e)
+
 _is_prod = "sqlite" not in settings.database_url
 
 # Readiness flag — set to True after startup_event() completes.
