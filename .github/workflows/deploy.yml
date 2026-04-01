@@ -25,6 +25,12 @@ jobs:
   rate-limit:
     runs-on: ubuntu-latest
     steps:
+      - name: Debounce rapid pushes
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          echo "Waiting 60s for rapid push debounce..."
+          sleep 60
+
       - name: Check daily run count
         if: github.event_name != 'workflow_dispatch'
         env:
