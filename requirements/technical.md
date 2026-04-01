@@ -262,18 +262,19 @@ GitHub Actions CI/CD must stay within the **2,000 min/month free tier** for Linu
 - **Rate limit:** Max 10 **successful** deploys/day (failures do not count). Manual `workflow_dispatch` bypasses the limit.
 - **Debounce:** 60-second sleep at workflow start; `cancel-in-progress: true` kills debouncing runs cheaply on rapid pushes.
 - **Path-based detection:** `dorny/paths-filter@v3` detects backend (`app/`, `tests/`, `requirements.txt`, `main.py`), frontend (`frontend/`), and infra (`Dockerfile`, `.github/`) changes. Tests are skipped when irrelevant files change.
-- **Single test runner:** Backend tests (pytest) and frontend tests (lint + vitest) run sequentially in one job to reduce billed minutes (one runner vs two).
+- **Single test runner:** Backend tests (pytest) and frontend tests (lint + vitest) run sequentially in one job to reduce billed minutes (one runner vs two). Python/Node setup steps are conditional on change type.
+- **Deploy gate:** Deploy requires `rate-limit` success, `detect-changes` success, and `test` success or skipped. If change detection fails, deploy is blocked.
 - **Path ignore:** `*.md`, `docs/**`, `.gitignore` changes do not trigger the workflow.
 - **Concurrency:** Group `deploy` with `cancel-in-progress: true`.
 - **Caching:** Python pip, npm, and Docker layer caching (type=gha) are required.
 
 #### Security Pipeline (`security.yml`)
 - **Triggers:** Daily schedule (6 AM UTC cron) + pull requests targeting master + manual dispatch. **Not** triggered per-push to master.
-- **Jobs:** `python-security` (bandit SAST + pip-audit from requirements file, no full install), `gitleaks` (secret scanning, full history), `npm-audit` (lockfile audit, no `npm ci`).
-- **Concurrency:** Group `security` with `cancel-in-progress: true`.
+- **Jobs:** `python-security` (bandit SAST + pip-audit from requirements file, no full install), `gitleaks` (secret scanning, full history), `npm-audit` (lightweight install via `npm ci --ignore-scripts`, audit fails visibly on HIGH).
+- **Concurrency:** Group `security-{event}-{ref}` with `cancel-in-progress: true` — prevents scheduled runs from cancelling PR runs.
 - **Known CVE exceptions** must be documented inline with justification.
 
-**GitHub Issues:** #2841 (rate-limit fix), #2842 (security schedule), #2843 (merge test jobs), #2844 (consolidate security), #2845 (path filtering), #2846 (debounce)
+**GitHub Issues:** #2841 (rate-limit fix), #2842 (security schedule), #2843 (merge test jobs), #2844 (consolidate security), #2845 (path filtering), #2846 (debounce), #2848 (deploy gate), #2849 (conditional setup), #2850 (npm audit), #2851 (security concurrency)
 
 ---
 
