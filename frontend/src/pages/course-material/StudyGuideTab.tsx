@@ -46,7 +46,7 @@ interface StudyGuideTabProps {
   savedStudyGoal?: string;
   /** Saved study goal text from CourseContent */
   savedStudyGoalText?: string;
-  onGenerateChildGuide?: (topic: string, guideType: string) => Promise<void>;
+  onGenerateChildGuide?: (topic: string, guideType: string) => void | Promise<void>;
   childGuideGenerating?: string | null;
 }
 
