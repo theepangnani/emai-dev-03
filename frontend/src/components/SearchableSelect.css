@@ -6,17 +6,17 @@
 .searchable-select__input {
   width: 100%;
   padding: 10px 14px;
-  border: 1.5px solid #ddd;
+  border: 1.5px solid var(--color-border);
   border-radius: 8px;
   font-size: 0.95rem;
-  background: #fff;
+  background: var(--color-surface);
   transition: border-color 0.2s;
 }
 
 .searchable-select__input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
 }
 
 .searchable-select__dropdown {
@@ -25,8 +25,8 @@
   left: 0;
   right: 0;
   z-index: 100;
-  background: #fff;
-  border: 1.5px solid #e2e8f0;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   margin-top: 4px;
   max-height: 220px;
@@ -48,25 +48,25 @@
 }
 
 .searchable-select__option:hover {
-  background: #f0f0ff;
+  background: var(--color-accent-subtle);
 }
 
 .searchable-select__option-label {
   font-weight: 500;
-  color: #1a1a2e;
+  color: var(--color-ink);
   font-size: 0.9rem;
 }
 
 .searchable-select__option-sublabel {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--color-ink-muted);
   margin-top: 1px;
 }
 
 .searchable-select__loading,
 .searchable-select__empty {
   padding: 12px 14px;
-  color: #6b7280;
+  color: var(--color-ink-muted);
   font-size: 0.85rem;
   text-align: center;
 }
@@ -76,9 +76,9 @@
   width: 100%;
   padding: 10px 14px;
   border: none;
-  border-top: 1px solid #e2e8f0;
-  background: #f8f9ff;
-  color: #4f46e5;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -90,13 +90,13 @@
 }
 
 .searchable-select__create-action--prominent {
-  background: #eef0ff;
+  background: var(--color-accent-light);
   padding: 12px 14px;
   font-size: 0.95rem;
 }
 
 .searchable-select__create-action:hover {
-  background: #eef0ff;
+  background: var(--color-accent-light);
 }
 
 /* Selected state */
@@ -105,9 +105,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  border: 1.5px solid #4f46e5;
+  border: 1.5px solid var(--color-accent);
   border-radius: 8px;
-  background: #f8f9ff;
+  background: var(--color-accent-subtle);
 }
 
 .searchable-select__selected-info {
@@ -118,20 +118,20 @@
 
 .searchable-select__selected-label {
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--color-ink);
   font-size: 0.9rem;
 }
 
 .searchable-select__selected-sublabel {
   font-size: 0.8rem;
-  color: #6b7280;
+  color: var(--color-ink-muted);
 }
 
 .searchable-select__clear {
   background: none;
   border: none;
   font-size: 1.3rem;
-  color: #9ca3af;
+  color: var(--color-muted-light);
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
@@ -139,7 +139,7 @@
 }
 
 .searchable-select__clear:hover {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 /* Multi-select tags */
@@ -155,19 +155,19 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: #eef0ff;
-  border: 1px solid #c7d2fe;
+  background: var(--color-accent-light);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   font-size: 0.82rem;
   font-weight: 500;
-  color: #3730a3;
+  color: var(--color-accent-strong);
 }
 
 .searchable-select__tag-remove {
   background: none;
   border: none;
   font-size: 1.1rem;
-  color: #6366f1;
+  color: var(--color-accent);
   cursor: pointer;
   padding: 0;
   line-height: 1;
@@ -175,15 +175,15 @@
 }
 
 .searchable-select__tag-remove:hover {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 /* Inline create teacher form */
 .create-teacher-inline {
-  border: 1.5px solid #e2e8f0;
+  border: 1.5px solid var(--color-border);
   border-radius: 10px;
   padding: 16px;
-  background: #fafbff;
+  background: var(--color-surface-alt);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -199,21 +199,21 @@
 .create-teacher-inline__header h4 {
   margin: 0;
   font-size: 0.9rem;
-  color: #1a1a2e;
+  color: var(--color-ink);
   font-weight: 600;
 }
 
 .create-teacher-inline__cancel {
   background: none;
   border: none;
-  color: #6b7280;
+  color: var(--color-ink-muted);
   cursor: pointer;
   font-size: 0.85rem;
   text-decoration: underline;
 }
 
 .create-teacher-inline__cancel:hover {
-  color: #1a1a2e;
+  color: var(--color-ink);
 }
 
 .create-teacher-inline label {
@@ -222,25 +222,25 @@
   gap: 4px;
   font-size: 0.85rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-ink);
 }
 
 .create-teacher-inline input {
   padding: 8px 12px;
-  border: 1.5px solid #ddd;
+  border: 1.5px solid var(--color-border);
   border-radius: 8px;
   font-size: 0.9rem;
 }
 
 .create-teacher-inline input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
 }
 
 .create-teacher-inline .shadow-note {
   font-size: 0.78rem;
-  color: #9ca3af;
+  color: var(--color-muted-light);
   font-style: italic;
   margin: 0;
 }

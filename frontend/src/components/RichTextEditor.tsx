@@ -145,13 +145,15 @@ export function RichTextEditor({
   return (
     <div className="rte-container">
       {!readOnly && (
-        <div className="rte-toolbar">
+        <div className="rte-toolbar" role="toolbar" aria-label="Text formatting">
           <div className="rte-toolbar-group">
             <button
               type="button"
               className={`rte-btn ${editor.isActive('bold') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleBold().run()}
               title="Bold (Ctrl+B)"
+              aria-label="Bold"
+              aria-pressed={editor.isActive('bold')}
             >
               <strong>B</strong>
             </button>
@@ -160,6 +162,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('italic') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleItalic().run()}
               title="Italic (Ctrl+I)"
+              aria-label="Italic"
+              aria-pressed={editor.isActive('italic')}
             >
               <em>I</em>
             </button>
@@ -168,6 +172,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('underline') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
               title="Underline (Ctrl+U)"
+              aria-label="Underline"
+              aria-pressed={editor.isActive('underline')}
             >
               <u>U</u>
             </button>
@@ -176,6 +182,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('strike') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleStrike().run()}
               title="Strikethrough"
+              aria-label="Strikethrough"
+              aria-pressed={editor.isActive('strike')}
             >
               <s>S</s>
             </button>
@@ -189,6 +197,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('heading', { level: 1 }) ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
               title="Heading 1"
+              aria-label="Heading 1"
+              aria-pressed={editor.isActive('heading', { level: 1 })}
             >
               H1
             </button>
@@ -197,6 +207,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('heading', { level: 2 }) ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
               title="Heading 2"
+              aria-label="Heading 2"
+              aria-pressed={editor.isActive('heading', { level: 2 })}
             >
               H2
             </button>
@@ -205,6 +217,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('heading', { level: 3 }) ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
               title="Heading 3"
+              aria-label="Heading 3"
+              aria-pressed={editor.isActive('heading', { level: 3 })}
             >
               H3
             </button>
@@ -218,6 +232,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('bulletList') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               title="Bullet list"
+              aria-label="Bullet list"
+              aria-pressed={editor.isActive('bulletList')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="3" cy="4" r="1.5" fill="currentColor" />
@@ -231,6 +247,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('orderedList') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleOrderedList().run()}
               title="Numbered list"
+              aria-label="Numbered list"
+              aria-pressed={editor.isActive('orderedList')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <text x="1.5" y="5.5" fontSize="5" fill="currentColor" fontWeight="bold">1</text>
@@ -244,6 +262,8 @@ export function RichTextEditor({
               className={`rte-btn ${editor.isActive('blockquote') ? 'rte-btn--active' : ''}`}
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
               title="Block quote"
+              aria-label="Block quote"
+              aria-pressed={editor.isActive('blockquote')}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="M3 3v10M6 5h7M6 8h5M6 11h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -259,6 +279,7 @@ export function RichTextEditor({
               className="rte-btn"
               onClick={handleFileUpload}
               title="Insert image"
+              aria-label="Insert image"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
@@ -277,7 +298,7 @@ export function RichTextEditor({
           </div>
         </div>
       )}
-      <EditorContent editor={editor} className="rte-content" />
+      <EditorContent editor={editor} className="rte-content" aria-label="Rich text editor" />
     </div>
   );
 }

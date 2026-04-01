@@ -300,6 +300,8 @@ export function CourseMaterialDetailPage() {
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const contentAreaRef = useRef<HTMLDivElement>(null);
   const chipAbortRef = useRef(false);
+  const resourceLinksPollStartRef = useRef<number>(Date.now());
+  useEffect(() => { resourceLinksPollStartRef.current = Date.now(); }, [contentId]);
   useEffect(() => {
     return () => { chipAbortRef.current = true; };
   }, []);
@@ -377,7 +379,12 @@ export function CourseMaterialDetailPage() {
     enabled: contentId > 0,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: (query) => (!query.state.data?.length) ? 5_000 : false,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && data.length > 0) return false;
+      if (Date.now() - resourceLinksPollStartRef.current > 120_000) return false;
+      return 5000;
+    },
   });
   const resourceLinkCount = resourceLinkGroups.reduce((sum, g) => sum + g.links.length, 0);
 
@@ -741,10 +748,11 @@ export function CourseMaterialDetailPage() {
         document_type: content?.document_type || undefined,
         study_goal: content?.study_goal || undefined,
       });
-      if (chipAbortRef.current) return;
       showToast('Sub-guide generated — opening now');
       navigate(`/study/guide/${newGuide.id}`);
-      try { refreshAIUsage(); } catch (e) { console.warn('Failed to refresh AI usage:', e); }
+      if (!chipAbortRef.current) {
+        try { refreshAIUsage(); } catch (e) { console.warn('Failed to refresh AI usage after chip navigation:', e); }
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate sub-guide';
       showToast(msg);

@@ -13,7 +13,7 @@
 .admin-filters input {
   padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   background: var(--color-surface);
 }
@@ -28,7 +28,7 @@
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -61,7 +61,7 @@
   display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   text-transform: capitalize;
 }
@@ -114,7 +114,7 @@
 .admin-pagination button {
   padding: 8px 16px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   cursor: pointer;
   font-size: 14px;
@@ -160,7 +160,7 @@
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-accent-strong);
   cursor: pointer;
@@ -212,7 +212,7 @@
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -259,7 +259,7 @@
   margin-bottom: 8px;
   padding: 8px 12px;
   background: var(--color-danger-light);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 /* Message button variant */
@@ -303,7 +303,7 @@
 .admin-msg-input {
   padding: 10px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   background: var(--color-surface);
   color: var(--color-ink);
@@ -319,7 +319,7 @@
 .admin-msg-textarea {
   padding: 10px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-family: inherit;
   resize: vertical;
@@ -338,7 +338,7 @@
 .admin-msg-result {
   font-size: 13px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 12px;
 }
 
@@ -415,7 +415,7 @@
   font-size: 13px;
   font-weight: 500;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-ink-muted);
   cursor: pointer;
@@ -438,7 +438,7 @@
   font-size: 11px;
   font-weight: 600;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(34, 197, 94, 0.12);
   color: var(--color-success);
 }
@@ -471,7 +471,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
   cursor: pointer;
 }
@@ -555,7 +555,7 @@
   padding: 40px 20px;
   color: var(--color-ink-muted);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
 .empty-state-icon {
@@ -581,7 +581,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -606,7 +606,7 @@
   color: var(--text-secondary, #6b7280);
   cursor: pointer;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
 
@@ -728,7 +728,7 @@
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
   }
 
   .admin-users-table th {

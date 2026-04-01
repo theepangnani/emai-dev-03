@@ -175,12 +175,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
       {showIdleWarning && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} role="alertdialog" aria-modal="true" aria-labelledby="session-expiring-title">
-          <div style={{ background: '#fff', borderRadius: 8, padding: '2rem', maxWidth: 400, textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
+          <div style={{ background: 'var(--color-surface)', borderRadius: 8, padding: '2rem', maxWidth: 400, textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
             <h3 id="session-expiring-title" style={{ margin: '0 0 1rem' }}>Session Expiring</h3>
-            <p style={{ margin: '0 0 1.5rem', color: '#555' }}>Your session is about to expire. Click to stay logged in.</p>
+            <p style={{ margin: '0 0 1.5rem', color: 'var(--color-ink-muted)' }}>Your session is about to expire. Click to stay logged in.</p>
             <button
               onClick={resetIdleTimers}
-              style={{ padding: '0.5rem 1.5rem', fontSize: '1rem', borderRadius: 6, border: 'none', background: '#4f46e5', color: '#fff', cursor: 'pointer' }}
+              style={{ padding: '0.5rem 1.5rem', fontSize: '1rem', borderRadius: 6, border: 'none', background: 'var(--color-accent)', color: 'var(--color-surface)', cursor: 'pointer' }}
             >
               Stay Logged In
             </button>

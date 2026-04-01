@@ -201,7 +201,9 @@ const NAV_SVG: Record<string, React.ReactNode> = {
 };
 
 const NavIcon = ({ name }: { name: string }) => {
-  return NAV_SVG[name] || <span>{name[0]}</span>;
+  const icon = NAV_SVG[name];
+  if (!icon) return <span aria-hidden="true">{name[0]}</span>;
+  return <span aria-hidden="true">{icon}</span>;
 };
 
 // Quick action SVG icons — maps sidebar action labels to nav SVGs
@@ -500,7 +502,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           aria-live="assertive"
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
-            background: '#f59e0b', color: '#fff', textAlign: 'center',
+            background: 'var(--color-warning)', color: 'var(--color-surface)', textAlign: 'center',
             padding: reconnecting ? '8px 16px' : '0', fontSize: '14px', fontWeight: 500,
           }}
         >
@@ -512,6 +514,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               className={`hamburger-btn${menuOpen ? ' open' : ''}`}
               onClick={() => setMenuOpen(!menuOpen)}
               aria-label="Toggle navigation"
+              aria-expanded={menuOpen}
             >
               <span />
               <span />
@@ -530,17 +533,38 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                   <button
                     className="user-role role-switcher-trigger"
                     onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
+                    aria-expanded={roleSwitcherOpen}
+                    aria-haspopup="true"
                   >
                     {user?.role} &#9662;
                   </button>
                   {roleSwitcherOpen && (
-                    <div className="role-switcher-dropdown">
+                    <div
+                      className="role-switcher-dropdown"
+                      role="menu"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setRoleSwitcherOpen(false);
+                          return;
+                        }
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+                          const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+                          const next = e.key === 'ArrowDown'
+                            ? items[(idx + 1) % items.length]
+                            : items[(idx - 1 + items.length) % items.length];
+                          next?.focus();
+                        }
+                      }}
+                    >
                       {user?.roles
                         .filter(r => r !== user?.role)
                         .map(r => (
                           <button
                             key={r}
                             className="role-switcher-option"
+                            role="menuitem"
                             onClick={() => handleSwitchRole(r)}
                           >
                             Switch to {r}
@@ -591,6 +615,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
               key={item.path}
               className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
               onClick={() => handleNavClick(item.path)}
+              aria-current={location.pathname === item.path ? 'page' : undefined}
             >
               <span className="sidebar-link-icon"><NavIcon name={item.label} /></span>
               <span className="sidebar-link-label">{item.label}</span>
@@ -664,7 +689,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         )}
       </div>
 
-      <div className="dashboard-body">
+      <div className="dashboard-body" aria-hidden={menuOpen || undefined}>
         {/* Persistent sidebar (>=768px) */}
         <aside
           className="persistent-sidebar"
@@ -678,6 +703,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
                 onClick={() => navigate(item.path)}
                 title={item.label}
                 aria-label={item.label}
+                aria-current={location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 'page' : undefined}
               >
                 <span className="ps-nav-icon"><NavIcon name={item.label} /></span>
                 <span className="ps-nav-label">{item.label}</span>
@@ -799,6 +825,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
             className={`mobile-tab-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
             onClick={() => navigate(item.path)}
             aria-label={item.label}
+            aria-current={location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 'page' : undefined}
           >
             <span className="mobile-tab-icon">
               <NavIcon name={item.label} />

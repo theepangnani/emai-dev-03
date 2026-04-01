@@ -18,6 +18,15 @@ body:has(.modal-overlay) {
   --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
   --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
 
+  /* Type scale (rem-based for WCAG 1.4.4 Resize Text) */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.75rem;   /* 28px */
+
   /* Core palette */
   --color-ink: #1b1e2b;
   --color-ink-muted: #5b6274;
@@ -110,6 +119,14 @@ body:has(.modal-overlay) {
   --shadow-lg: 0 8px 30px rgba(19, 27, 46, 0.15);
   --shadow-lift: 0 12px 30px rgba(19, 27, 46, 0.12);
   --shadow-xl: 0 20px 40px rgba(19, 27, 46, 0.18);
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
 
   /* Radii */
   --radius-xs: 4px;

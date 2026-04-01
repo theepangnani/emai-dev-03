@@ -73,6 +73,7 @@ class AdvancedNotificationPreferences(BaseModel):
     study_guides: ChannelPreference = ChannelPreference(in_app=True, email=False)
     tasks: ChannelPreference = ChannelPreference(in_app=True, email=True)
     system: ChannelPreference = ChannelPreference(in_app=True, email=False)
+    parent_email_digest: ChannelPreference = ChannelPreference(in_app=True, email=True)
 
 class AdvancedNotificationPreferencesUpdate(BaseModel):
     """Partial update — all fields optional."""
@@ -81,3 +82,4 @@ class AdvancedNotificationPreferencesUpdate(BaseModel):
     study_guides: Optional[ChannelPreference] = None
     tasks: Optional[ChannelPreference] = None
     system: Optional[ChannelPreference] = None
+    parent_email_digest: Optional[ChannelPreference] = None

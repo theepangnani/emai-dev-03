@@ -276,13 +276,13 @@
 Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school email (YRDSB) forwarded to parent's Gmail. ClassBridge polls Gmail every 4 hours, Claude AI summarizes into daily digest delivered as a standard ClassBridge notification (email if parent has email enabled). No DTAP/MFIPPA required.
 
 **M0 — Feasibility (March 2026):** COMPLETE — YRDSB forwarding confirmed
-**M1 — Foundation (April 2026):**
-- [ ] ParentGmailIntegration database models — 3 new tables (#2642)
-- [ ] Pydantic schemas (#2643)
-- [ ] Gmail OAuth flow for parent personal accounts (#2644)
-- [ ] CRUD API routes — integrations, settings, pause/resume (#2645)
-- [ ] PARENT_EMAIL_DIGEST notification type (#2646)
-- [ ] Email digest setup wizard frontend (#2647)
+**M1 — Foundation (April 2026):** IMPLEMENTED — PR #2780
+- [x] ParentGmailIntegration database models — 3 new tables (#2642) (IMPLEMENTED)
+- [x] Pydantic schemas (#2643) (IMPLEMENTED)
+- [x] Gmail OAuth flow for parent personal accounts (#2644) (IMPLEMENTED — JWT state, redirect_uri validation)
+- [x] CRUD API routes — integrations, settings, pause/resume (#2645) (IMPLEMENTED — includes PATCH endpoint)
+- [x] PARENT_EMAIL_DIGEST notification type (#2646) (IMPLEMENTED — backend + frontend)
+- [x] Email digest setup wizard frontend (#2647) (IMPLEMENTED — 4-step wizard on My Kids page)
 
 **M2 — Core Engine (May 2026):**
 - [ ] Gmail polling service (#2648)
