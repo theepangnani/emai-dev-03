@@ -38,8 +38,33 @@ jobs:
             exit 1
           fi
 
-  test-backend:
+  detect-changes:
     needs: [rate-limit]
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'app/**'
+              - 'tests/**'
+              - 'requirements.txt'
+              - 'main.py'
+            frontend:
+              - 'frontend/**'
+            infra:
+              - 'Dockerfile'
+              - '.github/**'
+
+  test-backend:
+    needs: [rate-limit, detect-changes]
+    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +83,8 @@ jobs:
         run: pytest tests/ --tb=short -q -n auto --dist loadfile
 
   test-frontend:
-    needs: [rate-limit]
+    needs: [rate-limit, detect-changes]
+    if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -84,7 +110,8 @@ jobs:
         working-directory: frontend
 
   deploy:
-    needs: [rate-limit, test-backend, test-frontend]
+    needs: [rate-limit, detect-changes, test-backend, test-frontend]
+    if: always() && needs.rate-limit.result == 'success' && (needs.test-backend.result == 'success' || needs.test-backend.result == 'skipped') && (needs.test-frontend.result == 'success' || needs.test-frontend.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
