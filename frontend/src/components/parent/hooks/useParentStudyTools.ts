@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
+import { studyApi } from '../../../api/study';
 import type { StudyMaterialGenerateParams } from '../../UploadMaterialWizard';
 
 interface UseParentStudyToolsParams {
@@ -40,7 +41,7 @@ export function useParentStudyTools({
   };
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
-    // Question mode: create CourseContent with question as text, tagged as parent_question (#2861)
+    // Question mode: generate full study guide directly (no CourseContent intermediary) (#2861)
     if (modalParams.mode === 'question') {
       resetStudyModal();
       setIsGenerating(true);
@@ -48,17 +49,16 @@ export function useParentStudyTools({
 
       try {
         const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
-        const created = await courseContentsApi.create({
-          course_id: targetCourseId,
+        const guide = await studyApi.generateGuide({
+          content: modalParams.content,
           title: modalParams.title || 'Parent Question',
-          text_content: modalParams.content || undefined,
-          content_type: 'notes',
+          course_id: targetCourseId,
           document_type: modalParams.documentType,
           study_goal: modalParams.studyGoal,
         });
 
-        setBackgroundGeneration({ status: 'success', type: 'Study Guide', resultId: created.id });
-        navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
+        setBackgroundGeneration({ status: 'success', type: 'Study Guide', resultId: guide.id });
+        navigate(`/study-guides/${guide.id}`, { state: { selectedChild: selectedChildUserId } });
       } catch {
         setBackgroundGeneration({ status: 'error', type: 'Study Guide', error: 'Generation failed' });
       } finally {

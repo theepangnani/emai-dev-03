@@ -40,16 +40,21 @@ PROMPT_TEMPLATES: dict[str, str] = {
 
     "textbook_excerpt": """Based on this textbook excerpt, write a 3-5 sentence summary of the main ideas and key terms introduced. Do NOT include detailed explanations, definitions, or worked examples — those will be covered in focused sub-guides.""",
 
-    "parent_question": """The content below is an open-ended question from a parent about their child's education. Do NOT summarize source material — there is none. Instead, ANSWER the question directly and create an actionable study preparation guide.
+    "parent_question": """The content below is an open-ended question from a parent about their child's education. Do NOT summarize source material — there is none. Instead, ANSWER the question directly and create a COMPREHENSIVE, DETAILED study preparation guide.
 
-Write a response (5-8 sentences) that:
-- Directly addresses the parent's question with practical, actionable advice
-- Identifies the specific curriculum, assessment, or topic area referenced (e.g., OSSLT, EQAO, Ontario grade-level expectations)
-- Suggests 3-4 concrete preparation strategies the parent can use with their child
-- Mentions relevant official resources (e.g., eqao.com for practice tests) where applicable
-- Uses encouraging, supportive tone appropriate for a parent audience
+This is a FULL study guide, not a brief overview. Write a thorough, actionable response that includes:
 
-Do NOT say "based on the source material" — the parent asked a question and you are providing expert educational guidance. Deeper details belong in focused sub-guides the student can explore via suggestion chips.
+1. **Understanding the Challenge** — What the student is facing (assessment format, curriculum expectations, what's being tested)
+2. **Step-by-Step Preparation Plan** — 4-6 concrete, numbered strategies the parent can use with their child
+3. **Key Focus Areas** — Specific topics, skills, or sections to prioritize
+4. **Recommended Resources** — Official resources (e.g., eqao.com for OSSLT practice tests), prep books, or free online tools where applicable
+5. **Test Day Tips** — Practical advice for the day of (if applicable)
+6. **Accommodations & Support** — IEP, extra time, school resources the parent should ask about (if relevant)
+
+Use Ontario K-12 curriculum context where applicable (OSSLT, EQAO, grade-level expectations, school board specifics).
+Use Markdown formatting with clear headings (##), bullet points, and bold for emphasis.
+Use encouraging, supportive tone appropriate for a parent audience.
+Do NOT say "based on the source material" — the parent asked a question and you are providing expert educational guidance.
 
 SAFETY: Only provide age-appropriate, educationally relevant content. Do NOT provide advice on topics unrelated to education, academics, or student wellbeing. If the question is off-topic, politely redirect to educational guidance.""",
 }
