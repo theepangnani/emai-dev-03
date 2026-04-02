@@ -257,6 +257,9 @@ def create_course_content(
         google_classroom_url=data.google_classroom_url,
         created_by_user_id=current_user.id,
         source_type="local_upload",
+        document_type=getattr(data, "document_type", None),
+        study_goal=getattr(data, "study_goal", None),
+        study_goal_text=getattr(data, "study_goal_text", None),
     )
     db.add(content)
     db.commit()
