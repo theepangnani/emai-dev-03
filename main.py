@@ -2167,6 +2167,18 @@ if "sqlite" not in settings.database_url:
         except Exception as e:
             logger.debug("Token column resize %s.%s skipped: %s", _tbl, _col, e)
 
+# --- Compound index on link_requests(status, created_at) (#2830) ---
+try:
+    with engine.connect() as conn:
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_link_requests_status_created "
+            "ON link_requests(status, created_at)"
+        ))
+        conn.commit()
+        logger.info("Compound index ix_link_requests_status_created created (#2830)")
+except Exception as e:
+    logger.debug("Index ix_link_requests_status_created skipped: %s", e)
+
 _is_prod = "sqlite" not in settings.database_url
 
 # Readiness flag — set to True after startup_event() completes.
