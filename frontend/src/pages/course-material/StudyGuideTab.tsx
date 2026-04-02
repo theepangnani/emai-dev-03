@@ -98,6 +98,7 @@ export function StudyGuideTab({
   childGuideGenerating,
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const guideContentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
 
@@ -107,6 +108,13 @@ export function StudyGuideTab({
   const [autoConfidence, setAutoConfidence] = useState(0);
   const [studyGoal, setStudyGoal] = useState(savedStudyGoal || '');
   const [studyGoalText, setStudyGoalText] = useState(savedStudyGoalText || '');
+
+  // Scroll to guide content when a suggestion chip starts generating
+  useEffect(() => {
+    if (childGuideGenerating && guideContentRef.current) {
+      guideContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [childGuideGenerating]);
 
   // Auto-detect document type when empty state is shown
   useEffect(() => {
@@ -196,7 +204,7 @@ export function StudyGuideTab({
         </div>
       </div>
       {studyGuide ? (
-        <div className="cm-tab-card cm-tab-card--guide">
+        <div className="cm-tab-card cm-tab-card--guide" ref={guideContentRef}>
           {!isStreaming && (
             <div className="cm-guide-actions">
               <button className="cm-action-btn" onClick={handlePrint} title="Print">{'\u{1F5A8}\uFE0F'} Print</button>

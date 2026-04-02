@@ -3,7 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
-from fastapi.responses import StreamingResponse as _StreamingResponse
+from fastapi.responses import StreamingResponse as _StreamingResponse, JSONResponse
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session, selectinload
 from typing import Optional, List
@@ -1987,6 +1987,230 @@ async def generate_child_guide(
     resp = StudyGuideResponse.model_validate(study_guide)
     resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
     return resp
+
+
+@router.post("/guides/{guide_id}/generate-child-stream")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_child_guide_stream(
+    request: Request,
+    guide_id: int,
+    body: GenerateChildRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Stream a child sub-guide via SSE. Returns existing JSON if dedup hit."""
+    # Fetch parent guide and validate access (same as generate_child_guide)
+    parent_guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
+    if not parent_guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    has_access = False
+    if parent_guide.user_id == current_user.id:
+        has_access = True
+    elif current_user.role == UserRole.PARENT:
+        children_user_ids = get_linked_children_user_ids(db, current_user.id)
+        if parent_guide.user_id in children_user_ids:
+            has_access = True
+        elif parent_guide.course_id:
+            children_course_ids = get_children_course_ids(db, current_user.id)
+            if parent_guide.course_id in children_course_ids:
+                has_access = True
+    elif current_user.role == UserRole.STUDENT and parent_guide.course_id:
+        enrolled_course_ids = get_student_enrolled_course_ids(db, current_user.id)
+        if parent_guide.course_id in enrolled_course_ids:
+            has_access = True
+    elif current_user.role == UserRole.ADMIN:
+        has_access = True
+    if parent_guide.shared_with_user_id == current_user.id:
+        has_access = True
+    if not has_access:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    # Only study_guide type supports streaming; others fall back to non-streaming
+    if body.guide_type != "study_guide":
+        return await generate_child_guide(request, guide_id, body, db, current_user)
+
+    # Inherit document_type/study_goal from parent's course content
+    if not body.document_type and parent_guide.course_content_id:
+        parent_cc = db.query(CourseContent).filter(CourseContent.id == parent_guide.course_content_id).first()
+        if parent_cc:
+            if not body.document_type and getattr(parent_cc, 'document_type', None):
+                body.document_type = parent_cc.document_type
+            if not body.study_goal and getattr(parent_cc, 'study_goal', None):
+                body.study_goal = parent_cc.study_goal
+            if not body.study_goal_text and getattr(parent_cc, 'study_goal_text', None):
+                body.study_goal_text = parent_cc.study_goal_text
+
+    # Validate safety
+    safe, reason = check_content_safe(body.topic)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
+    if body.custom_prompt:
+        safe, reason = check_content_safe(body.custom_prompt)
+        if not safe:
+            raise HTTPException(status_code=400, detail=reason)
+
+    check_ai_usage(current_user, db)
+
+    topic_preview = body.topic[:100]
+    parent_content_truncated = parent_guide.content[:8000]
+
+    GUIDE_TYPE_LABELS_LOCAL = {
+        "study_guide": "Study Guide",
+        "quiz": "Quiz",
+        "flashcards": "Flashcards",
+    }
+    title = f"{GUIDE_TYPE_LABELS_LOCAL[body.guide_type]}: {topic_preview}"
+
+    # Dedup check — return existing as plain JSON (not SSE)
+    existing_child = db.query(StudyGuide).filter(
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.parent_guide_id == guide_id,
+        StudyGuide.guide_type == body.guide_type,
+        StudyGuide.generation_context == body.topic,
+        StudyGuide.archived_at.is_(None),
+    ).first()
+    if existing_child:
+        return JSONResponse(content=StudyGuideResponse.model_validate(existing_child).model_dump(mode="json"))
+
+    # Strategy context
+    effective_custom_prompt = body.custom_prompt
+    if body.document_type and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
+    study_service = StudyService(db)
+    content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
+
+    # Create placeholder record
+    enforce_study_guide_limit(db, current_user)
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=parent_guide.course_id,
+        course_content_id=parent_guide.course_content_id,
+        title=title,
+        content="",
+        guide_type=body.guide_type,
+        version=1,
+        parent_guide_id=guide_id,
+        relationship_type="sub_guide",
+        generation_context=body.topic,
+        focus_prompt=body.custom_prompt,
+        is_truncated=False,
+        content_hash=content_hash,
+    )
+    db.add(study_guide)
+    db.commit()
+    db.refresh(study_guide)
+    child_guide_id = study_guide.id
+
+    # Capture values before closing DB
+    user_id = current_user.id
+    parent_course_id = parent_guide.course_id
+    parent_cc_id = parent_guide.course_content_id
+    doc_type = body.document_type
+    study_goal_val = body.study_goal
+    study_goal_text_val = body.study_goal_text
+    max_tokens = body.max_tokens or SUB_GUIDE_MAX_TOKENS
+
+    db.close()
+
+    async def event_stream():
+        yield f"event: start\ndata: {json.dumps({'guide_id': child_guide_id})}\n\n"
+
+        full_content = ""
+        is_truncated = False
+        error_occurred = False
+
+        try:
+            async for event in generate_study_guide_stream(
+                assignment_title=f"Sub-guide: {topic_preview}",
+                assignment_description=parent_content_truncated,
+                course_name="General",
+                focus_prompt=body.topic,
+                custom_prompt=effective_custom_prompt,
+                max_tokens=max_tokens,
+            ):
+                if event["event"] == "chunk":
+                    yield f"event: chunk\ndata: {json.dumps({'text': event['data']})}\n\n"
+                elif event["event"] == "done":
+                    full_content = event["data"]["full_content"]
+                    is_truncated = event["data"]["is_truncated"]
+                elif event["event"] == "error":
+                    error_occurred = True
+                    yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
+                    return
+        except Exception as e:
+            logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
+            return
+
+        if error_occurred:
+            return
+
+        # Post-process
+        processed_content, suggestion_topics = parse_suggestion_topics(full_content)
+        processed_content, critical_dates = parse_critical_dates(processed_content)
+
+        # Save in new DB session
+        try:
+            from app.db.database import SessionLocal
+            with SessionLocal() as save_db:
+                guide = save_db.get(StudyGuide, child_guide_id)
+                if guide:
+                    guide.content = processed_content
+                    guide.is_truncated = is_truncated
+                    if suggestion_topics:
+                        guide.suggestion_topics = json.dumps(suggestion_topics)
+
+                    from app.models.user import User as _User
+                    user = save_db.get(_User, user_id)
+                    if user:
+                        _usage = get_last_ai_usage() or {}
+                        increment_ai_usage(
+                            user, save_db, generation_type="study_guide",
+                            is_regeneration=False, **_usage,
+                        )
+
+                    # Auto-create tasks
+                    if not critical_dates:
+                        critical_dates_inner = scan_content_for_dates(processed_content, title)
+                    else:
+                        critical_dates_inner = critical_dates
+                    if not critical_dates_inner:
+                        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        critical_dates_inner = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+
+                    created_tasks = auto_create_tasks_from_dates(
+                        save_db, critical_dates_inner, user, guide.id,
+                        parent_course_id, parent_cc_id,
+                    )
+
+                    log_action(save_db, user_id=user_id, action="create", resource_type="study_guide",
+                               resource_id=guide.id,
+                               details={"guide_type": "study_guide", "parent_guide_id": guide_id,
+                                        "relationship_type": "sub_guide", "auto_tasks": len(created_tasks),
+                                        "streamed": True})
+                    save_db.commit()
+                    save_db.refresh(guide)
+
+                    # Award XP
+                    try:
+                        from app.services.xp_service import XpService
+                        XpService.award_xp(save_db, user_id, "study_guide")
+                    except Exception as e:
+                        logger.warning(f"XP award failed (non-blocking): {e}")
+
+                    resp = StudyGuideResponse.model_validate(guide)
+                    resp.auto_created_tasks = [AutoCreatedTask(**t) for t in created_tasks]
+                    yield f"event: done\ndata: {json.dumps(resp.model_dump(mode='json'))}\n\n"
+                else:
+                    yield f"event: error\ndata: {json.dumps({'message': 'Guide record not found after streaming.'})}\n\n"
+        except Exception as e:
+            logger.error("Failed to save streamed child guide: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'Failed to save sub-guide. Please try again.'})}\n\n"
+
+    return _StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.delete("/guides/{guide_id}", status_code=status.HTTP_204_NO_CONTENT)

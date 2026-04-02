@@ -52,7 +52,7 @@ class DigestDeliveryLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     parent_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id"), nullable=False, index=True)
+    integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id", ondelete="CASCADE"), nullable=False, index=True)
     email_count = Column(Integer, nullable=False, default=0)
     digest_content = Column(Text, nullable=True)
     digest_length_chars = Column(Integer, nullable=True)

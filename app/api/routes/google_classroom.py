@@ -94,7 +94,8 @@ def _consume_oauth_state(nonce: str) -> dict | None:
 
 def update_user_tokens(user: User, credentials, db: Session):
     """Update user's Google tokens if they were refreshed."""
-    if credentials.token != decrypt_token(user.google_access_token):
+    current_token = decrypt_token(user.google_access_token)
+    if credentials.token != current_token:
         user.google_access_token = encrypt_token(credentials.token)
         if credentials.refresh_token:
             user.google_refresh_token = encrypt_token(credentials.refresh_token)

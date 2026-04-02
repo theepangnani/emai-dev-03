@@ -45,4 +45,5 @@ class LinkRequest(Base):
     __table_args__ = (
         Index("ix_link_requests_target_status", "target_user_id", "status"),
         Index("ix_link_requests_requester", "requester_user_id"),
+        Index("ix_link_requests_status_created", "status", "created_at"),
     )

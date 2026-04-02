@@ -5006,14 +5006,14 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 3. Types open-ended question in textarea
 4. Selects child + course on Step 2
 5. Clicks "Generate Study Guide"
-6. AI generates structured study guide with suggestion chips for drill-down
-7. Study guide saved and displayed with full sub-guide hierarchy support
+6. AI generates a **comprehensive, full study guide immediately** (4000 tokens) — no intermediate "Learn Your Way" picker
+7. Parent is navigated directly to the study guide page with suggestion chips for drill-down
 
 **Backend:**
 - New `document_type: "parent_question"` in strategy pattern (`study_guide_strategy.py`)
-- Dedicated AI prompt template: answers the question directly (not summarize source material)
+- Comprehensive AI prompt template: generates a full study guide with sections (Understanding, Step-by-Step Plan, Focus Areas, Resources, Test Day Tips, Accommodations)
 - Ontario curriculum awareness (OSSLT, EQAO, grade-level expectations)
-- `max_tokens: 2000` (vs default 1200 — no source material to summarize)
+- `max_tokens: 4000` (full guide — no source material, AI must generate all content)
 - Minimum content length relaxed from 50 to 10 characters for questions
 - Question content prefixed with `"PARENT'S QUESTION:\n"` for clear AI context
 - Safety guardrails: age-appropriate educational content only, redirects off-topic queries
@@ -5023,7 +5023,8 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 - Question mode: hides file drop zone, shows focused textarea with example placeholder
 - Auto-title from question text (first 50 chars)
 - Submit button shows "Generate Study Guide" (vs "Upload")
-- Passes `document_type: 'parent_question'` and `study_goal: 'parent_review'` through pipeline
+- Calls `studyApi.generateGuide()` directly — no CourseContent intermediary, no "Learn Your Way" picker (#2880)
+- Navigates to `/study-guides/{id}` with the full guide ready to view
 
 **Reuses existing infrastructure:**
 - `POST /api/study/generate` endpoint (no new endpoints)

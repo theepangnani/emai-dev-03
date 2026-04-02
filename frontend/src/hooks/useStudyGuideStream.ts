@@ -25,9 +25,14 @@ export interface StreamState {
   error: string | null;
 }
 
+export interface StartStreamOptions {
+  /** Override the default /api/study/generate-stream endpoint. */
+  endpoint?: string;
+}
+
 export interface UseStudyGuideStreamReturn extends StreamState {
   isStreaming: boolean;
-  startStream: (params: StudyGuideCreateParams) => void;
+  startStream: (params: StudyGuideCreateParams, options?: StartStreamOptions) => void;
   abort: () => void;
   reset: () => void;
 }
@@ -128,7 +133,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
     }
   }, [abort]);
 
-  const startStream = useCallback((params: StudyGuideCreateParams) => {
+  const startStream = useCallback((params: StudyGuideCreateParams, streamOpts?: StartStreamOptions) => {
     // Abort any existing stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -152,7 +157,8 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
 
     (async () => {
       try {
-        const response = await fetch(`${apiBase}/api/study/generate-stream`, {
+        const endpoint = streamOpts?.endpoint ?? '/api/study/generate-stream';
+        const response = await fetch(`${apiBase}${endpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -174,6 +180,22 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
           }
           if (isMountedRef.current) {
             setState(prev => ({ ...prev, status: 'error', error: errorMessage }));
+          }
+          return;
+        }
+
+        // Handle JSON response (e.g. dedup hit returns existing guide as JSON)
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const guide = await response.json();
+          if (isMountedRef.current) {
+            setState({
+              status: 'done',
+              content: guide.content ?? '',
+              guideId: guide.id ?? null,
+              guide,
+              error: null,
+            });
           }
           return;
         }
@@ -219,7 +241,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
                       ...prev,
                       status: 'done',
                       content: finalContent,
-                      guide: data.guide ?? null,
+                      guide: data ?? null,
                     }));
                   }
                   break;
