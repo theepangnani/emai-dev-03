@@ -1,5 +1,8 @@
 import './StudyGuideSuggestionChips.css';
 
+export const ASK_BOT_LABEL = 'Ask Bot';
+export const FULL_GUIDE_LABEL = 'Full Study Guide';
+
 interface SuggestionTopic {
   label: string;
   description: string;
@@ -34,14 +37,21 @@ export default function StudyGuideSuggestionChips({
           return (
             <button
               key={topic.label}
-              className={`sg-suggestion-chip ${isThis ? 'sg-suggestion-chip--generating' : ''} ${topic.label === 'Ask Bot' ? 'sg-suggestion-chip--ask-bot' : ''} ${topic.label === 'Full Study Guide' ? 'sg-suggestion-chip--full-guide' : ''}`}
+              className={[
+                'sg-suggestion-chip',
+                isThis && 'sg-suggestion-chip--generating',
+                topic.label === ASK_BOT_LABEL && 'sg-suggestion-chip--ask-bot',
+                topic.label === FULL_GUIDE_LABEL && 'sg-suggestion-chip--full-guide',
+              ].filter(Boolean).join(' ')}
               onClick={() => onTopicClick(topic)}
-              disabled={topic.label === 'Ask Bot' ? false : (disabled || isAnyGenerating)}
+              disabled={topic.label === ASK_BOT_LABEL ? false : (disabled || isAnyGenerating)}
               title={topic.description}
-              aria-label={topic.label === 'Ask Bot' ? 'Ask the AI chatbot' : topic.label === 'Full Study Guide' ? 'Generate complete detailed study guide' : `Explore: ${topic.label}`}
+              aria-label={topic.label === ASK_BOT_LABEL ? 'Ask the AI chatbot' : topic.label === FULL_GUIDE_LABEL ? 'Generate complete detailed study guide' : `Explore: ${topic.label}`}
             >
               {isThis && <span className="sg-chip-spinner" />}
-              <span className="sg-chip-label">{topic.label === 'Ask Bot' ? '\u{1F916} Ask Bot' : topic.label === 'Full Study Guide' ? '\u{1F4D6} Full Study Guide' : topic.label}</span>
+              <span className="sg-chip-label">
+                {topic.label === ASK_BOT_LABEL ? `\u{1F916} ${ASK_BOT_LABEL}` : topic.label === FULL_GUIDE_LABEL ? `\u{1F4D6} ${FULL_GUIDE_LABEL}` : topic.label}
+              </span>
             </button>
           );
         })}
