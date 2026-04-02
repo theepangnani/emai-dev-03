@@ -27,7 +27,7 @@ interface PendingGeneration {
   content: string;
   type: 'study_guide' | 'quiz' | 'flashcards';
   focusPrompt?: string;
-  mode: 'text' | 'file';
+  mode: 'text' | 'file' | 'question';
   file?: File;
   files?: File[];  // multi-file: text extraction happens inside startGeneration background task
   pastedImages?: File[];

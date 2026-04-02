@@ -630,7 +630,11 @@ async def generate_study_guide_endpoint(
         )
 
     # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
-    if len(description.strip()) < MIN_EXTRACTION_CHARS:
+    # Parent questions have a lower minimum (10 chars) since they're free-form questions
+    if body.document_type == "parent_question":
+        if len(description.strip()) < 10:
+            raise HTTPException(status_code=422, detail="Please enter a question (at least 10 characters)")
+    elif len(description.strip()) < MIN_EXTRACTION_CHARS:
         raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
 
     # Check AI usage limit before generation
@@ -650,6 +654,15 @@ async def generate_study_guide_endpoint(
             focus_area=body.study_goal_text or body.focus_prompt,
         )
         strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
+    # Parent question mode: prefix content and auto-title (#2861)
+    if body.document_type == "parent_question":
+        description = f"PARENT'S QUESTION:\n{description}"
+        if title == "Study Guide":
+            question_preview = (body.content or "").strip()[:60]
+            if len((body.content or "").strip()) > 60:
+                question_preview += "..."
+            title = f"Study Guide: {question_preview}" if question_preview else "Study Guide"
 
     # Generate study guide using AI
     try:

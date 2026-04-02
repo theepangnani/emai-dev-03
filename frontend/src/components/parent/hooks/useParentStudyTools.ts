@@ -40,6 +40,33 @@ export function useParentStudyTools({
   };
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
+    // Question mode: create CourseContent with question as text, tagged as parent_question (#2861)
+    if (modalParams.mode === 'question') {
+      resetStudyModal();
+      setIsGenerating(true);
+      setBackgroundGeneration({ status: 'generating', type: 'Study Guide' });
+
+      try {
+        const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
+        const created = await courseContentsApi.create({
+          course_id: targetCourseId,
+          title: modalParams.title || 'Parent Question',
+          text_content: modalParams.content || undefined,
+          content_type: 'notes',
+          document_type: modalParams.documentType,
+          study_goal: modalParams.studyGoal,
+        });
+
+        setBackgroundGeneration({ status: 'success', type: 'Study Guide', resultId: created.id });
+        navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
+      } catch {
+        setBackgroundGeneration({ status: 'error', type: 'Study Guide', error: 'Generation failed' });
+      } finally {
+        setIsGenerating(false);
+      }
+      return;
+    }
+
     const files = modalParams.files ?? (modalParams.file ? [modalParams.file] : []);
     const isMultiFile = files.length > 1;
 

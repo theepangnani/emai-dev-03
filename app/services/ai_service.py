@@ -29,6 +29,7 @@ DOCUMENT_TYPE_MAX_TOKENS = {
     "lab_report": 1200,
     "textbook": 750, "notes": 750,
     "newsletter": 750, "announcement": 750,
+    "parent_question": 2000,
 }
 DEFAULT_STUDY_GUIDE_MAX_TOKENS = 1200
 SUB_GUIDE_MAX_TOKENS = 1200

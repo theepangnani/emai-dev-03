@@ -294,6 +294,8 @@ export const courseContentsApi = {
     google_classroom_url?: string;
     ai_tool?: string;
     ai_custom_prompt?: string;
+    document_type?: string;
+    study_goal?: string;
   }) => {
     const response = await api.post('/api/course-contents/', data);
     return response.data as CourseContentItem;

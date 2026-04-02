@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import UploadWizardStep1 from './UploadWizardStep1';
+import UploadWizardStep1, { type WizardInputMode } from './UploadWizardStep1';
 import CreateClassModal from './CreateClassModal';
 import { coursesApi } from '../api/courses';
 import { parentApi } from '../api/client';
@@ -14,7 +14,7 @@ export interface StudyMaterialGenerateParams {
   content: string;
   types: StudyMaterialType[];
   focusPrompt?: string;
-  mode: 'text' | 'file';
+  mode: 'text' | 'file' | 'question';
   file?: File;
   files?: File[];
   pastedImages?: File[];
@@ -68,6 +68,7 @@ export default function UploadMaterialWizard({
   onChildChange,
 }: UploadMaterialWizardProps) {
   const [step, setStep] = useState<1 | 2>(1);
+  const [inputMode, setInputMode] = useState<WizardInputMode>('upload');
   const [studyTitle, setStudyTitle] = useState('');
   const [studyContent, setStudyContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -90,6 +91,8 @@ export default function UploadMaterialWizard({
     if (!open || wasOpen) return; // skip if closing or already open
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInputMode('upload');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setStudyTitle(initialTitle);
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -246,11 +249,46 @@ export default function UploadMaterialWizard({
     });
   };
 
-  const hasNoContent = selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
+  const hasNoContent = inputMode === 'question'
+    ? !studyContent.trim()
+    : selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
   const needsCourse = !internalCourseId;
   const needsChild = !!(children && children.length > 1 && !internalChildId);
 
   const handleSubmit = () => {
+    // Question mode: parent asks open-ended question (#2861)
+    if (inputMode === 'question') {
+      if (!studyContent.trim()) {
+        setError('Please enter a question');
+        return;
+      }
+
+      if (!internalCourseId) {
+        setError('Please select a class');
+        return;
+      }
+
+      if (children && children.length > 1 && !internalChildId) {
+        setError('Please select a child');
+        return;
+      }
+
+      const questionPreview = studyContent.trim().slice(0, 50);
+      const autoTitle = questionPreview + (studyContent.trim().length > 50 ? '...' : '');
+
+      onGenerate({
+        title: studyTitle || autoTitle,
+        content: studyContent,
+        types: [],
+        mode: 'question',
+        documentType: 'parent_question',
+        studyGoal: 'parent_review',
+        courseId: internalCourseId || undefined,
+      });
+      return;
+    }
+
+    // Upload mode (existing)
     const hasFiles = selectedFiles.length > 0;
     const effectiveMode: 'text' | 'file' = hasFiles ? 'file' : 'text';
 
@@ -302,7 +340,7 @@ export default function UploadMaterialWizard({
         <div className="uw-header">
           {step === 2 && <button className="uw-back-btn" onClick={() => setStep(1)}>&larr;</button>}
           <div className="uw-header-titles">
-            <h2>Upload Class Material</h2>
+            <h2>{inputMode === 'question' ? 'Ask a Question' : 'Upload Class Material'}</h2>
           </div>
           <span className="uw-step-indicator">Step {step} of 2</span>
         </div>
@@ -311,6 +349,8 @@ export default function UploadMaterialWizard({
         <div className="uw-body">
           {step === 1 && (
             <UploadWizardStep1
+              inputMode={inputMode}
+              onInputModeChange={setInputMode}
               selectedFiles={selectedFiles}
               onAddFiles={addFiles}
               onRemoveFile={removeFile}
@@ -437,11 +477,13 @@ export default function UploadMaterialWizard({
               <div className="uw-summary-bar" style={{ marginTop: '0.75rem' }}>
                 <span className="uw-summary-icon">&#x2705;</span>
                 <span className="uw-summary-text">
-                  {selectedFiles.length > 0
-                    ? `${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} ready to upload`
-                    : pastedImages.length > 0
-                      ? `${pastedImages.length} image${pastedImages.length !== 1 ? 's' : ''} ready`
-                      : 'Pasted text ready'}
+                  {inputMode === 'question'
+                    ? 'Question ready'
+                    : selectedFiles.length > 0
+                      ? `${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} ready to upload`
+                      : pastedImages.length > 0
+                        ? `${pastedImages.length} image${pastedImages.length !== 1 ? 's' : ''} ready`
+                        : 'Pasted text ready'}
                 </span>
               </div>
 
@@ -492,7 +534,9 @@ export default function UploadMaterialWizard({
             <>
               <button className="btn-secondary" onClick={() => setStep(1)} disabled={isGenerating}>Back</button>
               <button className="btn-primary" onClick={handleSubmit} disabled={isGenerating || needsCourse || needsChild}>
-                {isGenerating ? 'Uploading...' : 'Upload'}
+                {isGenerating
+                  ? (inputMode === 'question' ? 'Generating...' : 'Uploading...')
+                  : (inputMode === 'question' ? 'Generate Study Guide' : 'Upload')}
               </button>
             </>
           )}

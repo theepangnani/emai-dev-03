@@ -210,6 +210,55 @@
   to   { transform: translateX(30px); opacity: 0; }
 }
 
+/* ===== Step 1: Mode Tabs (#2861) ===== */
+
+.uw-mode-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--color-border, #E2E8F0);
+}
+
+.uw-mode-tab {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #64748B);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+
+.uw-mode-tab:hover:not(:disabled) {
+  color: var(--color-accent, #4A90D9);
+}
+
+.uw-mode-tab.active {
+  color: var(--color-accent, #4A90D9);
+  border-bottom-color: var(--color-accent, #4A90D9);
+  font-weight: 600;
+}
+
+.uw-mode-tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.uw-question-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #64748B);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.5;
+}
+
+.uw-question-textarea {
+  min-height: 120px;
+}
+
 /* ===== Step 1: File Upload ===== */
 
 .uw-drop-zone {
@@ -776,6 +825,14 @@
 
 [data-theme="dark"] .uw-footer .btn-secondary {
   border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .uw-mode-tabs {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .uw-mode-tab {
+  color: var(--color-text-secondary);
 }
 
 [data-theme="dark"] .uw-drop-zone {
