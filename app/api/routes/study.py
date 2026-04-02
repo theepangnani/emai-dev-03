@@ -2160,7 +2160,6 @@ async def generate_child_guide_stream(
                 if guide:
                     guide.content = processed_content
                     guide.is_truncated = is_truncated
-                    guide.content_hash = content_hash
                     if suggestion_topics:
                         guide.suggestion_topics = json.dumps(suggestion_topics)
 
