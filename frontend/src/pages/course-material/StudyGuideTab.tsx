@@ -46,7 +46,7 @@ interface StudyGuideTabProps {
   savedStudyGoal?: string;
   /** Saved study goal text from CourseContent */
   savedStudyGoalText?: string;
-  onGenerateChildGuide?: (topic: string, guideType: string) => void | Promise<void>;
+  onGenerateChildGuide?: (topic: string, guideType: string, extra?: { custom_prompt?: string; max_tokens?: number }) => void | Promise<void>;
   childGuideGenerating?: string | null;
 }
 
@@ -251,7 +251,10 @@ export function StudyGuideTab({
                   return;
                 }
                 if (t.label === FULL_GUIDE_LABEL) {
-                  onGenerateChildGuide?.('Complete detailed study guide covering all topics with explanations, examples, and practice problems', 'study_guide');
+                  onGenerateChildGuide?.('Full Study Guide', 'study_guide', {
+                    custom_prompt: 'Generate a comprehensive, detailed study guide covering ALL topics from the source material. Include: detailed explanations of each concept, worked examples with step-by-step solutions, practice problems, common mistakes to avoid, and key formulas/rules. This should be thorough enough for a student to study from independently.',
+                    max_tokens: 4000,
+                  });
                   return;
                 }
                 onGenerateChildGuide?.(t.label, 'study_guide');

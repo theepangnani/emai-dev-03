@@ -238,6 +238,7 @@ class GenerateChildRequest(BaseModel):
     document_type: str | None = Field(default=None, max_length=30)
     study_goal: str | None = Field(default=None, max_length=30)
     study_goal_text: str | None = Field(default=None, max_length=200)
+    max_tokens: int | None = Field(default=None, ge=500, le=4000)
 
     @field_validator('guide_type')
     @classmethod

@@ -32,6 +32,7 @@ DOCUMENT_TYPE_MAX_TOKENS = {
 }
 DEFAULT_STUDY_GUIDE_MAX_TOKENS = 1200
 SUB_GUIDE_MAX_TOKENS = 1200
+FULL_GUIDE_MAX_TOKENS = 4000
 
 
 def get_max_tokens_for_document_type(document_type: str | None) -> int:

@@ -1826,7 +1826,7 @@ async def generate_child_guide(
                 course_name="General",
                 focus_prompt=body.topic,
                 custom_prompt=effective_custom_prompt,
-                max_tokens=SUB_GUIDE_MAX_TOKENS,
+                max_tokens=body.max_tokens or SUB_GUIDE_MAX_TOKENS,
             )
             raw_content, _ = parse_suggestion_topics(raw_content)
             raw_content, critical_dates = parse_critical_dates(raw_content)

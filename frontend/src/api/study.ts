@@ -400,7 +400,7 @@ export const studyApi = {
     await api.delete(`/api/quiz-results/${id}`);
   },
 
-  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string; document_type?: string; study_goal?: string }) => {
+  generateChildGuide: async (guideId: number, params: { topic: string; guide_type: string; custom_prompt?: string; document_type?: string; study_goal?: string; max_tokens?: number }) => {
     const response = await api.post(`/api/study/guides/${guideId}/generate-child`, params, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
