@@ -246,8 +246,7 @@ export function StudyGuideTab({
               topics={parsedSuggestionTopics}
               onTopicClick={(t) => {
                 if (t.label === 'Ask Bot') {
-                  const fabBtn = document.querySelector('.speed-dial-fab-btn') as HTMLButtonElement;
-                  if (fabBtn) fabBtn.click();
+                  window.dispatchEvent(new Event('open-help-chat'));
                   return;
                 }
                 onGenerateChildGuide?.(t.label, 'study_guide');
