@@ -70,6 +70,40 @@ INSUFFICIENT_TEXT_MSG = (
 # Lower minimum for parent open-ended questions (#2861)
 MIN_QUESTION_CHARS = 10
 
+
+def _apply_parent_question_guards(
+    body, description: str, title: str, current_user: User,
+) -> tuple[str, str]:
+    """Validate and transform parent_question requests (#2861, #2868).
+
+    Returns:
+        Tuple of (description, title) — possibly prefixed/auto-titled.
+    """
+    if body.document_type != "parent_question":
+        return description, title
+
+    # Role guard: parent_question is parent-only
+    from app.models.user import UserRole
+    if not current_user.has_role(UserRole.PARENT):
+        raise HTTPException(status_code=403, detail="Only parents can use the question feature")
+
+    # Lower minimum content length for free-form questions
+    if len(description.strip()) < MIN_QUESTION_CHARS:
+        raise HTTPException(status_code=422, detail="Please enter a question (at least 10 characters)")
+
+    # Prefix so AI clearly sees it's a question, not source material
+    description = f"PARENT'S QUESTION:\n{description}"
+
+    # Auto-title from question text when no title provided
+    if title == "Study Guide":
+        question_preview = (body.content or "").strip()[:60]
+        if len((body.content or "").strip()) > 60:
+            question_preview += "..."
+        title = f"Study Guide: {question_preview}" if question_preview else "Study Guide"
+
+    return description, title
+
+
 router = APIRouter(prefix="/study", tags=["Study Tools"])
 
 
@@ -631,18 +665,11 @@ async def generate_study_guide_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
-    # Role guard: parent_question document type is parent-only (#2868)
-    if body.document_type == "parent_question":
-        from app.models.user import UserRole
-        if not any(r == UserRole.PARENT for r in getattr(current_user, 'roles_list', [current_user.role])):
-            raise HTTPException(status_code=403, detail="Only parents can use the question feature")
+    # Parent question guards: role check, min-length, prefix, auto-title (#2861)
+    description, title = _apply_parent_question_guards(body, description, title, current_user)
 
-    # Gate: reject content shorter than MIN_EXTRACTION_CHARS (#2217)
-    # Parent questions have a lower minimum (#2861)
-    if body.document_type == "parent_question":
-        if len(description.strip()) < MIN_QUESTION_CHARS:
-            raise HTTPException(status_code=422, detail="Please enter a question (at least 10 characters)")
-    elif len(description.strip()) < MIN_EXTRACTION_CHARS:
+    # Gate: reject non-question content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if body.document_type != "parent_question" and len(description.strip()) < MIN_EXTRACTION_CHARS:
         raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
 
     # Check AI usage limit before generation
@@ -662,15 +689,6 @@ async def generate_study_guide_endpoint(
             focus_area=body.study_goal_text or body.focus_prompt,
         )
         strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
-
-    # Parent question mode: prefix content and auto-title (#2861)
-    if body.document_type == "parent_question":
-        description = f"PARENT'S QUESTION:\n{description}"
-        if title == "Study Guide":
-            question_preview = (body.content or "").strip()[:60]
-            if len((body.content or "").strip()) > 60:
-                question_preview += "..."
-            title = f"Study Guide: {question_preview}" if question_preview else "Study Guide"
 
     # Generate study guide using AI
     try:
@@ -2744,27 +2762,12 @@ async def generate_study_guide_stream_endpoint(
             detail="Please provide assignment_id or content to generate a study guide",
         )
 
-    # Role guard: parent_question document type is parent-only (#2868)
-    if body.document_type == "parent_question":
-        from app.models.user import UserRole
-        if not any(r == UserRole.PARENT for r in getattr(current_user, 'roles_list', [current_user.role])):
-            raise HTTPException(status_code=403, detail="Only parents can use the question feature")
+    # Parent question guards: role check, min-length, prefix, auto-title (#2861)
+    description, title = _apply_parent_question_guards(body, description, title, current_user)
 
-    # Gate: reject content shorter than minimum (#2867)
-    if body.document_type == "parent_question":
-        if len(description.strip()) < MIN_QUESTION_CHARS:
-            raise HTTPException(status_code=422, detail="Please enter a question (at least 10 characters)")
-    elif len(description.strip()) < MIN_EXTRACTION_CHARS:
+    # Gate: reject non-question content shorter than MIN_EXTRACTION_CHARS (#2217)
+    if body.document_type != "parent_question" and len(description.strip()) < MIN_EXTRACTION_CHARS:
         raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
-
-    # Parent question mode: prefix content and auto-title (#2861)
-    if body.document_type == "parent_question":
-        description = f"PARENT'S QUESTION:\n{description}"
-        if title == "Study Guide":
-            question_preview = (body.content or "").strip()[:60]
-            if len((body.content or "").strip()) > 60:
-                question_preview += "..."
-            title = f"Study Guide: {question_preview}" if question_preview else "Study Guide"
 
     # Check AI usage limit
     check_ai_usage(current_user, db)

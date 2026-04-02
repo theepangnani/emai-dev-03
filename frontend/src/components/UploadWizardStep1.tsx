@@ -97,12 +97,14 @@ function UploadWizardStep1({
   return (
     <div className="upload-wizard-step">
       {/* Mode toggle tabs (#2861) */}
-      <div className="uw-mode-tabs">
+      <div className="uw-mode-tabs" role="tablist">
         <button
           className={`uw-mode-tab${inputMode === 'upload' ? ' active' : ''}`}
           onClick={() => onInputModeChange('upload')}
           disabled={isGenerating}
           type="button"
+          role="tab"
+          aria-selected={inputMode === 'upload'}
         >
           Upload Material
         </button>
@@ -111,6 +113,8 @@ function UploadWizardStep1({
           onClick={() => onInputModeChange('question')}
           disabled={isGenerating}
           type="button"
+          role="tab"
+          aria-selected={inputMode === 'question'}
         >
           Ask a Question
         </button>
