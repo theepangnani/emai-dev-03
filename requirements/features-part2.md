@@ -686,6 +686,7 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [x] **Chatbot save buttons:** toast feedback on success/error for Save as Study Guide / Save as Class Material (#2864)
 - [x] **Sub-guide level chips:** sub-guide pages show "Full Study Guide" + "Ask Bot" chips (#2870, #2871)
 - [x] **Streaming sub-guides:** SSE endpoint `generate-child-stream` with real-time token display (#2858, #2877, PR #2879)
+- [x] **Navigate-then-stream:** chip click navigates to `/study/guide/generating` page, streams content there (#2882, #2885)
 - [x] **Scroll to guide:** auto-scroll to content area when chip starts generating (#2811, #2876)
 - [ ] **Cost model:** ~50% aggregate savings; break-even at 2-3 sub-guides
 
