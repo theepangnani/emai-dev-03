@@ -85,6 +85,18 @@
   color: #fff;
 }
 
+/* ── Full Study Guide chip ──────────────── */
+
+.sg-suggestion-chip--full-guide {
+  border-color: var(--color-warning, #f59e0b);
+  color: var(--color-warning, #f59e0b);
+}
+
+.sg-suggestion-chip--full-guide:hover:not(:disabled) {
+  background: var(--color-warning, #f59e0b);
+  color: #fff;
+}
+
 /* ── Dark Mode ───────────────────────────── */
 
 [data-theme="dark"] .sg-suggestion-section {
@@ -114,6 +126,11 @@
 [data-theme="dark"] .sg-suggestion-chip--ask-bot {
   border-color: var(--color-success, #10b981);
   color: var(--color-success, #10b981);
+}
+
+[data-theme="dark"] .sg-suggestion-chip--full-guide {
+  border-color: var(--color-warning, #f59e0b);
+  color: var(--color-warning, #f59e0b);
 }
 
 [data-theme="dark"] .sg-suggestion-chip--ask-bot:hover:not(:disabled) {

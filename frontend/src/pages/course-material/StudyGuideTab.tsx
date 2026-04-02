@@ -165,6 +165,7 @@ export function StudyGuideTab({
       const topics = JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
       return [
         ...topics,
+        { label: 'Full Study Guide', description: 'Generate a complete detailed study guide with explanations and examples' },
         { label: 'Ask Bot', description: 'Ask the AI chatbot any question about this material' },
       ];
     } catch {
@@ -247,6 +248,10 @@ export function StudyGuideTab({
               onTopicClick={(t) => {
                 if (t.label === 'Ask Bot') {
                   window.dispatchEvent(new Event('open-help-chat'));
+                  return;
+                }
+                if (t.label === 'Full Study Guide') {
+                  onGenerateChildGuide?.('Complete detailed study guide covering all topics with explanations, examples, and practice problems', 'study_guide');
                   return;
                 }
                 onGenerateChildGuide?.(t.label, 'study_guide');
