@@ -745,6 +745,7 @@ export function CourseMaterialDetailPage() {
   const handleSuggestionChipClick = async (topic: string, guideType: string, extra?: { custom_prompt?: string; max_tokens?: number }) => {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
+    showToast('Generating sub-guide... This may take a moment.');
     try {
       const result = await studyApi.generateChildGuide(studyGuide.id, {
         topic,
@@ -757,6 +758,7 @@ export function CourseMaterialDetailPage() {
       navigate(`/study/guide/${result.id}`);
     } catch (err) {
       console.error('Failed to generate sub-guide:', err);
+      showToast('Failed to generate sub-guide. Please try again.');
     } finally {
       setGeneratingChildTopic(null);
     }
