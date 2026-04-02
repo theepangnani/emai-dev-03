@@ -4993,3 +4993,64 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 | M3 | June 2026 | Pilot with 5-10 YRDSB families |
 | M4 | July-Aug 2026 | Phase 2: format selector, categorization, multi-child |
 | M5 | September 2026 | Public launch — feature GA |
+
+### 6.128 Ask a Question — Parent Open-Ended Study Guide Generation (Phase 2) - IMPLEMENTED
+
+Parents can type free-form education questions (e.g., "My son is doing OSSLT — how can I help him prep?") and get a structured, actionable study guide generated through the existing pipeline. No file upload or course content required.
+
+**GitHub Epic:** #2861
+
+**User Flow:**
+1. Parent opens Upload Material wizard (from Dashboard or Study Guides page)
+2. Clicks "Ask a Question" tab (new mode alongside "Upload Material")
+3. Types open-ended question in textarea
+4. Selects child + course on Step 2
+5. Clicks "Generate Study Guide"
+6. AI generates structured study guide with suggestion chips for drill-down
+7. Study guide saved and displayed with full sub-guide hierarchy support
+
+**Backend:**
+- New `document_type: "parent_question"` in strategy pattern (`study_guide_strategy.py`)
+- Dedicated AI prompt template: answers the question directly (not summarize source material)
+- Ontario curriculum awareness (OSSLT, EQAO, grade-level expectations)
+- `max_tokens: 2000` (vs default 1200 — no source material to summarize)
+- Minimum content length relaxed from 50 to 10 characters for questions
+- Question content prefixed with `"PARENT'S QUESTION:\n"` for clear AI context
+- Safety guardrails: age-appropriate educational content only, redirects off-topic queries
+
+**Frontend:**
+- Mode toggle tabs in UploadWizardStep1: "Upload Material" | "Ask a Question"
+- Question mode: hides file drop zone, shows focused textarea with example placeholder
+- Auto-title from question text (first 50 chars)
+- Submit button shows "Generate Study Guide" (vs "Upload")
+- Passes `document_type: 'parent_question'` and `study_goal: 'parent_review'` through pipeline
+
+**Reuses existing infrastructure:**
+- `POST /api/study/generate` endpoint (no new endpoints)
+- StudyGuideCreate schema (no new fields)
+- Suggestion chips + sub-guide generation pipeline
+- AI usage limits (§6.54), content safety checks, streaming (§6.115)
+- Deduplication, XP awards, audit logging
+
+**Safety Guardrails:**
+- `check_content_safe()` runs on all question text (existing)
+- AI prompt includes safety instructions: age-appropriate content only
+- System prompt forbids medical/legal/mental health advice — suggests professional consultation
+- Off-topic questions politely redirected to educational guidance
+
+**AI Cost:** ~$0.01-0.02/question (Claude Sonnet, 2000 max tokens)
+
+**Sub-tasks:**
+- [x] Backend: parent_question strategy pattern + AI prompt template (#2862)
+- [x] Backend: max tokens, min-length gate, question prefix (#2862)
+- [x] Frontend: wizard mode tabs + question textarea UI (#2863)
+- [x] Frontend: wire question mode through parent hook (#2863)
+- [x] CSS: mode tab styles with dark mode support (#2863)
+
+**Key files:**
+- `app/services/study_guide_strategy.py` — `parent_question` template and system prompt
+- `app/services/ai_service.py` — `parent_question: 2000` max tokens
+- `app/api/routes/study.py` — min-length gate bypass, question prefix
+- `frontend/src/components/UploadWizardStep1.tsx` — mode tabs + question textarea
+- `frontend/src/components/UploadMaterialWizard.tsx` — question mode wiring
+- `frontend/src/components/parent/hooks/useParentStudyTools.ts` — question mode branch
