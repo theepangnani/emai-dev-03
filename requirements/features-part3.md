@@ -5047,11 +5047,16 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 - [x] Frontend: wizard mode tabs + question textarea UI (#2863)
 - [x] Frontend: wire question mode through parent hook (#2863)
 - [x] CSS: mode tab styles with dark mode support (#2863)
+- [x] Backend: full guide user prompt (not brief overview) in `_build_study_guide_prompt` (#2883, #2884)
+- [x] Backend: CourseContent create stores document_type/study_goal — root cause fix (#2883, #2888)
+- [x] Frontend: auto-stream via `?autoGenerate=study_guide` param (#2880, #2881)
 
 **Key files:**
-- `app/services/study_guide_strategy.py` — `parent_question` template and system prompt
-- `app/services/ai_service.py` — `parent_question: 2000` max tokens
-- `app/api/routes/study.py` — min-length gate bypass, question prefix
+- `app/services/study_guide_strategy.py` — `parent_question` system prompt template
+- `app/services/ai_service.py` — `parent_question: 4000` max tokens + full guide user prompt in `_build_study_guide_prompt()`
+- `app/api/routes/study.py` — min-length gate bypass, question prefix, `_apply_parent_question_guards()` helper
+- `app/api/routes/course_contents.py` — stores `document_type`/`study_goal` on CourseContent create
 - `frontend/src/components/UploadWizardStep1.tsx` — mode tabs + question textarea
 - `frontend/src/components/UploadMaterialWizard.tsx` — question mode wiring
-- `frontend/src/components/parent/hooks/useParentStudyTools.ts` — question mode branch
+- `frontend/src/components/parent/hooks/useParentStudyTools.ts` — question mode with `?autoGenerate=study_guide`
+- `frontend/src/pages/CourseMaterialDetailPage.tsx` — auto-stream useEffect for `autoGenerate` param
