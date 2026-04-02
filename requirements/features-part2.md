@@ -682,8 +682,10 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [x] Shared constants for special chip labels `ASK_BOT_LABEL`, `FULL_GUIDE_LABEL` (#2857)
 - [x] Sub-guides appear in `SubGuidesPanel`
 - [x] Document-type-aware max_tokens for all generation paths (#2835)
+- [x] **Toast feedback:** "Generating sub-guide..." toast on chip click, error toast on failure
+- [x] **Chatbot save buttons:** toast feedback on success/error for Save as Study Guide / Save as Class Material (#2864)
+- [ ] **Sub-guide level chips:** sub-guide pages should also show "Full Study Guide" + "Ask Bot" chips (#2870)
 - [ ] **Streaming sub-guides:** navigate immediately on chip click with real-time streaming content (#2858 enhancement)
-- [ ] **Chatbot save buttons:** "Save as Study Guide" / "Save as Class Material" in Study Q&A (#2864 — recurring defect)
 - [ ] **Cost model:** ~50% aggregate savings; break-even at 2-3 sub-guides
 
 #### Problem Solver Guide Type (Phase 3 — #2697)
