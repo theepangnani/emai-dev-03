@@ -13,7 +13,8 @@ logger = get_logger(__name__)
 # Document type enum values
 DOCUMENT_TYPES = {
     "teacher_notes", "course_syllabus", "past_exam", "mock_exam",
-    "project_brief", "lab_experiment", "textbook_excerpt", "custom"
+    "project_brief", "lab_experiment", "textbook_excerpt", "custom",
+    "parent_question"
 }
 
 # Study goal enum values
@@ -38,6 +39,19 @@ PROMPT_TEMPLATES: dict[str, str] = {
     "lab_experiment": """Based on this lab/experiment material, write a 3-5 sentence summary of the experiment's purpose, key variables, and what students need to prepare. Do NOT include full procedures, safety protocols, or analysis templates — those will be covered in focused sub-guides.""",
 
     "textbook_excerpt": """Based on this textbook excerpt, write a 3-5 sentence summary of the main ideas and key terms introduced. Do NOT include detailed explanations, definitions, or worked examples — those will be covered in focused sub-guides.""",
+
+    "parent_question": """The content below is an open-ended question from a parent about their child's education. Do NOT summarize source material — there is none. Instead, ANSWER the question directly and create an actionable study preparation guide.
+
+Write a response (5-8 sentences) that:
+- Directly addresses the parent's question with practical, actionable advice
+- Identifies the specific curriculum, assessment, or topic area referenced (e.g., OSSLT, EQAO, Ontario grade-level expectations)
+- Suggests 3-4 concrete preparation strategies the parent can use with their child
+- Mentions relevant official resources (e.g., eqao.com for practice tests) where applicable
+- Uses encouraging, supportive tone appropriate for a parent audience
+
+Do NOT say "based on the source material" — the parent asked a question and you are providing expert educational guidance. Deeper details belong in focused sub-guides the student can explore via suggestion chips.
+
+SAFETY: Only provide age-appropriate, educationally relevant content. Do NOT provide advice on topics unrelated to education, academics, or student wellbeing. If the question is off-topic, politely redirect to educational guidance.""",
 }
 
 # Default template when document_type is None or "custom"
@@ -116,6 +130,7 @@ class StudyGuideStrategyService:
             "project_brief": " You are analyzing a project brief to help students plan and execute their assignment.",
             "lab_experiment": " You are analyzing lab/experiment materials to help students prepare for and report on their lab work.",
             "textbook_excerpt": " You are analyzing textbook content to create a comprehensive study summary.",
+            "parent_question": " A parent has asked an open-ended question about their child's education. You are providing expert guidance, study strategies, and actionable advice. You have deep knowledge of Ontario K-12 curriculum, standardized assessments (OSSLT, EQAO), and evidence-based study techniques. Only provide age-appropriate, educationally relevant content. Never provide medical, legal, or mental health advice — suggest consulting appropriate professionals if needed.",
         }
 
         if document_type and document_type in type_contexts:
