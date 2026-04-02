@@ -1,7 +1,9 @@
+import re
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
+from zoneinfo import available_timezones
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -65,9 +67,30 @@ class ParentDigestSettingsUpdate(BaseModel):
     digest_enabled: Optional[bool] = None
     delivery_time: Optional[str] = None
     timezone: Optional[str] = None
-    digest_format: Optional[str] = None
+    digest_format: Optional[Literal["full", "brief", "actions_only"]] = None
     delivery_channels: Optional[str] = None
     notify_on_empty: Optional[bool] = None
+
+    @field_validator("delivery_time")
+    @classmethod
+    def validate_delivery_time(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not re.match(r"^\d{2}:\d{2}$", v):
+            raise ValueError("delivery_time must be in HH:MM format")
+        hours, minutes = v.split(":")
+        if not (0 <= int(hours) <= 23 and 0 <= int(minutes) <= 59):
+            raise ValueError("delivery_time must be a valid time (00:00–23:59)")
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if v not in available_timezones():
+            raise ValueError(f"Invalid timezone: {v}")
+        return v
 
 
 # ---------------------------------------------------------------------------
