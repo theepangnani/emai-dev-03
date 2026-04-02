@@ -5006,14 +5006,14 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 3. Types open-ended question in textarea
 4. Selects child + course on Step 2
 5. Clicks "Generate Study Guide"
-6. AI generates a **comprehensive, full study guide immediately** (4000 tokens) — no intermediate "Learn Your Way" picker
-7. Parent is navigated directly to the study guide page with suggestion chips for drill-down
+6. System **immediately starts streaming** a comprehensive, full study guide (4000 tokens) — no "Learn Your Way" picker, no extra clicks (#2880)
+7. Parent sees the AI response streaming in real-time with suggestion chips for drill-down
 
 **Backend:**
 - New `document_type: "parent_question"` in strategy pattern (`study_guide_strategy.py`)
-- Comprehensive AI prompt template: generates a full study guide with sections (Understanding, Step-by-Step Plan, Focus Areas, Resources, Test Day Tips, Accommodations)
+- Comprehensive AI prompt template with structured sections (Understanding, Step-by-Step Plan, Focus Areas, Resources, Test Day Tips, Accommodations)
 - Ontario curriculum awareness (OSSLT, EQAO, grade-level expectations)
-- `max_tokens: 4000` (full guide — no source material, AI must generate all content)
+- `max_tokens: 4000` (full guide — no source material, AI generates all content) (#2880)
 - Minimum content length relaxed from 50 to 10 characters for questions
 - Question content prefixed with `"PARENT'S QUESTION:\n"` for clear AI context
 - Safety guardrails: age-appropriate educational content only, redirects off-topic queries
@@ -5023,11 +5023,11 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 - Question mode: hides file drop zone, shows focused textarea with example placeholder
 - Auto-title from question text (first 50 chars)
 - Submit button shows "Generate Study Guide" (vs "Upload")
-- Calls `studyApi.generateGuide()` directly — no CourseContent intermediary, no "Learn Your Way" picker (#2880)
-- Navigates to `/study-guides/{id}` with the full guide ready to view
+- Creates CourseContent then navigates with `?autoGenerate=study_guide` — streaming starts immediately (#2880)
+- CourseMaterialDetailPage auto-triggers `stream.startStream()` when `autoGenerate` param present
 
 **Reuses existing infrastructure:**
-- `POST /api/study/generate` endpoint (no new endpoints)
+- `POST /api/study/generate-stream` endpoint for SSE streaming (no new endpoints)
 - StudyGuideCreate schema (no new fields)
 - Suggestion chips + sub-guide generation pipeline
 - AI usage limits (§6.54), content safety checks, streaming (§6.115)
@@ -5039,7 +5039,7 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 - System prompt forbids medical/legal/mental health advice — suggests professional consultation
 - Off-topic questions politely redirected to educational guidance
 
-**AI Cost:** ~$0.01-0.02/question (Claude Sonnet, 2000 max tokens)
+**AI Cost:** ~$0.02-0.04/question (Claude Sonnet, 4000 max tokens)
 
 **Sub-tasks:**
 - [x] Backend: parent_question strategy pattern + AI prompt template (#2862)

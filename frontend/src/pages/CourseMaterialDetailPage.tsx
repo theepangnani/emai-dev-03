@@ -430,7 +430,30 @@ export function CourseMaterialDetailPage() {
       .catch(() => {});
   }, [content?.course_id]);
 
-  // Removed: autoGenerate flag handling — generation is now initiated from tab empty states
+  // Auto-generate study guide when arriving from "Ask a Question" mode (#2880)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const autoGen = searchParams.get('autoGenerate');
+    if (autoGen === 'study_guide' && content && stream.status === 'idle' && !generating) {
+      // Remove param so refresh doesn't re-trigger
+      setSearchParams((prev) => { prev.delete('autoGenerate'); return prev; }, { replace: true });
+      // Skip confirm dialog — parent already confirmed in the wizard
+      setActiveTab('guide');
+      setGenerating('study_guide');
+      const docType = content.document_type || undefined;
+      const sGoal = content.study_goal || undefined;
+      const sGoalText = content.study_goal_text || undefined;
+      stream.startStream({
+        course_content_id: Number(id),
+        course_id: content.course_id,
+        title: content.title,
+        content: content.text_content || content.description || '',
+        ...(docType ? { document_type: docType } : {}),
+        ...(sGoal ? { study_goal: sGoal } : {}),
+        ...(sGoalText ? { study_goal_text: sGoalText } : {}),
+      });
+    }
+  }, [content, searchParams, stream.status, generating]);
 
   // Auto-open notes panel if ?notes=open is in URL (#1087)
   useEffect(() => {
