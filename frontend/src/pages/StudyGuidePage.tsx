@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, ResolvedStudent } from '../api/client';
+import StudyGuideSuggestionChips, { ASK_BOT_LABEL, FULL_GUIDE_LABEL } from '../components/StudyGuideSuggestionChips';
+import type { SuggestionTopic } from '../components/StudyGuideSuggestionChips';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
@@ -70,6 +72,8 @@ export function StudyGuidePage() {
   const [addHighlight, setAddHighlight] = useState<{text: string} | null>(null);
   const [removeHighlightText, setRemoveHighlightText] = useState<string | null>(null);
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
+  const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -222,6 +226,54 @@ export function StudyGuidePage() {
     }
   };
 
+  const parsedSuggestionTopics: SuggestionTopic[] = useMemo(() => {
+    if (!guide?.suggestion_topics) return [];
+    try {
+      const topics = JSON.parse(guide.suggestion_topics) as SuggestionTopic[];
+      return [
+        ...topics,
+        { label: FULL_GUIDE_LABEL, description: 'Generate a complete detailed study guide with explanations and examples' },
+        { label: ASK_BOT_LABEL, description: 'Ask the AI chatbot any question about this material' },
+      ];
+    } catch {
+      return [];
+    }
+  }, [guide?.suggestion_topics]);
+
+  const handleChipClick = async (topic: SuggestionTopic) => {
+    if (!guide) return;
+    if (topic.label === ASK_BOT_LABEL) {
+      window.dispatchEvent(new Event('open-help-chat'));
+      return;
+    }
+    if (atLimit) {
+      setShowLimitModal(true);
+      return;
+    }
+    setGeneratingTopic(topic.label);
+    setToast('Generating sub-guide... This may take a moment.');
+    setTimeout(() => setToast(null), 4000);
+    try {
+      const extra = topic.label === FULL_GUIDE_LABEL ? {
+        custom_prompt: 'Generate a comprehensive, detailed study guide covering ALL topics from the source material. Include: detailed explanations of each concept, worked examples with step-by-step solutions, practice problems, common mistakes to avoid, and key formulas/rules. This should be thorough enough for a student to study from independently.',
+        max_tokens: 4000,
+      } : {};
+      const result = await studyApi.generateChildGuide(guide.id, {
+        topic: topic.label,
+        guide_type: 'study_guide',
+        ...extra,
+      });
+      refreshAIUsage();
+      navigate(`/study/guide/${result.id}`);
+    } catch (err) {
+      console.error('Failed to generate sub-guide:', err);
+      setToast('Failed to generate sub-guide. Please try again.');
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setGeneratingTopic(null);
+    }
+  };
+
   if (loading) {
     return (
       <DashboardLayout showBackButton headerSlot={() => null}>
@@ -347,6 +399,15 @@ export function StudyGuidePage() {
 
       <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.parent_guide_id || guide.id} currentGuideId={guide.parent_guide_id ? guide.id : undefined} />
 
+      {parsedSuggestionTopics.length > 0 && (
+        <StudyGuideSuggestionChips
+          topics={parsedSuggestionTopics}
+          onTopicClick={handleChipClick}
+          disabled={atLimit}
+          generatingTopic={generatingTopic}
+        />
+      )}
+
       <CreateTaskModal
         open={showTaskModal}
         onClose={() => setShowTaskModal(false)}
@@ -364,6 +425,7 @@ export function StudyGuidePage() {
       )}
       {confirmModal}
       <AILimitRequestModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
+      {toast && <div className="toast-notification">{toast}</div>}
 
       {/* Contextual notes: selection tooltip + FAB + panel */}
       {selection && (
