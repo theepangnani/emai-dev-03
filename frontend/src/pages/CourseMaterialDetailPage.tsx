@@ -742,7 +742,7 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  const handleSuggestionChipClick = async (topic: string, guideType: string) => {
+  const handleSuggestionChipClick = async (topic: string, guideType: string, extra?: { custom_prompt?: string; max_tokens?: number }) => {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
     try {
@@ -751,6 +751,7 @@ export function CourseMaterialDetailPage() {
         guide_type: guideType,
         document_type: content?.document_type || undefined,
         study_goal: content?.study_goal || undefined,
+        ...extra,
       });
       // Reload data to show new sub-guide in SubGuidesPanel
       loadData();
