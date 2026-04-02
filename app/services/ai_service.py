@@ -277,6 +277,7 @@ def _build_study_guide_prompt(
     focus_prompt: str | None = None,
     images: list[dict] | None = None,
     interests: list[str] | None = None,
+    document_type: str | None = None,
 ) -> tuple[str, str]:
     """Build the user prompt and system prompt for study guide generation.
 
@@ -285,7 +286,43 @@ def _build_study_guide_prompt(
     """
     due_info = f"\nDue Date: {due_date}" if due_date else ""
 
-    prompt = f"""Create a brief overview summary for the following assignment. This is a quick orientation — NOT a full study guide. The student will explore specific topics in depth via suggestion chips below.
+    # Parent question mode: comprehensive full guide, not a brief overview (#2880)
+    if document_type == "parent_question":
+        prompt = f"""A parent has asked the following question about their child's education. Create a COMPREHENSIVE, DETAILED study guide that fully answers their question.
+
+**Question:** {assignment_title}
+
+{assignment_description}
+
+Write a thorough, well-structured response using Markdown with clear headings (##), bullet points, and bold for emphasis. Include ALL of the following sections where relevant:
+
+## Understanding What Your Child Is Facing
+What the assessment/topic involves, format, what's being tested
+
+## Step-by-Step Preparation Plan
+4-6 concrete, numbered strategies with actionable details
+
+## Key Focus Areas
+Specific topics, skills, or sections to prioritize
+
+## Recommended Resources
+Official resources, practice tests, prep books, free online tools
+
+## Test Day Tips
+Practical advice for the day of the assessment
+
+## Accommodations & Support
+IEP options, extra time, school resources to ask about
+
+Use Ontario K-12 curriculum context where applicable. Be thorough — this is the parent's primary resource for helping their child.
+
+After the guide content, include a section for deeper exploration:
+--- SUGGESTION_TOPICS ---
+[{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
+
+Generate exactly 4-6 suggestion topics for the most important subtopics to explore further. Always include this section."""
+    else:
+        prompt = f"""Create a brief overview summary for the following assignment. This is a quick orientation — NOT a full study guide. The student will explore specific topics in depth via suggestion chips below.
 
 **Assignment:** {assignment_title}
 **Course:** {course_name}{due_info}
@@ -357,6 +394,7 @@ async def generate_study_guide(
     images: list[dict] | None = None,
     interests: list[str] | None = None,
     max_tokens: int | None = None,
+    document_type: str | None = None,
 ) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
@@ -366,6 +404,7 @@ async def generate_study_guide(
         assignment_description: Description/instructions
         course_name: Name of the course
         due_date: Optional due date string
+        document_type: Optional document type for strategy-aware prompt selection
 
     Returns:
         Tuple of (Markdown-formatted study guide, is_truncated)
@@ -381,6 +420,7 @@ async def generate_study_guide(
         focus_prompt=focus_prompt,
         images=images,
         interests=interests,
+        document_type=document_type,
     )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
@@ -430,6 +470,7 @@ async def generate_study_guide_stream(
             focus_prompt=focus_prompt,
             images=images,
             interests=interests,
+            document_type=document_type,
         )
         system_prompt = strategy_system_prompt + _interests_instruction(interests)
     else:
