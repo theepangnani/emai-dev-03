@@ -243,6 +243,12 @@
   font-weight: 600;
 }
 
+.uw-mode-tab:focus-visible {
+  outline: 2px solid var(--color-accent, #4A90D9);
+  outline-offset: -2px;
+  border-radius: 4px 4px 0 0;
+}
+
 .uw-mode-tab:disabled {
   opacity: 0.5;
   cursor: not-allowed;

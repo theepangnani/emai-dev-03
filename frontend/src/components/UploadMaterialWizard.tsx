@@ -249,6 +249,12 @@ export default function UploadMaterialWizard({
     });
   };
 
+  const handleInputModeChange = (mode: WizardInputMode) => {
+    setInputMode(mode);
+    setStudyContent('');
+    setError('');
+  };
+
   const hasNoContent = inputMode === 'question'
     ? !studyContent.trim()
     : selectedFiles.length === 0 && !studyContent.trim() && pastedImages.length === 0;
@@ -350,7 +356,7 @@ export default function UploadMaterialWizard({
           {step === 1 && (
             <UploadWizardStep1
               inputMode={inputMode}
-              onInputModeChange={setInputMode}
+              onInputModeChange={handleInputModeChange}
               selectedFiles={selectedFiles}
               onAddFiles={addFiles}
               onRemoveFile={removeFile}
@@ -432,7 +438,9 @@ export default function UploadMaterialWizard({
                   type="text"
                   value={studyTitle}
                   onChange={(e) => setStudyTitle(e.target.value)}
-                  placeholder="e.g., Chapter 5 Review (auto-filled from filename)"
+                  placeholder={inputMode === 'question'
+                    ? 'e.g., OSSLT Prep Guide (auto-generated from question)'
+                    : 'e.g., Chapter 5 Review (auto-filled from filename)'}
                   disabled={isGenerating}
                 />
               </div>
