@@ -14,7 +14,7 @@ import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import { ContentMetaBar } from './ContentMetaBar';
 import ParentSummaryCard from '../../components/ParentSummaryCard';
-import StudyGuideSuggestionChips, { type SuggestionTopic } from '../../components/StudyGuideSuggestionChips';
+import StudyGuideSuggestionChips, { type SuggestionTopic, ASK_BOT_LABEL, FULL_GUIDE_LABEL } from '../../components/StudyGuideSuggestionChips';
 
 interface StudyGuideTabProps {
   studyGuide: StudyGuide | undefined;
@@ -165,7 +165,8 @@ export function StudyGuideTab({
       const topics = JSON.parse(studyGuide.suggestion_topics) as SuggestionTopic[];
       return [
         ...topics,
-        { label: 'Ask Bot', description: 'Ask the AI chatbot any question about this material' },
+        { label: FULL_GUIDE_LABEL, description: 'Generate a complete detailed study guide with explanations and examples' },
+        { label: ASK_BOT_LABEL, description: 'Ask the AI chatbot any question about this material' },
       ];
     } catch {
       return [];
@@ -245,9 +246,12 @@ export function StudyGuideTab({
             <StudyGuideSuggestionChips
               topics={parsedSuggestionTopics}
               onTopicClick={(t) => {
-                if (t.label === 'Ask Bot') {
-                  const fabBtn = document.querySelector('.speed-dial-fab-btn') as HTMLButtonElement;
-                  if (fabBtn) fabBtn.click();
+                if (t.label === ASK_BOT_LABEL) {
+                  window.dispatchEvent(new Event('open-help-chat'));
+                  return;
+                }
+                if (t.label === FULL_GUIDE_LABEL) {
+                  onGenerateChildGuide?.('Complete detailed study guide covering all topics with explanations, examples, and practice problems', 'study_guide');
                   return;
                 }
                 onGenerateChildGuide?.(t.label, 'study_guide');
