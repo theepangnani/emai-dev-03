@@ -29,34 +29,34 @@ class TestStudyGuideStrategyService:
     """Test the strategy service prompt generation."""
 
     def test_default_template_when_no_type(self):
-        """Should return default template when document_type is None."""
+        """Should return concise default template when document_type is None."""
         result = StudyGuideStrategyService.get_prompt_template()
-        assert "Key Concepts" in result
-        assert "Problem Types" in result
+        assert "3-5 sentence summary" in result
+        assert "sub-guides" in result
 
     def test_teacher_notes_template(self):
-        """Teacher notes should have exam-focused structure."""
+        """Teacher notes should produce concise summary."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="teacher_notes")
-        assert "Key Topics" in result
-        assert "Likely Exam Areas" in result
+        assert "3-5 sentence summary" in result
+        assert "teacher notes" in result
 
     def test_past_exam_template(self):
-        """Past exam should have gap analysis structure."""
+        """Past exam should produce concise summary."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="past_exam")
-        assert "Key Gap Areas" in result
-        assert "Topics to Review" in result
+        assert "3-5 sentence summary" in result
+        assert "past exam" in result
 
     def test_project_brief_template(self):
-        """Project brief should have rubric decoder structure."""
+        """Project brief should produce concise summary."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="project_brief")
-        assert "Requirements Summary" in result
-        assert "Key Deliverables" in result
+        assert "3-5 sentence summary" in result
+        assert "project" in result.lower()
 
     def test_lab_experiment_template(self):
-        """Lab experiment should have pre-lab prep structure."""
+        """Lab experiment should produce concise summary."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="lab_experiment")
-        assert "Pre-Lab Essentials" in result
-        assert "Variables" in result
+        assert "3-5 sentence summary" in result
+        assert "experiment" in result.lower()
 
     def test_study_goal_modifier_appended(self):
         """Study goal modifier should be appended to template."""
@@ -64,7 +64,7 @@ class TestStudyGuideStrategyService:
             document_type="teacher_notes",
             study_goal="upcoming_test",
         )
-        assert "Likely Exam Areas" in result  # From template
+        assert "teacher notes" in result  # From template
         assert "STUDY GOAL" in result  # From modifier
 
     def test_focus_area_appended(self):
@@ -83,19 +83,19 @@ class TestStudyGuideStrategyService:
             study_goal="final_exam",
             focus_area="Chapter 4-6",
         )
-        assert "Unit Overview" in result  # Syllabus template
+        assert "syllabus" in result.lower()  # Syllabus template
         assert "Final Exam" in result  # Goal modifier
         assert "Chapter 4-6" in result  # Focus area
 
     def test_invalid_document_type_falls_back(self):
         """Invalid document type should fall back to default template."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="invalid_type")
-        assert "Key Concepts" in result  # Default template
+        assert "3-5 sentence summary" in result  # Default template
 
     def test_custom_type_uses_default(self):
         """Custom document type should use default template."""
         result = StudyGuideStrategyService.get_prompt_template(document_type="custom")
-        assert "Key Concepts" in result
+        assert "3-5 sentence summary" in result
 
     def test_system_prompt_varies_by_type(self):
         """System prompt should contain type-specific context."""
