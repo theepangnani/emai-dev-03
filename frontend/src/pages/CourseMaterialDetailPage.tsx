@@ -742,20 +742,23 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSuggestionChipClick = (topic: string, _guideType: string) => {
+  const handleSuggestionChipClick = async (topic: string, guideType: string) => {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
-    setActiveTab('guide');
-    stream.startStream({
-      course_content_id: content?.id || undefined,
-      course_id: content?.course_id || undefined,
-      title: content?.title || 'Study Guide',
-      content: studyGuide.content?.substring(0, 8000) || '',
-      focus_prompt: topic,
-      document_type: content?.document_type || undefined,
-      study_goal: content?.study_goal || undefined,
-    });
+    try {
+      await studyApi.generateChildGuide(studyGuide.id, {
+        topic,
+        guide_type: guideType,
+        document_type: content?.document_type || undefined,
+        study_goal: content?.study_goal || undefined,
+      });
+      // Reload data to show new sub-guide in SubGuidesPanel
+      loadData();
+    } catch (err) {
+      console.error('Failed to generate sub-guide:', err);
+    } finally {
+      setGeneratingChildTopic(null);
+    }
   };
 
   const handleFormatSelect = useCallback((format: StudyFormat) => {
