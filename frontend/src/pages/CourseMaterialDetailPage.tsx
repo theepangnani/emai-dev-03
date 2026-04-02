@@ -31,7 +31,6 @@ import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerationSpinner } from '../components/GenerationSpinner';
-import { StreamingMarkdown } from '../components/StreamingMarkdown';
 import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
@@ -637,35 +636,24 @@ export function CourseMaterialDetailPage() {
   useEffect(() => {
     if (stream.status === 'done') {
       refreshAIUsage();
-      if (streamingChildRef.current) {
-        // Child guide stream completed — navigate to the new sub-guide
-        streamingChildRef.current = false;
-        setGeneratingChildTopic(null);
-        if (stream.guide) {
-          navigate(`/study/guide/${stream.guide.id}`, { state: { fromMaterial: true } });
-        }
-        stream.reset();
-      } else {
-        // Main guide stream completed
-        loadData();
-        setGenerating(null);
-        setGeneratingChildTopic(null);
-        // Check for auto-created tasks
-        if (stream.guideId) {
-          tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
-            if (tasks.length > 0) {
-              const t = tasks[0];
-              const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
-              showToast(`Task created: ${t.title}${dueStr}`);
-            }
-          }).catch(() => {});
-        }
+      // Main guide stream completed
+      loadData();
+      setGenerating(null);
+      setGeneratingChildTopic(null);
+      // Check for auto-created tasks
+      if (stream.guideId) {
+        tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
+          if (tasks.length > 0) {
+            const t = tasks[0];
+            const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+            showToast(`Task created: ${t.title}${dueStr}`);
+          }
+        }).catch(() => {});
       }
     }
     if (stream.status === 'error') {
       setGenerating(null);
       setGeneratingChildTopic(null);
-      streamingChildRef.current = false;
       if (stream.error) {
         showToast(stream.error);
       }
@@ -778,8 +766,6 @@ export function CourseMaterialDetailPage() {
     }
   };
 
-  // Track whether the current stream is a child guide stream
-  const streamingChildRef = useRef(false);
 
   const handleSuggestionChipClick = async (topic: string, guideType: string, extra?: { custom_prompt?: string; max_tokens?: number }) => {
     if (!studyGuide) return;
@@ -804,12 +790,17 @@ export function CourseMaterialDetailPage() {
       }
       return;
     }
-    setGeneratingChildTopic(topic);
-    streamingChildRef.current = true;
-    stream.startStream(
-      { topic, guide_type: guideType, document_type: content?.document_type || undefined, study_goal: content?.study_goal || undefined, ...extra } as any,
-      { endpoint: `/api/study/guides/${studyGuide.id}/generate-child-stream` },
-    );
+    // Navigate to StudyGuidePage with generation params — streaming happens there (#2882)
+    const params = new URLSearchParams({
+      parentGuideId: String(studyGuide.id),
+      topic,
+      guideType,
+      ...(extra?.custom_prompt ? { customPrompt: extra.custom_prompt } : {}),
+      ...(extra?.max_tokens ? { maxTokens: String(extra.max_tokens) } : {}),
+      ...(content?.document_type ? { documentType: content.document_type } : {}),
+      ...(content?.study_goal ? { studyGoal: content.study_goal } : {}),
+    });
+    navigate(`/study/guide/generating?${params.toString()}`);
   };
 
   const handleFormatSelect = useCallback((format: StudyFormat) => {
@@ -1077,9 +1068,9 @@ export function CourseMaterialDetailPage() {
                 onFormatSelect={handleFormatSelect}
                 onViewDocument={() => setActiveTab('document')}
                 onContinue={loadData}
-                streamingContent={streamingChildRef.current ? undefined : stream.content}
-                isStreaming={streamingChildRef.current ? false : stream.isStreaming}
-                streamStatus={streamingChildRef.current ? undefined : stream.status}
+                streamingContent={stream.content}
+                isStreaming={stream.isStreaming}
+                streamStatus={stream.status}
                 courseName={content?.course_name}
                 createdAt={studyGuide?.created_at}
                 courseId={content?.course_id}
@@ -1091,21 +1082,6 @@ export function CourseMaterialDetailPage() {
                 onGenerateChildGuide={handleSuggestionChipClick}
                 childGuideGenerating={generatingChildTopic}
               />
-              {streamingChildRef.current && stream.isStreaming && generatingChildTopic && (
-                <div className="cm-child-streaming" style={{ marginTop: '1.5rem' }}>
-                  <div className="cm-tab-card">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--color-text-secondary, #666)' }}>
-                      <GenerationSpinner size="sm" />
-                      <span>Generating sub-guide: {generatingChildTopic}</span>
-                    </div>
-                    {stream.content ? (
-                      <StreamingMarkdown content={stream.content} isStreaming={true} />
-                    ) : (
-                      <div style={{ color: 'var(--color-text-tertiary, #999)', fontStyle: 'italic' }}>Starting generation...</div>
-                    )}
-                  </div>
-                </div>
-              )}
             </>
           )}
 

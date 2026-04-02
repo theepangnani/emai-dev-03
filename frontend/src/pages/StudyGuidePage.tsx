@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, ResolvedStudent } from '../api/client';
 import StudyGuideSuggestionChips, { ASK_BOT_LABEL, FULL_GUIDE_LABEL } from '../components/StudyGuideSuggestionChips';
@@ -41,8 +41,10 @@ export function StudyGuidePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const isGeneratingRoute = id === 'generating';
   const [guide, setGuide] = useState<StudyGuide | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isGeneratingRoute);
   const [error, setError] = useState<string | null>(null);
   const [faqCode, setFaqCode] = useState<string | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -113,7 +115,7 @@ export function StudyGuidePage() {
 
   useEffect(() => {
     const fetchGuide = async () => {
-      if (!id) return;
+      if (!id || isGeneratingRoute) return;
       try {
         const data = await studyApi.getGuide(parseInt(id));
         setGuide(data);
@@ -243,6 +245,31 @@ export function StudyGuidePage() {
     }
   }, [guide?.suggestion_topics]);
 
+  // Auto-start streaming when navigated to /study/guide/generating (#2882)
+  const generationStartedRef = useRef(false);
+  useEffect(() => {
+    if (!isGeneratingRoute || generationStartedRef.current) return;
+    const parentGuideId = searchParams.get('parentGuideId');
+    const topic = searchParams.get('topic');
+    const guideType = searchParams.get('guideType') || 'study_guide';
+    if (!parentGuideId || !topic) return;
+    generationStartedRef.current = true;
+    setGeneratingTopic(topic);
+    const extra: Record<string, string | number> = {};
+    const customPrompt = searchParams.get('customPrompt');
+    const maxTokens = searchParams.get('maxTokens');
+    const documentType = searchParams.get('documentType');
+    const studyGoal = searchParams.get('studyGoal');
+    if (customPrompt) extra.custom_prompt = customPrompt;
+    if (maxTokens) extra.max_tokens = parseInt(maxTokens, 10);
+    if (documentType) extra.document_type = documentType;
+    if (studyGoal) extra.study_goal = studyGoal;
+    stream.startStream(
+      { topic, guide_type: guideType, ...extra } as any,
+      { endpoint: `/api/study/guides/${parentGuideId}/generate-child-stream` },
+    );
+  }, [isGeneratingRoute]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Handle streaming child guide completion
   useEffect(() => {
     if (stream.status === 'done') {
@@ -259,6 +286,10 @@ export function StudyGuidePage() {
       if (stream.error) {
         setToast(stream.error);
         setTimeout(() => setToast(null), 4000);
+      }
+      if (isGeneratingRoute) {
+        // Go back on error during generation
+        navigate(-1);
       }
       stream.reset();
     }
@@ -290,6 +321,42 @@ export function StudyGuidePage() {
       <DashboardLayout showBackButton headerSlot={() => null}>
         <div className="study-guide-page">
           <div className="loading">Loading study guide...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Generating route: show streaming content while sub-guide is being created (#2882)
+  if (isGeneratingRoute) {
+    const genTopic = searchParams.get('topic') || 'Sub-guide';
+    return (
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="study-guide-page">
+          <PageNav items={[
+            { label: 'Home', to: '/dashboard' },
+            { label: 'Class Materials', to: '/course-materials' },
+            { label: 'Generating...' },
+          ]} />
+          <div className="sg-detail-header">
+            <div className="sg-title-row">
+              <span className="sg-title-icon" aria-hidden="true">&#128214;</span>
+              <h2>{genTopic}</h2>
+            </div>
+          </div>
+          <div ref={contentRef}>
+            <ContentCard>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--color-text-secondary, #666)' }}>
+                <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                <span>Generating sub-guide...</span>
+              </div>
+              {stream.content ? (
+                <StreamingMarkdown content={stream.content} isStreaming={stream.isStreaming} />
+              ) : (
+                <div style={{ color: 'var(--color-text-tertiary, #999)', fontStyle: 'italic' }}>Starting generation...</div>
+              )}
+            </ContentCard>
+          </div>
+          {confirmModal}
         </div>
       </DashboardLayout>
     );
