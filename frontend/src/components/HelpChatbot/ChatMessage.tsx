@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import type { VideoInfo, SearchResult } from './useHelpChat';
 import { SearchResultCards } from './SearchResultCard';
+import { useToast } from '../Toast';
 
 const AI_UNCERTAINTY_PHRASES = [
   "i'm not sure",
@@ -102,6 +103,7 @@ function QASaveActions({
 }) {
   const [saving, setSaving] = useState<'guide' | 'material' | null>(null);
   const [saved, setSaved] = useState<'guide' | 'material' | null>(null);
+  const { toast } = useToast();
 
   const handleSave = async (type: 'guide' | 'material') => {
     setSaving(type);
@@ -112,8 +114,16 @@ function QASaveActions({
         await onSaveAsMaterial(content);
       }
       setSaved(type);
-    } catch {
-      /* error handled by caller */
+      toast(
+        type === 'guide' ? 'Saved as Study Guide' : 'Saved as Class Material',
+        'success',
+      );
+    } catch (err) {
+      console.error(`Failed to save as ${type}:`, err);
+      toast(
+        `Failed to save as ${type === 'guide' ? 'study guide' : 'class material'}. Please try again.`,
+        'error',
+      );
     } finally {
       setSaving(null);
     }
