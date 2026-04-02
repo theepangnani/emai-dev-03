@@ -31,6 +31,7 @@ import { useRegisterNotesFAB, useFABContext } from '../context/FABContext';
 import { SelectionTooltip } from '../components/SelectionTooltip';
 import { TextSelectionContextMenu } from '../components/TextSelectionContextMenu';
 import { GenerationSpinner } from '../components/GenerationSpinner';
+import { StreamingMarkdown } from '../components/StreamingMarkdown';
 import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
@@ -612,29 +613,41 @@ export function CourseMaterialDetailPage() {
   // Handle streaming study guide completion
   useEffect(() => {
     if (stream.status === 'done') {
-      loadData();
       refreshAIUsage();
-      setGenerating(null);
-      setGeneratingChildTopic(null);
-      // Check for auto-created tasks
-      if (stream.guideId) {
-        tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
-          if (tasks.length > 0) {
-            const t = tasks[0];
-            const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
-            showToast(`Task created: ${t.title}${dueStr}`);
-          }
-        }).catch(() => {});
+      if (streamingChildRef.current) {
+        // Child guide stream completed — navigate to the new sub-guide
+        streamingChildRef.current = false;
+        setGeneratingChildTopic(null);
+        if (stream.guide) {
+          navigate(`/study/guide/${stream.guide.id}`, { state: { fromMaterial: true } });
+        }
+        stream.reset();
+      } else {
+        // Main guide stream completed
+        loadData();
+        setGenerating(null);
+        setGeneratingChildTopic(null);
+        // Check for auto-created tasks
+        if (stream.guideId) {
+          tasksApi.list({ study_guide_id: stream.guideId }).then(tasks => {
+            if (tasks.length > 0) {
+              const t = tasks[0];
+              const dueStr = t.due_date ? ` (due ${new Date(t.due_date.includes('T') ? t.due_date : t.due_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })})` : '';
+              showToast(`Task created: ${t.title}${dueStr}`);
+            }
+          }).catch(() => {});
+        }
       }
     }
     if (stream.status === 'error') {
       setGenerating(null);
       setGeneratingChildTopic(null);
+      streamingChildRef.current = false;
       if (stream.error) {
         showToast(stream.error);
       }
     }
-  }, [stream.status]);
+  }, [stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDeleteGuide = async (guide: StudyGuide) => {
     const ok = await confirm({
@@ -742,26 +755,38 @@ export function CourseMaterialDetailPage() {
     }
   };
 
+  // Track whether the current stream is a child guide stream
+  const streamingChildRef = useRef(false);
+
   const handleSuggestionChipClick = async (topic: string, guideType: string, extra?: { custom_prompt?: string; max_tokens?: number }) => {
     if (!studyGuide) return;
-    setGeneratingChildTopic(topic);
-    showToast('Generating sub-guide... This may take a moment.');
-    try {
-      const result = await studyApi.generateChildGuide(studyGuide.id, {
-        topic,
-        guide_type: guideType,
-        document_type: content?.document_type || undefined,
-        study_goal: content?.study_goal || undefined,
-        ...extra,
-      });
-      // Navigate to the sub-guide page (dedup: returns existing if already generated)
-      navigate(`/study/guide/${result.id}`);
-    } catch (err) {
-      console.error('Failed to generate sub-guide:', err);
-      showToast('Failed to generate sub-guide. Please try again.');
-    } finally {
-      setGeneratingChildTopic(null);
+    // Only study_guide type supports streaming; others use non-streaming fallback
+    if (guideType !== 'study_guide') {
+      setGeneratingChildTopic(topic);
+      showToast('Generating sub-guide... This may take a moment.');
+      try {
+        const result = await studyApi.generateChildGuide(studyGuide.id, {
+          topic,
+          guide_type: guideType,
+          document_type: content?.document_type || undefined,
+          study_goal: content?.study_goal || undefined,
+          ...extra,
+        });
+        navigate(`/study/guide/${result.id}`, { state: { fromMaterial: true } });
+      } catch (err) {
+        console.error('Failed to generate sub-guide:', err);
+        showToast('Failed to generate sub-guide. Please try again.');
+      } finally {
+        setGeneratingChildTopic(null);
+      }
+      return;
     }
+    setGeneratingChildTopic(topic);
+    streamingChildRef.current = true;
+    stream.startStream(
+      { topic, guide_type: guideType, document_type: content?.document_type || undefined, study_goal: content?.study_goal || undefined, ...extra } as any,
+      { endpoint: `/api/study/guides/${studyGuide.id}/generate-child-stream` },
+    );
   };
 
   const handleFormatSelect = useCallback((format: StudyFormat) => {
@@ -1014,34 +1039,51 @@ export function CourseMaterialDetailPage() {
           )}
 
           {activeTab === 'guide' && (
-            <StudyGuideTab
-              studyGuide={studyGuide}
-              generating={generating}
-              focusPrompt={guideFocusPrompt}
-              onFocusPromptChange={setGuideFocusPrompt}
-              onGenerate={(opts) => handleGenerate('study_guide', undefined, opts)}
-              onDelete={handleDeleteGuide}
-              hasSourceContent={hasSourceContent}
-              linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
-              atLimit={atLimit}
-              courseContentId={contentId}
-              onFormatSelect={handleFormatSelect}
-              onViewDocument={() => setActiveTab('document')}
-              onContinue={loadData}
-              streamingContent={stream.content}
-              isStreaming={stream.isStreaming}
-              streamStatus={stream.status}
-              courseName={content?.course_name}
-              createdAt={studyGuide?.created_at}
-              courseId={content?.course_id}
-              textContent={content?.text_content || content?.description || ''}
-              originalFilename={content?.original_filename || ''}
-              savedDocumentType={content?.document_type || undefined}
-              savedStudyGoal={content?.study_goal || undefined}
-              savedStudyGoalText={content?.study_goal_text || undefined}
-              onGenerateChildGuide={handleSuggestionChipClick}
-              childGuideGenerating={generatingChildTopic}
-            />
+            <>
+              <StudyGuideTab
+                studyGuide={studyGuide}
+                generating={generating}
+                focusPrompt={guideFocusPrompt}
+                onFocusPromptChange={setGuideFocusPrompt}
+                onGenerate={(opts) => handleGenerate('study_guide', undefined, opts)}
+                onDelete={handleDeleteGuide}
+                hasSourceContent={hasSourceContent}
+                linkedTasks={linkedTasks[studyGuide?.id ?? 0] ?? []}
+                atLimit={atLimit}
+                courseContentId={contentId}
+                onFormatSelect={handleFormatSelect}
+                onViewDocument={() => setActiveTab('document')}
+                onContinue={loadData}
+                streamingContent={streamingChildRef.current ? undefined : stream.content}
+                isStreaming={streamingChildRef.current ? false : stream.isStreaming}
+                streamStatus={streamingChildRef.current ? undefined : stream.status}
+                courseName={content?.course_name}
+                createdAt={studyGuide?.created_at}
+                courseId={content?.course_id}
+                textContent={content?.text_content || content?.description || ''}
+                originalFilename={content?.original_filename || ''}
+                savedDocumentType={content?.document_type || undefined}
+                savedStudyGoal={content?.study_goal || undefined}
+                savedStudyGoalText={content?.study_goal_text || undefined}
+                onGenerateChildGuide={handleSuggestionChipClick}
+                childGuideGenerating={generatingChildTopic}
+              />
+              {streamingChildRef.current && stream.isStreaming && generatingChildTopic && (
+                <div className="cm-child-streaming" style={{ marginTop: '1.5rem' }}>
+                  <div className="cm-tab-card">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--color-text-secondary, #666)' }}>
+                      <GenerationSpinner size="sm" />
+                      <span>Generating sub-guide: {generatingChildTopic}</span>
+                    </div>
+                    {stream.content ? (
+                      <StreamingMarkdown content={stream.content} isStreaming={true} />
+                    ) : (
+                      <div style={{ color: 'var(--color-text-tertiary, #999)', fontStyle: 'italic' }}>Starting generation...</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'quiz' && (

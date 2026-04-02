@@ -25,6 +25,8 @@ import { SubGuidesPanel } from '../components/SubGuidesPanel';
 import { StudyGuideBreadcrumb } from '../components/StudyGuideBreadcrumb';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { useHighlightRenderer } from '../hooks/useHighlightRenderer';
+import { useStudyGuideStream } from '../hooks/useStudyGuideStream';
+import { StreamingMarkdown } from '../components/StreamingMarkdown';
 import '../components/HighlightOverlay.css';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import './StudyGuidePage.css';
@@ -74,6 +76,7 @@ export function StudyGuidePage() {
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
   const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const stream = useStudyGuideStream();
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
     // Immediately update visual highlights for instant feedback
@@ -240,6 +243,27 @@ export function StudyGuidePage() {
     }
   }, [guide?.suggestion_topics]);
 
+  // Handle streaming child guide completion
+  useEffect(() => {
+    if (stream.status === 'done') {
+      setGeneratingTopic(null);
+      refreshAIUsage();
+      if (stream.guide) {
+        // Navigate to the completed child guide
+        navigate(`/study/guide/${stream.guide.id}`, { state: { fromMaterial: true } });
+        stream.reset();
+      }
+    }
+    if (stream.status === 'error') {
+      setGeneratingTopic(null);
+      if (stream.error) {
+        setToast(stream.error);
+        setTimeout(() => setToast(null), 4000);
+      }
+      stream.reset();
+    }
+  }, [stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleChipClick = async (topic: SuggestionTopic) => {
     if (!guide) return;
     if (topic.label === ASK_BOT_LABEL) {
@@ -251,27 +275,14 @@ export function StudyGuidePage() {
       return;
     }
     setGeneratingTopic(topic.label);
-    setToast('Generating sub-guide... This may take a moment.');
-    setTimeout(() => setToast(null), 4000);
-    try {
-      const extra = topic.label === FULL_GUIDE_LABEL ? {
-        custom_prompt: 'Generate a comprehensive, detailed study guide covering ALL topics from the source material. Include: detailed explanations of each concept, worked examples with step-by-step solutions, practice problems, common mistakes to avoid, and key formulas/rules. This should be thorough enough for a student to study from independently.',
-        max_tokens: 4000,
-      } : {};
-      const result = await studyApi.generateChildGuide(guide.id, {
-        topic: topic.label,
-        guide_type: 'study_guide',
-        ...extra,
-      });
-      refreshAIUsage();
-      navigate(`/study/guide/${result.id}`);
-    } catch (err) {
-      console.error('Failed to generate sub-guide:', err);
-      setToast('Failed to generate sub-guide. Please try again.');
-      setTimeout(() => setToast(null), 4000);
-    } finally {
-      setGeneratingTopic(null);
-    }
+    const extra = topic.label === FULL_GUIDE_LABEL ? {
+      custom_prompt: 'Generate a comprehensive, detailed study guide covering ALL topics from the source material. Include: detailed explanations of each concept, worked examples with step-by-step solutions, practice problems, common mistakes to avoid, and key formulas/rules. This should be thorough enough for a student to study from independently.',
+      max_tokens: 4000,
+    } : {};
+    stream.startStream(
+      { topic: topic.label, guide_type: 'study_guide', ...extra } as any,
+      { endpoint: `/api/study/guides/${guide.id}/generate-child-stream` },
+    );
   };
 
   if (loading) {
@@ -397,13 +408,30 @@ export function StudyGuidePage() {
         </ContentCard>
       </div>
 
+      {/* Streaming sub-guide content shown inline while generating */}
+      {stream.isStreaming && generatingTopic && (
+        <div className="sg-streaming-child" style={{ marginTop: '1.5rem' }}>
+          <ContentCard>
+            <div className="sg-streaming-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--color-text-secondary, #666)' }}>
+              <span className="sg-streaming-spinner" style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span>Generating: {generatingTopic}</span>
+            </div>
+            {stream.content ? (
+              <StreamingMarkdown content={stream.content} isStreaming={true} />
+            ) : (
+              <div style={{ color: 'var(--color-text-tertiary, #999)', fontStyle: 'italic' }}>Starting generation...</div>
+            )}
+          </ContentCard>
+        </div>
+      )}
+
       <SubGuidesPanel childGuides={childGuides} parentGuideId={guide.parent_guide_id || guide.id} currentGuideId={guide.parent_guide_id ? guide.id : undefined} />
 
       {parsedSuggestionTopics.length > 0 && (
         <StudyGuideSuggestionChips
           topics={parsedSuggestionTopics}
           onTopicClick={handleChipClick}
-          disabled={atLimit}
+          disabled={atLimit || stream.isStreaming}
           generatingTopic={generatingTopic}
         />
       )}
