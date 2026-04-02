@@ -241,7 +241,7 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
                       ...prev,
                       status: 'done',
                       content: finalContent,
-                      guide: data.guide ?? null,
+                      guide: data ?? null,
                     }));
                   }
                   break;

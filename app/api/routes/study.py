@@ -3,7 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
-from fastapi.responses import StreamingResponse as _StreamingResponse
+from fastapi.responses import StreamingResponse as _StreamingResponse, JSONResponse
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session, selectinload
 from typing import Optional, List
@@ -2071,7 +2071,7 @@ async def generate_child_guide_stream(
         StudyGuide.archived_at.is_(None),
     ).first()
     if existing_child:
-        return StudyGuideResponse.model_validate(existing_child)
+        return JSONResponse(content=StudyGuideResponse.model_validate(existing_child).model_dump(mode="json"))
 
     # Strategy context
     effective_custom_prompt = body.custom_prompt
