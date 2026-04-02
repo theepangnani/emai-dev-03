@@ -746,15 +746,15 @@ export function CourseMaterialDetailPage() {
     if (!studyGuide) return;
     setGeneratingChildTopic(topic);
     try {
-      await studyApi.generateChildGuide(studyGuide.id, {
+      const result = await studyApi.generateChildGuide(studyGuide.id, {
         topic,
         guide_type: guideType,
         document_type: content?.document_type || undefined,
         study_goal: content?.study_goal || undefined,
         ...extra,
       });
-      // Reload data to show new sub-guide in SubGuidesPanel
-      loadData();
+      // Navigate to the sub-guide page (dedup: returns existing if already generated)
+      navigate(`/study/guide/${result.id}`);
     } catch (err) {
       console.error('Failed to generate sub-guide:', err);
     } finally {
