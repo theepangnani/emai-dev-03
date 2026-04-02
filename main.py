@@ -131,6 +131,7 @@ def _apply_cascade_and_unique_migration(conn, inspector):
             ("student_teachers", "student_id", "students(id)", "CASCADE"),
             ("conversations", "participant_1_id", "users(id)", "CASCADE"),
             ("conversations", "participant_2_id", "users(id)", "CASCADE"),
+            ("digest_delivery_log", "integration_id", "parent_gmail_integrations(id)", "CASCADE"),
             ("courses", "teacher_id", "teachers(id)", "SET NULL"),
             ("courses", "created_by_user_id", "users(id)", "SET NULL"),
             ("tasks", "assigned_to_user_id", "users(id)", "SET NULL"),
