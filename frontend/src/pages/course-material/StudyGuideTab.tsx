@@ -1,9 +1,10 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
 import { classifyDocument } from '../../api/study';
+import { parseSSEBuffer } from '../../utils/sseParser';
 import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
@@ -101,6 +102,7 @@ export function StudyGuideTab({
   const guideContentRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [continuingContent, setContinuingContent] = useState('');
 
   // Document type & study goal state for empty state generation controls
   const [documentType, setDocumentType] = useState(savedDocumentType || '');
@@ -154,18 +156,66 @@ export function StudyGuideTab({
     }
   };
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     if (!studyGuide) return;
     setContinuing(true);
+    setContinuingContent('');
+
+    const token = localStorage.getItem('token') || '';
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const url = `${apiBase}${studyApi.continueGuideStreamUrl(studyGuide.id)}`;
+
     try {
-      await studyApi.continueGuide(studyGuide.id);
-      onContinue?.();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok || !response.body) {
+        // Fall back to non-streaming on error
+        await studyApi.continueGuide(studyGuide.id);
+        onContinue?.();
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+        const { events, remaining } = parseSSEBuffer(sseBuffer);
+        sseBuffer = remaining;
+
+        for (const sseEvent of events) {
+          try {
+            const data = JSON.parse(sseEvent.data);
+            if (sseEvent.event === 'chunk') {
+              setContinuingContent(prev => prev + (data.text ?? ''));
+            } else if (sseEvent.event === 'done') {
+              // Stream complete — refresh parent data
+              setContinuingContent('');
+              onContinue?.();
+            }
+            // error events are silently ignored — user can retry
+          } catch {
+            // Malformed SSE data, skip
+          }
+        }
+      }
     } catch {
       // silently fail — user can retry
     } finally {
       setContinuing(false);
+      setContinuingContent('');
     }
-  };
+  }, [studyGuide, onContinue]);
 
   const parsedSuggestionTopics = useMemo(() => {
     if (!studyGuide?.suggestion_topics) return [];
@@ -274,10 +324,19 @@ export function StudyGuideTab({
           {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">
               {continuing ? (
-                <div className="cm-regen-status">
-                  <GenerationSpinner size="md" />
-                  <span>Continuing study guide...</span>
-                </div>
+                <>
+                  {continuingContent && (
+                    <div className="cm-tab-card-body">
+                      <ContentCard>
+                        <StreamingMarkdown content={continuingContent} isStreaming={true} />
+                      </ContentCard>
+                    </div>
+                  )}
+                  <div className="cm-regen-status">
+                    <GenerationSpinner size="md" />
+                    <span>Continuing study guide...</span>
+                  </div>
+                </>
               ) : (
                 <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
                   {'\u2728'} Continue generating
