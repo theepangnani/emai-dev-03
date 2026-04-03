@@ -29,6 +29,7 @@ import { useStudyGuideStream } from '../hooks/useStudyGuideStream';
 import { StreamingMarkdown } from '../components/StreamingMarkdown';
 import '../components/HighlightOverlay.css';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
+import { ResourceLinksSection } from '../components/ResourceLinksSection';
 import './StudyGuidePage.css';
 
 const GUIDE_TYPE_LABELS: Record<string, string> = {
@@ -474,6 +475,10 @@ export function StudyGuidePage() {
           </MarkdownErrorBoundary>
         </ContentCard>
       </div>
+
+      {guide.course_content_id && (
+        <ResourceLinksSection courseContentId={guide.course_content_id} />
+      )}
 
       {/* Streaming sub-guide content shown inline while generating */}
       {stream.isStreaming && generatingTopic && !isGeneratingRoute && (
