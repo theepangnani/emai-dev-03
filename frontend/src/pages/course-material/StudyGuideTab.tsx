@@ -1,10 +1,12 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
 import { classifyDocument } from '../../api/study';
-import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
+import { ContentCard } from '../../components/ContentCard';
+import { TableOfContents } from '../../components/TableOfContents';
+import { CollapsibleMarkdown } from '../../components/CollapsibleMarkdown';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
@@ -239,13 +241,10 @@ export function StudyGuideTab({
                   <span>Regenerating study guide...</span>
                 </div>
               )}
+              <TableOfContents content={studyGuide.content} />
               <div className="cm-tab-card-body" ref={printRef}>
                 <ContentCard>
-                  <MarkdownErrorBoundary>
-                    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                      <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
-                    </Suspense>
-                  </MarkdownErrorBoundary>
+                  <CollapsibleMarkdown content={studyGuide.content} guideId={studyGuide.id} courseContentId={courseContentId} />
                 </ContentCard>
               </div>
             </>
