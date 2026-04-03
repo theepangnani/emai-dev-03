@@ -687,7 +687,13 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [x] **Sub-guide level chips:** sub-guide pages show "Full Study Guide" + "Ask Bot" chips (#2870, #2871)
 - [x] **Streaming sub-guides:** SSE endpoint `generate-child-stream` with real-time token display (#2858, #2877, PR #2879)
 - [x] **Navigate-then-stream:** chip click navigates to `/study/guide/generating` page, streams content there (#2882, #2885)
+- [x] **Full Study Guide detailed prompt:** custom_prompt overrides concise overview with comprehensive user prompt (#2890, #2893)
+- [x] **Single generating indicator:** removed duplicate generating badge on streaming page (#2889, #2893)
 - [x] **Scroll to guide:** auto-scroll to content area when chip starts generating (#2811, #2876)
+- [x] **Migrations extracted:** all startup migrations moved to `app/db/migrations.py` (#2824, PR #2879)
+- [x] **DB: CASCADE FK** on DigestDeliveryLog (#2829), compound index on link_requests (#2830)
+- [x] **Digest validation:** timezone, delivery_time (HH:MM), digest_format (Literal) (#2831, #2832, PR #2879)
+- [x] **Decrypt optimization:** decrypt_token called once, not per comparison (#2826, PR #2879)
 - [ ] **Cost model:** ~50% aggregate savings; break-even at 2-3 sub-guides
 
 #### Problem Solver Guide Type (Phase 3 — #2697)
