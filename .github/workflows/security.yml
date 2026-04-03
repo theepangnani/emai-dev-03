@@ -3,12 +3,13 @@ name: Security Scanning
 on:
   schedule:
     - cron: '0 6 * * *'
-  pull_request:
-    branches: [master]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - '.gitignore'
+  # pull_request trigger disabled — re-enable for production hardening
+  # pull_request:
+  #   branches: [master]
+  #   paths-ignore:
+  #     - '*.md'
+  #     - 'docs/**'
+  #     - '.gitignore'
   workflow_dispatch:
 
 concurrency:
