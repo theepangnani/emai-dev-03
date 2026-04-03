@@ -321,7 +321,34 @@ After the guide content, include a section for deeper exploration:
 [{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
 
 Generate exactly 4-6 suggestion topics for the most important subtopics to explore further. Always include this section."""
+    elif custom_prompt:
+        # Full/detailed guide requested via chip — use comprehensive user prompt (#2890)
+        prompt = f"""Create a comprehensive, detailed study guide for the following assignment. Include thorough explanations, worked examples, practice problems, and key formulas.
+
+**Assignment:** {assignment_title}
+**Course:** {course_name}{due_info}
+
+**Source Material:**
+{assignment_description}
+
+Format in Markdown with clear headings and sections. For math, use LaTeX ($...$) for inline and $$...$$ for display equations.
+
+IMPORTANT: Today's date is {datetime.now().strftime("%Y-%m-%d")}. If the source material mentions any ACTUAL UPCOMING STUDENT DEADLINES (exams, tests, quizzes, homework due dates, or review sessions), include a section at the very end of your response in this exact format:
+--- CRITICAL_DATES ---
+[{{"date": "YYYY-MM-DD", "title": "Short description of what is due/happening", "priority": "high"}}]
+
+Use "high" priority for exams and tests, "medium" for homework and assignments, "low" for optional reviews.
+If a date does not include a year (e.g., "Due Mar 3", "Feb 25"), assume the nearest future occurrence from today's date and output the full YYYY-MM-DD.
+ONLY extract dates that are ACTUAL STUDENT DEADLINES — do NOT extract historical dates, reference dates, or dates that are part of the article/lesson subject matter (e.g., "the 2015 accessibility deadline" in a law article is NOT a student deadline).
+Only include this section if actual student deadlines with specific dates are found. If no student deadlines are found, do not include this section at all.
+
+After any CRITICAL_DATES section (or at the very end if no dates), include a section for deeper exploration:
+--- SUGGESTION_TOPICS ---
+[{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
+
+Generate exactly 4-6 suggestion topics for related areas to explore further. Always include this section."""
     else:
+        # Default concise overview prompt
         prompt = f"""Create a brief overview summary for the following assignment. This is a quick orientation — NOT a full study guide. The student will explore specific topics in depth via suggestion chips below.
 
 **Assignment:** {assignment_title}
