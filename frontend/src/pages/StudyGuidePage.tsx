@@ -476,7 +476,7 @@ export function StudyGuidePage() {
       </div>
 
       {/* Streaming sub-guide content shown inline while generating */}
-      {stream.isStreaming && generatingTopic && (
+      {stream.isStreaming && generatingTopic && !isGeneratingRoute && (
         <div className="sg-streaming-child" style={{ marginTop: '1.5rem' }}>
           <ContentCard>
             <div className="sg-streaming-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: 'var(--color-text-secondary, #666)' }}>
