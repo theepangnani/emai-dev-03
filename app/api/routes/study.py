@@ -935,7 +935,6 @@ Continue the study guide from here:"""
     # Capture values before closing DB
     user_id = current_user.id
     existing_content = guide.content
-    guide_title = guide.title
 
     db.close()
 

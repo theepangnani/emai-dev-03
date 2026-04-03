@@ -100,9 +100,17 @@ export function StudyGuideTab({
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const guideContentRef = useRef<HTMLDivElement>(null);
+  const continueAbortRef = useRef<AbortController | null>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [continuingContent, setContinuingContent] = useState('');
+
+  // Abort in-flight continue stream on unmount
+  useEffect(() => {
+    return () => {
+      continueAbortRef.current?.abort();
+    };
+  }, []);
 
   // Document type & study goal state for empty state generation controls
   const [documentType, setDocumentType] = useState(savedDocumentType || '');
@@ -158,6 +166,10 @@ export function StudyGuideTab({
 
   const handleContinue = useCallback(async () => {
     if (!studyGuide) return;
+    continueAbortRef.current?.abort();
+    const controller = new AbortController();
+    continueAbortRef.current = controller;
+
     setContinuing(true);
     setContinuingContent('');
 
@@ -172,6 +184,7 @@ export function StudyGuideTab({
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
@@ -202,16 +215,22 @@ export function StudyGuideTab({
               // Stream complete — refresh parent data
               setContinuingContent('');
               onContinue?.();
+            } else if (sseEvent.event === 'error') {
+              // Error from backend — fall back to non-streaming
+              await studyApi.continueGuide(studyGuide.id);
+              onContinue?.();
+              return;
             }
-            // error events are silently ignored — user can retry
           } catch {
             // Malformed SSE data, skip
           }
         }
       }
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       // silently fail — user can retry
     } finally {
+      continueAbortRef.current = null;
       setContinuing(false);
       setContinuingContent('');
     }
