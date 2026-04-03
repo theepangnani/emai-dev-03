@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { resourceLinksApi, type ResourceLinkGroup, type ResourceLinkItem } from '../api/resourceLinks';
 import './ResourceLinksSection.css';
 
+/** Only allow http/https URLs to prevent javascript: XSS */
+function safeHref(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return url;
+  } catch { /* invalid URL */ }
+  return '#';
+}
+
 interface ResourceLinksSectionProps {
   courseContentId: number;
 }
@@ -46,13 +55,16 @@ function ChevronIcon({ open }: { open: boolean }) {
 /* ── YouTube thumbnail card ──────────────────── */
 
 function YouTubeLinkCard({ link }: { link: ResourceLinkItem }) {
-  const thumbnailUrl = link.thumbnail_url || (link.youtube_video_id
-    ? `https://img.youtube.com/vi/${link.youtube_video_id}/mqdefault.jpg`
+  // Validate video ID format (alphanumeric, hyphens, underscores only)
+  const safeVideoId = link.youtube_video_id && /^[\w-]{6,20}$/.test(link.youtube_video_id)
+    ? link.youtube_video_id : null;
+  const thumbnailUrl = link.thumbnail_url || (safeVideoId
+    ? `https://img.youtube.com/vi/${safeVideoId}/mqdefault.jpg`
     : null);
 
   return (
     <a
-      href={link.url}
+      href={safeHref(link.url)}
       target="_blank"
       rel="noopener noreferrer"
       className="rl-card rl-card--youtube"
@@ -86,7 +98,7 @@ function ExtLinkCard({ link }: { link: ResourceLinkItem }) {
 
   return (
     <a
-      href={link.url}
+      href={safeHref(link.url)}
       target="_blank"
       rel="noopener noreferrer"
       className="rl-card rl-card--ext"
@@ -118,7 +130,7 @@ function TopicGroup({ heading, links }: { heading: string; links: ResourceLinkIt
 
   return (
     <div className="rl-topic-group">
-      <button className="rl-topic-heading" onClick={() => setOpen(v => !v)}>
+      <button className="rl-topic-heading" onClick={() => setOpen(v => !v)} aria-expanded={open}>
         <ChevronIcon open={open} />
         <span>{heading}</span>
         <span className="rl-topic-count">{links.length}</span>
