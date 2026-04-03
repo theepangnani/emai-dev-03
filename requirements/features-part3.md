@@ -5060,3 +5060,15 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 - `frontend/src/components/UploadMaterialWizard.tsx` — question mode wiring
 - `frontend/src/components/parent/hooks/useParentStudyTools.ts` — question mode with `?autoGenerate=study_guide`
 - `frontend/src/pages/CourseMaterialDetailPage.tsx` — auto-stream useEffect for `autoGenerate` param
+
+**PRs:**
+| PR | Title |
+|----|-------|
+| #2866 | feat: Ask a Question — core feature, wizard tabs, strategy pattern, safety guardrails |
+| #2881 | fix: full guide + immediate streaming via `?autoGenerate` param |
+| #2884 | fix: `_build_study_guide_prompt()` uses full guide user prompt for `parent_question` |
+| #2888 | fix: CourseContent create endpoint stores `document_type`/`study_goal` (root cause fix) |
+
+**Known future enhancements:**
+- [ ] Document dual prompt locations — system in `study_guide_strategy.py`, user in `ai_service.py` (#2886)
+- [ ] Add `CRITICAL_DATES` extraction to parent_question prompt for auto-task creation (#2887)
