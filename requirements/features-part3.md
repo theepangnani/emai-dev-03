@@ -5072,3 +5072,69 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 **Known future enhancements:**
 - [ ] Document dual prompt locations — system in `study_guide_strategy.py`, user in `ai_service.py` (#2886)
 - [ ] Add `CRITICAL_DATES` extraction to parent_question prompt for auto-task creation (#2887)
+- [ ] Convert continue endpoint to SSE streaming — spinner shows but no content streams (#2896)
+
+### 6.129 Study Guide Section Navigation — Collapsible Sections & Table of Contents (#2894) - PLANNED
+
+Long study guides render as a single continuous page, making navigation difficult. Add section-based navigation to improve readability and usability for parents and students.
+
+**Requirements:**
+1. **Table of Contents (TOC)** — Auto-generated from H2/H3 markdown headings, rendered at top of study guide
+2. **Collapsible sections** — Each H2 section can be collapsed/expanded (default: all expanded)
+3. **Smooth scroll** — Clicking a TOC item smooth-scrolls to the corresponding section
+4. **Section anchors** — Each heading gets an anchor ID for direct linking (e.g., `?tab=guide#trapezoids`)
+5. **Streaming compatibility** — TOC updates as sections stream in during generation
+6. **Mobile-friendly** — TOC adapts to mobile layout (floating menu or inline)
+
+**Sub-tasks:**
+- [ ] Frontend: Parse markdown headings to generate TOC component
+- [ ] Frontend: Add collapse/expand toggle to each H2 section
+- [ ] Frontend: Smooth-scroll navigation from TOC to sections
+- [ ] Frontend: Persist collapse state in localStorage per guide
+- [ ] Frontend: Mobile-responsive TOC layout
+- [ ] Testing: Verify TOC works with streaming and sub-guides
+
+**Key context:**
+- Frontend-only change — no backend modifications needed
+- Builds on existing collapsible panels pattern (§6.86) and scroll-to-top button (§6.97)
+- Study guide content is markdown rendered via `StreamingMarkdown` component
+
+### 6.130 Inline Helpful Links for Major Topics in Study Guides (#2895) - PLANNED
+
+Study guides should surface helpful external links (videos, interactive tools, articles) for major topics, giving parents and students curated resources to deepen understanding.
+
+**Current state:** `ResourceSuggestionService` already AI-generates and validates links against 30+ trusted educational domains (Khan Academy, Desmos, GeoGebra, PhET, etc.) and stores them as `ResourceLink` records. These are displayed on the course material page but NOT within the study guide view itself.
+
+**Requirements:**
+
+**Phase 1: Resource Links Section in Study Guide View**
+1. Query existing `ResourceLink` records for the guide's `course_content_id`
+2. Render a **"Helpful Resources"** section at the bottom of the study guide
+3. Group links by `topic_heading` with icons for YouTube vs external links
+4. Show thumbnail preview for YouTube videos
+5. Links open in new tab
+
+**Phase 2: Inline Topic Links (AI-generated)**
+6. Enhance study guide generation prompt to include `📚 Learn more` callouts after major sections
+7. AI selects from trusted domain whitelist
+8. Post-process to validate URLs resolve (HEAD check)
+9. Render as styled callout boxes in guide markdown
+
+**Phase 3: Teacher-Curated Links**
+10. Teachers can pin specific resources to course materials (`source: "teacher_shared"`)
+11. Teacher-pinned links appear with "Teacher Recommended" badge
+12. Prioritized above AI-suggested links
+
+**Sub-tasks:**
+- [ ] Frontend: Add "Helpful Resources" section to StudyGuidePage when ResourceLinks exist
+- [ ] Frontend: Resource link card component with icons, thumbnails, grouping
+- [ ] Backend: Ensure ResourceLinks are returned with study guide API response
+- [ ] AI: Update study guide prompts to include inline resource callouts (Phase 2)
+- [ ] Backend: URL validation for AI-embedded links (Phase 2)
+- [ ] Frontend: Teacher resource pinning UI (Phase 3)
+- [ ] Testing: Verify links display for all guide types and roles
+
+**Key files:**
+- `app/services/resource_suggestion_service.py` — existing AI resource generation
+- `app/models/resource_link.py` — existing ResourceLink model
+- `frontend/src/pages/StudyGuidePage.tsx` — study guide display

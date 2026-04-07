@@ -1,10 +1,13 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StudyGuide } from '../../api/client';
 import type { TaskItem } from '../../api/tasks';
 import { studyApi } from '../../api/study';
 import { classifyDocument } from '../../api/study';
-import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../../components/ContentCard';
+import { parseSSEBuffer } from '../../utils/sseParser';
+import { ContentCard } from '../../components/ContentCard';
+import { TableOfContents } from '../../components/TableOfContents';
+import { CollapsibleMarkdown } from '../../components/CollapsibleMarkdown';
 import { FormatSelector, type StudyFormat } from '../../components/study/FormatSelector';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
@@ -99,8 +102,17 @@ export function StudyGuideTab({
 }: StudyGuideTabProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const guideContentRef = useRef<HTMLDivElement>(null);
+  const continueAbortRef = useRef<AbortController | null>(null);
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
+  const [continuingContent, setContinuingContent] = useState('');
+
+  // Abort in-flight continue stream on unmount
+  useEffect(() => {
+    return () => {
+      continueAbortRef.current?.abort();
+    };
+  }, []);
 
   // Document type & study goal state for empty state generation controls
   const [documentType, setDocumentType] = useState(savedDocumentType || '');
@@ -154,18 +166,79 @@ export function StudyGuideTab({
     }
   };
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     if (!studyGuide) return;
+    continueAbortRef.current?.abort();
+    const controller = new AbortController();
+    continueAbortRef.current = controller;
+
     setContinuing(true);
+    setContinuingContent('');
+
+    const token = localStorage.getItem('token') || '';
+    const apiBase = import.meta.env.VITE_API_URL ?? '';
+    const url = `${apiBase}${studyApi.continueGuideStreamUrl(studyGuide.id)}`;
+
     try {
-      await studyApi.continueGuide(studyGuide.id);
-      onContinue?.();
-    } catch {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        signal: controller.signal,
+      });
+
+      if (!response.ok || !response.body) {
+        if (controller.signal.aborted) return;
+        // Fall back to non-streaming on error
+        await studyApi.continueGuide(studyGuide.id);
+        onContinue?.();
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        sseBuffer += decoder.decode(value, { stream: true });
+        const { events, remaining } = parseSSEBuffer(sseBuffer);
+        sseBuffer = remaining;
+
+        for (const sseEvent of events) {
+          try {
+            const data = JSON.parse(sseEvent.data);
+            if (sseEvent.event === 'chunk') {
+              setContinuingContent(prev => prev + (data.text ?? ''));
+            } else if (sseEvent.event === 'done') {
+              // Stream complete — refresh parent data
+              setContinuingContent('');
+              onContinue?.();
+            } else if (sseEvent.event === 'error') {
+              if (controller.signal.aborted) return;
+              // Error from backend — fall back to non-streaming
+              await studyApi.continueGuide(studyGuide.id);
+              onContinue?.();
+              return;
+            }
+          } catch {
+            // Malformed SSE data, skip
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       // silently fail — user can retry
     } finally {
+      continueAbortRef.current = null;
       setContinuing(false);
+      setContinuingContent('');
     }
-  };
+  }, [studyGuide, onContinue]);
 
   const parsedSuggestionTopics = useMemo(() => {
     if (!studyGuide?.suggestion_topics) return [];
@@ -239,13 +312,10 @@ export function StudyGuideTab({
                   <span>Regenerating study guide...</span>
                 </div>
               )}
+              <TableOfContents content={studyGuide.content} />
               <div className="cm-tab-card-body" ref={printRef}>
                 <ContentCard>
-                  <MarkdownErrorBoundary>
-                    <Suspense fallback={<div className="content-card-render-loading">Rendering...</div>}>
-                      <MarkdownBody content={studyGuide.content} courseContentId={courseContentId} />
-                    </Suspense>
-                  </MarkdownErrorBoundary>
+                  <CollapsibleMarkdown content={studyGuide.content} guideId={studyGuide.id} courseContentId={courseContentId} />
                 </ContentCard>
               </div>
             </>
@@ -274,10 +344,19 @@ export function StudyGuideTab({
           {!isStreaming && studyGuide.is_truncated && (
             <div className="cm-truncated-banner">
               {continuing ? (
-                <div className="cm-regen-status">
-                  <GenerationSpinner size="md" />
-                  <span>Continuing study guide...</span>
-                </div>
+                <>
+                  {continuingContent && (
+                    <div className="cm-tab-card-body">
+                      <ContentCard>
+                        <StreamingMarkdown content={continuingContent} isStreaming={true} />
+                      </ContentCard>
+                    </div>
+                  )}
+                  <div className="cm-regen-status">
+                    <GenerationSpinner size="md" />
+                    <span>Continuing study guide...</span>
+                  </div>
+                </>
               ) : (
                 <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
                   {'\u2728'} Continue generating

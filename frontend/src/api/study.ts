@@ -286,6 +286,9 @@ export const studyApi = {
     return response.data as StudyGuide;
   },
 
+  /** Return the SSE endpoint URL for streaming continuation of a truncated guide. */
+  continueGuideStreamUrl: (guideId: number) => `/api/study/${guideId}/continue-stream`,
+
   // File Upload Methods
   getSupportedFormats: async () => {
     const response = await api.get('/api/study/upload/formats');

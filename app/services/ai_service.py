@@ -208,6 +208,80 @@ async def generate_content(
     raise last_error  # type: ignore[misc]
 
 
+async def generate_content_stream(
+    prompt: str,
+    system_prompt: str = "You are an educational assistant helping students learn effectively.",
+    max_tokens: int = 4096,
+    temperature: float = 0.7,
+) -> AsyncGenerator[dict, None]:
+    """Stream content generation via Anthropic streaming API.
+
+    Yields SSE-compatible event dicts:
+        - {"event": "chunk", "data": "<text>"}  for each token
+        - {"event": "done", "data": {"is_truncated": bool, "full_content": str}}  on completion
+        - {"event": "error", "data": "<message>"}  on failure
+    """
+    start_time = time.time()
+
+    try:
+        client = get_async_anthropic_client()
+        full_content = ""
+
+        async with client.messages.stream(
+            model=settings.claude_model,
+            system=system_prompt,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=temperature,
+        ) as stream:
+            async for text in stream.text_stream:
+                full_content += text
+                yield {"event": "chunk", "data": text}
+
+            final = await stream.get_final_message()
+            input_tok = final.usage.input_tokens
+            output_tok = final.usage.output_tokens
+            stop_reason = final.stop_reason
+            is_truncated = stop_reason == "max_tokens"
+
+        model = settings.claude_model
+        _last_ai_usage.set({
+            "prompt_tokens": input_tok,
+            "completion_tokens": output_tok,
+            "total_tokens": input_tok + output_tok,
+            "model_name": model,
+            "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
+        })
+
+        duration_ms = (time.time() - start_time) * 1000
+        logger.info(
+            f"Content stream completed | duration={duration_ms:.2f}ms | "
+            f"input_tokens={input_tok} | output_tokens={output_tok} | "
+            f"stop_reason={stop_reason}"
+        )
+
+        yield {
+            "event": "done",
+            "data": {
+                "is_truncated": is_truncated,
+                "full_content": full_content,
+            },
+        }
+
+    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+        duration_ms = (time.time() - start_time) * 1000
+        logger.error(
+            f"Content stream failed | duration={duration_ms:.2f}ms | "
+            f"error={type(e).__name__}: {e}"
+        )
+        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={str(e)}")
+        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+
+
 async def summarize_teacher_communication(
     subject: str,
     body: str,

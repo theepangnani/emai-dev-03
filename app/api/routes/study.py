@@ -898,6 +898,100 @@ Continue the study guide from here:"""
     return StudyGuideResponse.model_validate(guide)
 
 
+@router.post("/{guide_id}/continue-stream")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def continue_study_guide_stream(
+    guide_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Stream the continuation of a truncated study guide via SSE."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == guide_id,
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.guide_type == "study_guide",
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Study guide not found")
+
+    if not guide.is_truncated:
+        raise HTTPException(status_code=400, detail="Study guide is not truncated")
+
+    check_ai_usage(current_user, db)
+
+    system_prompt = """You are an expert educational tutor. Continue the study guide from where it left off.
+Do not repeat content already covered. Pick up exactly where the previous content ended.
+Use simple language, practical examples, and clean Markdown formatting.
+For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations."""
+
+    prompt = f"""The following study guide was cut off due to length limits. Continue it from where it left off. Do not repeat any content already covered.
+
+**Previous content:**
+{guide.content}
+
+Continue the study guide from here:"""
+
+    # Capture values before closing DB
+    user_id = current_user.id
+    existing_content = guide.content
+
+    db.close()
+
+    async def event_stream():
+        yield f"event: start\ndata: {json.dumps({'guide_id': guide_id})}\n\n"
+
+        full_content = ""
+        is_truncated = False
+
+        try:
+            from app.services.ai_service import generate_content_stream
+            async for event in generate_content_stream(prompt, system_prompt, max_tokens=4096):
+                if event["event"] == "chunk":
+                    yield f"event: chunk\ndata: {json.dumps({'text': event['data']})}\n\n"
+                elif event["event"] == "done":
+                    full_content = event["data"]["full_content"]
+                    is_truncated = event["data"]["is_truncated"]
+                elif event["event"] == "error":
+                    yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
+                    return
+        except Exception as e:
+            logger.error("SSE continue stream failed: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
+            return
+
+        # Save in new DB session
+        try:
+            from app.db.database import SessionLocal
+            with SessionLocal() as save_db:
+                guide_obj = save_db.get(StudyGuide, guide_id)
+                if guide_obj:
+                    guide_obj.content = existing_content + "\n\n" + full_content
+                    guide_obj.is_truncated = is_truncated
+
+                    from app.models.user import User as _User
+                    user = save_db.get(_User, user_id)
+                    if user:
+                        _usage = get_last_ai_usage() or {}
+                        increment_ai_usage(user, save_db, generation_type="study_guide", **_usage)
+
+                    log_action(save_db, user_id=user_id, action="update", resource_type="study_guide",
+                               resource_id=guide_obj.id, details={"action": "continue", "streamed": True})
+                    save_db.commit()
+                    save_db.refresh(guide_obj)
+
+                    resp = StudyGuideResponse.model_validate(guide_obj)
+                    yield f"event: done\ndata: {json.dumps(resp.model_dump(mode='json'))}\n\n"
+                else:
+                    yield f"event: error\ndata: {json.dumps({'message': 'Guide record not found after streaming.'})}\n\n"
+
+        except Exception as e:
+            logger.error("Failed to save continued study guide: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': 'Failed to save continuation. Please try again.'})}\n\n"
+
+    return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @router.post("/quiz/generate", response_model=QuizResponse)
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def generate_quiz_endpoint(
@@ -2121,7 +2215,6 @@ async def generate_child_guide_stream(
 
         full_content = ""
         is_truncated = False
-        error_occurred = False
 
         try:
             async for event in generate_study_guide_stream(
@@ -2138,15 +2231,11 @@ async def generate_child_guide_stream(
                     full_content = event["data"]["full_content"]
                     is_truncated = event["data"]["is_truncated"]
                 elif event["event"] == "error":
-                    error_occurred = True
                     yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
                     return
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
-            return
-
-        if error_occurred:
             return
 
         # Post-process
@@ -3059,7 +3148,6 @@ async def generate_study_guide_stream_endpoint(
 
         full_content = ""
         is_truncated = False
-        error_occurred = False
 
         try:
             async for event in generate_study_guide_stream(
@@ -3082,16 +3170,12 @@ async def generate_study_guide_stream_endpoint(
                     full_content = event["data"]["full_content"]
                     is_truncated = event["data"]["is_truncated"]
                 elif event["event"] == "error":
-                    error_occurred = True
                     yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
                     return
 
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
-            return
-
-        if error_occurred:
             return
 
         # Post-process: parse critical dates, append unplaced images

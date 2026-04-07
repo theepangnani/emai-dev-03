@@ -58,6 +58,14 @@ vi.mock('../components/ContentCard', () => ({
   MarkdownErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+vi.mock('../components/TableOfContents', () => ({
+  TableOfContents: () => <div data-testid="table-of-contents" />,
+}))
+
+vi.mock('../components/CollapsibleMarkdown', () => ({
+  CollapsibleMarkdown: ({ content }: { content: string }) => <div data-testid="markdown-content">{content}</div>,
+}))
+
 const mockConfirm = vi.fn()
 vi.mock('../components/ConfirmModal', () => ({
   useConfirm: () => ({
