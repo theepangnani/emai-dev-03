@@ -65,20 +65,18 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         <span className="sg-toc-title">Table of Contents</span>
         <span className="sg-toc-count">{items.length}</span>
       </button>
-      {!collapsed && (
-        <nav id="sg-toc-nav" className="sg-toc-list" aria-label="Table of contents">
-          {items.map((item, i) => (
-            <button
-              key={`${item.id}-${i}`}
-              className={`sg-toc-item sg-toc-item--h${item.level}`}
-              onClick={() => handleClick(item.id)}
-              type="button"
-            >
-              {item.text}
-            </button>
-          ))}
-        </nav>
-      )}
+      <nav id="sg-toc-nav" className="sg-toc-list" aria-label="Table of contents" hidden={collapsed}>
+        {items.map((item, i) => (
+          <button
+            key={`${item.id}-${i}`}
+            className={`sg-toc-item sg-toc-item--h${item.level}`}
+            onClick={() => handleClick(item.id)}
+            type="button"
+          >
+            {item.text}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

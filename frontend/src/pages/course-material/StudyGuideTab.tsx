@@ -190,6 +190,7 @@ export function StudyGuideTab({
       });
 
       if (!response.ok || !response.body) {
+        if (controller.signal.aborted) return;
         // Fall back to non-streaming on error
         await studyApi.continueGuide(studyGuide.id);
         onContinue?.();
@@ -218,6 +219,7 @@ export function StudyGuideTab({
               setContinuingContent('');
               onContinue?.();
             } else if (sseEvent.event === 'error') {
+              if (controller.signal.aborted) return;
               // Error from backend — fall back to non-streaming
               await studyApi.continueGuide(studyGuide.id);
               onContinue?.();
