@@ -943,7 +943,6 @@ Continue the study guide from here:"""
 
         full_content = ""
         is_truncated = False
-        error_occurred = False
 
         try:
             from app.services.ai_service import generate_content_stream
@@ -954,15 +953,11 @@ Continue the study guide from here:"""
                     full_content = event["data"]["full_content"]
                     is_truncated = event["data"]["is_truncated"]
                 elif event["event"] == "error":
-                    error_occurred = True
                     yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
                     return
         except Exception as e:
             logger.error("SSE continue stream failed: %s: %s", type(e).__name__, e)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
-            return
-
-        if error_occurred:
             return
 
         # Save in new DB session
