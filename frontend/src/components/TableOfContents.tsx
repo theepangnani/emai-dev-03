@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { generateHeadingId, deduplicateIds } from '../utils/headingId';
 import './TableOfContents.css';
 
 interface TocItem {
@@ -21,13 +22,9 @@ function parseHeadings(markdown: string): TocItem[] {
     const level = match[1].length as 2 | 3;
     const text = match[2].replace(/[*_`~]/g, '').trim();
     if (!text) continue;
-    const id = text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-');
-    items.push({ id, text, level });
+    items.push({ id: generateHeadingId(text), text, level });
   }
-  return items;
+  return deduplicateIds(items);
 }
 
 export function TableOfContents({ content }: TableOfContentsProps) {
@@ -59,6 +56,8 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         className="sg-toc-toggle"
         onClick={() => setCollapsed(v => !v)}
         aria-expanded={!collapsed}
+        aria-controls="sg-toc-nav"
+        type="button"
       >
         <svg className={`sg-toc-chevron ${collapsed ? '' : 'sg-toc-chevron--open'}`} width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -67,12 +66,13 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         <span className="sg-toc-count">{items.length}</span>
       </button>
       {!collapsed && (
-        <nav className="sg-toc-list" aria-label="Table of contents">
+        <nav id="sg-toc-nav" className="sg-toc-list" aria-label="Table of contents">
           {items.map((item, i) => (
             <button
               key={`${item.id}-${i}`}
               className={`sg-toc-item sg-toc-item--h${item.level}`}
               onClick={() => handleClick(item.id)}
+              type="button"
             >
               {item.text}
             </button>

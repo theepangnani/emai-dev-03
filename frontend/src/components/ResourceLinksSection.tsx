@@ -58,9 +58,11 @@ function YouTubeLinkCard({ link }: { link: ResourceLinkItem }) {
   // Validate video ID format (alphanumeric, hyphens, underscores only)
   const safeVideoId = link.youtube_video_id && /^[\w-]{6,20}$/.test(link.youtube_video_id)
     ? link.youtube_video_id : null;
-  const thumbnailUrl = link.thumbnail_url || (safeVideoId
+  const rawThumb = link.thumbnail_url || (safeVideoId
     ? `https://img.youtube.com/vi/${safeVideoId}/mqdefault.jpg`
     : null);
+  // Sanitize thumbnail URL — only allow http/https
+  const thumbnailUrl = rawThumb ? safeHref(rawThumb) : null;
 
   return (
     <a
@@ -94,7 +96,7 @@ function ExtLinkCard({ link }: { link: ResourceLinkItem }) {
     domain = new URL(link.url).hostname.replace(/^www\./, '');
   } catch { /* ignore */ }
 
-  const faviconUrl = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=32` : null;
+  const faviconUrl = domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : null;
 
   return (
     <a
@@ -123,30 +125,29 @@ function ExtLinkCard({ link }: { link: ResourceLinkItem }) {
 
 /* ── Topic group ────────────────────────────── */
 
-function TopicGroup({ heading, links }: { heading: string; links: ResourceLinkItem[] }) {
+function TopicGroup({ heading, links, groupId }: { heading: string; links: ResourceLinkItem[]; groupId: string }) {
   const [open, setOpen] = useState(true);
   const youtubeLinks = links.filter(l => l.resource_type === 'youtube' && l.youtube_video_id);
   const otherLinks = links.filter(l => l.resource_type !== 'youtube' || !l.youtube_video_id);
+  const bodyId = `rl-group-${groupId}`;
 
   return (
     <div className="rl-topic-group">
-      <button className="rl-topic-heading" onClick={() => setOpen(v => !v)} aria-expanded={open}>
+      <button className="rl-topic-heading" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-controls={bodyId} type="button">
         <ChevronIcon open={open} />
         <span>{heading}</span>
         <span className="rl-topic-count">{links.length}</span>
       </button>
-      {open && (
-        <div className="rl-topic-body">
-          <div className="rl-cards-grid">
-            {youtubeLinks.map(link => (
-              <YouTubeLinkCard key={link.id} link={link} />
-            ))}
-            {otherLinks.map(link => (
-              <ExtLinkCard key={link.id} link={link} />
-            ))}
-          </div>
+      <div id={bodyId} className="rl-topic-body" hidden={!open}>
+        <div className="rl-cards-grid">
+          {youtubeLinks.map(link => (
+            <YouTubeLinkCard key={link.id} link={link} />
+          ))}
+          {otherLinks.map(link => (
+            <ExtLinkCard key={link.id} link={link} />
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -166,7 +167,15 @@ export function ResourceLinksSection({ courseContentId }: ResourceLinksSectionPr
     return () => { cancelled = true; };
   }, [courseContentId]);
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="rl-section rl-section--loading" aria-busy="true">
+        <div className="rl-skeleton-header" />
+        <div className="rl-skeleton-card" />
+        <div className="rl-skeleton-card" />
+      </div>
+    );
+  }
 
   const totalLinks = groups.reduce((sum, g) => sum + g.links.length, 0);
   if (totalLinks === 0) return null;
@@ -181,6 +190,7 @@ export function ResourceLinksSection({ courseContentId }: ResourceLinksSectionPr
       {groups.map((group, i) => (
         <TopicGroup
           key={group.topic_heading || `__other_${i}`}
+          groupId={`${i}`}
           heading={group.topic_heading || 'Other Resources'}
           links={group.links}
         />

@@ -47,17 +47,21 @@ export function CollapsibleSection({ id, title, guideId, children }: Collapsible
 
   return (
     <div className="sg-collapsible" id={id}>
-      <button className="sg-collapsible-toggle" onClick={toggle} aria-expanded={expanded}>
+      <button
+        className="sg-collapsible-toggle"
+        onClick={toggle}
+        aria-expanded={expanded}
+        aria-controls={`${id}-body`}
+        type="button"
+      >
         <svg className={`sg-collapsible-chevron ${expanded ? 'sg-collapsible-chevron--open' : ''}`} width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         <span className="sg-collapsible-title">{title}</span>
       </button>
-      {expanded && (
-        <div className="sg-collapsible-body">
-          {children}
-        </div>
-      )}
+      <div id={`${id}-body`} className="sg-collapsible-body" hidden={!expanded}>
+        {children}
+      </div>
     </div>
   );
 }

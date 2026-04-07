@@ -18,15 +18,17 @@ export function parseSSEBuffer(buffer: string): { events: SSEEvent[]; remaining:
     if (!block.trim()) continue;
 
     let event = 'message';
-    let data = '';
+    const dataLines: string[] = [];
 
     for (const line of block.split('\n')) {
       if (line.startsWith('event:')) {
         event = line.slice(6).trim();
       } else if (line.startsWith('data:')) {
-        data = line.slice(5).trim();
+        dataLines.push(line.slice(5).trim());
       }
     }
+
+    const data = dataLines.join('\n');
 
     if (data) {
       events.push({ event, data });

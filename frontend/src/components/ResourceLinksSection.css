@@ -205,3 +205,33 @@
     width: 100%;
   }
 }
+
+/* ── Loading skeleton ────────────────────────── */
+
+.rl-section--loading {
+  padding: 1rem;
+}
+
+@keyframes rl-shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.rl-skeleton-header,
+.rl-skeleton-card {
+  background: linear-gradient(90deg, var(--color-bg-muted, #f0f0f0) 25%, var(--color-bg, #e0e0e0) 50%, var(--color-bg-muted, #f0f0f0) 75%);
+  background-size: 400px 100%;
+  animation: rl-shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+.rl-skeleton-header {
+  height: 1.25rem;
+  width: 40%;
+  margin-bottom: 0.75rem;
+}
+
+.rl-skeleton-card {
+  height: 3.5rem;
+  margin-bottom: 0.5rem;
+}

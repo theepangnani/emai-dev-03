@@ -2215,7 +2215,6 @@ async def generate_child_guide_stream(
 
         full_content = ""
         is_truncated = False
-        error_occurred = False
 
         try:
             async for event in generate_study_guide_stream(
@@ -2232,15 +2231,11 @@ async def generate_child_guide_stream(
                     full_content = event["data"]["full_content"]
                     is_truncated = event["data"]["is_truncated"]
                 elif event["event"] == "error":
-                    error_occurred = True
                     yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
                     return
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
-            return
-
-        if error_occurred:
             return
 
         # Post-process
@@ -3153,7 +3148,6 @@ async def generate_study_guide_stream_endpoint(
 
         full_content = ""
         is_truncated = False
-        error_occurred = False
 
         try:
             async for event in generate_study_guide_stream(
@@ -3176,16 +3170,12 @@ async def generate_study_guide_stream_endpoint(
                     full_content = event["data"]["full_content"]
                     is_truncated = event["data"]["is_truncated"]
                 elif event["event"] == "error":
-                    error_occurred = True
                     yield f"event: error\ndata: {json.dumps({'message': event['data']})}\n\n"
                     return
 
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
-            return
-
-        if error_occurred:
             return
 
         # Post-process: parse critical dates, append unplaced images

@@ -55,7 +55,7 @@
   .sg-collapsible-chevron {
     display: none;
   }
-  .sg-collapsible-body {
+  .sg-collapsible-body[hidden] {
     display: block !important;
   }
 }

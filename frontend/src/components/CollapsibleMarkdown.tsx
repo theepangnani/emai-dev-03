@@ -1,6 +1,7 @@
 import { Suspense, useMemo } from 'react';
 import { MarkdownBody, MarkdownErrorBoundary } from './ContentCard';
 import { CollapsibleSection } from './CollapsibleSection';
+import { generateHeadingId, deduplicateIds } from '../utils/headingId';
 
 interface MarkdownSection {
   id: string;
@@ -23,11 +24,7 @@ function splitAtH2(markdown: string): { preamble: string; sections: MarkdownSect
         sections.push({ id: current.id, title: current.title, content: current.lines.join('\n') });
       }
       const title = match[1].replace(/[*_`~]/g, '').trim();
-      const id = title
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-');
-      current = { title, id, lines: [] };
+      current = { title, id: generateHeadingId(title), lines: [] };
     } else if (current) {
       current.lines.push(line);
     } else {
@@ -39,7 +36,7 @@ function splitAtH2(markdown: string): { preamble: string; sections: MarkdownSect
     sections.push({ id: current.id, title: current.title, content: current.lines.join('\n') });
   }
 
-  return { preamble: preamble.trimEnd(), sections };
+  return { preamble: preamble.trimEnd(), sections: deduplicateIds(sections) };
 }
 
 interface CollapsibleMarkdownProps {
