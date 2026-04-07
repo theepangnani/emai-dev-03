@@ -276,11 +276,10 @@ async def generate_content_stream(
         )
         yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
 
-        except Exception as e:
-            duration_ms = (time.time() - start_time) * 1000
-            logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={str(e)}")
-            yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
-            return
+    except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={str(e)}")
+        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
 
 
 async def summarize_teacher_communication(
