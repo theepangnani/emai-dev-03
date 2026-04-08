@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { studyApi } from '../api/client';
 import type { StudyGuide, ResolvedStudent } from '../api/client';
@@ -9,7 +9,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
 import { EditStudyGuideModal } from '../components/EditStudyGuideModal';
-import { ContentCard } from '../components/ContentCard';
+import { ContentCard, MarkdownBody, MarkdownErrorBoundary } from '../components/ContentCard';
 import { TableOfContents } from '../components/TableOfContents';
 import { CollapsibleMarkdown } from '../components/CollapsibleMarkdown';
 import { useConfirm } from '../components/ConfirmModal';
@@ -468,10 +468,18 @@ export function StudyGuidePage() {
         </div>
       )}
 
-      <TableOfContents content={guide.content} />
+      {guide.parent_guide_id && <TableOfContents content={guide.content} />}
       <div ref={contentRef}>
         <ContentCard>
-          <CollapsibleMarkdown content={guide.content} guideId={guide.id} courseContentId={guide.course_content_id ?? undefined} />
+          {guide.parent_guide_id ? (
+            <CollapsibleMarkdown content={guide.content} guideId={guide.id} courseContentId={guide.course_content_id ?? undefined} />
+          ) : (
+            <MarkdownErrorBoundary>
+              <Suspense fallback={<div className="content-card-render-loading">Formatting study guide...</div>}>
+                <MarkdownBody content={guide.content} courseContentId={guide.course_content_id ?? undefined} />
+              </Suspense>
+            </MarkdownErrorBoundary>
+          )}
         </ContentCard>
       </div>
 
