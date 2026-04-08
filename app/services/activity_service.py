@@ -158,8 +158,10 @@ def get_recent_activity(
             .limit(limit)
             .all()
         )
+        sender_ids = list({msg.sender_id for msg in message_rows})
+        senders = {u.id: u for u in db.query(User).filter(User.id.in_(sender_ids)).all()} if sender_ids else {}
         for msg in message_rows:
-            sender = db.query(User).filter(User.id == msg.sender_id).first()
+            sender = senders.get(msg.sender_id)
             sender_name = sender.full_name if sender else "Someone"
             items.append(ActivityItem(
                 activity_type=ActivityType.MESSAGE_RECEIVED,
