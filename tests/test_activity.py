@@ -190,6 +190,34 @@ def test_filter_by_student_id(client, db_session, family):
     assert len(course_items) == 0
 
 
+def test_task_filter_excludes_other_childs_tasks(client, db_session, family):
+    """Tasks for child1 must NOT appear when filtering by child2 (#2914)."""
+    from app.models.task import Task
+
+    task = Task(
+        title="Child1 Only Task",
+        created_by_user_id=family["parent"].id,
+        assigned_to_user_id=family["child_user"].id,
+        student_id=family["student"].id,
+    )
+    db_session.add(task)
+    db_session.commit()
+
+    headers = _auth(client, "actparent@test.com")
+
+    # Filtering to student2 should NOT show child1's task
+    resp = client.get(f"/api/activity/recent?student_id={family['student2'].id}", headers=headers)
+    data = resp.json()
+    task_items = [i for i in data if i["title"] == "Child1 Only Task"]
+    assert len(task_items) == 0
+
+    # Filtering to student1 SHOULD show it
+    resp = client.get(f"/api/activity/recent?student_id={family['student'].id}", headers=headers)
+    data = resp.json()
+    task_items = [i for i in data if i["title"] == "Child1 Only Task"]
+    assert len(task_items) >= 1
+
+
 def test_limit_parameter(client, db_session, family):
     """The limit parameter caps the number of results."""
     headers = _auth(client, "actparent@test.com")

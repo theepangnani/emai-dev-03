@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { courseContentsApi, coursesApi } from '../../../api/courses';
 import type { StudyMaterialGenerateParams } from '../../UploadMaterialWizard';
 
@@ -11,6 +12,7 @@ export function useParentStudyTools({
   selectedChildUserId,
   navigate,
 }: UseParentStudyToolsParams) {
+  const queryClient = useQueryClient();
   // Study tools modal state
   const [showStudyModal, setShowStudyModal] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -58,6 +60,7 @@ export function useParentStudyTools({
         });
 
         setBackgroundGeneration({ status: 'success', type: 'Study Guide', resultId: created.id });
+        queryClient.invalidateQueries({ queryKey: ['activity'] });
         // Navigate with autoGenerate param — detail page starts streaming immediately
         navigate(`/course-materials/${created.id}?autoGenerate=study_guide`, { state: { selectedChild: selectedChildUserId } });
       } catch {
@@ -129,6 +132,7 @@ export function useParentStudyTools({
       }
 
       setBackgroundGeneration({ status: 'success', type: 'Material', resultId: created.id });
+      queryClient.invalidateQueries({ queryKey: ['activity'] });
       // Navigate to the detail page — user can generate study guides from there
       navigate(`/course-materials/${created.id}`, { state: { selectedChild: selectedChildUserId } });
     } catch {

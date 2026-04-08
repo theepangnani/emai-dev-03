@@ -3,6 +3,11 @@ import { renderHook, act } from '@testing-library/react'
 import { useParentStudyTools } from './useParentStudyTools'
 
 // ── Mocks ──────────────────────────────────────────────────────
+const mockInvalidateQueries = vi.fn()
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
+}))
+
 const mockGetDefault = vi.fn()
 const mockCreate = vi.fn()
 const mockUploadFile = vi.fn()

@@ -73,14 +73,21 @@ def get_recent_activity(
         ))
 
     # ── 2. Tasks created (by parent OR assigned to child) ──
+    if student_id is not None:
+        task_ownership_filter = or_(
+            Task.student_id.in_(student_ids),
+            Task.assigned_to_user_id.in_(student_user_ids),
+        )
+    else:
+        task_ownership_filter = or_(
+            Task.created_by_user_id == user_id,
+            Task.assigned_to_user_id.in_(student_user_ids),
+        )
     task_created_rows = (
         db.query(Task)
         .filter(
             Task.archived_at.is_(None),
-            or_(
-                Task.created_by_user_id == user_id,
-                Task.assigned_to_user_id.in_(student_user_ids),
-            ),
+            task_ownership_filter,
         )
         .order_by(Task.created_at.desc())
         .limit(limit)
@@ -158,8 +165,10 @@ def get_recent_activity(
             .limit(limit)
             .all()
         )
+        sender_ids = list({msg.sender_id for msg in message_rows})
+        senders = {u.id: u for u in db.query(User).filter(User.id.in_(sender_ids)).all()} if sender_ids else {}
         for msg in message_rows:
-            sender = db.query(User).filter(User.id == msg.sender_id).first()
+            sender = senders.get(msg.sender_id)
             sender_name = sender.full_name if sender else "Someone"
             items.append(ActivityItem(
                 activity_type=ActivityType.MESSAGE_RECEIVED,
