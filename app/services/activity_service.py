@@ -73,14 +73,21 @@ def get_recent_activity(
         ))
 
     # ── 2. Tasks created (by parent OR assigned to child) ──
+    if student_id is not None:
+        task_ownership_filter = or_(
+            Task.student_id.in_(student_ids),
+            Task.assigned_to_user_id.in_(student_user_ids),
+        )
+    else:
+        task_ownership_filter = or_(
+            Task.created_by_user_id == user_id,
+            Task.assigned_to_user_id.in_(student_user_ids),
+        )
     task_created_rows = (
         db.query(Task)
         .filter(
             Task.archived_at.is_(None),
-            or_(
-                Task.created_by_user_id == user_id,
-                Task.assigned_to_user_id.in_(student_user_ids),
-            ),
+            task_ownership_filter,
         )
         .order_by(Task.created_at.desc())
         .limit(limit)
