@@ -131,6 +131,8 @@ def increment_ai_usage(
             try:
                 amount = Decimal(str(wallet_debit_amount)) if wallet_debit_amount is not None else Decimal("1")
                 debit_wallet(db, wallet, amount, note=f"AI generation: {generation_type}")
+            except HTTPException:
+                raise  # Let 402 (insufficient credits) propagate to client
             except Exception:
                 logger.warning("Wallet debit failed for user_id=%s", user.id)
             # Don't also increment legacy counter if wallet was debited
