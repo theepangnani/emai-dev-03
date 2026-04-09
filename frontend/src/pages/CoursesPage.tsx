@@ -1315,7 +1315,7 @@ export function CoursesPage() {
                   </label>
                   {!showCreateTeacher ? (
                     <SearchableSelect
-                      placeholder="Search for a teacher by name or email..."
+                      placeholder={(isParent || isStudent) ? "Search teacher by exact email address..." : "Search for a teacher by name or email..."}
                       onSearch={handleSearchTeachers}
                       onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
                       selected={selectedTeacher}
@@ -1497,7 +1497,7 @@ export function CoursesPage() {
                   </label>
                   {!showCreateTeacher ? (
                     <SearchableSelect
-                      placeholder="Search for a teacher by name or email..."
+                      placeholder={(isParent || isStudent) ? "Search teacher by exact email address..." : "Search for a teacher by name or email..."}
                       onSearch={handleSearchTeachers}
                       onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
                       selected={selectedTeacher}
@@ -1637,7 +1637,7 @@ export function CoursesPage() {
                 Teacher
               </label>
               <SearchableSelect
-                placeholder="Search for a teacher..."
+                placeholder={(isParent || isStudent) ? "Search teacher by exact email address..." : "Search for a teacher..."}
                 onSearch={handleSearchTeachers}
                 onSelect={(opt) => setEditCourseTeacher(opt)}
                 selected={editCourseTeacher}
