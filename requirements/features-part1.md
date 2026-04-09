@@ -585,6 +585,11 @@ When a parent/student syncs Google Classroom and the course teacher is not on EM
 3. **If accepted**: Shadow record converts to full platform teacher (`is_platform_user=true`), teacher sets password and can log in
 4. **If not accepted**: Teacher remains a read-only reference — name shown on courses, parents can still contact them externally
 
+#### Teacher Search Access Control
+- **Parents and Students**: Can only search for teachers by **exact email address** (case-insensitive). No partial match, no name search. Empty queries return no results.
+- **Teachers and Admins**: Can search teachers by partial name or email (existing behavior).
+- This applies to all teacher search contexts: create class, edit class, assign teacher.
+
 #### Multi-Google Account Support
 - `teacher_google_accounts` table (teacher_id, google_email, google_id, access_token, refresh_token, account_label, is_primary)
 - A platform teacher can link multiple Google accounts (e.g., personal Google for private tutoring + school Google for school courses)
