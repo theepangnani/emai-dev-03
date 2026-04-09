@@ -4472,6 +4472,11 @@ SSE endpoint streams markdown tokens for ChatGPT-like real-time generation exper
 - useStudyGuideStream hook for SSE lifecycle
 - Cursor animation during streaming
 
+### §6.116.3 Insufficient Content Error Handling (#2921)
+- Frontend pre-checks extracted text length (MIN_EXTRACTION_CHARS = 50) before calling API
+- 422 responses from backend are parsed to surface the `detail` message to the user
+- User sees descriptive error ("We couldn't read enough text…") instead of generic "Server error (422)"
+
 ---
 
 ## §6.117 Phase-2 Repository Consolidation
