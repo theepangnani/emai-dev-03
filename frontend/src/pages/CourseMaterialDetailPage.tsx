@@ -570,7 +570,7 @@ export function CourseMaterialDetailPage() {
       };
       const contentText = (content.text_content || content.description || '').trim();
       if (contentText.length < 50) {
-        setToast("We couldn't read enough text from this document. Please try a different file or format.");
+        showToast("We couldn't read enough text from this document. Please try a different file or format.");
         setGenerating(null);
         return;
       }
