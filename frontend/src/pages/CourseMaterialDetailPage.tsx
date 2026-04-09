@@ -569,6 +569,12 @@ export function CourseMaterialDetailPage() {
         ...(sGoalText ? { study_goal_text: sGoalText } : {}),
       };
       if (type === 'study_guide') {
+        const contentText = (content.text_content || content.description || '').trim();
+        if (contentText.length < 50) {
+          showToast("We couldn't read enough text from this document. Please try a different file or format.");
+          setGenerating(null);
+          return;
+        }
         // Use streaming for study guide generation
         stream.startStream({
           course_content_id: contentId,

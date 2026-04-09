@@ -4472,6 +4472,14 @@ SSE endpoint streams markdown tokens for ChatGPT-like real-time generation exper
 - useStudyGuideStream hook for SSE lifecycle
 - Cursor animation during streaming
 
+### §6.116.3 Insufficient Content & Credit Error Handling (#2921, #2933, #2935)
+- Frontend pre-checks extracted text length (MIN_EXTRACTION_CHARS = 50) before calling API
+- 422 responses from backend are parsed to surface the `detail` message to the user
+- User sees descriptive error ("We couldn't read enough text…") instead of generic "Server error (422)"
+- 402 responses (insufficient credits) shown with clear message in streaming hook
+- `debit_wallet` HTTPException re-raised to client instead of being silently swallowed
+- Pre-flight credit check (`check_ai_usage`) aligned with minimum debit amount to prevent orphaned guides
+
 ---
 
 ## §6.117 Phase-2 Repository Consolidation

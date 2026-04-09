@@ -173,8 +173,17 @@ export function useStudyGuideStream(): UseStudyGuideStreamReturn {
           let errorMessage: string;
           if (status === 429) {
             errorMessage = 'You\u2019ve reached the request limit. Please wait a few minutes and try again.';
+          } else if (status === 402) {
+            errorMessage = 'Insufficient credits. Please purchase more credits to continue.';
           } else if (status === 401 || status === 403) {
             errorMessage = 'Session expired. Please refresh the page and log in again.';
+          } else if (status === 422) {
+            try {
+              const body = await response.json();
+              errorMessage = body.detail || 'The content could not be processed. Please try a different file or format.';
+            } catch {
+              errorMessage = 'The content could not be processed. Please try a different file or format.';
+            }
           } else {
             errorMessage = `Server error (${status}). Please try again.`;
           }
