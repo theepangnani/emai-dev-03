@@ -129,7 +129,7 @@ def search_teachers(
     Parents and students can only search by exact email match (case-insensitive).
     Teachers and admins can search by partial name or email.
     """
-    from sqlalchemy import or_
+    from sqlalchemy import or_, func
     from app.core.utils import escape_like
 
     results = []
@@ -143,8 +143,8 @@ def search_teachers(
             # Parents/students: exact email match only (case-insensitive)
             query = query.outerjoin(User, Teacher.user_id == User.id).filter(
                 or_(
-                    Teacher.google_email.ilike(q_lower),
-                    User.email.ilike(q_lower),
+                    func.lower(Teacher.google_email) == q_lower,
+                    func.lower(User.email) == q_lower,
                 )
             )
         else:
