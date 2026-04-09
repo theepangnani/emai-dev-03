@@ -1,8 +1,8 @@
 # ClassBridge — Project Plan
 
-**Date:** 2026-03-28
+**Date:** 2026-04-08
 **Author:** Theepan Gnanasabapathy
-**Version:** 1.1
+**Version:** 1.2
 **Product Name:** ClassBridge (EMAI)
 
 ---
@@ -56,15 +56,39 @@ ClassBridge empowers parents to actively participate in their children's educati
 | CSV Import System | March 2026 | March 27, 2026 | Complete |
 | Teacher Thanks / Appreciation | March 2026 | March 27, 2026 | Complete |
 | Weekly Family Report Card | March 2026 | March 27, 2026 | Complete |
+| Performance Optimization (14 issues, §6.104) | March 2026 | March 9, 2026 | Complete |
+| Streaming Study Guide Generation (§6.115) | March 2026 | March 10, 2026 | Complete |
+| Pre-Launch Survey System (§6.102) | March 2026 | March 15, 2026 | Complete |
+| Digital Wallet & Credit System (§6.60) | March 2026 | March 12, 2026 | Complete |
+| Material Hierarchy & Multi-Document (§6.98-§6.100) | March 2026 | March 15, 2026 | Complete |
+| Study Guide Strategy Pattern (§6.106) | March 2026 | March 14, 2026 | Complete |
+| Retention Bundle Batches 0-4 (XP, Streaks, Badges, Countdown, On Track) | Sep 2026 | March 22, 2026 | Complete (5 months early) |
+| School Report Card Upload & AI Analysis (§6.121) | March 2026 | March 26, 2026 | Complete |
+| Document Privacy & IP Protection (§6.119) | March 2026 | March 23, 2026 | Complete |
+| Course Material Metadata & Popovers (§6.123) | March 2026 | March 25, 2026 | Complete |
+| Chatbot Enhancements — search parity, Study Q&A (§6.114) | March 2026 | March 22, 2026 | Complete |
+| GCS File Storage Migration (§6.93) — columns dropped | March 2026 | March 14, 2026 | Complete |
+| Mobile Responsiveness — 55+ CSS files (§6.18) | March 2026 | March 13, 2026 | Complete |
+| Simplified Upload & Progressive Generation (§6.28.7 Phase 1-2) | March 2026 | March 29, 2026 | Complete |
+| User Journey Guide + Journey Hints (§6.125, §6.126) | March 2026 | March 28, 2026 | Complete |
+| Video Links Enhancement — AI suggestions, YouTube search (§6.57.2) | March 2026 | March 28, 2026 | Complete |
+| Codebase Security & Quality Review (22 issues) | April 2026 | April 1, 2026 | Complete |
+| Progressive Study Guide Refinements (overview + chips + streaming) | April 2026 | April 5, 2026 | Complete |
+| Ask a Question — Parent Study Guide (§6.128) | April 2026 | April 3, 2026 | Complete |
+| Study Guide TOC & Section Navigation (§6.129) | April 2026 | April 8, 2026 | Complete |
+| Inline Resource Links in Study Guides (§6.130 Phase 1) | April 2026 | April 8, 2026 | Complete |
+| Parent Email Digest M1 — Gmail OAuth + Setup Wizard (§6.127) | April 2026 | March 31, 2026 | Complete |
+| CI/CD GitHub Actions Optimization | April 2026 | April 1, 2026 | Complete |
+| Activity Feed Child Filter + Performance Fixes | April 2026 | April 8, 2026 | Complete |
+| Accessibility & Design System Consistency Fixes | April 2026 | March 31, 2026 | Complete |
 
 ### 3.2 Upcoming Milestones
 
 | Milestone | Target Date | Status | Dependencies |
 |-----------|------------|--------|-------------|
-| Full Launch | April 14, 2026 | On Track | Responsive CSS, final QA |
-| Mobile Responsive Completion | April 2026 | In Progress | ~55 CSS files need breakpoints |
+| Full Launch | April 14, 2026 | On Track | Final QA |
+| Parent Email Digest M2 — Core Engine | May 2026 | Planned | Gmail polling, AI summarization, scheduler |
 | VASP/DTAP Phase 1 | Q2 2026 | Planned | MFA, data residency, PIA |
-| AI Cost Tracking & Premium Tiers | Q2 2026 | Planned | Token tracking, admin dashboard |
 | Cloud Storage Integration | Q2 2026 | Planned | Google Drive, OneDrive APIs |
 | **SCAPH Phase 3A — Career Foundation** | **Apr-May 2026** | **Planned** | **Claude API, DB schema, Career Profile tab** |
 | **SCAPH Phase 3B — Collaboration & AI** | **Jun-Jul 2026** | **Planned** | **Wishlist, AI pathways, character profile** |
@@ -399,4 +423,4 @@ Infrastructure
 
 ---
 
-*Project plan last updated March 28, 2026. Next review: April 14, 2026 (full launch).*
+*Project plan last updated April 8, 2026. Next review: April 14, 2026 (full launch).*

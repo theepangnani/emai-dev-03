@@ -2,8 +2,8 @@
 
 **Product Name:** ClassBridge (EMAI)
 **Author:** Sarah (Product Owner) / Theepan Gnanasabapathy
-**Version:** 2.3
-**Date:** 2026-03-20
+**Version:** 2.4
+**Date:** 2026-04-08
 **Quality Score:** 97/100
 
 ---
@@ -1142,7 +1142,21 @@ StudyGuide
   |- title, content, guide_type (study_guide/quiz/flashcards)
   |- created_by_user_id, created_for_user_id
   |- course_id, course_content_id, parent_guide_id
+  |- document_type (exam_prep/homework/lecture_notes/parent_question/...)
   |- archived_at
+
+ParentGmailIntegration (§6.127 — Email Digest M1)
+  |- user_id, child_id, gmail_email
+  |- encrypted_refresh_token, is_active
+  |- polling_interval_hours, last_polled_at
+
+DigestDeliveryLog (§6.127)
+  |- integration_id, digest_date, status
+  |- email_count, summary_text, delivered_at
+
+DigestSettings (§6.127)
+  |- integration_id, delivery_time, timezone
+  |- digest_format, include_categories
 
 Task
   |- title, description, due_date, priority, is_completed
@@ -1314,7 +1328,7 @@ User (new column for §6.95)
 
 ---
 
-*This document was compiled from the ClassBridge codebase analysis, REQUIREMENTS.md, and role-specific workflow exploration. It covers all implemented features as of March 20, 2026. Updated with comprehensive GitHub issue audit (1,969 issues, 1,068+ closed).*
+*This document was compiled from the ClassBridge codebase analysis, REQUIREMENTS.md, and role-specific workflow exploration. It covers all implemented features as of April 8, 2026. Updated with 2,930+ GitHub issues tracked, ~2,650 closed (90.4% close rate). Recent additions: Ask a Question study guide (§6.128), study guide TOC & section navigation (§6.129), inline resource links (§6.130), Parent Email Digest M1 (§6.127), codebase security hardening (22 fixes), progressive generation refinements, CI/CD optimization.*
 
 *Quality Score: 97/100*
 - Business Value & Goals: 29/30

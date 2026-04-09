@@ -1,7 +1,7 @@
 # ClassBridge — Design System & UI/UX Documentation
 
-**Version**: 2.1
-**Date**: 2026-03-20
+**Version**: 2.2
+**Date**: 2026-04-08
 **Author**: Sarah (Product Owner)
 **Platform**: Web (React 19) + Mobile (React Native / Expo SDK 54)
 
@@ -796,4 +796,50 @@ All dashboards follow the **one-screen rule** (no scrolling at 1080p) with a **3
 
 ---
 
-*This design system document captures the complete visual language, component library (60+ reusable components, 13+ custom hooks), 54+ page components, 40+ API modules, layout patterns, and design decisions for ClassBridge as of March 20, 2026.*
+## 17. New Components & Patterns (March 29 – April 8, 2026)
+
+### 17.1 Study Guide Table of Contents (TOC)
+- `StudyGuideTOC` component — auto-generated from H2/H3 markdown headings
+- Rendered at top of sub-guide pages only (not on overview pages)
+- Smooth-scroll on TOC item click, section anchors for deep linking
+- Collapse state persisted in localStorage per guide ID
+- Mobile-responsive: inline layout, touch-friendly targets
+
+### 17.2 Collapsible Sections
+- `CollapsibleSection` component wraps H2 sections in study guides
+- Expand/collapse toggle with smooth CSS transition
+- Default: all expanded; localStorage persistence for user preference
+- Integrates with streaming — sections appear as content streams in
+
+### 17.3 ResourceLinksSection
+- Displays helpful external links (YouTube, Khan Academy, etc.) grouped by topic
+- YouTube videos render with embedded player
+- External links show domain icon + title
+- Groups by `topic_heading` from ResourceLink records
+- Positioned at bottom of study guide view
+
+### 17.4 Ask a Question Mode
+- Mode toggle tabs in Upload Wizard Step 1: "Upload Material" | "Ask a Question"
+- Question mode: focused textarea with example placeholder, no file drop zone
+- Auto-title from question text (first 50 chars)
+- Navigates to streaming generation immediately on submit
+
+### 17.5 Design System Consistency Fixes
+- **Hardcoded colors → CSS variables** — Replaced hex/rgba in SearchableSelect.css, BugReportModal.css, SpeedDialFAB.css with `var(--color-*)` tokens
+- **Spacing tokens** — Added `--space-xs` through `--space-2xl`; replaced hardcoded border-radius with `--radius-*` tokens
+- **Font type scale (rem)** — Added `--text-xs` through `--text-3xl`; converted px to rem in Auth.css, Dashboard.css, Toast.css, PageNav.css
+- **Focus-visible states** — `:focus-visible` styles on role-switcher, logout button, Toast elements
+
+### 17.6 Accessibility Improvements
+- Navigation ARIA patterns: `aria-hidden` on decorative SVG icons, `aria-label`/`aria-pressed` on toolbar buttons
+- `aria-current="page"` on Breadcrumb active items
+- Heading hierarchy fixes for screen reader navigation
+
+### 17.7 Study Tools Dropdown
+- Study tools (Quiz, Flashcards, Mind Map) grouped into a dropdown menu under "Study Guide" tab
+- Prevents tab overflow on narrow screens
+- Dropdown clipping fix for proper positioning
+
+---
+
+*This design system document captures the complete visual language, component library (60+ reusable components, 13+ custom hooks), 54+ page components, 40+ API modules, layout patterns, and design decisions for ClassBridge as of April 8, 2026.*

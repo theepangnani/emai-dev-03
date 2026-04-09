@@ -1,10 +1,10 @@
 # ClassBridge — Project Status Report
 
-**Date:** 2026-03-28
+**Date:** 2026-04-08
 **Author:** Theepan Gnanasabapathy
-**Version:** 1.1
+**Version:** 1.2
 **Status:** Active Development
-**Report Period:** March 20 – March 28, 2026
+**Report Period:** March 29 – April 8, 2026
 
 ---
 
@@ -12,7 +12,7 @@
 
 ClassBridge (EMAI) is an AI-powered education platform connecting parents, students, teachers, and administrators. The platform has been live at **classbridge.ca** since the March 6, 2026 soft launch. The full launch is targeted for **April 14, 2026**. The mobile MVP (Expo SDK 54) is complete. Development continues on Phase 2 WOW features, VASP/DTAP compliance for Ontario school board approval, and platform hardening.
 
-This week's focus was on new engagement features (CSV Import, Teacher Thanks, Weekly Family Report), documentation updates, and **Phase 3 SCAPH (Student Career & Academic Planning Hub) planning**. The SCAPH PRD v3.0 was reviewed, analyzed, and broken down into 24 GitHub issues across 3 sub-phases (3A/3B/3C). The platform remains stable with no production incidents.
+This period's focus was on **codebase security & quality hardening** (22 issues resolved), **progressive study guide generation refinements** (Ask a Question, streaming sub-guides, suggestion chips), **study guide UX enhancements** (TOC, collapsible sections, inline resource links), **Parent Email Digest M1** (Gmail OAuth + setup wizard), **CI/CD optimization** for GitHub Actions free tier, and **activity feed fixes**. The platform remains stable with production deployed continuously.
 
 ---
 
@@ -24,12 +24,12 @@ This week's focus was on new engagement features (CSV Import, Teacher Thanks, We
 | **Backend** | Green | 63 route modules, 500+ endpoints, all tests passing |
 | **Frontend** | Green | 100+ pages, 140+ components, build clean |
 | **Mobile** | Green | MVP complete (Expo SDK 54), 8 screens |
-| **Testing** | Green | 1,004+ backend tests, 258+ frontend tests |
-| **Documentation** | Green | All docs updated March 28 (SCAPH added) |
-| **Phase 3 (SCAPH)** | Green | PRD v3.0 reviewed, 24 issues created, 3-phase plan approved |
+| **Testing** | Green | 1,004+ backend tests, 258+ frontend tests, 14 integration tests added |
+| **Documentation** | Green | All docs updated April 8, 2026 |
+| **Security** | Green | Full codebase security review deployed (22 issues, PR #2816) |
+| **CI/CD** | Green | GitHub Actions optimized for free tier (PR #2847) |
 | **VASP/DTAP Compliance** | Amber | 29 issues tracked, in progress |
-| **Performance** | Green | N+1 queries eliminated, connection pooling, indexing deployed |
-| **Security** | Green | JWT refresh, CORS, RBAC, rate limiting, bot protection active |
+| **Performance** | Green | N+1 queries fixed, DB connection pool tuned, activity feed optimized |
 
 ---
 
@@ -78,62 +78,166 @@ This week's focus was on new engagement features (CSV Import, Teacher Thanks, We
 
 | Metric | Count |
 |--------|-------|
-| **Total Issues Created** | 2,242+ |
-| **Open Issues** | ~298 |
-| **Closed Issues** | ~1,944 |
-| **Close Rate** | 86.7% |
+| **Total Issues Created** | 2,937+ |
+| **Open Issues** | ~30 |
+| **Closed Issues** | ~2,907 |
+| **Close Rate** | 99.0% |
 
 ### Issue Categories (Open)
 
 | Category | Count | Priority |
 |----------|-------|----------|
-| VASP/DTAP Compliance | 29 | High |
-| Responsive CSS Gaps | ~55 files | Medium |
-| Phase 2 WOW Features | ~20 | Medium |
-| LMS Abstraction / D2L | 5 | Low |
-| AI Cost Tracking | 4 | Medium |
-| Cloud Storage Integration | 12 | Low |
-| Miscellaneous Enhancements | ~173 | Varies |
+| Production Bugs (credit leakage, 422, logging) | 5 | Critical |
+| CB-PEDI-001 Email Digest M2 | 7 | High |
+| SCAPH Phase 3 (career planning) | 18 | Medium |
+| Code Quality / Refactoring | 8 | Low |
+| Accessibility / Mobile | 6 | Medium |
+| Remaining Enhancements | ~15 | Varies |
 
 ---
 
 ## 5. Features Completed This Period
 
-### 5.1 CSV Import System
-- Template-based CSV import for students, courses, and assignments
-- Multi-step wizard: template selection → upload → preview → confirm
-- Row-by-row validation with green/red indicators
-- Downloadable blank templates per entity type
+### 5.1 Codebase Security & Quality Hardening (PR #2816, deployed April 1)
+Full codebase review resolving 22 issues:
+- **Security (12 issues):** OAuth token encryption (Fernet), refresh token blacklisting, password reset single-use (JTI), user enumeration prevention, rate limit gaps, configurable security params, email verify TTL reduction
+- **Correctness (4 issues):** Parent course visibility fix, safe JSON.parse on Quiz/Flashcards, AnalyticsPage stale closures, frontend token/NaN handling
+- **Performance (2 issues):** Pagination on courses/broadcast/search, N+1 in message fan-out
+- **DB Consistency (4 issues):** Enum→String migration (4 columns), model consistency (DateTime TZ, FK indexes, cascades), boolean defaults standardized
+- **Integration tests:** 14 new tests for auth flows, course visibility, parent-child linking (#2805)
 
-### 5.2 Teacher Thanks / Appreciation
-- Students and parents can send daily thank-you messages to teachers
-- One thank per student per teacher per day (unique constraint)
-- Teachers see total and weekly counts on dashboard
-- Optional course linkage and short message
+### 5.2 Progressive Study Guide Generation Refinements (March 29 – April 5)
+- Concise overview prompt — rewrote strategy templates for 3-5 sentence summary + suggestion chips
+- Suggestion chips create proper sub-guides with streaming (navigate-then-stream pattern)
+- Full Study Guide chip uses 4000 tokens for detailed content
+- Ask Bot chip directly opens chatbot
+- Toast feedback for chatbot save actions
+- Streaming endpoint parent_guide_id support for sub-guide hierarchy
+- Auto-scroll to content on chip click
 
-### 5.3 Weekly Family Report Card
-- Parent-facing weekly summary with per-child breakdowns
-- Engagement score (0-100) from weighted activity metrics
-- Task completion, assignment submissions, study activity tracking
-- Background job for automatic Sunday delivery
-- Shareable via token-based URL
+### 5.3 Ask a Question Feature (§6.128, #2861)
+- Parent types free-form education question → streaming full study guide generated
+- New `parent_question` document_type in strategy pattern
+- Ontario curriculum awareness (OSSLT, EQAO, grade-level expectations)
+- 4000 max_tokens, safety guardrails, AI cost ~$0.02-0.04/question
+- Multiple streaming/navigation fixes (#2880-#2893)
 
-### 5.4 Documentation Update
-- Requirements Document updated to v2.4 (22 new feature sections)
-- Design System updated to v2.2 (18 new components, 8 new page designs)
-- Project Status Report created (this document)
-- Project Plan created with full phase breakdown
+### 5.4 Study Guide Enhancements (PR #2906, April 6-8)
+- **Section Navigation (§6.129):** Auto-generated TOC from markdown headings, collapsible sections, smooth scroll, localStorage persistence
+- **Inline Resource Links (§6.130):** ResourceLinksSection component with YouTube embeds, topic grouping on study guide pages
+- **Continue Streaming Fix (#2896):** Fixed spinner-only bug, actual streaming content now displays
+- **Sub-guides only:** TOC/collapsible only render on sub-guide pages, not overviews (PR #2915)
 
-### 5.5 SCAPH Phase 3 Planning (March 28)
-- **PRD Reviewed:** CB-SCAPH-001 v3.0 — Student Career & Academic Planning Hub
-- **Product Analysis:** Requirements, product design, frontend design reviews completed
-- **Design Benchmarks:** Duolingo (assessment UX), Notion/Linear (progressive disclosure), iMessage (collaboration), Spotify Wrapped (timeline)
-- **24 GitHub Issues Created:** 1 Epic (#2496), 19 feature modules (F-01 to F-19), 4 foundation issues
-- **6 Labels Created:** `scaph`, `phase:3a`, `phase:3b`, `phase:3c`, `career`, `epic`
-- **Requirements Updated:** New `requirements/scaph.md` (Section 14), REQUIREMENTS.md updated to v1.2
-- **Design System Updated:** v2.2 — Section 17 added for SCAPH design patterns
-- **Roadmap Updated:** Phase 3 SCAPH section with 15 sprints across 3 sub-phases
-- **Project Plan Updated:** v1.1 — SCAPH phases, Claude API as dual AI engine, cost projections
+### 5.5 Parent Email Digest M1 (§6.127, CB-PEDI-001, PR #2780)
+- ParentGmailIntegration database models (3 new tables)
+- Gmail OAuth flow for parent personal accounts
+- CRUD API routes for integrations, settings, pause/resume
+- PARENT_EMAIL_DIGEST notification type (backend + frontend)
+- 4-step email digest setup wizard on My Kids page
+
+### 5.6 CI/CD Optimization (PR #2847)
+- GitHub Actions optimized for free tier: path filters, concurrency groups, job consolidation
+- Security scanning moved to daily schedule (off PR triggers)
+- Debounce to reduce wasted minutes from rapid pushes
+
+### 5.7 Activity Feed Fixes (PR #2916)
+- Child filter fix — activity feed showed wrong child's tasks
+- Cache invalidation after upload/study guide generation
+- N+1 query fix in message sender lookup
+- Regression test added
+
+### 5.8 Batch Bug Fixes (March 29-31)
+- Study tools grouped into dropdown to prevent tab overflow
+- YouTube URL validation, created time, image fallback fixes
+- Accessibility and dark mode improvements
+- Duplicate sub-guide prevention + chip navigation reliability
+- Student course visibility fix (only own/enrolled courses)
+- DB connection pool reduced to prevent PostgreSQL slot exhaustion
+
+### 5.9 Accessibility & Design System (PR #2780)
+- Navigation ARIA patterns, missing labels, heading hierarchy
+- Focus-visible states on buttons
+- Hardcoded colors → CSS variables, spacing tokens, border-radius standardization
+- Font type scale (rem)
+
+### 5.10 September 2026 Retention Bundle — All 5 Batches Complete (March 12-22)
+Entire retention bundle delivered 5 months ahead of schedule:
+- **Batch 0:** Schema foundation — is_master migration, source_type column, holiday_dates table (#2025, #2010, #2024)
+- **Batch 1:** XP core engine — XP model, earning service, streak engine, API routes (#2000-#2003)
+- **Batch 2:** XP dashboard & visibility — streak counter, level bar, badges shelf, XP history page, parent visibility, digest crons (#2006-#2008, #2022-#2023)
+- **Batch 3:** Badges & brownie points — badge trigger service, brownie points, anti-gaming rules (#2004, #2005, #2009)
+- **Batch 4:** Assessment countdown, On Track signal, parent study request, multilingual summaries, Pomodoro, study timeline, end-of-term report card (#2011-#2021)
+
+### 5.11 Study Guide Strategy Pattern (March 12-14, §6.106)
+- Document type auto-detection classifier service
+- Study guide prompt strategy service (exam_prep, homework, lecture_notes, etc.)
+- Ontario curriculum mapping service
+- Parent summary generation service
+- DocumentTypeSelector and StudyGoalSelector components
+- Frontend and backend tests
+
+### 5.12 Material Hierarchy & Multi-Document Management (March 10-15, §6.98-§6.100)
+- Material hierarchy fields on CourseContent (parent/child relationships)
+- Linked materials panel, text selection context menu
+- Multi-document management — add files, reorder, delete sub-materials (#993)
+- Sub-study guide generation from text selection (#1594)
+- Study guide tree API and breadcrumb navigation
+
+### 5.13 Performance Optimization (March 9, §6.104)
+- Comprehensive performance optimization across 14 issues (#1954-#1967)
+
+### 5.14 Digital Wallet & Credit System (March 10-12, §6.60)
+- Wallet models, schemas, service layer, API routes with Stripe checkout
+- CreditTopUpModal with Stripe Elements
+- Monthly credit refresh job, credit bridge into AI usage
+- WalletPage, PackageSelector, TransactionHistory components
+
+### 5.15 Chatbot Enhancements (March 9-22)
+- Hybrid keyword + embedding intent classifier (#1711)
+- Global search integration into help chatbot (#1630)
+- Chatbot batch 4: streaming SSE, result limits, chat commands
+- Study Q&A chatbot — context-aware Q&A on study guide pages (§6.114)
+- Chatbot search parity: assignments, children entities
+
+### 5.16 School Report Card System (March 23-26, §6.121)
+- Complete system: upload, OCR extraction, AI analysis, routing, components, tests
+- Career path analysis, report date extraction, concurrent loading states
+
+### 5.17 Document Privacy & IP Protection (March 23, §6.119)
+- Trust-circle access control for materials
+- Material access audit logging
+- Frontend privacy indicators and access log tab
+
+### 5.18 Course Material Metadata & Popovers (March 25, §6.123)
+- Clickable metadata popovers in all course material tabs
+
+### 5.19 Pre-Launch Survey System (March 11-15, §6.102)
+- Survey models, public API, admin analytics with Recharts
+- Role-specific question sets, emoji likert scale
+- Bot protection on all public forms
+- Admin notification on survey completion
+
+### 5.20 Streaming Study Guide Generation (March 9-10, §6.115)
+- SSE streaming endpoint for study guide generation
+- Anthropic streaming API integration
+- useStudyGuideStream hook and SSE parser
+- StreamingMarkdown renderer component
+
+### 5.21 Other Notable Features (March 9-28)
+- User journey guide + proactive journey hints (§6.125, §6.126)
+- Video links enhancement — AI suggestions, YouTube live search (§6.57.2, §6.57.3)
+- Bug report with screenshot + GitHub issue creation
+- PWA offline mode — install as app + offline study access
+- Google Calendar ICS import for assignment dates (§6.78)
+- Show/hide password toggle
+- CASL-compliant email opt-in and one-click unsubscribe
+- Collapsible document text container
+- Mobile responsiveness for 55+ CSS files
+- GCS file storage migration complete (file_data/image_data columns dropped)
+- Simplified upload & progressive generation Phase 1 (#2705) and Phase 2 (#2696)
+- Weekly family report card email
+- CSV template import
+- Various batch defect fixes across 40+ issues
 
 ---
 
@@ -141,15 +245,13 @@ This week's focus was on new engagement features (CSV Import, Teacher Thanks, We
 
 | Feature | Epic/Issue | Status | Target |
 |---------|-----------|--------|--------|
-| VASP/DTAP Compliance | 29 issues | In Progress | Q2 2026 |
-| Mobile Responsive Gaps | #1641 | In Progress | April 2026 |
-| AI Token/Cost Tracking | #1650 | Planned | Q2 2026 |
-| Mind Map Desktop Layout | #1653 | Planned | April 2026 |
-| Continuation as Premium Perk | #1645 | Planned | Q2 2026 |
-| Cloud Storage Integration | #1865-#1877 | Planned | Q2 2026 |
+| Production Bugs (credit leakage, 422, logging) | #2921-#2935 | **In Progress** | **Immediate** |
+| Parent Email Digest M2 (Core Engine) | #2648-#2653 | Planned | May 2026 |
+| Gmail OAuth Verification (CASA Tier 2) | #2800 | Planned | Jul-Sep 2026 |
 | **SCAPH Phase 3A — Career Foundation** | **#2496** | **Planned** | **Apr-May 2026** |
 | **SCAPH Phase 3B — Collaboration & AI** | **#2496** | **Planned** | **Jun-Jul 2026** |
 | **SCAPH Phase 3C — Advanced Tools** | **#2496** | **Planned** | **Jul-Sep 2026** |
+| Cloud Storage Integration | #1865-#1877 | Planned | Q2 2026 |
 | LMS Abstraction / D2L | 5 issues | Planned | Q3 2026 |
 
 ---
@@ -244,4 +346,4 @@ This week's focus was on new engagement features (CSV Import, Teacher Thanks, We
 
 ---
 
-*Report generated March 28, 2026. Next report due April 3, 2026.*
+*Report generated April 8, 2026. Next report due April 14, 2026 (full launch).*

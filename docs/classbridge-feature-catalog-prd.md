@@ -1,9 +1,9 @@
 # ClassBridge — Complete Feature & Design Catalog
 
-**Version**: 1.2
-**Date**: 2026-03-20
+**Version**: 1.3
+**Date**: 2026-04-08
 **Author**: Sarah (Product Owner)
-**Source Data**: 1,969 GitHub Issues + REQUIREMENTS.md (60+ feature sections)
+**Source Data**: 2,930+ GitHub Issues + REQUIREMENTS.md (60+ feature sections)
 **Quality Score**: 95/100
 
 ---
@@ -15,12 +15,12 @@ ClassBridge is an AI-powered education platform connecting parents, students, te
 This document catalogs **every feature** across 5 development phases, organized by functional domain. Each feature includes its status, GitHub issues, design details, and implementation notes.
 
 **By the numbers:**
-- **1,969 issues** tracked across phases
+- **2,930+ issues** tracked across phases (90.4% close rate)
 - **60+ feature sections** documented
 - **4 role-based dashboards** (Parent, Student, Teacher, Admin)
 - **8 mobile screens** (Parent MVP)
 - **14 email templates**
-- **1,004 backend tests**
+- **1,004+ backend tests, 258+ frontend tests, 14 integration tests**
 - **Production**: classbridge.ca (live since March 6, 2026)
 
 ---
@@ -1146,14 +1146,82 @@ Clean, persona-based layouts with 3-section max per role:
 
 **Revised Help Study Menu:** Primary = Quick Assessment, Practice Problems, Parent Briefing. Secondary = Quiz, Study Guide, Flashcards.
 
-## 28. Future Phases
+## 28. Recent Completions (March 29 – April 8, 2026)
 
-### Phase 2+: TeachAssist Integration + Polish
+### 28.1 Ask a Question — Parent Study Guide (§6.128, #2861) — IMPLEMENTED
+Parents type free-form education questions and get a full streaming study guide. New `parent_question` document_type in strategy pattern. Ontario curriculum awareness (OSSLT, EQAO). Safety guardrails, 4000 max_tokens, ~$0.02-0.04/question.
+
+### 28.2 Study Guide Section Navigation (§6.129, #2894) — IMPLEMENTED
+Auto-generated TOC from H2/H3 markdown headings, collapsible sections with smooth scroll. localStorage persistence for collapse state. Only renders on sub-guide pages, not overviews. Mobile-responsive layout.
+
+### 28.3 Inline Resource Links in Study Guides (§6.130 Phase 1, #2895) — IMPLEMENTED
+ResourceLinksSection component renders helpful external links (YouTube embeds, educational sites) on study guide pages. Groups by topic_heading. Uses existing ResourceLink records from ResourceSuggestionService. Phase 2 (inline AI callouts) and Phase 3 (teacher-curated) planned.
+
+### 28.4 Parent Email Digest M1 (§6.127, CB-PEDI-001, PR #2780) — IMPLEMENTED
+Gmail OAuth for parent personal accounts. 3 new database tables (ParentGmailIntegration, DigestDeliveryLog, DigestSettings). CRUD API routes for integrations/settings. 4-step setup wizard on My Kids page. M2 (polling + AI summarization) planned for May 2026.
+
+### 28.5 Codebase Security & Quality Hardening (PR #2816) — IMPLEMENTED
+22-issue resolution: OAuth token encryption (Fernet), refresh token blacklisting, password reset single-use (JTI), user enumeration prevention, Enum→String migration, N+1 fixes, pagination, boolean defaults. 14 integration tests added.
+
+### 28.6 Progressive Generation Refinements — IMPLEMENTED
+Concise overview prompt (3-5 sentences + suggestion chips), streaming sub-guides with navigate-then-stream pattern, Full Study Guide chip (4000 tokens), parent_guide_id hierarchy support, auto-scroll, toast feedback.
+
+### 28.7 CI/CD GitHub Actions Optimization (PR #2847) — IMPLEMENTED
+Path filters, concurrency groups, job consolidation, security scan daily schedule, debounce for rapid pushes. Keeps pipeline within free tier limits.
+
+### 28.8 Activity Feed Fixes (PR #2916) — IMPLEMENTED
+Child filter on tasks, cache invalidation after uploads, N+1 query fix in message sender lookup, regression test.
+
+### 28.9 Retention Bundle — XP, Streaks, Badges, Gamification (March 12-22) — ALL IMPLEMENTED
+All 5 batches delivered 5 months ahead of September 2026 target:
+- **XP System:** XP data model, earning service, streak engine with freeze tokens, XP API routes, endpoint hooks (#2000-#2003)
+- **XP Dashboard:** Streak counter, level bar, badges shelf, XP history page with PDF export, parent XP visibility (#2006-#2008)
+- **Badges & Brownie Points:** Badge trigger service (14 conditions), brownie points for parent/teacher manual awards (#2004, #2005)
+- **Anti-Gaming:** Time-on-task checks, 60-second dedup, rapid upload flags, quiz repeat caps (#2009)
+- **Assessment Countdown:** Date detection from uploads, countdown widget, "Is My Child On Track" signal (#2011-#2013, #2020)
+- **Engagement:** Parent study request (#2019), Pomodoro study sessions (#2021), personal study history timeline (#2017), end-of-term report card (#2018), multilingual parent summaries (#2014-#2016)
+- **Digest:** Weekly and daily digest cron jobs, CASL-compliant opt-in, one-click unsubscribe (#2022-#2023)
+
+### 28.10 Study Guide Strategy Pattern (March 12-14, §6.106) — IMPLEMENTED
+Document type auto-detection, study goal selection, Ontario curriculum mapping, parent summary generation, prompt strategy service. Frontend: DocumentTypeSelector chips, StudyGoalSelector dropdown, ParentSummaryCard.
+
+### 28.11 Material Hierarchy & Multi-Document Management (March 10-15, §6.98-§6.100) — IMPLEMENTED
+CourseContent parent/child hierarchy, LinkedMaterialsPanel, text selection context menu, multi-document management (add/reorder/delete sub-materials), sub-study guide generation from text selection, study guide tree API with breadcrumb navigation.
+
+### 28.12 Digital Wallet & Credit System (March 10-12, §6.60) — IMPLEMENTED
+Stripe PaymentIntent flow, dual credit pools (package + purchased), wallet service with debit order and idempotency, monthly credit refresh, WalletPage with PackageSelector and TransactionHistory, CreditTopUpModal with Stripe Elements.
+
+### 28.13 Streaming Study Guide Generation (March 9-10, §6.115) — IMPLEMENTED
+SSE streaming endpoint, Anthropic streaming API, useStudyGuideStream hook, StreamingMarkdown renderer. Study guides stream word-by-word during generation.
+
+### 28.14 School Report Card System (March 23-26, §6.121) — IMPLEMENTED
+Upload school report cards (PDF/photo), OCR extraction, AI analysis with career path insights, routing/components/tests, report date extraction, concurrent loading states.
+
+### 28.15 Pre-Launch Survey System (March 11-15, §6.102) — IMPLEMENTED
+Role-specific surveys, emoji likert scale, admin analytics with Recharts/CSV export, bot protection on all public forms, sessionStorage persistence.
+
+### 28.16 Chatbot & Search Enhancements (March 9-22) — IMPLEMENTED
+Hybrid keyword + embedding intent classifier, global search integration, streaming SSE, Study Q&A chatbot (§6.114), search parity with assignments/children entities, chatbot search scope for parents.
+
+### 28.17 Other March Features — IMPLEMENTED
+- Performance optimization across 14 issues (§6.104)
+- Document Privacy & IP Protection — trust-circle access, audit logging (§6.119)
+- Course material metadata & clickable popovers (§6.123)
+- Video links enhancement — AI suggestions, YouTube live search (§6.57.2)
+- User journey guide + proactive journey hints (§6.125, §6.126)
+- PWA offline mode, Google Calendar ICS import (§6.78)
+- Show/hide password toggle, bug report with screenshot
+- GCS file storage migration complete (columns dropped)
+- Mobile responsiveness for 55+ CSS files
+- Simplified upload & progressive generation Phase 1-2 (§6.28.7)
+
+## 29. Future Phases
+
+### Phase 2+: TeachAssist Integration + Polish (remaining)
 - TeachAssist grade import
 - Admin email template management (#513)
 - Broadcast history enhancement (#514)
 - Lottie animation loader (#424)
-- Show/hide password toggle (#420)
 - Welcome & verification emails (#509, #510)
 
 ### Phase 3: Course Planning
@@ -1263,4 +1331,4 @@ Key endpoint groups:
 
 ---
 
-*This feature catalog was generated by analyzing 1,969 GitHub issues, 60+ requirement sections across 8 requirement files, design audit reports, and the full codebase architecture. It represents the complete state of ClassBridge as of March 20, 2026. Production: classbridge.ca (live since March 6, 2026). Backend tests: 1,004.*
+*This feature catalog was generated by analyzing 2,930+ GitHub issues, 60+ requirement sections across 8 requirement files, design audit reports, and the full codebase architecture. It represents the complete state of ClassBridge as of April 8, 2026. Production: classbridge.ca (live since March 6, 2026). Backend tests: 1,004+. Frontend tests: 258+.*
