@@ -20,23 +20,22 @@ def search_users(db_session):
     from app.models.user import User, UserRole
     from app.models.teacher import Teacher
 
-    # Check-or-create to handle shared session DB
-    parent = db_session.query(User).filter(User.email == "tsearch_parent@test.com").first()
-    if parent:
-        student = db_session.query(User).filter(User.email == "tsearch_student@test.com").first()
-        teacher_user = db_session.query(User).filter(User.email == "tsearch_teacher@test.com").first()
-        admin = db_session.query(User).filter(User.email == "tsearch_admin@test.com").first()
-        platform_teacher = db_session.query(Teacher).filter(Teacher.user_id == teacher_user.id).first()
-        shadow_teacher = db_session.query(Teacher).filter(
-            Teacher.google_email == "shadow.smith@school.edu"
-        ).first()
+    # Check if fixture data already exists (db persists across function-scoped sessions)
+    existing = db_session.query(User).filter(User.email == "tsearch_parent@test.com").first()
+    if existing:
         return {
-            "parent": parent,
-            "student": student,
-            "teacher_user": teacher_user,
-            "admin": admin,
-            "platform_teacher": platform_teacher,
-            "shadow_teacher": shadow_teacher,
+            "parent": existing,
+            "student": db_session.query(User).filter(User.email == "tsearch_student@test.com").one(),
+            "teacher_user": db_session.query(User).filter(User.email == "tsearch_teacher@test.com").one(),
+            "admin": db_session.query(User).filter(User.email == "tsearch_admin@test.com").one(),
+            "platform_teacher": db_session.query(Teacher).filter(
+                Teacher.user_id == db_session.query(User).filter(
+                    User.email == "tsearch_teacher@test.com"
+                ).one().id
+            ).one(),
+            "shadow_teacher": db_session.query(Teacher).filter(
+                Teacher.google_email == "shadow.smith@school.edu"
+            ).one(),
         }
 
     hashed = get_password_hash(PASSWORD)
@@ -149,6 +148,43 @@ class TestParentTeacherSearch:
         )
         assert resp.status_code == 200
         assert resp.json() == []
+
+    def test_parent_wildcard_bypass_blocked(self, client, search_users):
+        """Parent using SQL wildcards should get no results."""
+        headers = _auth(client, search_users["parent"].email)
+        resp = client.get(
+            "/api/courses/teachers/search",
+            params={"q": "%@school.edu"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_parent_case_insensitive_email_match(self, client, search_users):
+        """Parent searching with mixed-case email should still find the teacher."""
+        headers = _auth(client, search_users["parent"].email)
+        resp = client.get(
+            "/api/courses/teachers/search",
+            params={"q": "Shadow.Smith@School.EDU"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        results = resp.json()
+        emails = [r["email"] for r in results]
+        assert "shadow.smith@school.edu" in emails
+
+    def test_parent_finds_platform_teacher_by_email(self, client, search_users):
+        """Parent searching by platform teacher's email should find them."""
+        headers = _auth(client, search_users["parent"].email)
+        resp = client.get(
+            "/api/courses/teachers/search",
+            params={"q": "tsearch_teacher@test.com"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        results = resp.json()
+        emails = [r["email"] for r in results]
+        assert "tsearch_teacher@test.com" in emails
 
 
 # ── Student tests ────────────────────────────────────────────
