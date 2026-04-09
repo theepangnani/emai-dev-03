@@ -5,6 +5,7 @@ import { SearchableSelect, MultiSearchableSelect } from './SearchableSelect';
 import type { SearchableOption } from './SearchableSelect';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { ReportBugLink } from './ReportBugLink';
+import { useAuth } from '../context/AuthContext';
 
 interface CreateClassModalProps {
   open: boolean;
@@ -13,6 +14,8 @@ interface CreateClassModalProps {
 }
 
 export default function CreateClassModal({ open, onClose, onCreated }: CreateClassModalProps) {
+  const { user } = useAuth();
+  const isEmailOnlySearch = user?.role === 'parent' || user?.role === 'student';
   const [courseName, setCourseName] = useState('');
   const [courseSubject, setCourseSubject] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
@@ -148,7 +151,7 @@ export default function CreateClassModal({ open, onClose, onCreated }: CreateCla
           </label>
           {!showCreateTeacher ? (
             <SearchableSelect
-              placeholder="Search for a teacher by name or email..."
+              placeholder={isEmailOnlySearch ? "Search teacher by exact email address..." : "Search for a teacher by name or email..."}
               onSearch={handleSearchTeachers}
               onSelect={(opt) => { setSelectedTeacher(opt); setCreateError(''); }}
               selected={selectedTeacher}
