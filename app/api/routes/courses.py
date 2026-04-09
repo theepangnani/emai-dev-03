@@ -125,23 +125,33 @@ def search_teachers(
     current_user: User = Depends(get_current_user),
 ):
     """Search teachers by name or email. Returns both platform and shadow teachers."""
-    from sqlalchemy import or_
+    from sqlalchemy import or_, func
     from app.core.utils import escape_like
 
     results = []
     q_lower = q.strip().lower()
     query = db.query(Teacher).options(selectinload(Teacher.user))
+    is_restricted = current_user.role in (UserRole.PARENT, UserRole.STUDENT)
 
     if q_lower:
-        term = f"%{escape_like(q_lower)}%"
-        query = query.outerjoin(User, Teacher.user_id == User.id).filter(
-            or_(
-                Teacher.full_name.ilike(term),
-                Teacher.google_email.ilike(term),
-                User.full_name.ilike(term),
-                User.email.ilike(term),
+        if is_restricted:
+            # Parents/students: exact email match only (case-insensitive)
+            query = query.outerjoin(User, Teacher.user_id == User.id).filter(
+                or_(
+                    func.lower(Teacher.google_email) == q_lower,
+                    func.lower(User.email) == q_lower,
+                )
             )
-        )
+        else:
+            term = f"%{escape_like(q_lower)}%"
+            query = query.outerjoin(User, Teacher.user_id == User.id).filter(
+                or_(
+                    Teacher.full_name.ilike(term),
+                    Teacher.google_email.ilike(term),
+                    User.full_name.ilike(term),
+                    User.email.ilike(term),
+                )
+            )
 
     teachers = query.limit(50).all()
     for t in teachers:
