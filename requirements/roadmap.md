@@ -182,7 +182,7 @@
 - [x] **Frontend tests** — Waitlist + AI limits component tests (IMPLEMENTED — #1123)
 
 #### Phase 1 New Workflow (§6.51) — #546-#552
-- [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IN PROGRESS)
+- [x] **Phase 0 Foundation** — Models, migrations, notification service, schemas (IMPLEMENTED)
 - [x] **Student registration with username + parent email** — Username login, parent linking on register (#546) (IMPLEMENTED)
 - [x] **Parent-Student LinkRequest approval** — Bidirectional approval workflow for linking (#547) (IMPLEMENTED)
 - [x] **Multi-channel notifications + ACK** — In-app + email + message, persistent reminders, suppress (#548) (IMPLEMENTED)
@@ -312,12 +312,12 @@ Deployed to production April 1, 2026. All issues closed.
 - [x] **Quiz Results History** — Persist quiz attempts with per-question answers; track retries, score trends, child selector for parents. Inline quiz save from Course Material detail page + dedicated Quiz page. View History link on quiz completion. (#574, #621)
 - [ ] **User-Provided AI API Key (BYOK)** — Users bring their own OpenAI key; encrypted storage, seamless fallback to platform key (#578)
 - [ ] **Premium accounts + admin-configurable limits** — `subscription_tier` column on users; Admin Dashboard toggle; premium users get higher file size (50 MB), session (25 files), and study guide (500) limits; configurable via env vars (#1007)
-- [ ] **Digital Wallet & Subscription System** — Stripe PaymentIntent flow, dual credit pools (package + purchased), admin-managed PackageTier config, subscription plans (Free / Standard / Premium), one-time credit purchases replacing "Request More" flow, Interac e-Transfer (Phase 2), invoice module for school board billing, admin revenue dashboard (§6.60, #1384-#1392, #1851)
+- [x] **Digital Wallet & Subscription System** — Stripe PaymentIntent flow, dual credit pools (package + purchased), admin-managed PackageTier config, subscription plans, credit purchases (§6.60, #2936) (IMPLEMENTED — core wallet; Interac e-Transfer #1851, invoice module, admin revenue dashboard deferred)
 - [ ] **Study Guide Repository & Reuse** — Cross-student dedup via content hashing + fuzzy matching; shared study guide pool saves 67% AI costs (#573)
 - [ ] **Student Progress Analysis** — Upload graded tests (photo/PDF), OCR score extraction, manual mark entry, AI recommendations (#575)
 - [ ] **Sample Exams/Tests Upload** — Teacher uploads with AI difficulty assessment, topic coverage, curriculum alignment, practice mode (#577)
 - [ ] **Parent AI Insights** — Student interest profiling, academic health score, semester reports, engagement analysis (#581)
-- [ ] **Study Guide Contextual Q&A** — Context-aware chatbot Q&A on study guide pages; save responses as sub-guides or course materials; 0.25 credits/question via Haiku (§6.114, #2056-#2063)
+- [x] **Study Guide Contextual Q&A** — Context-aware chatbot Q&A on study guide pages; save responses as sub-guides or course materials (§6.114, #2937) (IMPLEMENTED)
 - [ ] **User Cloud Storage Destination** — Users choose to store uploaded materials in their own Google Drive or OneDrive instead of GCS; auto-created `ClassBridge/{Course}/` folder structure; on-demand download for AI regeneration; fallback to GCS on failure (§6.95, #1865-#1871)
 - [ ] **Cloud File Import** — Import files directly from Google Drive or OneDrive into Upload Wizard via tabbed file browser; folder browsing, multi-select, server-side download into existing processing pipeline (§6.96, #1872-#1877)
 
@@ -379,7 +379,7 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 
 #### Phase 2 — New Feature Requirements (#668)
 
-- [ ] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663)
+- [x] **Report Card Upload & AI Analysis** — OCR extraction, trend tracking, AI observations per child per term (#663) (IMPLEMENTED — §6.121, commit f7d5efea)
 - [x] **Quiz difficulty levels (Easy/Medium/Hard)** — Difficulty selector on QuizTab with AI prompt engineering per level (#664, PR #1064) (IMPLEMENTED — generation side; parent-assigned quizzes with notification + tracking deferred)
 - [ ] **Teacher grade & feedback entry** — Spreadsheet-style bulk grading per student per term with feedback (#665)
 - [ ] **Unified teacher material upload with type classification** — Notes/Test/Lab/Assignment/Report Card types (#666)
@@ -448,7 +448,7 @@ Community-driven help center where users ask questions, provide answers, and adm
 - [x] **Support email for OAuth consent screen** — classbridge-support Google Group created and set as support email (#757) (IMPLEMENTED)
 - [x] **Google OAuth app published to production** — App moved from Testing → In production; branding verified; all Classroom scopes registered; no sensitive scope review required (#589) (IMPLEMENTED — March 1, 2026)
 
-### Phase 2 (Mobile App — March 6 Pilot MVP) - IN PROGRESS
+### Phase 2 (Mobile App — March 6 Pilot MVP) - COMPLETE
 
 See §9 Mobile App Development for detailed specification.
 
@@ -525,19 +525,19 @@ Features that answer the pilot feedback question: *"Why should I use ClassBridge
 
 Student retention and parent engagement features based on StudyGuide Requirements v3 analysis. Target: September 2026 launch.
 
-| Priority | Feature | Epic/Issue | Build Effort | Audience |
-|----------|---------|------------|-------------|----------|
-| Critical | **Study Streak & XP Point System** | #1997 | High | Student |
-| Critical | **Weekly Parent Digest Enhancements** | #2022 | Low | Parent |
-| High | **Sibling Profiles** (mostly LIVE) | — | Low | Parent |
-| High | **Assessment Countdown Widget** | #1998 | Low-Medium | Both |
-| High | **Multilingual Parent Summaries** | #1999 | Low | Parent |
-| High | **Personal Study History Timeline** | #2017 | Medium | Student |
-| High | **Sub-Guide v2** | #1817–#1820 | Medium | Student |
-| Medium | **End-of-Term Report Card** | #2018 | Medium | Both |
-| Medium | **Parent-Initiated Study Request** | #2019 | Medium | Parent |
-| Medium | **Is My Child On Track Signal** | #2020 | Low | Parent |
-| Medium | **Study With Me (Pomodoro)** | #2021 | Low-Medium | Student |
+| Priority | Feature | Epic/Issue | Build Effort | Audience | Status |
+|----------|---------|------------|-------------|----------|--------|
+| Critical | **Study Streak & XP Point System** | #1997 | High | Student | **IMPLEMENTED** |
+| Critical | **Weekly Parent Digest Enhancements** | #2022 | Low | Parent | **IMPLEMENTED** |
+| High | **Sibling Profiles** (mostly LIVE) | — | Low | Parent | **IMPLEMENTED** |
+| High | **Assessment Countdown Widget** | #1998 | Low-Medium | Both | **IMPLEMENTED** |
+| High | **Multilingual Parent Summaries** | #1999 | Low | Parent | **IMPLEMENTED** |
+| High | **Personal Study History Timeline** | #2017 | Medium | Student | **IMPLEMENTED** |
+| High | **Sub-Guide v2** | #1817–#1820 | Medium | Student | **IMPLEMENTED** |
+| Medium | **End-of-Term Report Card** | #2018 | Medium | Both | **IMPLEMENTED** |
+| Medium | **Parent-Initiated Study Request** | #2019 | Medium | Parent | **IMPLEMENTED** |
+| Medium | **Is My Child On Track Signal** | #2020 | Low | Parent | **IMPLEMENTED** |
+| Medium | **Study With Me (Pomodoro)** | #2021 | Low-Medium | Student | **IMPLEMENTED** |
 
 **Aggressive Batch Delivery Plan — 7 Batches, April–August 2026:**
 
@@ -545,9 +545,10 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 
 ---
 
-#### Batch 0 — Tech Debt & Schema Foundation (April 7–11)
+#### Batch 0 — Tech Debt & Schema Foundation (April 7–11) ✅ COMPLETE
 **Theme:** Clean slate — fix debt, add columns needed by everything else.
 **Duration:** 1 week | **Risk:** Low | **Deploy:** Yes — invisible to users
+**Actual:** Completed March 12, 2026 (PR f359f92d). Deployed ahead of schedule.
 
 | # | Issue | Work | Est |
 |---|-------|------|-----|
@@ -562,9 +563,10 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 
 ---
 
-#### Batch 1 — XP Core Engine (April 14–25) ★ Critical Path
+#### Batch 1 — XP Core Engine (April 14–25) ✅ COMPLETE
 **Theme:** Backend gamification engine — no UI yet, just the data layer and service.
 **Duration:** 2 weeks | **Risk:** Medium | **Deploy:** Yes — feature-flagged, invisible
+**Actual:** Completed March 14, 2026. XP model, earning service, streak engine, API routes all deployed.
 
 | # | Issue | Work | Est |
 |---|-------|------|-----|
@@ -581,9 +583,10 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 
 ---
 
-#### Batch 2 — XP Dashboard & Visibility (April 28 – May 9)
+#### Batch 2 — XP Dashboard & Visibility (April 28 – May 9) ✅ COMPLETE
 **Theme:** Make gamification visible to students and parents.
 **Duration:** 2 weeks | **Risk:** Low | **Deploy:** Yes — users see streaks/XP for first time
+**Actual:** Completed March 16, 2026. XP dashboard, history page, parent visibility, digest crons deployed.
 
 **Track A (Student UI)** — can run as parallel session:
 
@@ -611,9 +614,10 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 
 ---
 
-#### Batch 3 — Badges & Brownie Points (May 12–23)
+#### Batch 3 — Badges & Brownie Points (May 12–23) ✅ COMPLETE
 **Theme:** Depth — make gamification sticky with achievements and social rewards.
 **Duration:** 2 weeks | **Risk:** Low | **Deploy:** Yes
+**Actual:** Completed March 18, 2026. Badges, brownie points, anti-gaming rules deployed.
 
 **Track A (Badges):**
 
@@ -635,9 +639,10 @@ Each batch is a deployable, testable unit merged to master via PR. Batches inclu
 
 ---
 
-#### Batch 4 — Assessment Countdown & On Track (May 26 – June 6)
+#### Batch 4 — Assessment Countdown & On Track (May 26 – June 6) ✅ COMPLETE
 **Theme:** Urgency — give parents and students reasons to open ClassBridge daily.
 **Duration:** 2 weeks | **Risk:** Medium (AI date parsing is tricky) | **Deploy:** Yes
+**Actual:** Completed March 22, 2026. Assessment countdown, On Track signal, parent study request, multilingual summaries, Pomodoro, timeline, report card all deployed.
 
 | # | Issue | Work | Est |
 |---|-------|------|-----|
@@ -898,9 +903,47 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 #### Suggestion Chip Streaming — April 1, 2026 — PR #2812
 
 - [x] **Streaming generation for suggestion chips** — Replaced synchronous `generateChildGuide()` with `stream.startStream()` SSE; content appears word-by-word in Study Guide tab instead of 10-30s blocking wait (#2806, PR #2812) (IMPLEMENTED)
-- [ ] **Streaming endpoint parent_guide_id support** — Add `parent_guide_id` to `StudyGuideCreate` schema so streaming sub-guides maintain parent-child hierarchy (#2810)
-- [ ] **Scroll to tab content on chip click** — Auto-scroll to Study Guide tab when streaming starts (#2811)
-- [ ] **Reduce initial max_tokens to 750** — Overview+chips pattern: 750 tokens for initial guide (~3-5s), 2000 for chip deep dives (#2823)
+- [x] **Streaming endpoint parent_guide_id support** — Added `parent_guide_id` to streaming endpoint for sub-guide hierarchy (#2810, PR #2879) (IMPLEMENTED)
+- [x] **Scroll to tab content on chip click** — Auto-scroll to Study Guide tab when streaming starts (#2811, PR #2879) (IMPLEMENTED)
+- [x] **Concise overview prompt + chip reliability** — Rewrote strategy templates for concise overview; max_tokens=1200; Full Study Guide chip uses 4000 tokens (#2837, #2839, #2840, PRs #2852, #2860) (IMPLEMENTED)
+
+#### Progressive Generation Refinements — April 1-5, 2026
+
+- [x] **Ask a Question feature** — Parent open-ended study guide generation with streaming (§6.128, #2861, PR #2866) (IMPLEMENTED)
+- [x] **Ask a Question streaming fixes** — Full guide generation, navigate-then-stream pattern, prompt fixes (#2880-#2890, PRs #2881-#2893) (IMPLEMENTED)
+- [x] **Suggestion chips on sub-guide pages** — Topic chips, Full Study Guide, Ask Bot on sub-guide detail pages (PR #2871) (IMPLEMENTED)
+- [x] **Migrations extracted from main.py** — Dedicated migrations module (#2824, PR #2879) (IMPLEMENTED)
+- [x] **DB consistency fixes** — CASCADE on DigestDeliveryLog FK, compound index on link_requests, digest schema validation (#2826, #2829-#2832, PR #2879) (IMPLEMENTED)
+
+#### Study Guide Enhancements — April 6-8, 2026 — PR #2906
+
+- [x] **Study guide section navigation (§6.129)** — TOC auto-generated from markdown headings, collapsible sections, smooth scroll, localStorage persistence (#2894, PR #2906) (IMPLEMENTED)
+- [x] **Inline helpful links (§6.130 Phase 1)** — ResourceLinksSection component on study guide pages with YouTube embeds, topic grouping (#2895, PR #2906) (IMPLEMENTED)
+- [x] **Continue streaming fix** — Fixed spinner-only bug, actual streaming content now displays (#2896, PR #2906) (IMPLEMENTED)
+- [x] **TOC sub-guides only** — TOC and collapsible sections only render on sub-guide pages, not overviews (#2923, PR #2915) (IMPLEMENTED)
+
+#### Activity Feed Fixes — April 8, 2026 — PR #2916
+
+- [x] **Child filter on tasks** — Activity feed showed wrong child's tasks when filtering (#2914) (IMPLEMENTED)
+- [x] **Cache invalidation** — Activity cache invalidated after upload/study guide generation (#2919) (IMPLEMENTED)
+- [x] **N+1 query fix** — Message sender lookup in activity feed (#2918) (IMPLEMENTED)
+- [x] **Regression test** — Added test for activity child filter on tasks (#2917) (IMPLEMENTED)
+
+#### CI/CD Optimization — April 1, 2026 — PR #2847
+
+- [x] **GitHub Actions free tier optimization** — Path filters, concurrency groups, job consolidation, security scan consolidation, daily schedule, rate limit fix, debounce (#2841-#2846, #2813, #2815, PR #2847) (IMPLEMENTED)
+- [x] **Security scanning daily schedule** — Moved from PR triggers to daily cron (commit 18e10f3f) (IMPLEMENTED)
+
+#### Batch Bug Fixes — March 29-31, 2026
+
+- [x] **Tab overflow fix** — Study tools grouped into dropdown to prevent tab overflow (#2740, #2747) (IMPLEMENTED)
+- [x] **YouTube validation + timestamps + image fallback** — Multiple content rendering fixes (#2742-#2750, PR #2746) (IMPLEMENTED)
+- [x] **Accessibility + dark mode fixes** — Quick fixes, accessibility improvements, dark mode (#2741, #2738, #2718, #2474, #2472, #2483, PR #2751) (IMPLEMENTED)
+- [x] **Duplicate sub-guides + chip navigation** — Fixed duplicate creation and navigation failure (#2758, #2759, PR #2760) (IMPLEMENTED)
+- [x] **Tab sizing + Access Log** — Access Log visible to all users (#2717, PR #2762) (IMPLEMENTED)
+- [x] **Student course visibility** — Students only see own/enrolled courses (#2766, PR #2772) (IMPLEMENTED)
+- [x] **DB connection pool** — Reduced pool to prevent PostgreSQL slot exhaustion (#2769) (IMPLEMENTED)
+- [x] **Child guide dedup** — Proper dedup + student visibility for parent sub-guides (#2758, #2765, PR #2764) (IMPLEMENTED)
 
 ---
 

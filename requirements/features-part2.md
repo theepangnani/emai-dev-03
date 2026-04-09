@@ -629,7 +629,7 @@ Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a sin
 - No backend changes required — same `/api/course-contents/upload` and `/api/course-contents/upload-multi` endpoints
 - Same `StudyMaterialGenerateParams` interface; wizard maps to identical payload
 
-### 6.28.7 Upload Wizard Phase 2: Simplified Upload & Decoupled Generation - IN PROGRESS
+### 6.28.7 Upload Wizard Phase 2: Simplified Upload & Decoupled Generation - IMPLEMENTED (Phase 1-2)
 
 **Epic:** #2694 | **Phase 1:** #2695 | **Phase 2:** #2696 | **Phase 3:** #2697
 

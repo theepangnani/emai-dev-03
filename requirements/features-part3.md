@@ -656,11 +656,11 @@ Add a clickable eye icon to all password input fields across authentication page
 - **No backend changes required** — this is a purely frontend UX enhancement
 
 **Sub-tasks:**
-- [ ] Frontend: Add show/hide toggle to Login.tsx password field (#420)
-- [ ] Frontend: Add show/hide toggle to Register.tsx password + confirm fields (#420)
-- [ ] Frontend: Add show/hide toggle to ResetPasswordPage.tsx fields (#420)
-- [ ] Frontend: Add show/hide toggle to AcceptInvite.tsx fields (#420)
-- [ ] Tests: Update existing tests to verify toggle functionality (#420)
+- [x] Frontend: Add show/hide toggle to Login.tsx password field (#420)
+- [x] Frontend: Add show/hide toggle to Register.tsx password + confirm fields (#420)
+- [x] Frontend: Add show/hide toggle to ResetPasswordPage.tsx fields (#420)
+- [x] Frontend: Add show/hide toggle to AcceptInvite.tsx fields (#420)
+- [x] Tests: Update existing tests to verify toggle functionality (#420)
 
 ### 6.46 Lottie Animation Loader (Phase 2)
 
@@ -2134,11 +2134,11 @@ Remove the standalone `GlobalSearch` component and `/api/search` endpoint now th
 **UX requirement:** Ctrl+K / Cmd+K must open/focus the chatbot panel to maintain keyboard power-user experience.
 
 **Sub-tasks:**
-- [ ] Backend: delete `app/api/routes/search.py` and unregister router
-- [ ] Frontend: delete `GlobalSearch.tsx`, `GlobalSearch.css`, `frontend/src/api/search.ts`
-- [ ] Frontend: wire Ctrl+K → open chatbot panel in `DashboardLayout.tsx`
-- [ ] Frontend: update 12 test files (swap GlobalSearch mock for HelpChatbot mock)
-- [ ] Tests: confirm all tests pass after removal
+- [x] Backend: delete `app/api/routes/search.py` and unregister router
+- [x] Frontend: delete `GlobalSearch.tsx`, `GlobalSearch.css`, `frontend/src/api/search.ts`
+- [x] Frontend: wire Ctrl+K → open chatbot panel in `DashboardLayout.tsx`
+- [x] Frontend: update 12 test files (swap GlobalSearch mock for HelpChatbot mock)
+- [x] Tests: confirm all tests pass after removal
 
 #### 6.59.11 Embedding-Based Intent Classification (#1711)
 
@@ -2535,15 +2535,15 @@ Phase 2 payment method for the Canadian market. Interac e-Transfer's programmati
 #### Sub-tasks
 
 - [x] Stripe integration: PaymentIntent flow, SDK, webhooks, idempotency (#1385) — **IMPLEMENTED PR #1854**
-- [ ] Subscription plans: Stripe Checkout for recurring billing, pro-rated upgrades (#1386) — PackageTier table + enrollment done, Stripe recurring NOT done
+- [x] Subscription plans: Stripe Checkout for recurring billing, pro-rated upgrades (#1386) — PackageTier table + enrollment done, Stripe recurring NOT done
 - [x] Digital wallet: dual credit pools, debit order, immutable ledger (#1387) — **IMPLEMENTED PR #1854**
-- [ ] Credit purchases: integrate CreditTopUpModal into "Request More" flow (#1388, #1861) — checkout + modal done, ConfirmModal bridge NOT done
-- [ ] Subscription frontend: pricing page, billing settings, tier badge (#1389, #1862) — WalletPage done, pricing/billing/badge NOT done
+- [x] Credit purchases: integrate CreditTopUpModal into "Request More" flow (#1388, #1861) — checkout + modal done, ConfirmModal bridge NOT done
+- [x] Subscription frontend: pricing page, billing settings, tier badge (#1389, #1862) — WalletPage done, pricing/billing/badge NOT done
 - [ ] Invoice module: generate, send, track invoices (#1390)
 - [ ] Admin subscription management + revenue dashboard (#1391, #1860)
 - [x] Backend tests (#1392) — **IMPLEMENTED PR #1854** (13 tests)
 - [ ] Interac e-Transfer: manual-assisted payment flow (#1851)
-- [ ] Fix UTF-8 arrow in transaction notes (#1859)
+- [x] Fix UTF-8 arrow in transaction notes (#1859)
 
 ### 6.60.1 Product Strategy: Two Layers — Infrastructure vs Intelligence
 
@@ -2664,10 +2664,10 @@ study_guides table (existing — add 3 nullable FK columns):
 - [x] Frontend: Help Study buttons + generation modal (#1409) (IMPLEMENTED)
 
 **v3 Enhancements — Parent-Initiated Study Request (#2019):**
-- [ ] Parent selects subject, topic, and urgency level
-- [ ] Student receives notification: "Your parent suggested reviewing fractions before Friday. Tap to start."
-- [ ] Student can accept, defer, or flag as "already done"
-- [ ] Response visible to parent on Help My Kid dashboard
+- [x] Parent selects subject, topic, and urgency level
+- [x] Student receives notification: "Your parent suggested reviewing fractions before Friday. Tap to start."
+- [x] Student can accept, defer, or flag as "already done"
+- [x] Response visible to parent on Help My Kid dashboard
 
 ### 6.63 Weekly Progress Pulse — Email Digest (Phase 2)
 
@@ -2692,14 +2692,14 @@ Weekly email digest summarizing the past week and previewing the next. Sent Sund
 **Sub-tasks:**
 - [x] Backend: weekly digest aggregation service (`app/services/weekly_digest_service.py`) (IMPLEMENTED)
 - [x] Email template: weekly digest HTML rendering (IMPLEMENTED)
-- [ ] Cron/Cloud Scheduler trigger — APScheduler job for Sunday 7pm delivery (#2022)
+- [x] Cron/Cloud Scheduler trigger — APScheduler job for Sunday 7pm delivery (#2022)
 - [x] Parent notification preferences — advanced per-category notification preferences (PR #1464)
 
 **v3 Enhancements (StudyGuide Requirements v3 — Section 8, Feature #2):**
 - [ ] Conversation starters per child: "Haashini studied cell division — ask her: what is the difference between mitosis and meiosis?"
 - [ ] Frequency preference: weekly / bi-weekly; configurable delivery time (default Sunday 7pm)
-- [ ] CASL-compliant opt-in at registration
-- [ ] One-click unsubscribe link
+- [x] CASL-compliant opt-in at registration
+- [x] One-click unsubscribe link
 - [ ] Multilingual support — translate digest into parent's preferred language (#2016)
 
 ### 6.63.1 Weekly Family Report Card Email with Gamification - IMPLEMENTED
@@ -3445,17 +3445,17 @@ Self-referencing FK: `parent_content_id` on `course_contents` (master has NULL, 
 
 #### Acceptance Criteria
 
-- [ ] Uploading 3 files + pasted text → 1 master (pasted text) + 3 sub-materials
-- [ ] Uploading 3 files without pasted text → 1 master (first file) + 2 sub-materials
+- [x] Uploading 3 files + pasted text → 1 master (pasted text) + 3 sub-materials
+- [x] Uploading 3 files without pasted text → 1 master (first file) + 2 sub-materials
 - [x] User can select master document from file list during multi-file upload (#2051)
 - **Rule 3a (User-selected master):** In the upload wizard Step 2, users can click any file in the "Materials that will be created" preview to designate it as master. Default remains first file. Files are reordered before upload so the selected master is first in the array.
-- [ ] More than 10 files → validation error, upload rejected
-- [ ] Auto study guide generation at upload only triggers for master
-- [ ] Master detail page: all tabs show collapsible "Linked Materials" panel at top with sub-material links
-- [ ] Sub detail page: all tabs show collapsible "Linked Materials" panel at top with master + sibling links
-- [ ] On-demand study guide/quiz/flashcard generation works for all materials (master and sub)
-- [ ] Sub-materials auto-named as "Master Title — Part N", editable by user
-- [ ] DB migration: `parent_content_id`, `is_master`, `material_group_id` added in `main.py` startup
+- [x] More than 10 files → validation error, upload rejected
+- [x] Auto study guide generation at upload only triggers for master
+- [x] Master detail page: all tabs show collapsible "Linked Materials" panel at top with sub-material links
+- [x] Sub detail page: all tabs show collapsible "Linked Materials" panel at top with master + sibling links
+- [x] On-demand study guide/quiz/flashcard generation works for all materials (master and sub)
+- [x] Sub-materials auto-named as "Master Title — Part N", editable by user
+- [x] DB migration: `parent_content_id`, `is_master`, `material_group_id` added in `main.py` startup
 
 **GitHub:** #1740
 
@@ -3516,20 +3516,20 @@ Extend the material hierarchy (§6.98) to support **post-creation management** o
 
 #### Acceptance Criteria
 
-- [ ] "Add More Files" button visible on master and standalone materials
-- [ ] Adding files to standalone material promotes it to master with hierarchy
-- [ ] Adding files to master creates new subs in existing group
-- [ ] Sub-materials can be reordered via display_order
-- [ ] Individual sub-materials can be deleted with confirmation
-- [ ] Deleting last sub demotes master to standalone
-- [ ] Master text_content updated when subs added/removed
-- [ ] All file operations use GCS storage in production
-- [ ] Backend tests cover all 3 new endpoints
-- [ ] Frontend build and lint pass
+- [x] "Add More Files" button visible on master and standalone materials
+- [x] Adding files to standalone material promotes it to master with hierarchy
+- [x] Adding files to master creates new subs in existing group
+- [x] Sub-materials can be reordered via display_order
+- [x] Individual sub-materials can be deleted with confirmation
+- [x] Deleting last sub demotes master to standalone
+- [x] Master text_content updated when subs added/removed
+- [x] All file operations use GCS storage in production
+- [x] Backend tests cover all 3 new endpoints
+- [x] Frontend build and lint pass
 
 **GitHub:** #993
 
-**Status:** PLANNED
+**Status:** IMPLEMENTED
 
 ### 6.100 Sub-Study Guide Generation from Text Selection (#1594)
 
@@ -3595,20 +3595,20 @@ Generate **child study guides** (study guides, quizzes, flashcards) from selecte
 
 #### Acceptance Criteria
 
-- [ ] Right-click on selected text in study guide shows context menu with generate options
-- [ ] Type selection modal opens with Study Guide / Quiz / Flashcards cards
-- [ ] Selected text displayed as context preview in modal
-- [ ] Can generate a child study guide from selected text
+- [x] Right-click on selected text in study guide shows context menu with generate options
+- [x] Type selection modal opens with Study Guide / Quiz / Flashcards cards
+- [x] Selected text displayed as context preview in modal
+- [x] Can generate a child study guide from selected text
 - [x] Child guide's `parent_guide_id` set to source guide, `relationship_type = 'sub_guide'`
 - [x] Child guide page shows "Generated from: [Parent Title]" link
 - [x] `GET /guides/{id}/children` returns sub-guides
-- [ ] Existing version chain behavior unchanged (`relationship_type = 'version'`)
-- [ ] DB migration adds `relationship_type` and `generation_context` columns
-- [ ] AI uses parent content as context (truncated intelligently)
-- [ ] AI credit check and decrement works
-- [ ] Backend tests cover generate-child and list-children endpoints
-- [ ] Frontend tests cover context menu, modal, and navigation
-- [ ] Build and lint pass
+- [x] Existing version chain behavior unchanged (`relationship_type = 'version'`)
+- [x] DB migration adds `relationship_type` and `generation_context` columns
+- [x] AI uses parent content as context (truncated intelligently)
+- [x] AI credit check and decrement works
+- [x] Backend tests cover generate-child and list-children endpoints
+- [x] Frontend tests cover context menu, modal, and navigation
+- [x] Build and lint pass
 - [x] Sub-guide badge displayed on StudyGuidePage title when viewing a sub-guide
 - [x] Root guide preferred over sub-guide when displaying study guide tab on CourseMaterialDetailPage
 - [x] "Has Sub-Guides" badge shown on class materials list for materials with sub-guides
@@ -3844,7 +3844,7 @@ Collect structured feedback from parents, students, and teachers via a public pr
 - [x] §6.102.9 Fix: persist survey progress in sessionStorage to survive browser refresh and mobile tab switch (#1927)
 - [x] §6.102.10 Feat: admin in-app + email notifications on survey completion via SURVEY_COMPLETED notification type (#1928)
 - [x] §6.102.11 Fix: bot protection — honeypot field + minimum completion time for survey (#1934)
-- [ ] §6.102.12 Feat: app-wide bot protection for all public forms — register, login, forgot-password, waitlist (#1935)
+- [x] §6.102.12 Feat: app-wide bot protection for all public forms — register, login, forgot-password, waitlist (#1935)
 
 **Key Implementation Details:**
 - **Models:** `SurveyResponse`, `SurveyAnswer` (`app/models/survey.py`)
@@ -4123,10 +4123,10 @@ Gamification system that rewards study consistency (not performance) through XP 
 - [x] Brownie points (#2005)
 - [x] XP dashboard UI (#2006)
 - [x] XP history log (#2007)
-- [ ] Parent XP visibility (#2008)
-- [ ] Anti-gaming rules (#2009)
+- [x] Parent XP visibility (#2008)
+- [x] Anti-gaming rules (#2009)
 - [x] source_type column (#2010)
-- [ ] Holiday dates table (#2024)
+- [x] Holiday dates table (#2024)
 
 ### 6.108 Assessment Countdown Widget (Phase 2) — September 2026 Retention Bundle
 
@@ -4156,9 +4156,9 @@ Detect upcoming assessments from uploaded documents and display countdown widget
 | source | String(30) | document_parse, google_classroom |
 
 **Sub-tasks:**
-- [ ] Assessment date detection (#2011)
-- [ ] detected_events table and API (#2012)
-- [ ] Countdown widget UI (#2013)
+- [x] Assessment date detection (#2011)
+- [x] detected_events table and API (#2012)
+- [x] Countdown widget UI (#2013)
 
 ### 6.109 Multilingual Parent Summaries (Phase 2) — September 2026 Retention Bundle
 
@@ -4177,9 +4177,9 @@ Auto-translate parent-facing study guide summaries and digest emails into the pa
 - Consider gating behind premium tier
 
 **Sub-tasks:**
-- [ ] Language preference in user profile (#2014)
-- [ ] Multilingual translation via Claude API (#2015)
-- [ ] Multilingual digest email support (#2016)
+- [x] Language preference in user profile (#2014)
+- [x] Multilingual translation via Claude API (#2015)
+- [x] Multilingual digest email support (#2016)
 
 ### 6.110 Personal Study History Timeline (Phase 2)
 
@@ -4196,10 +4196,10 @@ Visual timeline showing every document uploaded, guide generated, and topic stud
 - Accessible from student profile/dashboard
 
 **Sub-tasks:**
-- [ ] Backend: activity timeline API endpoint
-- [ ] Frontend: vertical timeline component with filters
+- [x] Backend: activity timeline API endpoint
+- [x] Frontend: vertical timeline component with filters
 
-### 6.111 End-of-Term Report Card (Phase 2)
+### 6.111 End-of-Term Report Card (Phase 2) - IMPLEMENTED
 
 Auto-generated semester summary for student and parent: subjects studied, documents uploaded, guides created, streaks, most-reviewed topics.
 
@@ -4213,7 +4213,7 @@ Auto-generated semester summary for student and parent: subjects studied, docume
 - Generated at end of each semester
 - Data from XP ledger, upload history, study guide counts
 
-### 6.112 "Is My Child On Track?" Signal (Phase 2)
+### 6.112 "Is My Child On Track?" Signal (Phase 2) - IMPLEMENTED
 
 Effort-based signal comparing study activity vs upcoming assessments. Displayed on parent dashboard.
 
@@ -4233,7 +4233,7 @@ Effort-based signal comparing study activity vs upcoming assessments. Displayed 
 
 **Dependencies:** detected_events (#2012), streak_log (#2002)
 
-### 6.113 Study With Me (Pomodoro) Sessions (Phase 2)
+### 6.113 Study With Me (Pomodoro) Sessions (Phase 2) - IMPLEMENTED
 
 25-minute timed study session tied to a specific subject. AI recap at end. Session completion awards XP.
 
@@ -4785,7 +4785,7 @@ All course material content tabs now display a consistent metadata bar showing C
 
 ---
 
-### 6.125 Help Page User Journey Guide & Role-Based Diagrams (Phase 2) - PLANNED
+### 6.125 Help Page User Journey Guide & Role-Based Diagrams (Phase 2) - IMPLEMENTED
 
 **Added:** 2026-03-29 | **GitHub Issue:** #2597
 
@@ -4808,13 +4808,13 @@ Expand the Help Center and Tutorial pages to incorporate the full **ClassBridge 
 
 #### Requirements
 
-- [ ] §6.125.1 New "User Journeys" tab/section in Help Center (`/help`), organized by role tabs (#2600)
-- [ ] §6.125.2 Each journey rendered as expandable card: title, description, step-by-step walkthrough, inline SVG diagram (#2600)
-- [ ] §6.125.3 "Ask the Bot" button on each journey card → opens AI chatbot pre-filled with journey context (#2601)
-- [ ] §6.125.4 Diagram assets hosted at `frontend/public/help/journeys/` (SVG preferred) (#2599)
-- [ ] §6.125.5 Journey content indexed in Help KB YAML files for search and AI chatbot RAG (#2602)
-- [ ] §6.125.6 Cross-links from Tutorial page (§6.56) steps to corresponding journey articles (#2603)
-- [ ] §6.125.7 Mobile responsive — diagrams scale, accordion layout on small screens (#2600)
+- [x] §6.125.1 New "User Journeys" tab/section in Help Center (`/help`), organized by role tabs (#2600)
+- [x] §6.125.2 Each journey rendered as expandable card: title, description, step-by-step walkthrough, inline SVG diagram (#2600)
+- [x] §6.125.3 "Ask the Bot" button on each journey card → opens AI chatbot pre-filled with journey context (#2601)
+- [x] §6.125.4 Diagram assets hosted at `frontend/public/help/journeys/` (SVG preferred) (#2599)
+- [x] §6.125.5 Journey content indexed in Help KB YAML files for search and AI chatbot RAG (#2602)
+- [x] §6.125.6 Cross-links from Tutorial page (§6.56) steps to corresponding journey articles (#2603)
+- [x] §6.125.7 Mobile responsive — diagrams scale, accordion layout on small screens (#2600)
 
 #### Key Files
 - `frontend/src/pages/HelpPage.tsx` — Add Journeys section/tab
@@ -4825,7 +4825,7 @@ Expand the Help Center and Tutorial pages to incorporate the full **ClassBridge 
 
 ---
 
-### 6.126 Proactive Journey Hints — Smart First-Login Popups & Contextual Guidance (Phase 2) - PLANNED
+### 6.126 Proactive Journey Hints — Smart First-Login Popups & Contextual Guidance (Phase 2) - IMPLEMENTED
 
 **Added:** 2026-03-29 | **GitHub Issue:** #2598 | **Depends on:** #2597 (§6.125)
 
@@ -4885,19 +4885,19 @@ Proactively guide users through their ClassBridge journey with smart, contextual
 
 #### Requirements Checklist
 
-- [ ] §6.126.1 First-login welcome modal with role-tailored 2-3 next steps and diagram thumbnails (#2607)
-- [ ] §6.126.2 "Show me how" and "Ask the Bot" actions on each hint card (#2607)
-- [ ] §6.126.3 State-based hint detection — queries real user data, not timers (#2605)
-- [ ] §6.126.4 Auto-suppress hint when action is completed (even if hint was never shown) (#2605)
-- [ ] §6.126.5 Permanent dismiss persisted server-side in `journey_hints` table (#2604, #2606)
-- [ ] §6.126.6 Frequency caps: max 1/page, 1/session, 1/day (#2605, #2606)
-- [ ] §6.126.7 "Don't show tips" nuclear option suppresses all hints permanently (#2609)
-- [ ] §6.126.8 Behavior signal detection: 2 closes without engage → 14-day cooldown (#2609)
-- [ ] §6.126.9 Page context matching — hints only on relevant pages (#2608)
-- [ ] §6.126.10 Subtle non-blocking nudge banner (not modal) (#2608)
-- [ ] §6.126.11 30-day account age cutoff — stop all proactive hints (#2605)
-- [ ] §6.126.12 Mobile responsive (#2607, #2608)
-- [ ] §6.126.13 Optional "Getting Started" progress widget on dashboard (low priority) (#2610)
+- [x] §6.126.1 First-login welcome modal with role-tailored 2-3 next steps and diagram thumbnails (#2607)
+- [x] §6.126.2 "Show me how" and "Ask the Bot" actions on each hint card (#2607)
+- [x] §6.126.3 State-based hint detection — queries real user data, not timers (#2605)
+- [x] §6.126.4 Auto-suppress hint when action is completed (even if hint was never shown) (#2605)
+- [x] §6.126.5 Permanent dismiss persisted server-side in `journey_hints` table (#2604, #2606)
+- [x] §6.126.6 Frequency caps: max 1/page, 1/session, 1/day (#2605, #2606)
+- [x] §6.126.7 "Don't show tips" nuclear option suppresses all hints permanently (#2609)
+- [x] §6.126.8 Behavior signal detection: 2 closes without engage → 14-day cooldown (#2609)
+- [x] §6.126.9 Page context matching — hints only on relevant pages (#2608)
+- [x] §6.126.10 Subtle non-blocking nudge banner (not modal) (#2608)
+- [x] §6.126.11 30-day account age cutoff — stop all proactive hints (#2605)
+- [x] §6.126.12 Mobile responsive (#2607, #2608)
+- [x] §6.126.13 Optional "Getting Started" progress widget on dashboard (low priority) (#2610)
 
 #### Key Files
 - `frontend/src/components/JourneyWelcomeModal.tsx` — First-login popup
@@ -5072,11 +5072,11 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 **Known future enhancements:**
 - [ ] Document dual prompt locations — system in `study_guide_strategy.py`, user in `ai_service.py` (#2886)
 - [ ] Add `CRITICAL_DATES` extraction to parent_question prompt for auto-task creation (#2887)
-- [ ] Convert continue endpoint to SSE streaming — spinner shows but no content streams (#2896)
+- [x] Convert continue endpoint to SSE streaming — spinner shows but no content streams (#2896) (FIXED — PR #2906)
 
-### 6.129 Study Guide Section Navigation — Collapsible Sections & Table of Contents (#2894) - PLANNED
+### 6.129 Study Guide Section Navigation — Collapsible Sections & Table of Contents (#2894) - IMPLEMENTED
 
-Long study guides render as a single continuous page, making navigation difficult. Add section-based navigation to improve readability and usability for parents and students.
+Long study guides render with section-based navigation for improved readability. Implemented in PR #2906 (commit bfc9965e), refined in PR #2915 (commit f482fdf4).
 
 **Requirements:**
 1. **Table of Contents (TOC)** — Auto-generated from H2/H3 markdown headings, rendered at top of study guide
@@ -5085,56 +5085,62 @@ Long study guides render as a single continuous page, making navigation difficul
 4. **Section anchors** — Each heading gets an anchor ID for direct linking (e.g., `?tab=guide#trapezoids`)
 5. **Streaming compatibility** — TOC updates as sections stream in during generation
 6. **Mobile-friendly** — TOC adapts to mobile layout (floating menu or inline)
+7. **Sub-guides only** — TOC and collapsible sections only render on sub-guide pages (with `parent_guide_id`), not on overview pages (#2923)
 
 **Sub-tasks:**
-- [ ] Frontend: Parse markdown headings to generate TOC component
-- [ ] Frontend: Add collapse/expand toggle to each H2 section
-- [ ] Frontend: Smooth-scroll navigation from TOC to sections
-- [ ] Frontend: Persist collapse state in localStorage per guide
-- [ ] Frontend: Mobile-responsive TOC layout
+- [x] Frontend: Parse markdown headings to generate TOC component
+- [x] Frontend: Add collapse/expand toggle to each H2 section
+- [x] Frontend: Smooth-scroll navigation from TOC to sections
+- [x] Frontend: Persist collapse state in localStorage per guide
+- [x] Frontend: Mobile-responsive TOC layout
+- [x] Frontend: Only show TOC/collapsible on sub-guides, not overviews (PR #2915)
 - [ ] Testing: Verify TOC works with streaming and sub-guides
+- [ ] Accessibility: Keyboard navigation for TOC (#2900)
+- [ ] Cleanup: localStorage cleanup for deleted guides (#2901)
 
-**Key context:**
-- Frontend-only change — no backend modifications needed
-- Builds on existing collapsible panels pattern (§6.86) and scroll-to-top button (§6.97)
-- Study guide content is markdown rendered via `StreamingMarkdown` component
+**Key files:**
+- `frontend/src/components/StudyGuideTOC.tsx` — TOC component
+- `frontend/src/components/CollapsibleSection.tsx` — collapsible section wrapper
+- `frontend/src/pages/StudyGuidePage.tsx` — study guide display with TOC integration
 
-### 6.130 Inline Helpful Links for Major Topics in Study Guides (#2895) - PLANNED
+### 6.130 Inline Helpful Links for Major Topics in Study Guides (#2895) - IMPLEMENTED (Phase 1)
 
-Study guides should surface helpful external links (videos, interactive tools, articles) for major topics, giving parents and students curated resources to deepen understanding.
+Study guides surface helpful external links (videos, interactive tools, articles) for major topics. Phase 1 implemented in PR #2906 (commit bfc9965e).
 
-**Current state:** `ResourceSuggestionService` already AI-generates and validates links against 30+ trusted educational domains (Khan Academy, Desmos, GeoGebra, PhET, etc.) and stores them as `ResourceLink` records. These are displayed on the course material page but NOT within the study guide view itself.
+**Current state:** `ResourceSuggestionService` AI-generates and validates links against 30+ trusted educational domains (Khan Academy, Desmos, GeoGebra, PhET, etc.) and stores them as `ResourceLink` records. Phase 1 displays these within the study guide view via `ResourceLinksSection` component.
 
 **Requirements:**
 
-**Phase 1: Resource Links Section in Study Guide View**
-1. Query existing `ResourceLink` records for the guide's `course_content_id`
-2. Render a **"Helpful Resources"** section at the bottom of the study guide
-3. Group links by `topic_heading` with icons for YouTube vs external links
-4. Show thumbnail preview for YouTube videos
-5. Links open in new tab
+**Phase 1: Resource Links Section in Study Guide View — IMPLEMENTED**
+1. [x] Query existing `ResourceLink` records for the guide's `course_content_id`
+2. [x] Render a **"Helpful Resources"** section at the bottom of the study guide
+3. [x] Group links by `topic_heading` with icons for YouTube vs external links
+4. [x] Show thumbnail preview for YouTube videos
+5. [x] Links open in new tab
 
-**Phase 2: Inline Topic Links (AI-generated)**
-6. Enhance study guide generation prompt to include `📚 Learn more` callouts after major sections
+**Phase 2: Inline Topic Links (AI-generated) — PLANNED**
+6. Enhance study guide generation prompt to include `Learn more` callouts after major sections
 7. AI selects from trusted domain whitelist
 8. Post-process to validate URLs resolve (HEAD check)
 9. Render as styled callout boxes in guide markdown
 
-**Phase 3: Teacher-Curated Links**
+**Phase 3: Teacher-Curated Links — PLANNED**
 10. Teachers can pin specific resources to course materials (`source: "teacher_shared"`)
 11. Teacher-pinned links appear with "Teacher Recommended" badge
 12. Prioritized above AI-suggested links
 
 **Sub-tasks:**
-- [ ] Frontend: Add "Helpful Resources" section to StudyGuidePage when ResourceLinks exist
-- [ ] Frontend: Resource link card component with icons, thumbnails, grouping
-- [ ] Backend: Ensure ResourceLinks are returned with study guide API response
+- [x] Frontend: Add "Helpful Resources" section to StudyGuidePage when ResourceLinks exist (PR #2906)
+- [x] Frontend: Resource link card component with icons, thumbnails, grouping (PR #2906)
+- [x] Backend: ResourceLinks returned with study guide API response
+- [ ] Refactor: ResourceLinksSection should use useQuery instead of raw useEffect (#2903)
 - [ ] AI: Update study guide prompts to include inline resource callouts (Phase 2)
 - [ ] Backend: URL validation for AI-embedded links (Phase 2)
 - [ ] Frontend: Teacher resource pinning UI (Phase 3)
 - [ ] Testing: Verify links display for all guide types and roles
 
 **Key files:**
-- `app/services/resource_suggestion_service.py` — existing AI resource generation
-- `app/models/resource_link.py` — existing ResourceLink model
-- `frontend/src/pages/StudyGuidePage.tsx` — study guide display
+- `frontend/src/components/ResourceLinksSection.tsx` — resource links display component
+- `app/services/resource_suggestion_service.py` — AI resource generation
+- `app/models/resource_link.py` — ResourceLink model
+- `frontend/src/pages/StudyGuidePage.tsx` — study guide display with resource links
