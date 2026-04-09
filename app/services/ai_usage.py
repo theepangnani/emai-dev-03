@@ -25,8 +25,8 @@ def check_ai_usage(user: User, db: Session) -> None:
     wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
     if wallet:
         total = (wallet.package_credits or 0) + (wallet.purchased_credits or 0)
-        if total > 0:
-            return  # Wallet has credits — allow
+        if total >= 1:
+            return  # Wallet has enough for at least one generation
         # Wallet exists but empty — check if legacy system allows it
         # (fall through to legacy check below)
 
