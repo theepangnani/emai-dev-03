@@ -217,7 +217,9 @@ export async function classifyDocument(textContent: string, filename: string): P
   const form = new FormData();
   form.append('text_content', textContent);
   form.append('filename', filename);
-  const response = await api.post('/api/study/classify-document', form);
+  const response = await api.post('/api/study/classify-document', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
   return response.data;
 }
 
