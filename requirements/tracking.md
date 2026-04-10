@@ -1115,6 +1115,27 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #2089: Error Dialog → Report Bug Link (§6.116)~~ ✅
 - ~~Issue #2103: Bug Report Bot Protection (§6.117)~~ ✅
 
+### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2) — #2948-#2961
+
+**Epic:** Unified Template + Detection Framework for Study Guide & Worksheet Generation
+**PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
+**Section:** §6.131 | **Target:** May–June 2026 | **Stories:** 13
+
+- [ ] **Epic** — [Epic] CB-UTDF-001: Unified Template + Detection Framework (#2948)
+- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949) — Planned
+- [ ] [CB-UTDF-S2] DB migration: detected_subject, template_key, worksheet columns (#2950) — Planned
+- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951) — Planned
+- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952) — Planned
+- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953) — Planned
+- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954) — Planned
+- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955) — Planned
+- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956) — Planned
+- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957) — Planned
+- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958) — Planned
+- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959) — Planned
+- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960) — Planned
+- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961) — Planned
+
 ### Phase 3+ — Open
 - Issue #506: University Pathway Alignment
 - Issue #507: Course Planning Navigation & Dashboard Integration

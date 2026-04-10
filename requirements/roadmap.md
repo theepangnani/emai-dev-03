@@ -350,6 +350,37 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 **M5 — Public Launch (September 2026):**
 - [ ] Historical digest archive + weekly roll-up (#2656)
 
+#### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2, §6.131) — #2948-#2961
+
+Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material type, subject, student, and teacher from uploaded documents, show context-aware suggestion chips, and route generation to the correct named template. Adds worksheet generation as a new first-class output type.
+
+**PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
+**Target:** May–June 2026
+**Data model:** Extends `study_guides` table with `guide_type='worksheet'` and `guide_type='weak_area_analysis'` (no new tables)
+
+**Credit costs:** Worksheet = 1 credit, Answer Key = free, High Level Summary = free, Weak Area Analysis = 2 credits
+
+**M1 — Core Infrastructure (May 2026):**
+- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
+- [ ] [CB-UTDF-S2] DB migration: detected_subject, template_key, worksheet columns (#2950)
+- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
+
+**M2 — UI & Detection (May–June 2026):**
+- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
+- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
+- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
+- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
+
+**M3 — Generation (June 2026):**
+- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
+- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957)
+- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
+
+**M4 — Integration & Polish (June 2026):**
+- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
+- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
+- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
+
 #### UI/UX Audit — Phase 1 Improvements (#668)
 
 **Audit Report:** [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md)
