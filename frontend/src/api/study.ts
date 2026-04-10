@@ -67,6 +67,22 @@ export interface SharedWithMeGuide {
   course_content_id: number | null;
 }
 
+export interface Worksheet {
+  id: number;
+  user_id: number;
+  course_id: number | null;
+  course_content_id: number | null;
+  title: string;
+  content: string;
+  guide_type: 'worksheet';
+  template_key: string | null;
+  num_questions: number | null;
+  difficulty: string | null;
+  answer_key_markdown: string | null;
+  created_at: string;
+  auto_created_tasks?: AutoCreatedTask[];
+}
+
 export interface StudyGuideTreeNode {
   id: number;
   title: string;
@@ -412,6 +428,22 @@ export const studyApi = {
   resolveStudent: async (params: { course_id?: number; study_guide_id?: number }) => {
     const response = await api.get('/api/quiz-results/resolve-student', { params });
     return response.data as ResolvedStudent | null;
+  },
+
+  // Worksheet generation (#2956)
+  generateWorksheet: async (params: { content_id: number; template_key?: string; num_questions?: number; difficulty?: string; student_id?: number }) => {
+    const response = await api.post('/api/study/worksheets/generate', params, AI_TIMEOUT);
+    return response.data as Worksheet;
+  },
+
+  getWorksheet: async (id: number) => {
+    const response = await api.get(`/api/study/worksheets/${id}`);
+    return response.data as Worksheet;
+  },
+
+  listWorksheets: async (contentId?: number) => {
+    const response = await api.get('/api/study/worksheets', { params: contentId ? { content_id: contentId } : {} });
+    return response.data as Worksheet[];
   },
 
   // Study Sharing (Parent-Child Study Link #1414)

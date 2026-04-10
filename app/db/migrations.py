@@ -2174,3 +2174,18 @@ def _run_migrations_inner(engine, settings, logger):
             conn.commit()
     except Exception as e:
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+
+    # --- Worksheet columns on study_guides (#2956) ---
+    _worksheet_cols = [
+        ("template_key", "VARCHAR(50)"),
+        ("num_questions", "INTEGER"),
+        ("difficulty", "VARCHAR(20)"),
+        ("answer_key_markdown", "TEXT"),
+    ]
+    for col_name, col_type in _worksheet_cols:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE study_guides ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+        except Exception as e:
+            logger.debug("Worksheet migration skipped (%s likely exists): %s", col_name, e)
