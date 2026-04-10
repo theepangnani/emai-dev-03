@@ -2154,23 +2154,23 @@ def _run_migrations_inner(engine, settings, logger):
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_phone VARCHAR(20)"))
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_verified BOOLEAN DEFAULT FALSE"))
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_code VARCHAR(6)"))
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_expires_at TIMESTAMP"))
             conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
