@@ -20,11 +20,9 @@ export function getMaterialTypeLabel(documentType: string | null): string {
 }
 
 interface ClassificationBarProps {
-  documentType: string | null;
   detectedSubject: string | null;
   confidence: number;
   childName: string | null;
-  childGrade: string | null;
   materialTypeDisplay: string | null;
   isClassifying: boolean;
   onEditClick: () => void;
@@ -40,7 +38,7 @@ export function ClassificationBar({
 }: ClassificationBarProps) {
   if (isClassifying) {
     return (
-      <div className="classification-bar classification-bar--loading" aria-busy="true">
+      <div className="classification-bar classification-bar--loading" aria-busy="true" aria-live="polite">
         <span className="classification-bar__text">Analyzing your document...</span>
       </div>
     );
