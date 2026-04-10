@@ -42,6 +42,8 @@ from app.schemas.study import (
     GenerateChildRequest,
     StudyGuideTreeNode,
     StudyGuideTreeResponse,
+    SaveQAAsGuideRequest,
+    SaveQAAsMaterialRequest,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -2910,12 +2912,11 @@ def _has_ai_uncertainty(text: str) -> bool:
 @router.post("/guides/{guide_id}/qa/save-as-guide", response_model=StudyGuideResponse)
 async def save_qa_as_guide(
     guide_id: int,
-    request: "SaveQAAsGuideRequest",
+    request: SaveQAAsGuideRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Save a Q&A response as a sub-guide. No AI credits consumed."""
-    from app.schemas.study import SaveQAAsGuideRequest as _Schema  # noqa: F811
 
     guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
@@ -2951,12 +2952,11 @@ async def save_qa_as_guide(
 @router.post("/guides/{guide_id}/qa/save-as-material")
 async def save_qa_as_material(
     guide_id: int,
-    request: "SaveQAAsMaterialRequest",
+    request: SaveQAAsMaterialRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Save a Q&A response as a course material. No AI credits consumed."""
-    from app.schemas.study import SaveQAAsMaterialRequest as _Schema  # noqa: F811
 
     guide = db.query(StudyGuide).filter(StudyGuide.id == guide_id).first()
     if not guide:
