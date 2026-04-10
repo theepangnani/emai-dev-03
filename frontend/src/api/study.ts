@@ -325,10 +325,7 @@ export const studyApi = {
     if (params.study_goal) formData.append('study_goal', params.study_goal);
     if (params.study_goal_text) formData.append('study_goal_text', params.study_goal_text);
 
-    const response = await api.post('/api/study/upload/generate', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      ...AI_TIMEOUT,
-    });
+    const response = await api.post('/api/study/upload/generate', formData, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
@@ -362,10 +359,7 @@ export const studyApi = {
     if (params.study_goal_text) formData.append('study_goal_text', params.study_goal_text);
     params.images.forEach(img => formData.append('images', img));
 
-    const response = await api.post('/api/study/generate-with-images', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      ...AI_TIMEOUT,
-    });
+    const response = await api.post('/api/study/generate-with-images', formData, AI_TIMEOUT);
     return response.data as StudyGuide;
   },
 
@@ -373,10 +367,7 @@ export const studyApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await api.post('/api/study/upload/extract-text', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      ...AI_TIMEOUT,
-    });
+    const response = await api.post('/api/study/upload/extract-text', formData, AI_TIMEOUT);
     return response.data as ExtractedText;
   },
 
