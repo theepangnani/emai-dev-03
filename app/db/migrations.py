@@ -2176,5 +2176,6 @@ def _run_migrations_inner(engine, settings, logger):
                                 "Failed to add %s to parent_gmail_integrations (#2967): %s",
                                 _col_name, col_err,
                             )
+                logger.info("WhatsApp columns verified on parent_gmail_integrations (#2967)")
     except Exception as e:
         logger.warning("WhatsApp column migration (#2967, #3054) failed: %s", e)
