@@ -1,0 +1,213 @@
+"""
+Background job: process parent email digests for all active integrations.
+
+Runs every 4 hours via APScheduler (#2651).
+"""
+import logging
+from datetime import datetime, timezone, timedelta
+
+from app.db.database import SessionLocal
+from app.models.parent_gmail_integration import (
+    ParentGmailIntegration,
+    ParentDigestSettings,
+    DigestDeliveryLog,
+)
+from app.models.notification import NotificationType
+from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+
+async def process_parent_email_digests():
+    """Run every 4 hours. For each active integration, fetch emails, generate digest, deliver notification."""
+    logger.info("Running parent email digest job...")
+
+    db = SessionLocal()
+    sent = 0
+    skipped = 0
+    failed = 0
+    try:
+        # Query active integrations with digest enabled and not paused
+        now = datetime.now(timezone.utc)
+        integrations = (
+            db.query(ParentGmailIntegration)
+            .join(ParentDigestSettings)
+            .filter(
+                ParentGmailIntegration.is_active == True,  # noqa: E712
+                ParentDigestSettings.digest_enabled == True,  # noqa: E712
+            )
+            .filter(
+                (ParentGmailIntegration.paused_until == None)  # noqa: E711
+                | (ParentGmailIntegration.paused_until < now)
+            )
+            .all()
+        )
+
+        logger.info(
+            "Parent email digest: found %d active integrations", len(integrations)
+        )
+
+        for integration in integrations:
+            try:
+                # Check if already delivered today
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                existing_log = (
+                    db.query(DigestDeliveryLog)
+                    .filter(
+                        DigestDeliveryLog.integration_id == integration.id,
+                        DigestDeliveryLog.delivered_at >= today_start,
+                        DigestDeliveryLog.status == "delivered",
+                    )
+                    .first()
+                )
+                if existing_log:
+                    skipped += 1
+                    continue
+
+                settings = integration.digest_settings
+                if not settings:
+                    skipped += 1
+                    continue
+
+                # Fetch child emails
+                try:
+                    from app.services.parent_gmail_service import fetch_child_emails
+
+                    emails = await fetch_child_emails(db, integration)
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:
+                        # Token refresh failure — deactivate integration
+                        integration.is_active = False
+                        db.commit()
+                        logger.warning(
+                            "Deactivated integration %d (parent %d): token refresh failed | error=%s",
+                            integration.id,
+                            integration.parent_id,
+                            e,
+                        )
+                    else:
+                        logger.error(
+                            "Failed to fetch emails for integration %d | error=%s",
+                            integration.id,
+                            e,
+                        )
+                    # Log failure
+                    log_entry = DigestDeliveryLog(
+                        parent_id=integration.parent_id,
+                        integration_id=integration.id,
+                        email_count=0,
+                        digest_content=None,
+                        status="failed",
+                        channels_used=settings.delivery_channels,
+                    )
+                    db.add(log_entry)
+                    db.commit()
+                    failed += 1
+                    continue
+
+                # If no emails and notify_on_empty is False, skip
+                if not emails and not settings.notify_on_empty:
+                    skipped += 1
+                    continue
+
+                # Generate digest via AI
+                child_name = integration.child_first_name or "your child"
+                parent = db.query(User).filter(User.id == integration.parent_id).first()
+                parent_name = parent.first_name if parent and parent.first_name else "Parent"
+
+                try:
+                    from app.services.parent_digest_ai_service import (
+                        generate_parent_digest,
+                    )
+
+                    digest_content = await generate_parent_digest(
+                        emails,
+                        child_name,
+                        parent_name,
+                        settings.digest_format,
+                    )
+                except Exception as e:
+                    logger.error(
+                        "AI digest generation failed for integration %d | error=%s",
+                        integration.id,
+                        e,
+                        exc_info=True,
+                    )
+                    log_entry = DigestDeliveryLog(
+                        parent_id=integration.parent_id,
+                        integration_id=integration.id,
+                        email_count=len(emails) if emails else 0,
+                        digest_content=None,
+                        status="failed",
+                        channels_used=settings.delivery_channels,
+                    )
+                    db.add(log_entry)
+                    db.commit()
+                    failed += 1
+                    continue
+
+                # Deliver notification
+                channels = [c.strip() for c in settings.delivery_channels.split(",") if c.strip()]
+                notification_channels = []
+                if "in_app" in channels:
+                    notification_channels.append("app_notification")
+                if "email" in channels:
+                    notification_channels.append("email")
+
+                if parent:
+                    from app.services.notification_service import (
+                        send_multi_channel_notification,
+                    )
+
+                    send_multi_channel_notification(
+                        db=db,
+                        recipient=parent,
+                        sender=None,
+                        title=f"Email Digest for {child_name}",
+                        content=digest_content or "No new emails today.",
+                        notification_type=NotificationType.PARENT_EMAIL_DIGEST,
+                        link="/email-digest",
+                        channels=notification_channels,
+                    )
+
+                # Log successful delivery
+                email_count = len(emails) if emails else 0
+                log_entry = DigestDeliveryLog(
+                    parent_id=integration.parent_id,
+                    integration_id=integration.id,
+                    email_count=email_count,
+                    digest_content=digest_content,
+                    digest_length_chars=len(digest_content) if digest_content else 0,
+                    channels_used=settings.delivery_channels,
+                    status="delivered",
+                )
+                db.add(log_entry)
+
+                # Update last synced timestamp
+                integration.last_synced_at = now
+                db.commit()
+
+                sent += 1
+
+            except Exception as e:
+                logger.error(
+                    "Parent email digest failed for integration %d | error=%s",
+                    integration.id,
+                    e,
+                    exc_info=True,
+                )
+                db.rollback()
+                failed += 1
+
+        logger.info(
+            "Parent email digest job complete | sent=%d | skipped=%d | failed=%d",
+            sent,
+            skipped,
+            failed,
+        )
+    except Exception:
+        db.rollback()
+        logger.exception("Parent email digest job failed")
+    finally:
+        db.close()
