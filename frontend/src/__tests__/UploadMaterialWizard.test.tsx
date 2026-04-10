@@ -5,6 +5,11 @@ import UploadMaterialWizard from '../components/UploadMaterialWizard'
 
 vi.mock('../components/UploadMaterialWizard.css', () => ({}))
 
+// Mock CreateClassModal — it calls useAuth() which requires AuthProvider
+vi.mock('../components/CreateClassModal', () => ({
+  default: () => null,
+}))
+
 vi.mock('../api/courses', () => ({
   coursesApi: {
     list: vi.fn().mockResolvedValue([{ id: 1, name: 'Math 101' }]),
