@@ -460,3 +460,47 @@ def get_delivery_log(
     _get_owned_integration(db, log.integration_id, current_user.id)
 
     return log
+
+
+# ---------------------------------------------------------------------------
+# Sync & forwarding verification endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/integrations/{integration_id}/sync")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def trigger_manual_sync(
+    request: Request,
+    integration_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Manually trigger email sync for an integration."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+    if not integration.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Integration is not active — please reconnect Gmail",
+        )
+
+    from app.services.parent_gmail_service import fetch_child_emails
+
+    emails = await fetch_child_emails(db, integration)
+    return {"email_count": len(emails), "emails": emails}
+
+
+@router.post("/integrations/{integration_id}/verify-forwarding")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def verify_email_forwarding(
+    request: Request,
+    integration_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Check if child's school email is forwarding to parent's Gmail."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    from app.services.parent_gmail_service import verify_forwarding
+
+    result = await verify_forwarding(db, integration)
+    return result
