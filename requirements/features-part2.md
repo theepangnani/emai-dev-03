@@ -689,6 +689,8 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [x] **Navigate-then-stream:** chip click navigates to `/study/guide/generating` page, streams content there (#2882, #2885)
 - [x] **Full Study Guide detailed prompt:** custom_prompt overrides concise overview with comprehensive user prompt (#2890, #2893)
 - [x] Fix: strategy_system_prompt incorrectly routed to full-guide prompt instead of concise overview (#3007)
+- [x] Fix: non-streaming generate_study_guide parity — add strategy system prompt branch (#3009)
+- [x] Fix: explicit `detailed` flag in _build_study_guide_prompt replaces implicit custom_prompt check (#3010)
 - [x] **Single generating indicator:** removed duplicate generating badge on streaming page (#2889, #2893)
 - [x] **Scroll to guide:** auto-scroll to content area when chip starts generating (#2811, #2876)
 - [x] **Migrations extracted:** all startup migrations moved to `app/db/migrations.py` (#2824, PR #2879)
