@@ -214,10 +214,10 @@ export interface ResolvedStudent {
 }
 
 export async function classifyDocument(textContent: string, filename: string): Promise<{ document_type: string; confidence: number }> {
-  const form = new FormData();
-  form.append('text_content', textContent);
-  form.append('filename', filename);
-  const response = await api.post('/api/study/classify-document', form);
+  const response = await api.post('/api/study/classify-document', {
+    text_content: textContent,
+    filename,
+  });
   return response.data;
 }
 
