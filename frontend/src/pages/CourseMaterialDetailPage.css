@@ -2494,6 +2494,12 @@
 .cm-more-dropdown-item.empty {
   color: var(--color-muted-border);
 }
+.cm-tab-more-btn .cm-tab-more-arrow {
+  margin-left: 2px;
+}
+.cm-tab-more-btn[aria-expanded="true"] .cm-tab-more-arrow {
+  transform: rotate(180deg);
+}
 
 /* ── Access Log inside Source Document ───── */
 .cm-access-log-section {
