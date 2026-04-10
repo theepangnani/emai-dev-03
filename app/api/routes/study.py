@@ -45,6 +45,7 @@ from app.schemas.study import (
     StudyGuideTreeResponse,
     SaveQAAsGuideRequest,
     SaveQAAsMaterialRequest,
+    WeakAreaAnalyzeRequest,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -3272,3 +3273,120 @@ async def generate_study_guide_stream_endpoint(
             yield f"event: error\ndata: {json.dumps({'message': 'Failed to save study guide. Please try again.'})}\n\n"
 
     return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ============================================
+# Weak Area Analysis (#2958)
+# ============================================
+
+
+@router.post("/weak-area/analyze", response_model=StudyGuideResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def analyze_weak_areas(
+    request: Request,
+    body: WeakAreaAnalyzeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Analyze a student's test to identify weak areas using Claude Sonnet."""
+    import asyncio as _asyncio
+    from app.services.ai_service import get_anthropic_client, _calc_cost
+
+    # Validate content_id
+    cc = db.query(CourseContent).filter(CourseContent.id == body.content_id).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Course content not found")
+
+    text_content = cc.text_content or cc.description or ""
+    if not text_content or len(text_content.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Check AI credits (costs 2 credits)
+    check_ai_usage(current_user, db)
+
+    # Call Claude Sonnet for weak area analysis
+    system_prompt = (
+        "You are an expert educational analyst. Analyze the student's test and "
+        "identify 2-5 specific weak areas where the student needs improvement. "
+        "For each weak area, explain what the student got wrong or struggled with, "
+        "why it matters, and suggest specific actions to improve."
+    )
+    user_prompt = (
+        f"Here is the student's test/assessment document:\n\n"
+        f"---\n{text_content}\n---\n\n"
+        f"Please analyze this document and identify 2-5 specific weak areas. "
+        f"Format your response as markdown with ## headings for each weak area. "
+        f"Under each heading, include:\n"
+        f"- **What went wrong:** Brief description\n"
+        f"- **Why it matters:** Importance of this topic\n"
+        f"- **How to improve:** Specific actionable suggestions\n\n"
+        f"At the very end of your response, include a line in this exact format:\n"
+        f"WEAK_TOPICS: [\"topic1\", \"topic2\", \"topic3\"]\n"
+        f"where each topic is a short 2-5 word label for the weak area."
+    )
+
+    try:
+        client = get_anthropic_client()
+        message = await _asyncio.to_thread(
+            client.messages.create,
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        raw_content = message.content[0].text
+        input_tokens = message.usage.input_tokens
+        output_tokens = message.usage.output_tokens
+    except Exception as e:
+        logger.error("Weak area analysis failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {type(e).__name__}")
+
+    # Parse WEAK_TOPICS from response
+    weak_topics_list = []
+    analysis_content = raw_content
+    import re as _re
+    topics_match = _re.search(r'WEAK_TOPICS:\s*(\[.*?\])', raw_content, _re.DOTALL)
+    if topics_match:
+        try:
+            weak_topics_list = json.loads(topics_match.group(1))
+            # Remove the WEAK_TOPICS line from the display content
+            analysis_content = raw_content[:topics_match.start()].rstrip()
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse WEAK_TOPICS JSON from AI response")
+
+    # Increment AI usage (2 credits for weak area analysis)
+    cost = _calc_cost("claude-sonnet-4-20250514", input_tokens, output_tokens)
+    increment_ai_usage(
+        current_user, db, generation_type="weak_area_analysis",
+        course_material_id=body.content_id,
+        prompt_tokens=input_tokens,
+        completion_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+        estimated_cost_usd=cost,
+        model_name="claude-sonnet-4-20250514",
+        wallet_debit_amount=2,
+    )
+
+    # Save as study guide
+    title = f"Weak Area Analysis: {cc.title or 'Assessment'}"
+    enforce_study_guide_limit(db, current_user)
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=cc.course_id,
+        course_content_id=cc.id,
+        title=title[:255],
+        content=analysis_content,
+        guide_type="weak_area_analysis",
+        weak_topics=json.dumps(weak_topics_list),
+        ai_engine="claude_sonnet",
+    )
+    db.add(study_guide)
+    db.commit()
+    db.refresh(study_guide)
+
+    logger.info(
+        "Weak area analysis created | user_id=%s | guide_id=%s | topics=%s",
+        current_user.id, study_guide.id, weak_topics_list,
+    )
+
+    return StudyGuideResponse.model_validate(study_guide)

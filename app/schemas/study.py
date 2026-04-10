@@ -52,6 +52,8 @@ class StudyGuideResponse(BaseModel):
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
     suggestion_topics: str | None = None
+    weak_topics: str | None = None  # JSON array of weak topic strings
+    ai_engine: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True
@@ -264,6 +266,12 @@ class DuplicateCheckRequest(BaseModel):
     @classmethod
     def _strip_whitespace(cls, v: object) -> object:
         return strip_whitespace(v)
+
+
+class WeakAreaAnalyzeRequest(BaseModel):
+    """Request to analyze weak areas from a test/exam."""
+    content_id: int
+    student_id: int | None = None
 
 
 class StudyGuideTreeNode(BaseModel):

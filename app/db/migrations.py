@@ -180,6 +180,12 @@ def _run_migrations_inner(engine, settings, logger):
             if "content_hash" not in existing_cols:
                 conn.execute(text("ALTER TABLE study_guides ADD COLUMN content_hash VARCHAR(64)"))
                 logger.info("Added 'content_hash' column to study_guides")
+            if "weak_topics" not in existing_cols:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN weak_topics TEXT"))
+                logger.info("Added 'weak_topics' column to study_guides")
+            if "ai_engine" not in existing_cols:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN ai_engine VARCHAR(50)"))
+                logger.info("Added 'ai_engine' column to study_guides")
             conn.commit()
         if "courses" in inspector.get_table_names():
             existing_cols = {c["name"] for c in inspector.get_columns("courses")}
