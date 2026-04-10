@@ -567,7 +567,7 @@ async def generate_study_guide_stream(
             assignment_description=assignment_description,
             course_name=course_name,
             due_date=due_date,
-            custom_prompt=strategy_system_prompt,
+            custom_prompt=custom_prompt,
             focus_prompt=focus_prompt,
             images=images,
             interests=interests,
