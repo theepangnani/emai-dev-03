@@ -51,7 +51,7 @@ from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
 from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
-from app.services.ai_usage import check_ai_usage, increment_ai_usage
+from app.services.ai_usage import check_ai_usage, increment_ai_usage, log_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
 from app.services.file_processor import (
@@ -1536,6 +1536,95 @@ async def generate_mind_map_endpoint(
         created_at=study_guide.created_at,
         auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
     )
+
+
+# ============================================
+# Answer Key Generation (§18.2, #2957, #3021)
+# ============================================
+
+
+@router.post("/worksheets/{worksheet_id}/answer-key")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def generate_answer_key(
+    worksheet_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate an answer key for a worksheet and store it on the same row."""
+    from app.schemas.study import AnswerKeyResponse
+
+    # Look up the study guide
+    guide = db.query(StudyGuide).filter(StudyGuide.id == worksheet_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+
+    # Validate guide_type is worksheet
+    if guide.guide_type != "worksheet":
+        raise HTTPException(status_code=400, detail="Study guide is not a worksheet")
+
+    # Access control: owner or parent of owner
+    has_access = guide.user_id == current_user.id
+    if not has_access and current_user.role == UserRole.PARENT:
+        children_user_ids = get_linked_children_user_ids(db, current_user.id)
+        has_access = guide.user_id in children_user_ids
+    if not has_access:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+
+    # Check AI usage (free, but still logged per PRD §18.2)
+    check_ai_usage(current_user, db)
+
+    # If already generated, return existing
+    if guide.answer_key_markdown:
+        return AnswerKeyResponse.model_validate(guide)
+
+    # Generate answer key via AI
+    system_prompt = (
+        "You are an expert teacher creating an answer key for a student worksheet. "
+        "Provide clear, numbered answers that match the worksheet questions exactly. "
+        "For math problems, include step-by-step solutions showing all work. "
+        "For English/French language questions, include brief explanations of why each answer is correct. "
+        "Use clean Markdown formatting. Use LaTeX notation ($...$) for math expressions."
+    )
+
+    prompt = f"""Generate a complete answer key for the following worksheet.
+Match each answer to its corresponding question number.
+
+**Worksheet content:**
+{guide.content}
+
+Provide the full answer key in Markdown format:"""
+
+    from app.services.ai_service import generate_content
+    try:
+        answer_key, _stop_reason = await generate_content(
+            prompt, system_prompt, max_tokens=4096, temperature=0.3
+        )
+    except Exception as e:
+        logger.error("Answer key generation failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
+
+    # Store on the same row
+    guide.answer_key_markdown = answer_key
+
+    # Log usage with 0 credits (free per PRD §18.2)
+    _usage = get_last_ai_usage() or {}
+    log_ai_usage(
+        current_user, db,
+        generation_type="answer_key",
+        credits_used=0,
+        prompt_tokens=_usage.get("prompt_tokens"),
+        completion_tokens=_usage.get("completion_tokens"),
+        total_tokens=_usage.get("total_tokens"),
+        estimated_cost_usd=_usage.get("estimated_cost_usd"),
+        model_name=_usage.get("model_name"),
+    )
+
+    log_action(db, user_id=current_user.id, action="create", resource_type="answer_key", resource_id=guide.id)
+    db.commit()
+    db.refresh(guide)
+
+    return AnswerKeyResponse.model_validate(guide)
 
 
 # ============================================

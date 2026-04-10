@@ -43,6 +43,9 @@ class StudyGuide(Base):
     curriculum_codes = Column(Text, nullable=True)  # JSON array of {concept, curriculum_code, strand}
     suggestion_topics = Column(Text, nullable=True)  # JSON array of {label, description}
 
+    # Answer key (stored on worksheet rows, §18.2)
+    answer_key_markdown = Column(Text, nullable=True)
+
     # Sharing (parent → child)
     shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     shared_at = Column(DateTime(timezone=True), nullable=True)

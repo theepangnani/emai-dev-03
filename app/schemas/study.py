@@ -52,6 +52,7 @@ class StudyGuideResponse(BaseModel):
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
     suggestion_topics: str | None = None
+    answer_key_markdown: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True
@@ -63,6 +64,18 @@ class StudyGuideResponse(BaseModel):
     viewed_at: datetime | None = None
     viewed_count: int = 0
     shared_with_name: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AnswerKeyResponse(BaseModel):
+    """Response after generating an answer key for a worksheet."""
+    id: int
+    title: str
+    guide_type: str
+    answer_key_markdown: str | None = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
