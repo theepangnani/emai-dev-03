@@ -181,7 +181,9 @@ async def generate_content(
 
             return content, stop_reason
 
-        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+                raise
             last_error = e
             duration_ms = (time.time() - start_time) * 1000
             if attempt <= max_retries:
@@ -268,7 +270,9 @@ async def generate_content_stream(
             },
         }
 
-    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+        if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+            raise
         duration_ms = (time.time() - start_time) * 1000
         logger.error(
             f"Content stream failed | duration={duration_ms:.2f}ms | "
@@ -677,7 +681,9 @@ async def generate_study_guide_stream(
             }
             return  # Success — exit retry loop
 
-        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+                raise
             duration_ms = (time.time() - start_time) * 1000
             if attempt <= max_retries:
                 backoff = 2 ** (attempt - 1)
