@@ -12,7 +12,6 @@ export interface ChipAction {
 
 export interface MaterialTypeSuggestionChipsProps {
   documentType: string;
-  detectedSubject: string | null;
   onChipClick: (action: string, templateKey?: string) => void;
   generatingAction: string | null;
   disabled: boolean;
@@ -108,7 +107,6 @@ function getHeader(documentType: string): string {
 
 export default function MaterialTypeSuggestionChips({
   documentType,
-  detectedSubject: _detectedSubject,
   onChipClick,
   generatingAction,
   disabled,
@@ -123,7 +121,7 @@ export default function MaterialTypeSuggestionChips({
     <div className="mt-chip-section">
       <p className="mt-chip-header">{header}</p>
 
-      <div className="mt-chip-list">
+      <div className="mt-chip-list" role="group" aria-label="Study actions">
         {chips.map((chip) => {
           const isThisGenerating = generatingAction === chip.action;
           const isDisabled = disabled || atLimit || (isAnyGenerating && !isThisGenerating);
@@ -143,7 +141,12 @@ export default function MaterialTypeSuggestionChips({
               disabled={isDisabled || isThisGenerating}
               aria-label={chip.label}
             >
-              {isThisGenerating && <span className="mt-chip-spinner" />}
+              {isThisGenerating && (
+                <>
+                  <span className="mt-chip-spinner" />
+                  <span className="sr-only">Generating...</span>
+                </>
+              )}
               <span className="mt-chip-label">
                 {chip.label}
                 {chip.creditCost >= 2 && (
