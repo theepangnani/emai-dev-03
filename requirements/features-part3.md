@@ -5204,3 +5204,5 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
 - [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
 - [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
+
+**Architecture review fixes (G1–G12):** #3019–#3030
