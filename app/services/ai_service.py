@@ -352,6 +352,7 @@ def _build_study_guide_prompt(
     images: list[dict] | None = None,
     interests: list[str] | None = None,
     document_type: str | None = None,
+    detailed: bool = False,
 ) -> tuple[str, str]:
     """Build the user prompt and system prompt for study guide generation.
 
@@ -395,7 +396,7 @@ After the guide content, include a section for deeper exploration:
 [{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
 
 Generate exactly 4-6 suggestion topics for the most important subtopics to explore further. Always include this section."""
-    elif custom_prompt:
+    elif detailed:
         # Full/detailed guide requested via chip — use comprehensive user prompt (#2890)
         prompt = f"""Create a comprehensive, detailed study guide for the following assignment. Include thorough explanations, worked examples, practice problems, and key formulas.
 
@@ -522,6 +523,7 @@ async def generate_study_guide(
         images=images,
         interests=interests,
         document_type=document_type,
+        detailed=bool(custom_prompt),
     )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
@@ -572,6 +574,7 @@ async def generate_study_guide_stream(
             images=images,
             interests=interests,
             document_type=document_type,
+            detailed=bool(strategy_system_prompt),
         )
         system_prompt = strategy_system_prompt + _interests_instruction(interests)
     else:
@@ -584,6 +587,7 @@ async def generate_study_guide_stream(
             focus_prompt=focus_prompt,
             images=images,
             interests=interests,
+            detailed=bool(custom_prompt),
         )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
