@@ -352,6 +352,8 @@ def _build_study_guide_prompt(
     images: list[dict] | None = None,
     interests: list[str] | None = None,
     document_type: str | None = None,
+    detailed: bool = False,
+    strategy_instruction: str | None = None,
 ) -> tuple[str, str]:
     """Build the user prompt and system prompt for study guide generation.
 
@@ -395,7 +397,7 @@ After the guide content, include a section for deeper exploration:
 [{{"label": "Short chip label (2-5 words)", "description": "One-sentence description of what this deep-dive would cover"}}]
 
 Generate exactly 4-6 suggestion topics for the most important subtopics to explore further. Always include this section."""
-    elif custom_prompt:
+    elif detailed:
         # Full/detailed guide requested via chip — use comprehensive user prompt (#2890)
         prompt = f"""Create a comprehensive, detailed study guide for the following assignment. Include thorough explanations, worked examples, practice problems, and key formulas.
 
@@ -423,6 +425,15 @@ After any CRITICAL_DATES section (or at the very end if no dates), include a sec
 Generate exactly 4-6 suggestion topics for related areas to explore further. Always include this section."""
     else:
         # Default concise overview prompt
+        if strategy_instruction:
+            overview_instruction = strategy_instruction
+        else:
+            overview_instruction = """Write a concise summary (3-5 sentences) that answers:
+- What is this material about?
+- What are the main topics/skills covered?
+- What should the student focus on?
+
+Keep it SHORT — think "back of the book" summary, not a chapter. Do not include detailed explanations, worked examples, formulas, or problem solutions. Those belong in the focused sub-guides."""
         prompt = f"""Create a brief overview summary for the following assignment. This is a quick orientation — NOT a full study guide. The student will explore specific topics in depth via suggestion chips below.
 
 **Assignment:** {assignment_title}
@@ -431,12 +442,7 @@ Generate exactly 4-6 suggestion topics for related areas to explore further. Alw
 **Source Material:**
 {assignment_description}
 
-Write a concise summary (3-5 sentences) that answers:
-- What is this material about?
-- What are the main topics/skills covered?
-- What should the student focus on?
-
-Keep it SHORT — think "back of the book" summary, not a chapter. Do not include detailed explanations, worked examples, formulas, or problem solutions. Those belong in the focused sub-guides.
+{overview_instruction}
 
 Format in Markdown. For math references, use LaTeX ($...$) but keep them minimal — just name the concepts, don't explain them.
 
@@ -496,6 +502,8 @@ async def generate_study_guide(
     interests: list[str] | None = None,
     max_tokens: int | None = None,
     document_type: str | None = None,
+    study_goal: str | None = None,
+    study_goal_text: str | None = None,
 ) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
@@ -512,17 +520,40 @@ async def generate_study_guide(
     """
     logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
 
-    prompt, system_prompt = _build_study_guide_prompt(
-        assignment_title=assignment_title,
-        assignment_description=assignment_description,
-        course_name=course_name,
-        due_date=due_date,
-        custom_prompt=custom_prompt,
-        focus_prompt=focus_prompt,
-        images=images,
-        interests=interests,
-        document_type=document_type,
-    )
+    if document_type or study_goal:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
+        strategy_template = StudyGuideStrategyService.get_prompt_template(
+            document_type=document_type,
+            study_goal=study_goal,
+            focus_area=study_goal_text if not focus_prompt else None,
+        )
+        prompt, _ = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=custom_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+            document_type=document_type,
+            detailed=bool(custom_prompt),
+            strategy_instruction=strategy_template if not custom_prompt else None,
+        )
+        system_prompt = strategy_system_prompt + _interests_instruction(interests)
+    else:
+        prompt, system_prompt = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=custom_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+            detailed=bool(custom_prompt),
+        )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
     content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=effective_max_tokens)
@@ -561,17 +592,23 @@ async def generate_study_guide_stream(
     if document_type or study_goal:
         from app.services.study_guide_strategy import StudyGuideStrategyService
         strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
-        # Build base prompt (strategy template is applied by the route layer in the description)
+        strategy_template = StudyGuideStrategyService.get_prompt_template(
+            document_type=document_type,
+            study_goal=study_goal,
+            focus_area=study_goal_text if not focus_prompt else None,
+        )
         prompt, _ = _build_study_guide_prompt(
             assignment_title=assignment_title,
             assignment_description=assignment_description,
             course_name=course_name,
             due_date=due_date,
-            custom_prompt=strategy_system_prompt,
+            custom_prompt=custom_prompt,
             focus_prompt=focus_prompt,
             images=images,
             interests=interests,
             document_type=document_type,
+            detailed=bool(custom_prompt),
+            strategy_instruction=strategy_template if not custom_prompt else None,
         )
         system_prompt = strategy_system_prompt + _interests_instruction(interests)
     else:
@@ -584,6 +621,7 @@ async def generate_study_guide_stream(
             focus_prompt=focus_prompt,
             images=images,
             interests=interests,
+            detailed=bool(custom_prompt),
         )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
