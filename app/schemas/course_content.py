@@ -9,7 +9,7 @@ VALID_CONTENT_TYPES = {"notes", "syllabus", "labs", "assignments", "readings", "
 
 VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
-VALID_DOCUMENT_TYPES = {"teacher_notes", "course_syllabus", "past_exam", "mock_exam", "project_brief", "lab_experiment", "textbook_excerpt", "custom", "parent_question"}
+VALID_DOCUMENT_TYPES = {"teacher_notes", "course_syllabus", "past_exam", "mock_exam", "project_brief", "lab_experiment", "textbook_excerpt", "custom", "parent_question", "worksheet", "student_test", "quiz_paper"}
 VALID_DETECTED_SUBJECTS = {"math", "science", "english", "french", "other"}
 VALID_STUDY_GOALS = {"upcoming_test", "final_exam", "assignment", "lab_prep", "general_review", "discussion", "parent_review"}
 
