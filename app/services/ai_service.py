@@ -497,6 +497,8 @@ async def generate_study_guide(
     interests: list[str] | None = None,
     max_tokens: int | None = None,
     document_type: str | None = None,
+    study_goal: str | None = None,
+    study_goal_text: str | None = None,
 ) -> tuple[str, bool]:
     """
     Generate a study guide for an assignment.
@@ -513,18 +515,34 @@ async def generate_study_guide(
     """
     logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
 
-    prompt, system_prompt = _build_study_guide_prompt(
-        assignment_title=assignment_title,
-        assignment_description=assignment_description,
-        course_name=course_name,
-        due_date=due_date,
-        custom_prompt=custom_prompt,
-        focus_prompt=focus_prompt,
-        images=images,
-        interests=interests,
-        document_type=document_type,
-        detailed=bool(custom_prompt),
-    )
+    if document_type or study_goal:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
+        prompt, _ = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=custom_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+            document_type=document_type,
+            detailed=bool(custom_prompt),
+        )
+        system_prompt = strategy_system_prompt + _interests_instruction(interests)
+    else:
+        prompt, system_prompt = _build_study_guide_prompt(
+            assignment_title=assignment_title,
+            assignment_description=assignment_description,
+            course_name=course_name,
+            due_date=due_date,
+            custom_prompt=custom_prompt,
+            focus_prompt=focus_prompt,
+            images=images,
+            interests=interests,
+            detailed=bool(custom_prompt),
+        )
 
     effective_max_tokens = max_tokens if max_tokens is not None else DEFAULT_STUDY_GUIDE_MAX_TOKENS
     content, stop_reason = await generate_content(prompt, system_prompt, max_tokens=effective_max_tokens)

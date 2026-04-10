@@ -710,6 +710,8 @@ async def generate_study_guide_endpoint(
             interests=_get_user_interests(current_user),
             max_tokens=get_max_tokens_for_document_type(body.document_type),
             document_type=body.document_type,
+            study_goal=body.study_goal,
+            study_goal_text=body.study_goal_text,
         )
     except ValueError as e:
         from app.core.faq_errors import raise_with_faq_hint, AI_GENERATION_FAILED
