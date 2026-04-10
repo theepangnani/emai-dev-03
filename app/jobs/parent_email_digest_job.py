@@ -4,6 +4,7 @@ Background job: process parent email digests for all active integrations.
 Runs every 4 hours via APScheduler (#2651).
 """
 import logging
+import re
 from datetime import datetime, timezone, timedelta
 
 from app.db.database import SessionLocal
@@ -50,6 +51,8 @@ async def process_parent_email_digests():
         for integration in integrations:
             try:
                 # Check if already delivered today
+                # Note: delivered_at from SQLite may be naive (no tzinfo).
+                # SQLAlchemy handles the comparison in the SQL query correctly.
                 today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 existing_log = (
                     db.query(DigestDeliveryLog)
@@ -183,7 +186,6 @@ async def process_parent_email_digests():
                             else:
                                 whatsapp_content = digest_content
                             # Strip HTML for WhatsApp plain text
-                            import re
                             plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
                             send_whatsapp_message(integration.whatsapp_phone, plain_text)
                         except Exception as e:

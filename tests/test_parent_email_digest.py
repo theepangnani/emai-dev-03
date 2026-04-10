@@ -567,6 +567,24 @@ class TestWhatsAppDisconnect:
 
 
 # ---------------------------------------------------------------------------
+# Manual Sync
+# ---------------------------------------------------------------------------
+
+
+class TestManualSync:
+    @patch("app.services.parent_gmail_service.fetch_child_emails", return_value=[])
+    def test_sync_returns_count_not_emails(self, mock_fetch, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(f"{PREFIX}/integrations/{iid}/sync", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "email_count" in data
+        assert "message" in data
+        assert "emails" not in data  # Must not leak raw email content
+
+
+# ---------------------------------------------------------------------------
 # Auth / role guard checks
 # ---------------------------------------------------------------------------
 
