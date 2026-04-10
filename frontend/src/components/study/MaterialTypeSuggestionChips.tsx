@@ -121,7 +121,7 @@ export default function MaterialTypeSuggestionChips({
     <div className="mt-chip-section">
       <p className="mt-chip-header">{header}</p>
 
-      <div className="mt-chip-list" role="group" aria-label="Study actions">
+      <div className="mt-chip-list" role="group" aria-label="Study actions" aria-busy={!!generatingAction}>
         {chips.map((chip) => {
           const isThisGenerating = generatingAction === chip.action;
           const isDisabled = disabled || atLimit || (isAnyGenerating && !isThisGenerating);

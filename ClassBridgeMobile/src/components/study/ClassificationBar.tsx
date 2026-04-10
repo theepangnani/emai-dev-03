@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
 
 interface ClassificationDimension {
@@ -21,6 +21,7 @@ interface ClassificationBarProps {
   teacherName?: string;
   teacherConfidence?: number;
   loading?: boolean;
+  onCorrection?: () => void;
 }
 
 const CONFIDENCE_THRESHOLD = 0.8;
@@ -72,36 +73,50 @@ function buildDimensions(props: ClassificationBarProps): ClassificationDimension
   return dims;
 }
 
-function buildSentence(dims: ClassificationDimension[]): string {
-  if (dims.length === 0) return '';
+interface SentencePart {
+  text: string;
+  bold: boolean;
+}
 
-  const parts: string[] = [];
+function buildSentenceParts(dims: ClassificationDimension[]): SentencePart[] {
+  if (dims.length === 0) return [];
+
+  const parts: SentencePart[] = [];
   const typeVal = dims.find((d) => d.label === 'Type');
   const subjectVal = dims.find((d) => d.label === 'Subject');
   const studentVal = dims.find((d) => d.label === 'Student');
   const teacherVal = dims.find((d) => d.label === 'Teacher');
 
+  const minConfidence = Math.min(...dims.map((d) => d.confidence));
+  const isLowConfidence = minConfidence < CONFIDENCE_THRESHOLD;
+
+  parts.push({ text: isLowConfidence ? 'This might be a ' : 'This looks like a ', bold: false });
+
   if (typeVal && subjectVal) {
-    parts.push(`${subjectVal.value} ${typeVal.value}`);
+    parts.push({ text: `${subjectVal.value} ${typeVal.value}`, bold: true });
   } else if (typeVal) {
-    parts.push(typeVal.value);
+    parts.push({ text: typeVal.value, bold: true });
   } else if (subjectVal) {
-    parts.push(subjectVal.value);
+    parts.push({ text: subjectVal.value, bold: true });
   }
 
   if (studentVal) {
-    parts.push(`for ${studentVal.value}`);
+    parts.push({ text: ' for ', bold: false });
+    parts.push({ text: studentVal.value, bold: true });
   }
 
   if (teacherVal) {
-    parts.push(`from ${teacherVal.value}`);
+    parts.push({ text: ' from ', bold: false });
+    parts.push({ text: teacherVal.value, bold: true });
   }
 
-  return parts.join(' ');
+  parts.push({ text: '.', bold: false });
+
+  return parts;
 }
 
 export function ClassificationBar(props: ClassificationBarProps) {
-  const { loading = false } = props;
+  const { loading = false, onCorrection } = props;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -141,30 +156,24 @@ export function ClassificationBar(props: ClassificationBarProps) {
     );
   }
 
-  const sentence = buildSentence(dimensions);
+  const sentenceParts = buildSentenceParts(dimensions);
 
   return (
     <View style={styles.container}>
-      {sentence ? <Text style={styles.sentence}>{sentence}</Text> : null}
-      <View style={styles.badgeRow}>
-        {dimensions.map((dim) => {
-          const isLowConfidence = dim.confidence < CONFIDENCE_THRESHOLD;
-          return (
-            <View
-              key={dim.label}
-              style={[
-                styles.badge,
-                isLowConfidence && styles.badgeLowConfidence,
-              ]}
-            >
-              <Text style={styles.badgeText}>
-                {dim.emoji} {dim.value}
-                {isLowConfidence ? ' ?' : ''}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
+      {sentenceParts.length > 0 && (
+        <Text style={styles.sentence}>
+          {sentenceParts.map((part, i) => (
+            <Text key={i} style={part.bold ? styles.sentenceBold : undefined}>
+              {part.text}
+            </Text>
+          ))}
+        </Text>
+      )}
+      {onCorrection && (
+        <TouchableOpacity onPress={onCorrection}>
+          <Text style={styles.correctionLink}>Not right?</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -184,29 +193,15 @@ const styles = StyleSheet.create({
   sentence: {
     fontSize: fontSize.sm,
     color: colors.text,
-    fontWeight: '500',
-    marginBottom: spacing.sm,
+    lineHeight: fontSize.sm * 1.5,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
+  sentenceBold: {
+    fontWeight: '700',
   },
-  badge: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  badgeLowConfidence: {
-    borderStyle: 'dashed',
-    borderColor: colors.warning,
-    backgroundColor: '#FFFDF5',
-  },
-  badgeText: {
+  correctionLink: {
     fontSize: fontSize.xs,
-    color: colors.text,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+    marginTop: spacing.xs,
   },
 });

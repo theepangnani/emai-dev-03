@@ -26,7 +26,7 @@ export default function WeakAreaContent({ content, weakTopics }: WeakAreaContent
   }, []);
 
   const handleDownloadPdf = useCallback(() => {
-    // Use browser print dialog with PDF option
+    // No dedicated PDF export utility available; falls back to browser print dialog
     window.print();
   }, []);
 
