@@ -24,6 +24,10 @@ def check_ai_usage(user: User, db: Session, cost: int = 1) -> None:
     Checks wallet balance first (new system). Falls back to legacy
     ai_usage_limit check for users without wallets.
     """
+    # Free actions always pass
+    if cost <= 0:
+        return
+
     # --- Wallet-based credit check (§6.60) ---
     from app.models.wallet import Wallet
 
@@ -35,7 +39,7 @@ def check_ai_usage(user: User, db: Session, cost: int = 1) -> None:
         # Wallet exists but insufficient — check if legacy system allows it
         # (fall through to legacy check below)
 
-    # --- Legacy ai_usage_limit check (unchanged) ---
+    # --- Legacy ai_usage_limit check ---
     limit = getattr(user, "ai_usage_limit", None)
     count = getattr(user, "ai_usage_count", None)
 
@@ -46,12 +50,13 @@ def check_ai_usage(user: User, db: Session, cost: int = 1) -> None:
     if count is None:
         count = 0
 
-    if count >= limit:
+    if count + cost > limit:
         raise HTTPException(
             status_code=429,
             detail=(
-                f"AI usage limit reached. You have used all {limit} of your "
-                f"AI credits. Request more from the admin panel."
+                f"AI usage limit reached. You have used {count} of your "
+                f"{limit} AI credits and this action requires {cost}. "
+                f"Request more from the admin panel."
             ),
         )
 

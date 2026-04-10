@@ -266,8 +266,8 @@ class DocumentClassifierService:
             logger.info("Empty text provided for subject classification, returning 'unknown'")
             return {"detected_subject": "unknown", "confidence": 0.0}
 
-        # Use first 800 chars for classification (cost-efficient)
-        text_snippet = extracted_text[:800].strip()
+        # Use first 2000 chars for classification (balances cost and accuracy)
+        text_snippet = extracted_text[:2000].strip()
 
         user_message = f"Filename: {filename}\n\nDocument content (excerpt):\n{text_snippet}"
 
