@@ -492,6 +492,7 @@ class TestDigestJob:
         settings.digest_format = overrides.get("digest_format", "full")
         settings.notify_on_empty = overrides.get("notify_on_empty", False)
         integration.digest_settings = settings
+        integration.parent = overrides.get("parent", None)
 
         return integration
 
@@ -544,7 +545,8 @@ class TestDigestJob:
         def query_side_effect(model):
             mock_query = MagicMock()
             if model is ParentGmailIntegration:
-                mock_query.join.return_value.filter.return_value.filter.return_value.all.return_value = integrations
+                # Chain: .join().options().options().filter().filter().all()
+                mock_query.join.return_value.options.return_value.options.return_value.filter.return_value.filter.return_value.all.return_value = integrations
             elif model is DigestDeliveryLog:
                 # Job uses single .filter() with 3 args then .first()
                 mock_query.filter.return_value.first.return_value = existing_log
@@ -564,8 +566,8 @@ class TestDigestJob:
         """Successful flow: fetch emails, generate digest, send notification, create log."""
         from app.jobs.parent_email_digest_job import process_parent_email_digests
 
-        integration = self._make_integration()
         parent = self._make_parent()
+        integration = self._make_integration(parent=parent)
         db = self._setup_db_mock([integration], existing_log=None, parent=parent)
         mock_session_cls.return_value = db
 
@@ -586,8 +588,8 @@ class TestDigestJob:
         """AI failure creates log with status='failed'."""
         from app.jobs.parent_email_digest_job import process_parent_email_digests
 
-        integration = self._make_integration()
         parent = self._make_parent()
+        integration = self._make_integration(parent=parent)
         db = self._setup_db_mock([integration], existing_log=None, parent=parent)
         mock_session_cls.return_value = db
 
