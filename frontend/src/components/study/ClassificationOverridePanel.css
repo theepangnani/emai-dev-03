@@ -1,0 +1,58 @@
+.classification-override-panel {
+  border: 1px solid var(--color-border-light, #d0d7e3);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  padding: 1rem;
+  margin-top: 0.75rem;
+  animation: override-slide-in 0.2s ease;
+}
+
+@keyframes override-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.classification-override-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.classification-override-panel__header h4 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.classification-override-panel__close {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--color-text-muted, #6b7280);
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.classification-override-panel__close:hover {
+  color: var(--color-text, #1a1a2e);
+}
+
+.classification-override-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.classification-override-panel__actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}

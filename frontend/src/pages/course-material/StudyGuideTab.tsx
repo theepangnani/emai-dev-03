@@ -13,6 +13,10 @@ import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
 import DocumentTypeSelector from '../../components/DocumentTypeSelector';
 import StudyGoalSelector from '../../components/StudyGoalSelector';
+import ClassificationBar from '../../components/study/ClassificationBar';
+import ChildInlinePills from '../../components/study/ChildInlinePills';
+import MaterialTypeSuggestionChips, { getChipsForType } from '../../components/study/MaterialTypeSuggestionChips';
+import ClassificationOverridePanel from '../../components/study/ClassificationOverridePanel';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
 import { ContentMetaBar } from './ContentMetaBar';
@@ -118,6 +122,9 @@ export function StudyGuideTab({
   const [documentType, setDocumentType] = useState(savedDocumentType || '');
   const [autoDetectedType, setAutoDetectedType] = useState<string | null>(null);
   const [autoConfidence, setAutoConfidence] = useState(0);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [showOverride, setShowOverride] = useState(false);
+  const [generatingAction, setGeneratingAction] = useState<string | null>(null);
   const [studyGoal, setStudyGoal] = useState(savedStudyGoal || '');
   const [studyGoalText, setStudyGoalText] = useState(savedStudyGoalText || '');
 
@@ -136,6 +143,7 @@ export function StudyGuideTab({
     const filename = originalFilename || '';
     if (!text && !filename) return;
 
+    setIsClassifying(true);
     classifyDocument(text.slice(0, 2000), filename)
       .then((result) => {
         if (cancelled) return;
@@ -145,7 +153,8 @@ export function StudyGuideTab({
           setDocumentType(result.document_type);
         }
       })
-      .catch((err) => { console.debug('Auto-detect document type failed:', err?.message || err); });
+      .catch((err) => { console.debug('Auto-detect document type failed:', err?.message || err); })
+      .finally(() => { if (!cancelled) setIsClassifying(false); });
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,6 +268,24 @@ export function StudyGuideTab({
       documentType: documentType || undefined,
       studyGoal: studyGoal || undefined,
       studyGoalText: studyGoalText.trim() || undefined,
+    });
+  };
+
+  const handleChipClick = (action: string, templateKey?: string) => {
+    setGeneratingAction(templateKey || action);
+    if (action === 'quiz' && onFormatSelect) {
+      onFormatSelect('quiz' as StudyFormat);
+      return;
+    }
+    if (action === 'flashcards' && onFormatSelect) {
+      onFormatSelect('flashcards' as StudyFormat);
+      return;
+    }
+    // For study_guide actions with or without a template key
+    onGenerate({
+      documentType: documentType || autoDetectedType || undefined,
+      studyGoal: studyGoal || undefined,
+      studyGoalText: templateKey || studyGoalText.trim() || undefined,
     });
   };
 
@@ -403,41 +430,96 @@ export function StudyGuideTab({
               onSelect={onFormatSelect}
             />
           )}
-          <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
-          <h3>Your document is ready</h3>
-          <p>Generate an AI-powered study guide from this material. Customize the options below for the best results.</p>
 
-          {/* Generation controls */}
-          {hasSourceContent && (
-            <div className="cm-generation-controls">
-              <DocumentTypeSelector
-                defaultType={documentType || autoDetectedType}
-                confidence={autoConfidence}
-                onChange={(type) => setDocumentType(type)}
-                disabled={generating !== null}
-              />
-
-              <StudyGoalSelector
-                defaultGoal={studyGoal || null}
-                defaultFocusText={studyGoalText || null}
-                onChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
-                disabled={generating !== null}
-              />
-            </div>
+          {/* Auto-detect-and-go: classifying state */}
+          {isClassifying && hasSourceContent && (
+            <>
+              <ClassificationBar documentType={null} confidence={0} isLoading />
+              <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
+              <h3>Analyzing your document...</h3>
+            </>
           )}
 
-          <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
-            <button
-              className="cm-empty-generate-btn"
-              onClick={handleGenerateWithContext}
-              disabled={generating !== null || !hasSourceContent || atLimit}
-            >
-              {'\u2728'} Generate Study Guide
-            </button>
-            {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
-          </span>
-          {!hasSourceContent && (
-            <p className="cm-hint">Add content or upload a document first to generate a study guide.</p>
+          {/* Auto-detect-and-go: high confidence — show bar + chips directly */}
+          {!isClassifying && autoConfidence >= 0.80 && autoDetectedType && hasSourceContent && !showOverride && (
+            <>
+              <ClassificationBar
+                documentType={autoDetectedType}
+                confidence={autoConfidence}
+                onOverrideClick={() => setShowOverride(true)}
+              />
+              <ChildInlinePills documentType={autoDetectedType} studyGoal={studyGoal || null} />
+              <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
+              <h3>Ready to go</h3>
+              <p>Pick how you want to study this material:</p>
+              <MaterialTypeSuggestionChips
+                chips={getChipsForType(autoDetectedType)}
+                onChipClick={handleChipClick}
+                disabled={generating !== null || atLimit}
+                generatingAction={generatingAction}
+              />
+              {atLimit && <p className="cm-hint">AI limit reached</p>}
+            </>
+          )}
+
+          {/* Override panel: shown when user clicks "Not right? Change" */}
+          {!isClassifying && showOverride && hasSourceContent && (
+            <>
+              <ClassificationOverridePanel
+                documentType={documentType || autoDetectedType || ''}
+                studyGoal={studyGoal}
+                studyGoalText={studyGoalText}
+                autoConfidence={autoConfidence}
+                onDocumentTypeChange={(type) => setDocumentType(type)}
+                onStudyGoalChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
+                onGenerate={handleGenerateWithContext}
+                onClose={() => setShowOverride(false)}
+                disabled={generating !== null}
+                atLimit={atLimit}
+                hasSourceContent={hasSourceContent}
+              />
+            </>
+          )}
+
+          {/* Fallback: low confidence or no detection — show original selectors + generate button */}
+          {!isClassifying && (autoConfidence < 0.80 || !autoDetectedType) && !showOverride && (
+            <>
+              <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
+              <h3>Your document is ready</h3>
+              <p>Generate an AI-powered study guide from this material. Customize the options below for the best results.</p>
+
+              {hasSourceContent && (
+                <div className="cm-generation-controls">
+                  <DocumentTypeSelector
+                    defaultType={documentType || autoDetectedType}
+                    confidence={autoConfidence}
+                    onChange={(type) => setDocumentType(type)}
+                    disabled={generating !== null}
+                  />
+
+                  <StudyGoalSelector
+                    defaultGoal={studyGoal || null}
+                    defaultFocusText={studyGoalText || null}
+                    onChange={(goal, text) => { setStudyGoal(goal); setStudyGoalText(text || ''); }}
+                    disabled={generating !== null}
+                  />
+                </div>
+              )}
+
+              <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+                <button
+                  className="cm-empty-generate-btn"
+                  onClick={handleGenerateWithContext}
+                  disabled={generating !== null || !hasSourceContent || atLimit}
+                >
+                  {'\u2728'} Generate Study Guide
+                </button>
+                {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+              </span>
+              {!hasSourceContent && (
+                <p className="cm-hint">Add content or upload a document first to generate a study guide.</p>
+              )}
+            </>
           )}
         </div>
       )}
