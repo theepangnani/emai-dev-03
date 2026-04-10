@@ -5152,3 +5152,54 @@ Study guides surface helpful external links (videos, interactive tools, articles
 - `app/services/resource_suggestion_service.py` — AI resource generation
 - `app/models/resource_link.py` — ResourceLink model
 - `frontend/src/pages/StudyGuidePage.tsx` — study guide display with resource links
+
+---
+
+### 6.131 Unified Template + Detection Framework (CB-UTDF-001, #2948) - PLANNED (Phase 2)
+
+Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material type, subject, student, and teacher from uploaded documents, then show context-aware suggestion chips and route generation to the correct named template. Adds worksheet generation as a new first-class output type.
+
+**PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
+**Target:** May–June 2026
+
+**Key capabilities:**
+- Named template library (8 subject-specific templates)
+- Subject/class auto-detection via extended Claude Haiku classification
+- Multi-child disambiguation modal
+- Teacher auto-assignment from course record
+- Material-type-driven suggestion chip sets (replacing generic chips)
+- Worksheet generation (`guide_type='worksheet'` on `study_guides` table)
+- Answer key generation
+- High-level summary chip
+- Weak area analysis (Claude Sonnet)
+- Manual detection override UI
+
+**Data model:** Extends existing `study_guides` table with `guide_type='worksheet'` and `guide_type='weak_area_analysis'`. New columns: `template_key`, `num_questions`, `difficulty`, `answer_key_markdown`, `weak_topics`. New columns on `course_content`: `detected_subject`, `detection_confidence`, `classification_override`.
+
+**Credit costs:**
+
+| Output Type | Credits |
+|-------------|---------|
+| Worksheet | 1 credit |
+| Answer Key | 0 (free) |
+| High Level Summary | 0 (free) |
+| Weak Area Analysis | 2 credits |
+
+**Confidence UX model:** Child disambiguation is the ONLY blocking interaction (modal, chips disabled until resolved). Low-confidence material type, subject, and teacher are non-blocking visual indicators (dashed badges). Multiple low-confidence dimensions show simultaneously — no stacked modals.
+
+**Existing upload backfill:** No batch backfill. Pre-UTDF materials show generic chips (current behavior) + "Detect subject" opt-in link for on-demand classification (free, no credits consumed).
+
+**Stories (13):**
+- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
+- [ ] [CB-UTDF-S2] DB migration: new columns on course_content + study_guides (#2950)
+- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
+- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
+- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
+- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
+- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
+- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
+- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957)
+- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
+- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
+- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
+- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
