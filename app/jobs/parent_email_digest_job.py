@@ -6,6 +6,8 @@ Runs every 4 hours via APScheduler (#2651).
 import logging
 from datetime import datetime, timezone, timedelta
 
+from sqlalchemy.orm import joinedload
+
 from app.db.database import SessionLocal
 from app.models.parent_gmail_integration import (
     ParentGmailIntegration,
@@ -32,6 +34,8 @@ async def process_parent_email_digests():
         integrations = (
             db.query(ParentGmailIntegration)
             .join(ParentDigestSettings)
+            .options(joinedload(ParentGmailIntegration.parent))
+            .options(joinedload(ParentGmailIntegration.digest_settings))
             .filter(
                 ParentGmailIntegration.is_active == True,  # noqa: E712
                 ParentDigestSettings.digest_enabled == True,  # noqa: E712
@@ -113,7 +117,7 @@ async def process_parent_email_digests():
 
                 # Generate digest via AI
                 child_name = integration.child_first_name or "your child"
-                parent = db.query(User).filter(User.id == integration.parent_id).first()
+                parent = integration.parent
                 parent_name = parent.first_name if parent and parent.first_name else "Parent"
 
                 try:

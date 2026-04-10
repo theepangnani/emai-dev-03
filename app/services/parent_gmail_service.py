@@ -1,5 +1,6 @@
 """Gmail polling service for parent email digest."""
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -61,27 +62,16 @@ async def fetch_child_emails(
         logger.error("Integration %d has no access token", integration.id)
         return []
 
-    try:
-        service, credentials = get_gmail_service(access_token, refresh_token)
-    except Exception as e:
-        logger.error(
-            "Failed to build Gmail service for integration %d: %s",
-            integration.id,
-            e,
-        )
-        integration.is_active = False
-        db.commit()
-        return []
+    def _sync_fetch(at, rt, child_email, since_dt, max_res):
+        """Synchronous Gmail fetch — runs in thread pool."""
+        svc, creds = get_gmail_service(at, rt)
+        epoch_seconds = int(since_dt.timestamp())
+        query = f"from:{child_email} in:inbox after:{epoch_seconds}"
 
-    # Build query filtering by child's school email
-    epoch_seconds = int(since.timestamp())
-    query = f"from:{integration.child_school_email} in:inbox after:{epoch_seconds}"
-
-    try:
         results = (
-            service.users()
+            svc.users()
             .messages()
-            .list(userId="me", q=query, maxResults=max_results)
+            .list(userId="me", q=query, maxResults=max_res)
             .execute()
         )
 
@@ -97,7 +87,7 @@ async def fetch_child_emails(
 
             try:
                 msg = (
-                    service.users()
+                    svc.users()
                     .messages()
                     .get(userId="me", id=msg_id, format="full")
                     .execute()
@@ -106,33 +96,17 @@ async def fetch_child_emails(
             except HttpError as e:
                 logger.warning("Failed to fetch message %s: %s", msg_id, e)
 
-        # Update last_synced_at
-        integration.last_synced_at = datetime.now(timezone.utc)
+        return parsed, creds
 
-        # If credentials were refreshed, update stored tokens
-        if credentials.token != access_token:
-            from app.core.encryption import encrypt_token
-
-            integration.access_token = encrypt_token(credentials.token)
-            if (
-                credentials.refresh_token
-                and credentials.refresh_token != refresh_token
-            ):
-                integration.refresh_token = encrypt_token(
-                    credentials.refresh_token
-                )
-
-        db.commit()
-
-        logger.info(
-            "Fetched %d emails for integration %d (parent %d, child email: %s)",
-            len(parsed),
-            integration.id,
-            integration.parent_id,
+    try:
+        parsed, credentials = await asyncio.to_thread(
+            _sync_fetch,
+            access_token,
+            refresh_token,
             integration.child_school_email,
+            since,
+            max_results,
         )
-        return parsed
-
     except HttpError as e:
         if e.resp.status in (401, 403):
             logger.error(
@@ -149,6 +123,42 @@ async def fetch_child_emails(
                 e,
             )
         return []
+    except Exception as e:
+        logger.error(
+            "Failed to build Gmail service for integration %d: %s",
+            integration.id,
+            e,
+        )
+        integration.is_active = False
+        db.commit()
+        return []
+
+    # Update last_synced_at (DB ops stay on main thread)
+    integration.last_synced_at = datetime.now(timezone.utc)
+
+    # If credentials were refreshed, update stored tokens
+    if credentials.token != access_token:
+        from app.core.encryption import encrypt_token
+
+        integration.access_token = encrypt_token(credentials.token)
+        if (
+            credentials.refresh_token
+            and credentials.refresh_token != refresh_token
+        ):
+            integration.refresh_token = encrypt_token(
+                credentials.refresh_token
+            )
+
+    db.commit()
+
+    logger.info(
+        "Fetched %d emails for integration %d (parent %d, child email: %s)",
+        len(parsed),
+        integration.id,
+        integration.parent_id,
+        integration.child_school_email,
+    )
+    return parsed
 
 
 async def verify_forwarding(
@@ -188,37 +198,29 @@ async def verify_forwarding(
             "message": "No access token",
         }
 
-    try:
-        service, credentials = get_gmail_service(access_token, refresh_token)
-    except Exception as e:
-        return {
-            "verified": False,
-            "email_count": 0,
-            "latest_email_date": None,
-            "message": f"Gmail connection failed: {e!s}",
-        }
+    def _sync_verify(at, rt, child_email):
+        """Synchronous Gmail verify — runs in thread pool."""
+        svc, creds = get_gmail_service(at, rt)
 
-    # Check last 30 days
-    since = datetime.now(timezone.utc) - timedelta(days=30)
-    epoch_seconds = int(since.timestamp())
-    query = f"from:{integration.child_school_email} in:inbox after:{epoch_seconds}"
+        # Check last 30 days
+        since_dt = datetime.now(timezone.utc) - timedelta(days=30)
+        epoch_seconds = int(since_dt.timestamp())
+        query = f"from:{child_email} in:inbox after:{epoch_seconds}"
 
-    try:
         results = (
-            service.users()
+            svc.users()
             .messages()
             .list(userId="me", q=query, maxResults=5)
             .execute()
         )
 
         messages = results.get("messages", [])
-        email_count = len(messages)
-        latest_date = None
+        count = len(messages)
+        latest = None
 
         if messages:
-            # Get the first (most recent) message date
             msg = (
-                service.users()
+                svc.users()
                 .messages()
                 .get(
                     userId="me",
@@ -232,33 +234,17 @@ async def verify_forwarding(
                 h["name"].lower(): h["value"]
                 for h in msg["payload"]["headers"]
             }
-            latest_date = headers.get("date")
+            latest = headers.get("date")
 
-        # Update credentials if refreshed
-        if credentials.token != access_token:
-            from app.core.encryption import encrypt_token
+        return count, latest, creds
 
-            integration.access_token = encrypt_token(credentials.token)
-            if (
-                credentials.refresh_token
-                and credentials.refresh_token != refresh_token
-            ):
-                integration.refresh_token = encrypt_token(
-                    credentials.refresh_token
-                )
-            db.commit()
-
-        return {
-            "verified": email_count > 0,
-            "email_count": email_count,
-            "latest_email_date": latest_date,
-            "message": (
-                "Forwarding verified — emails found from school address"
-                if email_count > 0
-                else "No emails found from school address in the last 30 days"
-            ),
-        }
-
+    try:
+        email_count, latest_date, credentials = await asyncio.to_thread(
+            _sync_verify,
+            access_token,
+            refresh_token,
+            integration.child_school_email,
+        )
     except HttpError as e:
         return {
             "verified": False,
@@ -266,3 +252,35 @@ async def verify_forwarding(
             "latest_email_date": None,
             "message": f"Gmail API error: {e!s}",
         }
+    except Exception as e:
+        return {
+            "verified": False,
+            "email_count": 0,
+            "latest_email_date": None,
+            "message": f"Gmail connection failed: {e!s}",
+        }
+
+    # Update credentials if refreshed (DB ops stay on main thread)
+    if credentials.token != access_token:
+        from app.core.encryption import encrypt_token
+
+        integration.access_token = encrypt_token(credentials.token)
+        if (
+            credentials.refresh_token
+            and credentials.refresh_token != refresh_token
+        ):
+            integration.refresh_token = encrypt_token(
+                credentials.refresh_token
+            )
+        db.commit()
+
+    return {
+        "verified": email_count > 0,
+        "email_count": email_count,
+        "latest_email_date": latest_date,
+        "message": (
+            "Forwarding verified — emails found from school address"
+            if email_count > 0
+            else "No emails found from school address in the last 30 days"
+        ),
+    }
