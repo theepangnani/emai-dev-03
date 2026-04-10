@@ -2236,13 +2236,33 @@ def get_content_access_log(
 
 
 @router.patch("/{content_id}/classification")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def update_classification(
+    request: Request,
     content_id: int,
-    request: ClassificationOverrideRequest,
+    classification: ClassificationOverrideRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Override the auto-detected document_type and/or detected_subject."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if classification.document_type is not None:
+        content.document_type = classification.document_type
+    if classification.detected_subject is not None:
+        content.detected_subject = classification.detected_subject
+
+    content.classification_override = True
+    db.commit()
+    db.refresh(content)
+    return content
+
+
 @router.post("/{content_id}/classify", response_model=CourseContentResponse)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def classify_content(
@@ -2251,26 +2271,11 @@ async def classify_content(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Lazy classification for legacy materials — detects subject from existing text_content (#3023).
-
-    Free (0 credits), idempotent. Re-running overwrites previous classification.
-    """
+    """Lazy classification for legacy materials (#3023)."""
     content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
 
-    if not can_access_material(db, current_user, content):
-        raise HTTPException(status_code=403, detail="Not authorized to modify this content")
-
-    if request.document_type is not None:
-        content.document_type = request.document_type
-    if request.detected_subject is not None:
-        content.detected_subject = request.detected_subject
-
-    content.classification_override = True
-    db.commit()
-    db.refresh(content)
-    # Verify access
     if not can_access_material(db, current_user, content):
         raise HTTPException(status_code=403, detail="Access denied")
 
