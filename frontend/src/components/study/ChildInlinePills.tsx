@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './ChildInlinePills.css';
 
 export interface Child {
@@ -8,7 +8,7 @@ export interface Child {
 }
 
 export interface ChildInlinePillsProps {
-  children: Child[];
+  childList: Child[];
   selectedChildId: number | null;
   suggestedChildId: number | null;
   courseId: number;
@@ -20,13 +20,13 @@ function getStorageKey(courseId: number): string {
 }
 
 export function detectGradeConflict(
-  children: Child[],
+  childList: Child[],
   detectedGrade: string | null,
 ): { suggestedChildId: number | null; isConflict: boolean } {
-  if (!detectedGrade || children.length <= 1) {
+  if (!detectedGrade || childList.length <= 1) {
     return { suggestedChildId: null, isConflict: false };
   }
-  const matches = children.filter(
+  const matches = childList.filter(
     (c) => c.grade && c.grade.includes(detectedGrade),
   );
   if (matches.length === 1) {
@@ -39,23 +39,27 @@ export function detectGradeConflict(
 }
 
 export function ChildInlinePills({
-  children,
+  childList,
   selectedChildId,
   suggestedChildId,
   courseId,
   onSelect,
 }: ChildInlinePillsProps) {
+  // Stable ref for onSelect to avoid re-triggering the restore effect
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
   // On mount, restore last selection from localStorage
   useEffect(() => {
     if (selectedChildId !== null) return;
     const stored = localStorage.getItem(getStorageKey(courseId));
     if (stored) {
       const storedId = parseInt(stored, 10);
-      if (children.some((c) => c.id === storedId)) {
-        onSelect(storedId);
+      if (childList.some((c) => c.id === storedId)) {
+        onSelectRef.current(storedId);
       }
     }
-  }, [courseId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseId, selectedChildId, childList]);
 
   // Persist selection to localStorage
   useEffect(() => {
@@ -64,16 +68,16 @@ export function ChildInlinePills({
     }
   }, [selectedChildId, courseId]);
 
-  // Single child: auto-select silently, render nothing
-  if (children.length <= 1) return null;
+  // Empty or single child: render nothing
+  if (childList.length <= 1) return null;
 
   return (
     <div className="child-inline-pills">
       <span className="child-inline-pills__label">
         Which child is this for?
       </span>
-      <div className="child-inline-pills__list">
-        {children.map((child) => {
+      <div className="child-inline-pills__list" role="group" aria-label="Select child">
+        {childList.map((child) => {
           const isSelected = selectedChildId === child.id;
           const isSuggested =
             !isSelected && suggestedChildId === child.id;
