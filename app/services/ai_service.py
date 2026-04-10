@@ -592,7 +592,7 @@ async def generate_study_guide_stream(
             images=images,
             interests=interests,
             document_type=document_type,
-            detailed=bool(strategy_system_prompt),
+            detailed=bool(custom_prompt),
         )
         system_prompt = strategy_system_prompt + _interests_instruction(interests)
     else:
