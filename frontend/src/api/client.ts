@@ -15,6 +15,14 @@ export const api = axios.create({
 /** Extended timeout (2 minutes) for AI generation and file upload calls. */
 export const AI_TIMEOUT = { timeout: 120_000 };
 
+// Auto-detect Content-Type for FormData (let browser set multipart boundary)
+api.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  return config;
+});
+
 // Add auth token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
