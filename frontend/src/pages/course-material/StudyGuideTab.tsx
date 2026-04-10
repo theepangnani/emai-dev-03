@@ -13,9 +13,9 @@ import { GenerationSpinner } from '../../components/GenerationSpinner';
 import { StreamingMarkdown } from '../../components/StreamingMarkdown';
 import DocumentTypeSelector from '../../components/DocumentTypeSelector';
 import StudyGoalSelector from '../../components/StudyGoalSelector';
-import ClassificationBar from '../../components/study/ClassificationBar';
-import ChildInlinePills from '../../components/study/ChildInlinePills';
-import MaterialTypeSuggestionChips, { getChipsForType } from '../../components/study/MaterialTypeSuggestionChips';
+import { ClassificationBar } from '../../components/study/ClassificationBar';
+import { ChildInlinePills } from '../../components/study/ChildInlinePills';
+import MaterialTypeSuggestionChips, { getChips as getChipsForType } from '../../components/study/MaterialTypeSuggestionChips';
 import ClassificationOverridePanel from '../../components/study/ClassificationOverridePanel';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
@@ -453,10 +453,12 @@ export function StudyGuideTab({
               <h3>Ready to go</h3>
               <p>Pick how you want to study this material:</p>
               <MaterialTypeSuggestionChips
-                chips={getChipsForType(autoDetectedType)}
+                documentType={autoDetectedType || 'custom'}
                 onChipClick={handleChipClick}
                 disabled={generating !== null || atLimit}
                 generatingAction={generatingAction}
+                remainingCredits={null}
+                atLimit={atLimit}
               />
               {atLimit && <p className="cm-hint">AI limit reached</p>}
             </>

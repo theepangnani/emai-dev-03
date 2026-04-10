@@ -243,12 +243,6 @@ class DocumentClassifierService:
             "material_type_display": "Custom Document",
             "error": True,
         }
-        except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse classification response: {e}")
-            return {"document_type": "custom", "confidence": 0.0}
-        except Exception as e:
-            logger.warning(f"Document classification failed (returning custom): {e}")
-            return {"document_type": "custom", "confidence": 0.0}
 
     @staticmethod
     def classify_subject(extracted_text: str, filename: str = "") -> dict:
