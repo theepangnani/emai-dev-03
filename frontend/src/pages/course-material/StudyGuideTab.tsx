@@ -145,7 +145,7 @@ export function StudyGuideTab({
           setDocumentType(result.document_type);
         }
       })
-      .catch(() => { /* auto-detect is best-effort */ });
+      .catch((err) => { console.debug('Auto-detect document type failed:', err?.message || err); });
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
