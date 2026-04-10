@@ -10,14 +10,14 @@ describe('API client', () => {
     localStorage.setItem('token', 'test-jwt-token')
     // Trigger the request interceptor manually
     const config = { headers: {} as Record<string, string> }
-    const interceptor = (api.interceptors.request as any).handlers[1]
+    const interceptor = (api.interceptors.request as any).handlers[0]
     const result = interceptor.fulfilled(config as any)
     expect(result.headers.Authorization).toBe('Bearer test-jwt-token')
   })
 
   it('does not inject Authorization header without token', () => {
     const config = { headers: {} as Record<string, string> }
-    const interceptor = (api.interceptors.request as any).handlers[1]
+    const interceptor = (api.interceptors.request as any).handlers[0]
     const result = interceptor.fulfilled(config as any)
     expect(result.headers.Authorization).toBeUndefined()
   })
