@@ -6,6 +6,14 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def _mask_phone(phone: str) -> str:
+    """Mask phone number for logging: +1416****34"""
+    if len(phone) > 6:
+        return phone[:4] + "****" + phone[-2:]
+    return "****"
+
+
 # Twilio is optional — gracefully handle missing package
 try:
     from twilio.rest import Client as TwilioClient
@@ -28,7 +36,7 @@ def is_whatsapp_enabled() -> bool:
 def send_whatsapp_message(to_phone: str, message: str) -> bool:
     """Send a WhatsApp message via Twilio. Returns True on success."""
     if not is_whatsapp_enabled():
-        logger.warning("WhatsApp not configured — skipping delivery to %s", to_phone)
+        logger.warning("WhatsApp not configured — skipping delivery to %s", _mask_phone(to_phone))
         return False
 
     try:
@@ -42,10 +50,10 @@ def send_whatsapp_message(to_phone: str, message: str) -> bool:
             to=f"whatsapp:{to_phone}",
             body=message,
         )
-        logger.info("WhatsApp message sent to %s: SID %s", to_phone, msg.sid)
+        logger.info("WhatsApp message sent to %s: SID %s", _mask_phone(to_phone), msg.sid)
         return True
     except Exception as e:
-        logger.error("WhatsApp send failed to %s: %s", to_phone, e)
+        logger.error("WhatsApp send failed to %s: %s", _mask_phone(to_phone), e)
         return False
 
 

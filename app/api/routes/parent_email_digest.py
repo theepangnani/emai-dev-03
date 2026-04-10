@@ -515,7 +515,7 @@ async def verify_email_forwarding(
 
 
 @router.post("/integrations/{integration_id}/whatsapp/send-otp")
-@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+@limiter.limit("3/minute", key_func=get_user_id_or_ip)
 def send_whatsapp_otp(
     request: Request,
     integration_id: int,
@@ -545,7 +545,7 @@ def send_whatsapp_otp(
 
 
 @router.post("/integrations/{integration_id}/whatsapp/verify-otp")
-@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+@limiter.limit("3/minute", key_func=get_user_id_or_ip)
 def verify_whatsapp_otp(
     request: Request,
     integration_id: int,

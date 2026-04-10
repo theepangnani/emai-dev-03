@@ -66,7 +66,7 @@ async def fetch_child_emails(
         """Synchronous Gmail fetch — runs in thread pool."""
         svc, creds = get_gmail_service(at, rt)
         epoch_seconds = int(since_dt.timestamp())
-        query = f"from:{child_email} in:inbox after:{epoch_seconds}"
+        query = f'from:"{child_email}" in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
@@ -205,7 +205,7 @@ async def verify_forwarding(
         # Check last 30 days
         since_dt = datetime.now(timezone.utc) - timedelta(days=30)
         epoch_seconds = int(since_dt.timestamp())
-        query = f"from:{child_email} in:inbox after:{epoch_seconds}"
+        query = f'from:"{child_email}" in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
