@@ -36,7 +36,7 @@ export function EmailDigestPage() {
   const queryClient = useQueryClient();
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
-  const { data: integrations = [], isLoading: intLoading } = useQuery<EmailDigestIntegration[]>({
+  const { data: integrations = [], isLoading: intLoading, isError: intError } = useQuery<EmailDigestIntegration[]>({
     queryKey: ['email-digest', 'integrations'],
     queryFn: () => listIntegrations().then((r) => r.data),
   });
@@ -108,6 +108,16 @@ export function EmailDigestPage() {
         </div>
 
         {isLoading && <div className="ed-loading">Loading...</div>}
+
+        {!isLoading && intError && (
+          <div className="ed-empty-state">
+            <h2>Something went wrong</h2>
+            <p>Failed to load email digest data. Please try again later.</p>
+            <button className="ed-primary-btn" onClick={() => window.location.reload()}>
+              Try Again
+            </button>
+          </div>
+        )}
 
         {!isLoading && !activeIntegration && (
           <div className="ed-empty-state">
