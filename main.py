@@ -544,6 +544,15 @@ async def startup_event():
         replace_existing=True,
     )
 
+    # Parent email digest — every 4 hours (#2651)
+    from app.jobs.parent_email_digest_job import process_parent_email_digests
+    scheduler.add_job(
+        process_parent_email_digests,
+        CronTrigger(hour="*/4"),
+        id="parent_email_digest",
+        replace_existing=True,
+    )
+
     # Teacher comm sync disabled — all syncs are manual/on-demand per parent-first platform design
     # from app.jobs.teacher_comm_sync import check_teacher_communications
     # scheduler.add_job(check_teacher_communications, IntervalTrigger(minutes=15), id="teacher_comm_sync", replace_existing=True)

@@ -1,0 +1,241 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
+import { DashboardLayout } from '../../components/DashboardLayout';
+import {
+  listIntegrations,
+  getSettings,
+  updateSettings,
+  getLogs,
+  triggerSync,
+  type EmailDigestIntegration,
+  type EmailDigestSettings,
+  type DigestDeliveryLog,
+} from '../../api/parentEmailDigest';
+import './EmailDigestPage.css';
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cls = status === 'delivered' ? 'ed-status--delivered' : 'ed-status--failed';
+  return <span className={`ed-status ${cls}`}>{status}</span>;
+}
+
+export function EmailDigestPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
+
+  const { data: integrations = [], isLoading: intLoading } = useQuery<EmailDigestIntegration[]>({
+    queryKey: ['email-digest', 'integrations'],
+    queryFn: () => listIntegrations().then((r) => r.data),
+  });
+
+  const activeIntegration = integrations[0] ?? null;
+
+  const { data: settings } = useQuery<EmailDigestSettings>({
+    queryKey: ['email-digest', 'settings', activeIntegration?.id],
+    queryFn: () => getSettings(activeIntegration!.id).then((r) => r.data),
+    enabled: !!activeIntegration,
+  });
+
+  const { data: logs = [], isLoading: logsLoading } = useQuery<DigestDeliveryLog[]>({
+    queryKey: ['email-digest', 'logs', activeIntegration?.id],
+    queryFn: () =>
+      getLogs(activeIntegration ? { integration_id: activeIntegration.id, limit: 50 } : { limit: 50 }).then(
+        (r) => r.data,
+      ),
+    enabled: !!activeIntegration,
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: (id: number) => triggerSync(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+    },
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<EmailDigestSettings> }) =>
+      updateSettings(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'settings'] });
+    },
+  });
+
+  const toggleDigest = () => {
+    if (!activeIntegration || !settings) return;
+    settingsMutation.mutate({
+      id: activeIntegration.id,
+      data: { digest_enabled: !settings.digest_enabled },
+    });
+  };
+
+  const handleDeliveryTimeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!activeIntegration) return;
+    settingsMutation.mutate({
+      id: activeIntegration.id,
+      data: { delivery_time: e.target.value },
+    });
+  };
+
+  const isLoading = intLoading;
+
+  return (
+    <DashboardLayout>
+      <div className="ed-page">
+        <div className="ed-header">
+          <button className="ed-back-btn" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Dashboard
+          </button>
+          <h1 className="ed-title">Email Digest</h1>
+          {activeIntegration?.child_first_name && (
+            <span className="ed-child-context">for {activeIntegration.child_first_name}</span>
+          )}
+        </div>
+
+        {isLoading && <div className="ed-loading">Loading...</div>}
+
+        {!isLoading && !activeIntegration && (
+          <div className="ed-empty-state">
+            <div className="ed-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="2 4 12 13 22 4" />
+              </svg>
+            </div>
+            <h2>No Email Digest Set Up</h2>
+            <p>Connect your Gmail account from the My Kids page to start receiving email digests about your child's school communications.</p>
+            <button className="ed-primary-btn" onClick={() => navigate('/my-kids')}>
+              Go to My Kids
+            </button>
+          </div>
+        )}
+
+        {!isLoading && activeIntegration && (
+          <>
+            {/* Quick Settings */}
+            <div className="ed-settings-card">
+              <h2 className="ed-section-title">Quick Settings</h2>
+              <div className="ed-settings-row">
+                <div className="ed-setting-item">
+                  <span className="ed-setting-label">Digest Enabled</span>
+                  <button
+                    className={`ed-toggle ${settings?.digest_enabled ? 'ed-toggle--on' : ''}`}
+                    onClick={toggleDigest}
+                    disabled={settingsMutation.isPending}
+                    aria-label={settings?.digest_enabled ? 'Disable digest' : 'Enable digest'}
+                  >
+                    <span className="ed-toggle-knob" />
+                  </button>
+                </div>
+                <div className="ed-setting-item">
+                  <label className="ed-setting-label" htmlFor="delivery-time">Delivery Time</label>
+                  <select
+                    id="delivery-time"
+                    className="ed-select"
+                    value={settings?.delivery_time ?? '07:00'}
+                    onChange={handleDeliveryTimeChange}
+                    disabled={settingsMutation.isPending}
+                  >
+                    <option value="06:00">6:00 AM</option>
+                    <option value="07:00">7:00 AM</option>
+                    <option value="08:00">8:00 AM</option>
+                    <option value="09:00">9:00 AM</option>
+                    <option value="12:00">12:00 PM</option>
+                    <option value="17:00">5:00 PM</option>
+                    <option value="20:00">8:00 PM</option>
+                  </select>
+                </div>
+              </div>
+              <div className="ed-settings-actions">
+                <button
+                  className="ed-sync-btn"
+                  onClick={() => syncMutation.mutate(activeIntegration.id)}
+                  disabled={syncMutation.isPending}
+                >
+                  {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
+                </button>
+                {syncMutation.isError && (
+                  <span className="ed-error-text">Sync failed. Please try again.</span>
+                )}
+                {syncMutation.isSuccess && (
+                  <span className="ed-success-text">Sync complete!</span>
+                )}
+              </div>
+            </div>
+
+            {/* Digest History */}
+            <div className="ed-history-section">
+              <h2 className="ed-section-title">Digest History</h2>
+              {logsLoading && <div className="ed-loading">Loading history...</div>}
+              {!logsLoading && logs.length === 0 && (
+                <div className="ed-empty-history">
+                  <p>No digests delivered yet. Your first digest will appear here after the next scheduled run.</p>
+                </div>
+              )}
+              {!logsLoading && logs.length > 0 && (
+                <div className="ed-log-list">
+                  {logs.map((log) => (
+                    <div key={log.id} className="ed-log-card">
+                      <button
+                        className="ed-log-header"
+                        onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                        aria-expanded={expandedLogId === log.id}
+                      >
+                        <div className="ed-log-meta">
+                          <span className="ed-log-date">{formatDate(log.delivered_at)}</span>
+                          <span className="ed-log-count">
+                            {log.email_count} {log.email_count === 1 ? 'email' : 'emails'}
+                          </span>
+                          <StatusBadge status={log.status} />
+                        </div>
+                        <svg
+                          className={`ed-chevron ${expandedLogId === log.id ? 'ed-chevron--open' : ''}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          aria-hidden="true"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
+                      {expandedLogId === log.id && (
+                        <div className="ed-log-content">
+                          {log.digest_content ? (
+                            <div className="ed-digest-text" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.digest_content) }} />
+                          ) : (
+                            <p className="ed-no-content">No digest content available.</p>
+                          )}
+                          {log.channels_used && (
+                            <div className="ed-log-channels">
+                              Delivered via: {log.channels_used}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

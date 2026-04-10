@@ -4959,6 +4959,7 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)
 - [ ] F-11: Action items extraction — deadlines, forms, RSVPs surfaced separately (#2655)
 - [ ] F-12: Multi-child support UI (#2655)
+- [ ] F-15: WhatsApp notification channel — Twilio WhatsApp Business API, phone OTP verification, "brief" format for 1600 char limit, fallback to email on failure (#2967)
 
 **Phase 3 Features (M5, September 2026+):**
 - [ ] F-13: Historical digest archive — searchable in Parent Dashboard (#2656)

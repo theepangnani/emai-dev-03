@@ -69,3 +69,27 @@ export const pauseIntegration = (integrationId: number) =>
 
 export const resumeIntegration = (integrationId: number) =>
   api.post<EmailDigestIntegration>(`/api/parent/email-digest/integrations/${integrationId}/resume`);
+
+export interface DigestDeliveryLog {
+  id: number;
+  parent_id: number;
+  integration_id: number;
+  email_count: number;
+  digest_content: string | null;
+  digest_length_chars: number | null;
+  delivered_at: string;
+  channels_used: string | null;
+  status: string;
+}
+
+export const getLogs = (params?: { integration_id?: number; skip?: number; limit?: number }) =>
+  api.get<DigestDeliveryLog[]>('/api/parent/email-digest/logs', { params });
+
+export const getLog = (logId: number) =>
+  api.get<DigestDeliveryLog>(`/api/parent/email-digest/logs/${logId}`);
+
+export const triggerSync = (integrationId: number) =>
+  api.post<EmailDigestIntegration>(`/api/parent/email-digest/integrations/${integrationId}/sync`);
+
+export const verifyForwarding = (integrationId: number) =>
+  api.post(`/api/parent/email-digest/integrations/${integrationId}/verify-forwarding`);

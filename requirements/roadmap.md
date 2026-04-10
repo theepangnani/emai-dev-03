@@ -342,6 +342,7 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 - [ ] Branded email template (#2652)
 - [ ] Email digest page + delivery log frontend (#2653)
 - [ ] Backend test suite (#2654)
+- [ ] WhatsApp notification channel — Twilio WhatsApp Business API, phone OTP, delivery fallback (#2967)
 
 **M3 — Pilot (June 2026):** 5-10 YRDSB families
 **M4 — Phase 2 (July-August 2026):**

@@ -90,6 +90,7 @@ const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionR
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
+const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage').then((m) => ({ default: m.EmailDigestPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
 const SurveyPage = lazyRetry(() => import('./pages/SurveyPage').then((m) => ({ default: m.SurveyPage })));
@@ -195,6 +196,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent']}>
                     <ActivityHistoryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/email-digest"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <EmailDigestPage />
                   </ProtectedRoute>
                 }
               />
