@@ -16,7 +16,7 @@ export interface ChildInlinePillsProps {
 }
 
 function getStorageKey(courseId: number): string {
-  return `utdf-last-child-${courseId}`;
+  return `classbridge:utdf-last-child:${courseId}`;
 }
 
 export function detectGradeConflict(
@@ -47,7 +47,9 @@ export function ChildInlinePills({
 }: ChildInlinePillsProps) {
   // Stable ref for onSelect to avoid re-triggering the restore effect
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   // On mount, restore last selection from localStorage
   useEffect(() => {
