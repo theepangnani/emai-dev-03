@@ -50,6 +50,10 @@ class StudyGuide(Base):
     # Answer key (stored on worksheet rows, §18.2)
     answer_key_markdown = Column(Text, nullable=True)
 
+    # Weak area analysis (#2958)
+    weak_topics = Column(Text, nullable=True)  # JSON array of weak topic strings
+    ai_engine = Column(String(50), nullable=True)  # AI model used (e.g. 'claude_sonnet')
+
     # Sharing (parent → child)
     shared_with_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     shared_at = Column(DateTime(timezone=True), nullable=True)
