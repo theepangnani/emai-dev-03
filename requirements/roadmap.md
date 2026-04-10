@@ -334,15 +334,15 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 - [x] PARENT_EMAIL_DIGEST notification type (#2646) (IMPLEMENTED — backend + frontend)
 - [x] Email digest setup wizard frontend (#2647) (IMPLEMENTED — 4-step wizard on My Kids page)
 
-**M2 — Core Engine (May 2026):**
-- [ ] Gmail polling service (#2648)
-- [ ] Forwarding verification endpoint (#2649)
-- [ ] Claude AI digest summarization service (#2650)
-- [ ] Scheduled digest job — every 4 hours, timezone-aware, ClassBridge notification delivery (#2651)
-- [ ] Branded email template (#2652)
-- [ ] Email digest page + delivery log frontend (#2653)
-- [ ] Backend test suite (#2654)
-- [ ] WhatsApp notification channel — Twilio WhatsApp Business API, phone OTP, delivery fallback (#2967)
+**M2 — Core Engine (May 2026):** IMPLEMENTED — PR #2985, merged 2026-04-10
+- [x] Gmail polling service (#2648) (IMPLEMENTED)
+- [x] Forwarding verification endpoint (#2649) (IMPLEMENTED)
+- [x] Claude AI digest summarization service (#2650) (IMPLEMENTED)
+- [x] Scheduled digest job — every 4 hours, timezone-aware, ClassBridge notification delivery (#2651) (IMPLEMENTED)
+- [x] Branded email template (#2652) (IMPLEMENTED)
+- [x] Email digest page + delivery log frontend (#2653) (IMPLEMENTED)
+- [x] Backend test suite — 83 tests (57 route + 26 unit) (#2654) (IMPLEMENTED)
+- [x] WhatsApp notification channel — Twilio WhatsApp Business API, phone OTP, delivery fallback (#2967) (IMPLEMENTED)
 
 **M3 — Pilot (June 2026):** 5-10 YRDSB families
 **M4 — Phase 2 (July-August 2026):**
