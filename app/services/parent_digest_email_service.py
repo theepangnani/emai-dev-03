@@ -3,6 +3,7 @@ Service for rendering the branded parent email digest HTML template.
 """
 import os
 
+from app.core.config import settings as app_settings
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -34,6 +35,7 @@ def render_digest_email(
     digest_html: str,
     digest_date: str,
     email_count: int,
+    base_url: str = "",
 ) -> str:
     """Render the branded digest email HTML.
 
@@ -58,6 +60,8 @@ def render_digest_email(
         )
         return wrap_branded_email(body)
 
+    resolved_base_url = base_url or app_settings.frontend_url.rstrip("/")
+
     return _render(
         template,
         parent_name=parent_name,
@@ -65,4 +69,5 @@ def render_digest_email(
         digest_content=digest_html,
         digest_date=digest_date,
         email_count=str(email_count),
+        base_url=resolved_base_url,
     )

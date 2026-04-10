@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import DOMPurify from 'dompurify';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import {
   listIntegrations,
@@ -216,7 +217,7 @@ export function EmailDigestPage() {
                       {expandedLogId === log.id && (
                         <div className="ed-log-content">
                           {log.digest_content ? (
-                            <div className="ed-digest-text">{log.digest_content}</div>
+                            <div className="ed-digest-text" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.digest_content) }} />
                           ) : (
                             <p className="ed-no-content">No digest content available.</p>
                           )}
