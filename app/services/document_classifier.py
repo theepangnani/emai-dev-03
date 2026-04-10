@@ -19,6 +19,9 @@ VALID_DOCUMENT_TYPES = [
     "lab_experiment",
     "textbook_excerpt",
     "custom",
+    "worksheet",
+    "student_test",
+    "quiz_paper",
 ]
 
 CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type.
