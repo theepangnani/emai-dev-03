@@ -176,6 +176,10 @@ vi.mock('./course-material/FlashcardsTab', () => ({
   FlashcardsTab: () => <div>Flashcards Tab</div>,
 }))
 
+vi.mock('./course-material/WorksheetsTab', () => ({
+  WorksheetsTab: () => <div>Worksheets Tab</div>,
+}))
+
 vi.mock('./course-material/MindMapTab', () => ({
   MindMapTab: () => <div>Mind Map Tab</div>,
 }))
