@@ -10,6 +10,7 @@ VALID_CONTENT_TYPES = {"notes", "syllabus", "labs", "assignments", "readings", "
 VALID_AI_TOOLS = {"study_guide", "quiz", "flashcards", "none"}
 
 VALID_DOCUMENT_TYPES = {"teacher_notes", "course_syllabus", "past_exam", "mock_exam", "project_brief", "lab_experiment", "textbook_excerpt", "custom", "parent_question"}
+VALID_DETECTED_SUBJECTS = {"math", "science", "english", "french", "other"}
 VALID_STUDY_GOALS = {"upcoming_test", "final_exam", "assignment", "lab_prep", "general_review", "discussion", "parent_review"}
 
 
@@ -149,6 +150,8 @@ class CourseContentResponse(BaseModel):
     document_type: Optional[str] = None
     study_goal: Optional[str] = None
     study_goal_text: Optional[str] = None
+    detected_subject: Optional[str] = None
+    classification_override: bool = False
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
@@ -198,5 +201,30 @@ class LinkedMaterialResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ClassificationOverrideRequest(BaseModel):
+    document_type: Optional[str] = None
+    detected_subject: Optional[str] = None
+
+    @field_validator("document_type")
+    @classmethod
+    def validate_document_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        normalized = v.strip().lower()
+        if normalized not in VALID_DOCUMENT_TYPES:
+            raise ValueError(f"Invalid document_type. Must be one of: {', '.join(sorted(VALID_DOCUMENT_TYPES))}")
+        return normalized
+
+    @field_validator("detected_subject")
+    @classmethod
+    def validate_detected_subject(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        normalized = v.strip().lower()
+        if normalized not in VALID_DETECTED_SUBJECTS:
+            raise ValueError(f"Invalid detected_subject. Must be one of: {', '.join(sorted(VALID_DETECTED_SUBJECTS))}")
+        return normalized
 
 

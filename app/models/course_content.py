@@ -56,6 +56,10 @@ class CourseContent(Base):
     study_goal = Column(String(30), nullable=True)  # upcoming_test, final_exam, assignment, lab_prep, general_review, discussion, parent_review
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
+    # Classification override (UTDF S7, #2955)
+    detected_subject = Column(String(50), nullable=True)
+    classification_override = Column(Boolean, nullable=False, default=False, server_default=text("false"))
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)

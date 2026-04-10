@@ -2174,3 +2174,26 @@ def _run_migrations_inner(engine, settings, logger):
             conn.commit()
     except Exception as e:
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+
+    # --- UTDF S7: classification override columns (#2955) ---
+    try:
+        with engine.connect() as conn:
+            inspector_co = sa_inspect(engine)
+            if "course_contents" in inspector_co.get_table_names():
+                existing_cols = {c["name"] for c in inspector_co.get_columns("course_contents")}
+                if "detected_subject" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(50)"))
+                        conn.commit()
+                        logger.info("Added 'detected_subject' column to course_contents (#2955)")
+                    except Exception:
+                        conn.rollback()
+                if "classification_override" not in existing_cols:
+                    try:
+                        conn.execute(text("ALTER TABLE course_contents ADD COLUMN classification_override BOOLEAN DEFAULT FALSE"))
+                        conn.commit()
+                        logger.info("Added 'classification_override' column to course_contents (#2955)")
+                    except Exception:
+                        conn.rollback()
+    except Exception as e:
+        logger.warning("Classification override migration failed (#2955): %s", e)
