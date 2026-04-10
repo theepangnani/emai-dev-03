@@ -145,16 +145,14 @@ Write all instructions in French.""",
 
 
 def resolve_template_key(
-    document_type: str,
     detected_subject: str,
     requested_output: str = "study_guide",
 ) -> str:
     """
-    Resolve the appropriate template key based on document type, detected subject,
+    Resolve the appropriate template key based on detected subject
     and requested output type.
 
     Args:
-        document_type: The classified document type (e.g., "teacher_notes")
         detected_subject: The detected subject area (e.g., "math", "science", "english", "french")
         requested_output: The type of output requested ("study_guide", "worksheet", "high_level_summary")
 
