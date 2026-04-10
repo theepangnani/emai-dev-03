@@ -2149,6 +2149,15 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("Compound index #2830 skipped: %s", e)
 
+    # --- S9: answer_key_markdown on study_guides (#2957) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN answer_key_markdown TEXT"))
+            conn.commit()
+            logger.info("Added answer_key_markdown column to study_guides (#2957)")
+    except Exception as e:
+        logger.debug("answer_key_markdown migration skipped (column likely exists): %s", e)
+
     # --- M2: WhatsApp columns on parent_gmail_integrations (#2967) ---
     try:
         with engine.connect() as conn:
