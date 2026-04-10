@@ -2165,10 +2165,34 @@ def _run_migrations_inner(engine, settings, logger):
         logger.debug("answer_key_markdown migration skipped (column likely exists): %s", e)
 
     # --- M2: WhatsApp columns on parent_gmail_integrations (#2967) ---
+    # --- M2: WhatsApp columns on parent_gmail_integrations (#2967, #3054) ---
     try:
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_phone VARCHAR(20)"))
-            conn.commit()
+            _inspector = sa_inspect(engine)
+            if "parent_gmail_integrations" in _inspector.get_table_names():
+                _existing = {c["name"] for c in _inspector.get_columns("parent_gmail_integrations")}
+                _is_pg = "sqlite" not in settings.database_url
+                _wa_cols = [
+                    ("whatsapp_phone", "VARCHAR(20)"),
+                    ("whatsapp_verified", "BOOLEAN DEFAULT FALSE"),
+                    ("whatsapp_otp_code", "VARCHAR(6)"),
+                    ("whatsapp_otp_expires_at", "TIMESTAMPTZ" if _is_pg else "DATETIME"),
+                ]
+                for _col_name, _col_type in _wa_cols:
+                    if _col_name not in _existing:
+                        try:
+                            conn.execute(text(
+                                f"ALTER TABLE parent_gmail_integrations ADD COLUMN {_col_name} {_col_type}"
+                            ))
+                            conn.commit()
+                            logger.info("Added %s column to parent_gmail_integrations (#2967)", _col_name)
+                        except Exception as col_err:
+                            conn.rollback()
+                            logger.warning(
+                                "Failed to add %s to parent_gmail_integrations (#2967): %s",
+                                _col_name, col_err,
+                            )
+                logger.info("WhatsApp columns verified on parent_gmail_integrations (#2967)")
     except Exception as e:
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
@@ -2266,3 +2290,4 @@ def _run_migrations_inner(engine, settings, logger):
             conn.commit()
     except Exception as e:
         logger.debug("subject_confidence migration skipped (column likely exists): %s", e)
+        logger.warning("WhatsApp column migration (#2967, #3054) failed: %s", e)

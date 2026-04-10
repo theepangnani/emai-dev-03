@@ -4928,12 +4928,12 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 ```
 
 **Database Tables:**
-- `parent_gmail_integrations` — parent_id, gmail_address, access_token, refresh_token, child_school_email, child_first_name, is_active, paused_until
+- `parent_gmail_integrations` — parent_id, gmail_address, access_token (encrypted), refresh_token (encrypted), child_school_email, child_first_name, is_active, paused_until, whatsapp_phone, whatsapp_verified, whatsapp_otp_code, whatsapp_otp_expires_at
 - `parent_digest_settings` — integration_id, digest_enabled, delivery_time, timezone, digest_format, notify_on_empty
 - `digest_delivery_log` — parent_id, integration_id, email_count, digest_content, status
 
 **Architecture Decisions:**
-- Token storage: plaintext in DB (matches existing pattern; future Secret Manager migration for all tokens)
+- Token storage: Fernet-encrypted at rest (AES-128-CBC via `app/core/encryption.py`; future Secret Manager migration for all tokens)
 - Separate OAuth flow via `ParentGmailIntegration` table (parent's personal Gmail may differ from Classroom account)
 - Single cron job every 4 hours (matches `daily_digest_job.py` pattern)
 - Delivery: **one ClassBridge notification per parent per day** containing all school emails summarized together (not one notification per email); uses `send_multi_channel_notification` — email sent if parent has email enabled for `school_emails` category
