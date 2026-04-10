@@ -725,3 +725,24 @@ AND detected_subject + confidence populate on the record
 AND chips update to the material-type-driven set
 AND no credit is consumed (classification is free)
 ```
+
+---
+
+## 19. Architecture Review
+
+Architecture review issues G1–G12 (#3019–#3030) track cross-cutting fixes identified during PRD finalization. These are tracked separately from the 13 feature stories (S1–S15) above.
+
+| Issue | Title | GitHub |
+|-------|-------|--------|
+| G1 | Template key collision guard | #3019 |
+| G2 | Classification retry / timeout handling | #3020 |
+| G3 | Chip set extensibility (plugin model) | #3021 |
+| G4 | Override audit trail | #3022 |
+| G5 | Credit cost configuration (not hard-coded) | #3023 |
+| G6 | Worksheet PDF export | #3024 |
+| G7 | Rate-limit on classification endpoint | #3025 |
+| G8 | Mobile scope reduction (WebView for actions) | #3026 |
+| G9 | Accessibility — screen reader for ClassificationBar | #3027 |
+| G10 | Confidence threshold configurability | #3028 |
+| G11 | Telemetry — classification accuracy tracking | #3029 |
+| G12 | Documentation — UTDF developer guide | #3030 |
