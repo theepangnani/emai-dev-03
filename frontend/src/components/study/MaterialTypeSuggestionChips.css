@@ -1,0 +1,59 @@
+.mt-suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.mt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border-light, #d0d7e3);
+  border-radius: 20px;
+  background: var(--color-surface, #fff);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--color-text, #1a1a2e);
+}
+
+.mt-chip:hover:not(:disabled) {
+  border-color: var(--color-primary, #4f46e5);
+  background: var(--color-surface-alt, #f0f4ff);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.12);
+}
+
+.mt-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mt-chip--generating {
+  border-color: var(--color-primary, #4f46e5);
+  background: var(--color-surface-alt, #f0f4ff);
+}
+
+.mt-chip-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-light, #d0d7e3);
+  border-top-color: var(--color-primary, #4f46e5);
+  border-radius: 50%;
+  animation: mt-spin 0.6s linear infinite;
+}
+
+@keyframes mt-spin {
+  to { transform: rotate(360deg); }
+}
+
+.mt-chip-icon {
+  font-size: 1rem;
+}
+
+.mt-chip-label {
+  font-weight: 500;
+}

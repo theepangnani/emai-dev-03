@@ -1,0 +1,55 @@
+.classification-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: var(--color-surface-alt, #f0f4ff);
+  border: 1px solid var(--color-border-light, #d0d7e3);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--color-text, #1a1a2e);
+  margin-bottom: 0.75rem;
+}
+
+.classification-bar--loading {
+  min-height: 40px;
+}
+
+.classification-bar__skeleton {
+  width: 60%;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.classification-bar__text {
+  flex: 1;
+}
+
+.classification-bar__confidence {
+  margin-left: 0.375rem;
+  color: var(--color-text-muted, #6b7280);
+  font-size: 0.8125rem;
+}
+
+.classification-bar__override-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary, #4f46e5);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.classification-bar__override-btn:hover {
+  color: var(--color-primary-dark, #3730a3);
+}
