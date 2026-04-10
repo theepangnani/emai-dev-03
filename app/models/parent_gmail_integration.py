@@ -26,6 +26,11 @@ class ParentGmailIntegration(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    whatsapp_phone = Column(String(20), nullable=True)
+    whatsapp_verified = Column(Boolean, server_default=text("false"), default=False)
+    whatsapp_otp_code = Column(String(6), nullable=True)
+    whatsapp_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     parent = relationship("User", backref="gmail_integrations")
     digest_settings = relationship("ParentDigestSettings", back_populates="integration", uselist=False, cascade="all, delete-orphan")
     delivery_logs = relationship("DigestDeliveryLog", back_populates="integration", cascade="all, delete-orphan")

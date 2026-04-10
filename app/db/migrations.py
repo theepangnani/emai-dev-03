@@ -2148,3 +2148,29 @@ def _run_migrations_inner(engine, settings, logger):
             logger.info("Compound index on link_requests created (#2830)")
     except Exception as e:
         logger.debug("Compound index #2830 skipped: %s", e)
+
+    # --- M2: WhatsApp columns on parent_gmail_integrations (#2967) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_phone VARCHAR(20)"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_verified BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_code VARCHAR(6)"))
+            conn.commit()
+    except Exception:
+        pass
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_expires_at TIMESTAMP"))
+            conn.commit()
+    except Exception:
+        pass
