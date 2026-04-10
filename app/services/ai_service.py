@@ -526,7 +526,7 @@ async def generate_study_guide(
         strategy_template = StudyGuideStrategyService.get_prompt_template(
             document_type=document_type,
             study_goal=study_goal,
-            focus_area=study_goal_text,
+            focus_area=study_goal_text if not focus_prompt else None,
         )
         prompt, _ = _build_study_guide_prompt(
             assignment_title=assignment_title,
@@ -595,7 +595,7 @@ async def generate_study_guide_stream(
         strategy_template = StudyGuideStrategyService.get_prompt_template(
             document_type=document_type,
             study_goal=study_goal,
-            focus_area=study_goal_text,
+            focus_area=study_goal_text if not focus_prompt else None,
         )
         prompt, _ = _build_study_guide_prompt(
             assignment_title=assignment_title,
