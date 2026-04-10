@@ -75,7 +75,7 @@ async def fetch_child_emails(
 
     # Build query filtering by child's school email
     epoch_seconds = int(since.timestamp())
-    query = f"from:{integration.child_school_email} in:inbox after:{epoch_seconds}"
+    query = f'from:"{integration.child_school_email}" in:inbox after:{epoch_seconds}'
 
     try:
         results = (
@@ -201,7 +201,7 @@ async def verify_forwarding(
     # Check last 30 days
     since = datetime.now(timezone.utc) - timedelta(days=30)
     epoch_seconds = int(since.timestamp())
-    query = f"from:{integration.child_school_email} in:inbox after:{epoch_seconds}"
+    query = f'from:"{integration.child_school_email}" in:inbox after:{epoch_seconds}'
 
     try:
         results = (
