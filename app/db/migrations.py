@@ -2253,3 +2253,16 @@ def _run_migrations_inner(engine, settings, logger):
             conn.commit()
     except Exception as e:
         logger.debug("UTDF migration skipped (ai_engine likely exists): %s", e)
+    # --- G4: Subject classification columns on course_contents (#3022) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(30)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("detected_subject migration skipped (column likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN subject_confidence FLOAT"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("subject_confidence migration skipped (column likely exists): %s", e)

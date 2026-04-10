@@ -56,9 +56,10 @@ class CourseContent(Base):
     study_goal = Column(String(30), nullable=True)  # upcoming_test, final_exam, assignment, lab_prep, general_review, discussion, parent_review
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
-    # UTDF classification columns (§6.131, #2950)
-    detected_subject = Column(String(50), nullable=True)  # math|science|english|french|history|geography|computer_studies|other
+    # UTDF classification columns (§6.131, #2950, #3022)
+    detected_subject = Column(String(50), nullable=True)  # math|science|english|french|history|geography|computer_studies|other|mixed|unknown
     detection_confidence = Column(Float, nullable=True)  # 0.0-1.0
+    subject_confidence = Column(Float, nullable=True)  # 0.0–1.0 confidence score (alias)
     template_key = Column(String(50), nullable=True)  # resolved template key
     classification_override = Column(Boolean, nullable=False, default=False, server_default=text("false"))  # true if parent manually corrected
 

@@ -152,6 +152,7 @@ class CourseContentResponse(BaseModel):
     study_goal_text: Optional[str] = None
     detected_subject: Optional[str] = None
     classification_override: bool = False
+    subject_confidence: Optional[float] = None
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
