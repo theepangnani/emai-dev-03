@@ -302,3 +302,13 @@ class SaveQAAsMaterialRequest(BaseModel):
     """Save a Q&A response as a course material."""
     content: str = Field(..., min_length=1)
     title: str = Field(default="", max_length=255)
+
+
+class ClassifyDocumentResponse(BaseModel):
+    """Response from document classification endpoint."""
+    document_type: str
+    confidence: float
+    detected_subject: str = "other"
+    subject_keywords_found: list[str] = []
+    material_type_display: str = "Custom Document"
+    error: bool = False

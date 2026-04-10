@@ -45,6 +45,7 @@ from app.schemas.study import (
     StudyGuideTreeResponse,
     SaveQAAsGuideRequest,
     SaveQAAsMaterialRequest,
+    ClassifyDocumentResponse,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
@@ -575,16 +576,16 @@ class ClassifyDocumentRequest(BaseModel):
     filename: str = ""
 
 
-@router.post("/classify-document")
+@router.post("/classify-document", response_model=ClassifyDocumentResponse)
 @limiter.limit("20/minute", key_func=get_user_id_or_ip)
 async def classify_document(
     request: Request,
     body: ClassifyDocumentRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Auto-detect document type from uploaded content (§6.105.3)."""
+    """Auto-detect document type and subject from uploaded content (§6.105.3)."""
     from app.services.document_classifier import DocumentClassifierService
-    result = DocumentClassifierService.classify(body.text_content[:800], body.filename)
+    result = await DocumentClassifierService.classify(body.text_content, body.filename)
     return result
 
 
