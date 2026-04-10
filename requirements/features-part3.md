@@ -4941,16 +4941,16 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 
 **Phase 1 Features (M1+M2, April-May 2026):**
 - [x] M0: YRDSB forwarding feasibility confirmed
-- [ ] F-01: Gmail OAuth 2.0 connection flow for parent accounts (#2644)
-- [ ] F-02: Child email address configuration (#2642, #2643)
-- [ ] F-03: Guided setup wizard with forwarding instructions (#2647)
+- [x] F-01: Gmail OAuth 2.0 connection flow for parent accounts (#2644) (IMPLEMENTED — PR #2780)
+- [x] F-02: Child email address configuration (#2642, #2643) (IMPLEMENTED — PR #2780)
+- [x] F-03: Guided setup wizard with forwarding instructions + OAuth callback page (#2647, #3017) (IMPLEMENTED — PR #2780, #3018)
 - [x] F-04: Gmail API polling — filter by child school email (#2648) (IMPLEMENTED — PR #2985)
 - [x] F-05: Claude AI summarization engine (#2650) (IMPLEMENTED — PR #2985)
-- [ ] F-06: Configurable digest delivery time (#2645)
+- [x] F-06: Configurable digest delivery time (#2645) (IMPLEMENTED — PR #2780)
 - [x] F-07: Digest delivery via in-app notification + email + WhatsApp (#2651, #2652, #2653, #2967) (IMPLEMENTED — PR #2985)
-- [ ] F-08: Digest toggle ON/OFF with pause duration (#2645)
-- [ ] Backend CRUD routes (#2645)
-- [ ] Notification type + preference category (#2646)
+- [x] F-08: Digest toggle ON/OFF with pause duration (#2645) (IMPLEMENTED — PR #2780)
+- [x] Backend CRUD routes (#2645) (IMPLEMENTED — PR #2780)
+- [x] Notification type + preference category (#2646) (IMPLEMENTED — PR #2780)
 - [x] Forwarding verification endpoint (#2649) (IMPLEMENTED — PR #2985)
 - [x] Backend test suite — 83 tests (#2654) (IMPLEMENTED — PR #2985)
 

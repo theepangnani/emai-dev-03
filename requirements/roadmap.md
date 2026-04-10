@@ -333,6 +333,7 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 - [x] CRUD API routes — integrations, settings, pause/resume (#2645) (IMPLEMENTED — includes PATCH endpoint)
 - [x] PARENT_EMAIL_DIGEST notification type (#2646) (IMPLEMENTED — backend + frontend)
 - [x] Email digest setup wizard frontend (#2647) (IMPLEMENTED — 4-step wizard on My Kids page)
+- [x] Gmail OAuth callback page — popup redirect handler for setup wizard (#3017) (IMPLEMENTED — PR #3018)
 
 **M2 — Core Engine (May 2026):** IMPLEMENTED — PR #2985, merged 2026-04-10
 - [x] Gmail polling service (#2648) (IMPLEMENTED)
