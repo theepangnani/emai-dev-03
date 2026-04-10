@@ -14,8 +14,7 @@ import { StreamingMarkdown } from '../../components/StreamingMarkdown';
 import DocumentTypeSelector from '../../components/DocumentTypeSelector';
 import StudyGoalSelector from '../../components/StudyGoalSelector';
 import { ClassificationBar } from '../../components/study/ClassificationBar';
-import { ChildInlinePills } from '../../components/study/ChildInlinePills';
-import MaterialTypeSuggestionChips, { getChips as getChipsForType } from '../../components/study/MaterialTypeSuggestionChips';
+import MaterialTypeSuggestionChips from '../../components/study/MaterialTypeSuggestionChips';
 import ClassificationOverridePanel from '../../components/study/ClassificationOverridePanel';
 import { printElement, downloadAsPdf } from '../../utils/exportUtils';
 import { LinkedTasksBanner } from './LinkedTasksBanner';
@@ -434,7 +433,7 @@ export function StudyGuideTab({
           {/* Auto-detect-and-go: classifying state */}
           {isClassifying && hasSourceContent && (
             <>
-              <ClassificationBar documentType={null} confidence={0} isLoading />
+              <ClassificationBar detectedSubject={null} confidence={0} childName={null} materialTypeDisplay={null} isClassifying={true} onEditClick={() => {}} />
               <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
               <h3>Analyzing your document...</h3>
             </>
@@ -444,11 +443,13 @@ export function StudyGuideTab({
           {!isClassifying && autoConfidence >= 0.80 && autoDetectedType && hasSourceContent && !showOverride && (
             <>
               <ClassificationBar
-                documentType={autoDetectedType}
+                detectedSubject={null}
                 confidence={autoConfidence}
-                onOverrideClick={() => setShowOverride(true)}
+                childName={null}
+                materialTypeDisplay={autoDetectedType}
+                isClassifying={false}
+                onEditClick={() => setShowOverride(true)}
               />
-              <ChildInlinePills documentType={autoDetectedType} studyGoal={studyGoal || null} />
               <div className="cm-empty-tab-icon"><EmptyGuideIcon /></div>
               <h3>Ready to go</h3>
               <p>Pick how you want to study this material:</p>

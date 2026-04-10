@@ -3660,16 +3660,6 @@ async def list_worksheets(
     guides = query.order_by(StudyGuide.created_at.desc()).limit(50).all()
     return [WorksheetResponse.model_validate(g) for g in guides]
 
-        title=title[:255],
-        content=analysis_content,
-        guide_type="weak_area_analysis",
-        weak_topics=json.dumps(weak_topics_list),
-        ai_engine="claude_sonnet",
-    )
-    db.add(study_guide)
-    db.commit()
-    db.refresh(study_guide)
-
     logger.info(
         "Weak area analysis created | user_id=%s | guide_id=%s | topics=%s",
         current_user.id, study_guide.id, weak_topics_list,

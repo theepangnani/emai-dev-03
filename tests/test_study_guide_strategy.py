@@ -132,55 +132,55 @@ class TestResolveTemplateKey:
 
     def test_resolve_template_math_worksheet(self):
         """Math + worksheet should resolve to 'worksheet_math_word_problems'."""
-        key = resolve_template_key("teacher_notes", "math", "worksheet")
+        key = resolve_template_key("math", "worksheet")
         assert key == "worksheet_math_word_problems"
         assert key in TEMPLATE_PROMPTS
 
     def test_resolve_template_generic(self):
         """Unknown subject + study_guide should resolve to 'study_guide_overview'."""
-        key = resolve_template_key("teacher_notes", "unknown", "study_guide")
+        key = resolve_template_key("unknown", "study_guide")
         assert key == "study_guide_overview"
         assert key in TEMPLATE_PROMPTS
 
     def test_resolve_template_high_level_summary(self):
         """Any input with requested_output='high_level_summary' should return 'high_level_summary'."""
-        key = resolve_template_key("past_exam", "math", "high_level_summary")
+        key = resolve_template_key("math", "high_level_summary")
         assert key == "high_level_summary"
         assert key in TEMPLATE_PROMPTS
 
     def test_resolve_template_math_study_guide(self):
         """Math + study_guide should resolve to 'study_guide_math'."""
-        key = resolve_template_key("textbook_excerpt", "math", "study_guide")
+        key = resolve_template_key("math", "study_guide")
         assert key == "study_guide_math"
 
     def test_resolve_template_science_study_guide(self):
         """Science + study_guide should resolve to 'study_guide_science'."""
-        key = resolve_template_key("teacher_notes", "science", "study_guide")
+        key = resolve_template_key("science", "study_guide")
         assert key == "study_guide_science"
 
     def test_resolve_template_english_study_guide(self):
         """English + study_guide should resolve to 'study_guide_english'."""
-        key = resolve_template_key("textbook_excerpt", "english", "study_guide")
+        key = resolve_template_key("english", "study_guide")
         assert key == "study_guide_english"
 
     def test_resolve_template_french_study_guide(self):
         """French + study_guide should resolve to 'study_guide_english' (shared template)."""
-        key = resolve_template_key("teacher_notes", "french", "study_guide")
+        key = resolve_template_key("french", "study_guide")
         assert key == "study_guide_english"
 
     def test_resolve_template_english_worksheet(self):
         """English + worksheet should resolve to 'worksheet_english'."""
-        key = resolve_template_key("teacher_notes", "english", "worksheet")
+        key = resolve_template_key("english", "worksheet")
         assert key == "worksheet_english"
 
     def test_resolve_template_french_worksheet(self):
         """French + worksheet should resolve to 'worksheet_french'."""
-        key = resolve_template_key("teacher_notes", "french", "worksheet")
+        key = resolve_template_key("french", "worksheet")
         assert key == "worksheet_french"
 
     def test_resolve_template_generic_worksheet(self):
         """Unknown subject + worksheet should resolve to 'worksheet_general'."""
-        key = resolve_template_key("teacher_notes", "unknown", "worksheet")
+        key = resolve_template_key("unknown", "worksheet")
         assert key == "worksheet_general"
 
     def test_all_template_keys_exist_in_prompts(self):

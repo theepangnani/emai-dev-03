@@ -36,6 +36,8 @@ VALID_SUBJECTS = [
     "geography",
     "computer_studies",
     "other",
+    "mixed",
+    "unknown",
 ]
 
 # Human-readable labels for document types
@@ -49,16 +51,6 @@ MATERIAL_TYPE_LABELS = {
     "textbook_excerpt": "Textbook Excerpt",
     "custom": "Custom Document",
 }
-
-CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type and subject.
-    "art",
-    "music",
-    "phys_ed",
-    "computer_science",
-    "business",
-    "mixed",
-    "unknown",
-]
 
 CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type.
 
@@ -298,3 +290,4 @@ class DocumentClassifierService:
         except Exception as e:
             logger.warning(f"Subject classification failed (returning unknown): {e}")
             return {"detected_subject": "unknown", "confidence": 0.0}
+
