@@ -19,7 +19,7 @@ import PyPDF2
 from docx import Document as WordDocument
 from pptx import Presentation
 from openpyxl import load_workbook
-from PIL import Image
+from PIL import Image, ImageOps
 
 # OCR (optional - requires Tesseract installed)
 try:
@@ -469,8 +469,22 @@ def extract_text_from_xlsx(file_content: bytes) -> str:
 
 def extract_text_from_image(file_content: bytes, filename: str) -> str:
     """Extract text from image using Vision OCR (preferred) or Tesseract fallback."""
+    # Normalize image: convert to RGB PNG to handle CMYK, progressive JPEG,
+    # EXIF rotation, and other edge cases that APIs may reject.
+    normalized = file_content
+    try:
+        img = Image.open(io.BytesIO(file_content))
+        img = ImageOps.exif_transpose(img) or img
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        normalized = buf.getvalue()
+    except Exception as e:
+        logger.warning("Image normalization failed for %s: %s — using original bytes", filename, e)
+
     # Try Vision OCR first (much better for math/formulas/diagrams)
-    vision_parts = _ocr_images_with_vision([file_content])
+    vision_parts = _ocr_images_with_vision([normalized])
     non_empty = [p for p in vision_parts if p]
     if non_empty:
         return "\n\n".join(non_empty)
@@ -483,8 +497,7 @@ def extract_text_from_image(file_content: bytes, filename: str) -> str:
         )
 
     try:
-        image = Image.open(io.BytesIO(file_content))
-        # Convert to RGB if necessary (for PNG with alpha channel, etc.)
+        image = Image.open(io.BytesIO(normalized))
         if image.mode in ('RGBA', 'LA', 'P'):
             image = image.convert('RGB')
         text = pytesseract.image_to_string(image)
