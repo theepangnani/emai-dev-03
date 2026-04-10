@@ -585,7 +585,7 @@ async def classify_document(
 ):
     """Auto-detect document type and subject from uploaded content (§6.105.3)."""
     from app.services.document_classifier import DocumentClassifierService
-    result = DocumentClassifierService.classify(body.text_content, body.filename)
+    result = await DocumentClassifierService.classify(body.text_content, body.filename)
     return result
 
 

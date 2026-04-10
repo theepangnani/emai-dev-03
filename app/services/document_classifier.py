@@ -5,8 +5,8 @@ Classifies uploaded documents into one of 8 document types using a lightweight
 AI inference call. Returns the best-match type with confidence score,
 detected subject, and material type display label.
 """
+import asyncio
 import json
-import time
 import anthropic
 from app.core.logging_config import get_logger
 from app.services.ai_service import get_anthropic_client
@@ -76,7 +76,7 @@ class DocumentClassifierService:
     """Service for auto-detecting document type from uploaded content."""
 
     @staticmethod
-    def classify(extracted_text: str, filename: str = "") -> dict:
+    async def classify(extracted_text: str, filename: str = "") -> dict:
         """
         Classify a document based on its extracted text and filename.
 
@@ -166,7 +166,7 @@ class DocumentClassifierService:
                         f"Classification transient error (attempt {attempt}/{max_attempts}): "
                         f"{type(e).__name__}: {e} — retrying in 2s"
                     )
-                    time.sleep(2)
+                    await asyncio.sleep(2)
                     continue
                 # Final attempt failed
                 logger.warning(f"Classification failed after {max_attempts} attempts: {type(e).__name__}: {e}")
