@@ -171,6 +171,24 @@ async def process_parent_email_digests():
                         channels=notification_channels,
                     )
 
+                # WhatsApp delivery (#2987)
+                if "whatsapp" in channels:
+                    if integration.whatsapp_verified and integration.whatsapp_phone:
+                        try:
+                            from app.services.whatsapp_service import send_whatsapp_message
+                            # Use "brief" format for WhatsApp (1600 char limit)
+                            if settings.digest_format != "brief":
+                                from app.services.parent_digest_ai_service import generate_parent_digest as gen_brief
+                                whatsapp_content = await gen_brief(emails, child_name, parent_name, "brief")
+                            else:
+                                whatsapp_content = digest_content
+                            # Strip HTML for WhatsApp plain text
+                            import re
+                            plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
+                            send_whatsapp_message(integration.whatsapp_phone, plain_text)
+                        except Exception as e:
+                            logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
+
                 # Log successful delivery
                 email_count = len(emails) if emails else 0
                 log_entry = DigestDeliveryLog(
