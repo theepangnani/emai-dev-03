@@ -30,6 +30,12 @@ class StudyGuide(Base):
     relationship_type = Column(String(20), nullable=False, default="version", server_default="version")  # "version" or "sub_guide"
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
 
+    # Worksheet fields (#2956)
+    template_key = Column(String(50), nullable=True)
+    num_questions = Column(Integer, nullable=True)
+    difficulty = Column(String(20), nullable=True)
+    answer_key_markdown = Column(Text, nullable=True)
+
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary
     curriculum_codes = Column(Text, nullable=True)  # JSON array of {concept, curriculum_code, strand}
