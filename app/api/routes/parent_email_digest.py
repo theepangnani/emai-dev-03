@@ -5,6 +5,7 @@ digest settings, and delivery logs.
 """
 
 import logging
+import secrets
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -488,7 +489,7 @@ async def trigger_manual_sync(
     from app.services.parent_gmail_service import fetch_child_emails
 
     emails = await fetch_child_emails(db, integration)
-    return {"email_count": len(emails), "emails": emails}
+    return {"email_count": len(emails), "message": f"Synced {len(emails)} emails successfully"}
 
 
 @router.post("/integrations/{integration_id}/verify-forwarding")
@@ -567,7 +568,7 @@ def verify_whatsapp_otp(
         if expires < now:
             raise HTTPException(status_code=400, detail="OTP expired — request a new code")
 
-    if integration.whatsapp_otp_code != body.otp_code:
+    if not secrets.compare_digest(integration.whatsapp_otp_code, body.otp_code):
         raise HTTPException(status_code=400, detail="Invalid OTP code")
 
     integration.whatsapp_verified = True
