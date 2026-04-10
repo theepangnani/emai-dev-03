@@ -1,0 +1,177 @@
+/* ── MaterialTypeSuggestionChips ─────────────── */
+
+.mt-chip-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+}
+
+.mt-chip-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  margin: 0 0 0.75rem;
+}
+
+.mt-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ── Base chip ──────────────────────────────── */
+
+.mt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* ── Primary variant (filled, larger) ───────── */
+
+.mt-chip--primary {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: var(--primary-color, #3b82f6);
+  color: #fff;
+  border: 2px solid var(--primary-color, #3b82f6);
+}
+
+.mt-chip--primary:hover:not(:disabled) {
+  background: var(--primary-dark, #2563eb);
+  border-color: var(--primary-dark, #2563eb);
+}
+
+/* ── Secondary variant (outline) ────────────── */
+
+.mt-chip--secondary {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  background: var(--bg-surface, #fff);
+  color: var(--primary-color, #3b82f6);
+  border: 1px solid var(--primary-color, #3b82f6);
+}
+
+.mt-chip--secondary:hover:not(:disabled) {
+  background: var(--primary-color, #3b82f6);
+  color: #fff;
+}
+
+/* ── Subtle variant (text link) ─────────────── */
+
+.mt-chip--subtle {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  border: none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.mt-chip--subtle:hover:not(:disabled) {
+  color: var(--primary-color, #3b82f6);
+  text-decoration-color: currentColor;
+}
+
+/* ── Disabled state ─────────────────────────── */
+
+.mt-chip--disabled,
+.mt-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Generating state ───────────────────────── */
+
+.mt-chip--generating {
+  opacity: 0.8;
+}
+
+.mt-chip-spinner {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: mt-spin 0.6s linear infinite;
+}
+
+@keyframes mt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Label & credit badge ───────────────────── */
+
+.mt-chip-label {
+  line-height: 1;
+}
+
+.mt-chip-cost {
+  font-weight: 400;
+  opacity: 0.8;
+  font-size: 0.75em;
+}
+
+/* ── Remaining credits text ─────────────────── */
+
+.mt-chip-credits {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* ── Dark Mode ──────────────────────────────── */
+
+[data-theme="dark"] .mt-chip-section {
+  border-top-color: var(--color-border);
+}
+
+[data-theme="dark"] .mt-chip-header {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .mt-chip--primary {
+  background: var(--color-accent, #3b82f6);
+  border-color: var(--color-accent, #3b82f6);
+  color: #fff;
+}
+
+[data-theme="dark"] .mt-chip--primary:hover:not(:disabled) {
+  background: var(--color-accent-dark, #2563eb);
+  border-color: var(--color-accent-dark, #2563eb);
+}
+
+[data-theme="dark"] .mt-chip--secondary {
+  background: var(--color-surface);
+  color: var(--color-accent, #3b82f6);
+  border-color: var(--color-accent, #3b82f6);
+}
+
+[data-theme="dark"] .mt-chip--secondary:hover:not(:disabled) {
+  background: var(--color-accent, #3b82f6);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .mt-chip--subtle {
+  color: var(--color-ink-muted);
+}
+
+[data-theme="dark"] .mt-chip--subtle:hover:not(:disabled) {
+  color: var(--color-accent, #3b82f6);
+}
+
+[data-theme="dark"] .mt-chip-credits {
+  color: var(--color-ink-muted);
+}
