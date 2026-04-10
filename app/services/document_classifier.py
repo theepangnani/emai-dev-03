@@ -21,6 +21,22 @@ VALID_DOCUMENT_TYPES = [
     "custom",
 ]
 
+VALID_SUBJECTS = [
+    "math",
+    "science",
+    "english",
+    "french",
+    "history",
+    "geography",
+    "art",
+    "music",
+    "phys_ed",
+    "computer_science",
+    "business",
+    "mixed",
+    "unknown",
+]
+
 CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type.
 
 Document types:
@@ -35,6 +51,28 @@ Document types:
 
 Respond with ONLY a JSON object (no markdown fences):
 {"document_type": "<type>", "confidence": <0.0-1.0>}"""
+
+SUBJECT_CLASSIFICATION_PROMPT = """You are a subject classifier for a K-12 education platform. Analyze the following document content and filename to determine the academic subject.
+
+Subjects:
+- math: Mathematics, algebra, geometry, calculus, statistics
+- science: Physics, chemistry, biology, environmental science
+- english: English language arts, literature, writing, reading comprehension
+- french: French language, French immersion content
+- history: History, civics, social studies, politics
+- geography: Geography, world issues, environmental studies
+- art: Visual arts, drama, media arts
+- music: Music theory, instrumental, vocal
+- phys_ed: Physical education, health, wellness
+- computer_science: Computer science, programming, technology, ICT
+- business: Business studies, economics, accounting, entrepreneurship
+- mixed: Document clearly covers multiple subjects (e.g. a cross-curricular project)
+- unknown: Cannot determine the subject
+
+If the document clearly covers multiple distinct subjects, return detected_subject='mixed'.
+
+Respond with ONLY a JSON object (no markdown fences):
+{"detected_subject": "<subject>", "confidence": <0.0-1.0>}"""
 
 
 class DocumentClassifierService:
@@ -98,3 +136,58 @@ class DocumentClassifierService:
         except Exception as e:
             logger.warning(f"Document classification failed (returning custom): {e}")
             return {"document_type": "custom", "confidence": 0.0}
+
+    @staticmethod
+    def classify_subject(extracted_text: str, filename: str = "") -> dict:
+        """
+        Classify the academic subject of a document.
+
+        Args:
+            extracted_text: The extracted text content from the document
+            filename: The original filename of the document
+
+        Returns:
+            dict with keys: detected_subject (str), confidence (float)
+        """
+        if not extracted_text or not extracted_text.strip():
+            logger.info("Empty text provided for subject classification, returning 'unknown'")
+            return {"detected_subject": "unknown", "confidence": 0.0}
+
+        # Use first 800 chars for classification (cost-efficient)
+        text_snippet = extracted_text[:800].strip()
+
+        user_message = f"Filename: {filename}\n\nDocument content (excerpt):\n{text_snippet}"
+
+        try:
+            client = get_anthropic_client()
+            result = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=100,
+                system=SUBJECT_CLASSIFICATION_PROMPT,
+                messages=[{"role": "user", "content": user_message}],
+            )
+
+            response_text = result.content[0].text.strip()
+            # Strip markdown fences if present
+            if response_text.startswith("```"):
+                response_text = response_text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+            parsed = json.loads(response_text)
+            subject = parsed.get("detected_subject", "unknown")
+            confidence = float(parsed.get("confidence", 0.0))
+
+            # Validate subject
+            if subject not in VALID_SUBJECTS:
+                logger.warning(f"AI returned invalid subject: {subject}, falling back to 'unknown'")
+                subject = "unknown"
+                confidence = 0.0
+
+            logger.info(f"Document subject classified as '{subject}' with confidence {confidence:.2f}")
+            return {"detected_subject": subject, "confidence": confidence}
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse subject classification response: {e}")
+            return {"detected_subject": "unknown", "confidence": 0.0}
+        except Exception as e:
+            logger.warning(f"Subject classification failed (returning unknown): {e}")
+            return {"detected_subject": "unknown", "confidence": 0.0}

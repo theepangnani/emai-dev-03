@@ -2232,3 +2232,45 @@ def get_content_access_log(
         total_downloads=total_downloads,
         unique_viewers=len(viewer_ids),
     )
+
+
+@router.post("/{content_id}/classify", response_model=CourseContentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def classify_content(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lazy classification for legacy materials — detects subject from existing text_content (#3023).
+
+    Free (0 credits), idempotent. Re-running overwrites previous classification.
+    """
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    # Verify access
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not content.text_content or not content.text_content.strip():
+        raise HTTPException(status_code=400, detail="No text content available for classification")
+
+    from app.services.document_classifier import DocumentClassifierService
+
+    result = DocumentClassifierService.classify_subject(
+        content.text_content, content.original_filename or ""
+    )
+
+    content.detected_subject = result["detected_subject"]
+    content.subject_confidence = result["confidence"]
+    db.commit()
+    db.refresh(content)
+
+    logger.info(
+        "Classified content %d as subject=%s (confidence=%.2f)",
+        content_id, result["detected_subject"], result["confidence"],
+    )
+
+    return content

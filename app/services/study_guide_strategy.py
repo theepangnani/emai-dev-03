@@ -74,6 +74,10 @@ GOAL_MODIFIERS: dict[str, str] = {
 }
 
 
+# Subjects that route to generic templates (no subject-specific customization)
+GENERIC_SUBJECTS = {"mixed", "unknown", None}
+
+
 class StudyGuideStrategyService:
     """Service that selects and builds AI prompts based on document type and study goal."""
 
@@ -82,6 +86,7 @@ class StudyGuideStrategyService:
         document_type: str | None = None,
         study_goal: str | None = None,
         focus_area: str | None = None,
+        detected_subject: str | None = None,
     ) -> str:
         """
         Build the appropriate prompt section based on document type and study goal.
@@ -90,6 +95,7 @@ class StudyGuideStrategyService:
             document_type: The classified document type (e.g., "teacher_notes", "past_exam")
             study_goal: The student's study goal (e.g., "upcoming_test", "final_exam")
             focus_area: Optional free-form focus text from the student
+            detected_subject: The detected academic subject (e.g., "math", "science", "mixed")
 
         Returns:
             Prompt instruction string to inject into the AI generation prompt
@@ -111,6 +117,11 @@ class StudyGuideStrategyService:
         # Apply focus area
         if focus_area:
             template += f"\n\n**FOCUS AREA:** The student wants to focus specifically on: {focus_area}. Prioritize these topics in your response while still covering other key material briefly."
+
+        # Apply subject context (generic subjects like 'mixed'/'unknown' use the default template with no subject modifier)
+        if detected_subject and detected_subject not in GENERIC_SUBJECTS:
+            template += f"\n\n**SUBJECT:** This material is for {detected_subject.replace('_', ' ')}. Tailor terminology, examples, and study strategies to this subject area."
+            logger.info(f"Applied subject context: {detected_subject}")
 
         return template
 
