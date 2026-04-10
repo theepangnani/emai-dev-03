@@ -13,8 +13,13 @@ from app.models.user import User
 logger = get_logger(__name__)
 
 
-def check_ai_usage(user: User, db: Session) -> None:
+def check_ai_usage(user: User, db: Session, cost: int = 1) -> None:
     """Check if user has remaining AI credits. Raises 429 if at limit.
+
+    Args:
+        user: The user to check.
+        db: Database session.
+        cost: Number of credits required for this action (default 1).
 
     Checks wallet balance first (new system). Falls back to legacy
     ai_usage_limit check for users without wallets.
@@ -24,10 +29,10 @@ def check_ai_usage(user: User, db: Session) -> None:
 
     wallet = db.query(Wallet).filter(Wallet.user_id == user.id).first()
     if wallet:
-        total = (wallet.package_credits or 0) + (wallet.purchased_credits or 0)
-        if total >= 1:
-            return  # Wallet has enough for at least one generation
-        # Wallet exists but empty — check if legacy system allows it
+        remaining = (wallet.package_credits or 0) + (wallet.purchased_credits or 0)
+        if remaining >= cost:
+            return  # Wallet has enough credits for this action
+        # Wallet exists but insufficient — check if legacy system allows it
         # (fall through to legacy check below)
 
     # --- Legacy ai_usage_limit check (unchanged) ---
