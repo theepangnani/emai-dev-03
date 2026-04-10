@@ -46,11 +46,13 @@ from app.schemas.study import (
     SaveQAAsGuideRequest,
     SaveQAAsMaterialRequest,
     ClassifyDocumentResponse,
+    WorksheetGenerateRequest,
+    WorksheetResponse,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, generate_content, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
 from app.services.ai_usage import check_ai_usage, increment_ai_usage, log_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
@@ -3362,3 +3364,202 @@ async def generate_study_guide_stream_endpoint(
             yield f"event: error\ndata: {json.dumps({'message': 'Failed to save study guide. Please try again.'})}\n\n"
 
     return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ============================================
+# Worksheet Generation (#2956)
+# ============================================
+
+WORKSHEET_PROMPT_TEMPLATES = {
+    "worksheet_general": (
+        "Create a worksheet with {num_questions} mixed questions based on the following material. "
+        "Number each question clearly and add answer blanks or space for student responses."
+    ),
+    "worksheet_math_word_problems": (
+        "Create a worksheet with {num_questions} real-world word problems based on the following material. "
+        "Include step-by-step working space for each problem. Use LaTeX notation ($$...$$) for mathematical formulas."
+    ),
+    "worksheet_english": (
+        "Create a worksheet with {num_questions} English exercises based on the following material. "
+        "Include a mix of grammar, reading comprehension, and short writing prompts."
+    ),
+    "worksheet_french": (
+        "Create a worksheet with {num_questions} French exercises based on the following material. "
+        "Include a mix of vocabulary, verb conjugation, and translation exercises."
+    ),
+}
+
+DIFFICULTY_LABELS = {
+    "below_grade": "slightly below grade level (easier, more scaffolding)",
+    "grade_level": "at grade level",
+    "above_grade": "above grade level (more challenging, extension-level)",
+}
+
+
+@router.post("/worksheets/generate", response_model=WorksheetResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_worksheet_endpoint(
+    request: Request,
+    body: WorksheetGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a printable worksheet from course content."""
+    # Validate content access
+    cc = db.query(CourseContent).filter(CourseContent.id == body.content_id).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Course content not found")
+    if cc.course_id and not can_access_course(db, current_user, cc.course_id):
+        raise HTTPException(status_code=403, detail="No access to this course content")
+
+    source_text = cc.text_content or cc.description or ""
+    if not source_text or len(source_text.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Safety check
+    safe, reason = check_content_safe(source_text)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
+
+    # Check AI usage
+    check_ai_usage(current_user, db)
+
+    # Build prompt
+    template_prompt = WORKSHEET_PROMPT_TEMPLATES[body.template_key].format(
+        num_questions=body.num_questions,
+    )
+    difficulty_desc = DIFFICULTY_LABELS[body.difficulty]
+
+    prompt = (
+        f"{template_prompt}\n\n"
+        f"Difficulty: {difficulty_desc}\n\n"
+        f"Format the worksheet in clean Markdown. "
+        f"Use numbered lists (1., 2., ...) for questions. "
+        f"Include a clear title at the top.\n\n"
+        f"After the worksheet, add a section titled '## Answer Key' with answers to all questions.\n\n"
+        f"--- SOURCE MATERIAL ---\n{source_text[:8000]}"
+    )
+
+    system_prompt = (
+        "You are an experienced K-12 teacher creating worksheets for students. "
+        "Produce clear, age-appropriate questions. Output valid Markdown only."
+    )
+
+    try:
+        raw_content, _stop = await generate_content(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=2000,
+            temperature=0.7,
+        )
+    except Exception as e:
+        logger.error("Worksheet generation failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
+
+    # Split content and answer key
+    worksheet_md = raw_content
+    answer_key_md = None
+    answer_key_markers = ["## Answer Key", "## Answer key", "## ANSWER KEY"]
+    for marker in answer_key_markers:
+        if marker in raw_content:
+            parts = raw_content.split(marker, 1)
+            worksheet_md = parts[0].rstrip()
+            answer_key_md = (marker + parts[1]).strip()
+            break
+
+    # Increment AI usage
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="worksheet", course_material_id=body.content_id,
+        is_regeneration=False, **_usage,
+    )
+
+    # Enforce limit and save
+    enforce_study_guide_limit(db, current_user)
+    title = f"Worksheet: {cc.title}"
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=cc.course_id,
+        course_content_id=cc.id,
+        title=title,
+        content=worksheet_md,
+        guide_type="worksheet",
+        template_key=body.template_key,
+        num_questions=body.num_questions,
+        difficulty=body.difficulty,
+        answer_key_markdown=answer_key_md,
+    )
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create review task
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        cc.course_id, cc.id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    # Award XP (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "study_guide")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
+    return WorksheetResponse(
+        id=study_guide.id,
+        user_id=study_guide.user_id,
+        course_id=study_guide.course_id,
+        course_content_id=study_guide.course_content_id,
+        title=study_guide.title,
+        content=study_guide.content,
+        guide_type="worksheet",
+        template_key=study_guide.template_key,
+        num_questions=study_guide.num_questions,
+        difficulty=study_guide.difficulty,
+        answer_key_markdown=study_guide.answer_key_markdown,
+        created_at=study_guide.created_at,
+        auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
+    )
+
+
+@router.get("/worksheets/{worksheet_id}", response_model=WorksheetResponse)
+async def get_worksheet(
+    worksheet_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a single worksheet by ID."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == worksheet_id,
+        StudyGuide.guide_type == "worksheet",
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+    if guide.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your worksheet")
+    return WorksheetResponse.model_validate(guide)
+
+
+@router.get("/worksheets", response_model=list[WorksheetResponse])
+async def list_worksheets(
+    content_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List worksheets, optionally filtered by content_id."""
+    query = db.query(StudyGuide).filter(
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.guide_type == "worksheet",
+        StudyGuide.archived_at.is_(None),
+    )
+    if content_id is not None:
+        query = query.filter(StudyGuide.course_content_id == content_id)
+    guides = query.order_by(StudyGuide.created_at.desc()).limit(50).all()
+    return [WorksheetResponse.model_validate(g) for g in guides]

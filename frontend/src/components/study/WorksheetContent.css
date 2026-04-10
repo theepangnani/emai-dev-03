@@ -1,0 +1,107 @@
+.worksheet-content {
+  padding: 1.5rem;
+}
+
+.worksheet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.worksheet-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg-muted, #f1f5f9);
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+}
+
+.worksheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.worksheet-actions button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 0.5rem;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #1e293b);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.worksheet-actions button:hover {
+  background: var(--bg-muted, #f1f5f9);
+  border-color: var(--primary, #3b82f6);
+}
+
+.worksheet-body {
+  line-height: 1.8;
+}
+
+.worksheet-answer-key {
+  margin-top: 2rem;
+  border-top: 2px solid var(--border-color, #e2e8f0);
+  padding-top: 1rem;
+}
+
+.worksheet-answer-key-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 0.5rem;
+  background: var(--bg-surface, #fff);
+  color: var(--text-primary, #1e293b);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.worksheet-answer-key-toggle:hover {
+  background: var(--bg-muted, #f1f5f9);
+}
+
+.worksheet-answer-key-body {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-muted, #f8fafc);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+/* Print styles (#3028) */
+@media print {
+  .worksheet-content {
+    font-size: 14pt;
+  }
+
+  .worksheet-content ol > li {
+    page-break-inside: avoid;
+    margin-bottom: 2em;
+  }
+
+  .worksheet-actions {
+    display: none;
+  }
+
+  .worksheet-answer-key {
+    display: none;
+  }
+
+  .worksheet-meta {
+    font-size: 10pt;
+    color: #333;
+  }
+}

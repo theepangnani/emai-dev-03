@@ -43,6 +43,10 @@ class StudyGuide(Base):
     curriculum_codes = Column(Text, nullable=True)  # JSON array of {concept, curriculum_code, strand}
     suggestion_topics = Column(Text, nullable=True)  # JSON array of {label, description}
 
+    # Worksheet fields (#2956)
+    template_key = Column(String(50), nullable=True)  # worksheet_general, worksheet_math_word_problems, etc.
+    num_questions = Column(Integer, nullable=True)
+    difficulty = Column(String(20), nullable=True)  # below_grade, grade_level, above_grade
     # Answer key (stored on worksheet rows, §18.2)
     answer_key_markdown = Column(Text, nullable=True)
 
