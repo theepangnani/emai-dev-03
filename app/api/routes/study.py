@@ -685,18 +685,6 @@ async def generate_study_guide_endpoint(
     # Fetch image metadata for prompt enrichment
     images_metadata = _get_images_metadata(db, body.course_content_id)
 
-    # Strategy pattern: select prompt template based on document type and study goal (§6.105)
-    strategy_template = None
-    strategy_system_prompt = None
-    if body.document_type or body.study_goal:
-        from app.services.study_guide_strategy import StudyGuideStrategyService
-        strategy_template = StudyGuideStrategyService.get_prompt_template(
-            document_type=body.document_type,
-            study_goal=body.study_goal,
-            focus_area=body.study_goal_text or body.focus_prompt,
-        )
-        strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
-
     # Generate study guide using AI
     try:
         raw_content, is_truncated = await generate_study_guide(

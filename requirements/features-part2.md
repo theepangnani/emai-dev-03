@@ -691,6 +691,8 @@ Further simplification of the upload wizard to reduce cognitive load for novice 
 - [x] Fix: strategy_system_prompt incorrectly routed to full-guide prompt instead of concise overview (#3007)
 - [x] Fix: non-streaming generate_study_guide parity — add strategy system prompt branch (#3009)
 - [x] Fix: explicit `detailed` flag in _build_study_guide_prompt replaces implicit custom_prompt check (#3010)
+- [x] Fix: streaming strategy branch detailed flag was always True (#3013)
+- [x] Cleanup: integrate strategy templates into overview prompt, remove dead variable (#3011)
 - [x] **Single generating indicator:** removed duplicate generating badge on streaming page (#2889, #2893)
 - [x] **Scroll to guide:** auto-scroll to content area when chip starts generating (#2811, #2876)
 - [x] **Migrations extracted:** all startup migrations moved to `app/db/migrations.py` (#2824, PR #2879)
