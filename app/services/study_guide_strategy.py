@@ -4,6 +4,8 @@ Study Guide Strategy Pattern Service (§6.105, #1974)
 Provides differentiated study guide output structures based on:
 - Document Type (what was uploaded)
 - Study Goal (what the student is preparing for)
+- Detected Subject (math, science, english, french)
+- Requested Output (study_guide, worksheet, high_level_summary)
 """
 from app.core.logging_config import get_logger
 
@@ -11,6 +13,11 @@ logger = get_logger(__name__)
 
 
 # Document type enum values
+# NOTE (G6 #3024): "teacher_notes" covers both teacher handouts and class notes.
+# The PRD originally had two separate chip sets for these, but since the AI cannot
+# reliably distinguish "teacher handout" from "class notes" under the same enum value,
+# they are merged into the single "teacher_notes" chip set. The template resolver
+# maps teacher_notes to one consistent template regardless of sub-type.
 DOCUMENT_TYPES = {
     "teacher_notes", "course_syllabus", "past_exam", "mock_exam",
     "project_brief", "lab_experiment", "textbook_excerpt", "custom",
@@ -74,6 +81,108 @@ GOAL_MODIFIERS: dict[str, str] = {
 }
 
 
+# ── Template Prompts Registry (S3 #2951) ──────────────────────────────────
+# Maps each named template key (returned by resolve_template_key) to its prompt.
+TEMPLATE_PROMPTS: dict[str, str] = {
+    "study_guide_overview": DEFAULT_TEMPLATE,
+
+    "study_guide_math": """Based on this math content, create a study guide that emphasizes:
+- Key formulas and equations (use LaTeX: $...$ inline, $$...$$ display)
+- Step-by-step worked solutions for representative problems
+- Common mistakes and how to avoid them
+- Practice problem types students should expect
+Write clearly and show all intermediate steps.""",
+
+    "study_guide_science": """Based on this science content, create a study guide that emphasizes:
+- Core scientific concepts and definitions
+- Diagrams and visual descriptions (describe what a diagram would show)
+- Lab methodology: hypothesis → procedure → observation → conclusion
+- Key formulas with units and dimensional analysis
+- Cause-and-effect relationships between concepts""",
+
+    "study_guide_english": """Based on this English/French language arts content, create a study guide that emphasizes:
+- Reading comprehension strategies and key themes
+- Writing structure: thesis, evidence, analysis
+- Grammar and syntax rules with examples
+- Vocabulary in context
+- Literary devices and techniques used in the text""",
+
+    "worksheet_general": """Based on this content, create a worksheet with exactly 10 questions:
+- Mix question types: multiple choice, short answer, and one extended response
+- Questions should directly test the key concepts from the source material
+- Order from easiest to hardest
+- Leave space indicators (e.g., "[Space for answer]") after each question
+- Include an answer key at the end""",
+
+    "worksheet_math_word_problems": """Based on this math content, create a worksheet of 10 real-world word problems:
+- Each problem should apply a concept from the source material to a realistic scenario
+- Number problems clearly (1-10), ordered from easiest to hardest
+- After each problem, include "[Show your work here]" space
+- Use age-appropriate contexts (school, sports, shopping, cooking)
+- Include an answer key at the end with step-by-step solutions""",
+
+    "worksheet_english": """Based on this English content, create a worksheet with:
+- 3 grammar exercises (identify/correct errors, fill in blanks)
+- 3 reading comprehension questions (reference specific passages)
+- 2 short writing prompts (1 paragraph each)
+- 2 vocabulary-in-context questions
+- Include an answer key at the end""",
+
+    "worksheet_french": """Based on this French content, create a worksheet with:
+- 3 grammar exercises (conjugation, accord, structure de phrase)
+- 3 comprehension questions in French (référence au texte)
+- 2 short writing prompts in French (1 paragraphe chacun)
+- 2 vocabulary exercises (synonymes, antonymes, ou contexte)
+- Include an answer key (corrigé) at the end
+Write all instructions in French.""",
+
+    "high_level_summary": """Provide a concise high-level summary of this content in 3-5 bullet points.
+- Each bullet should capture one key idea or takeaway
+- Use simple, clear language a parent or student can scan quickly
+- Do NOT include detailed explanations, formulas, or worked examples
+- Keep the entire response under 200 words""",
+}
+
+
+def resolve_template_key(
+    document_type: str,
+    detected_subject: str,
+    requested_output: str = "study_guide",
+) -> str:
+    """
+    Resolve the appropriate template key based on document type, detected subject,
+    and requested output type.
+
+    Args:
+        document_type: The classified document type (e.g., "teacher_notes")
+        detected_subject: The detected subject area (e.g., "math", "science", "english", "french")
+        requested_output: The type of output requested ("study_guide", "worksheet", "high_level_summary")
+
+    Returns:
+        A key into TEMPLATE_PROMPTS
+    """
+    if requested_output == "high_level_summary":
+        return "high_level_summary"
+
+    if requested_output == "worksheet":
+        if detected_subject == "math":
+            return "worksheet_math_word_problems"
+        if detected_subject == "english":
+            return "worksheet_english"
+        if detected_subject == "french":
+            return "worksheet_french"
+        return "worksheet_general"
+
+    # Default: study_guide
+    if detected_subject == "math":
+        return "study_guide_math"
+    if detected_subject == "science":
+        return "study_guide_science"
+    if detected_subject in ("english", "french"):
+        return "study_guide_english"
+    return "study_guide_overview"
+
+
 class StudyGuideStrategyService:
     """Service that selects and builds AI prompts based on document type and study goal."""
 
@@ -82,20 +191,28 @@ class StudyGuideStrategyService:
         document_type: str | None = None,
         study_goal: str | None = None,
         focus_area: str | None = None,
+        template_key: str | None = None,
     ) -> str:
         """
         Build the appropriate prompt section based on document type and study goal.
+
+        The template_key (from resolve_template_key) selects the base template from
+        TEMPLATE_PROMPTS. GOAL_MODIFIERS are still layered on top (G7 #3025).
 
         Args:
             document_type: The classified document type (e.g., "teacher_notes", "past_exam")
             study_goal: The student's study goal (e.g., "upcoming_test", "final_exam")
             focus_area: Optional free-form focus text from the student
+            template_key: Optional key into TEMPLATE_PROMPTS (from resolve_template_key)
 
         Returns:
             Prompt instruction string to inject into the AI generation prompt
         """
-        # Select base template
-        if document_type and document_type in PROMPT_TEMPLATES:
+        # Select base template — prefer template_key if provided
+        if template_key and template_key in TEMPLATE_PROMPTS:
+            template = TEMPLATE_PROMPTS[template_key]
+            logger.info(f"Using named template: template_key={template_key}")
+        elif document_type and document_type in PROMPT_TEMPLATES:
             template = PROMPT_TEMPLATES[document_type]
             logger.info(f"Using strategy template for document_type={document_type}")
         else:
@@ -103,7 +220,7 @@ class StudyGuideStrategyService:
             if document_type:
                 logger.info(f"No specific template for document_type={document_type}, using default")
 
-        # Apply study goal modifier
+        # Apply study goal modifier (G7: always layer on top of template key)
         if study_goal and study_goal in GOAL_MODIFIERS:
             template += GOAL_MODIFIERS[study_goal]
             logger.info(f"Applied study goal modifier: {study_goal}")
