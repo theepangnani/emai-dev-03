@@ -477,7 +477,7 @@ async def trigger_manual_sync(
     integration_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
-):
+) -> dict:
     """Manually trigger email sync for an integration."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
     if not integration.is_active:
@@ -499,7 +499,7 @@ async def verify_email_forwarding(
     integration_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
-):
+) -> dict:
     """Check if child's school email is forwarding to parent's Gmail."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
 
@@ -522,7 +522,7 @@ def send_whatsapp_otp(
     body: WhatsAppVerifyRequest,
     current_user: User = Depends(require_role(UserRole.PARENT)),
     db: Session = Depends(get_db),
-):
+) -> dict:
     """Send OTP to verify WhatsApp phone number."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
 
@@ -552,7 +552,7 @@ def verify_whatsapp_otp(
     body: WhatsAppOTPRequest,
     current_user: User = Depends(require_role(UserRole.PARENT)),
     db: Session = Depends(get_db),
-):
+) -> dict:
     """Verify WhatsApp OTP code."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
 
@@ -592,7 +592,7 @@ def disconnect_whatsapp(
     integration_id: int,
     current_user: User = Depends(require_role(UserRole.PARENT)),
     db: Session = Depends(get_db),
-):
+) -> dict:
     """Remove WhatsApp from an integration."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
 
