@@ -6,7 +6,7 @@ digest settings, and delivery logs.
 
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -32,6 +32,8 @@ from app.schemas.parent_email_digest import (
     ParentDigestSettingsResponse,
     ParentDigestSettingsUpdate,
     DigestDeliveryLogResponse,
+    WhatsAppVerifyRequest,
+    WhatsAppOTPRequest,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -504,3 +506,105 @@ async def verify_email_forwarding(
 
     result = await verify_forwarding(db, integration)
     return result
+
+
+# ---------------------------------------------------------------------------
+# WhatsApp endpoints (#2967)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/integrations/{integration_id}/whatsapp/send-otp")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def send_whatsapp_otp(
+    request: Request,
+    integration_id: int,
+    body: WhatsAppVerifyRequest,
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+    db: Session = Depends(get_db),
+):
+    """Send OTP to verify WhatsApp phone number."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    from app.services.whatsapp_service import generate_otp, send_otp, is_whatsapp_enabled
+    if not is_whatsapp_enabled():
+        raise HTTPException(status_code=503, detail="WhatsApp integration not configured")
+
+    otp_code = generate_otp()
+    integration.whatsapp_phone = body.phone
+    integration.whatsapp_otp_code = otp_code
+    integration.whatsapp_otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+    integration.whatsapp_verified = False
+    db.commit()
+
+    success = send_otp(body.phone, otp_code)
+    if not success:
+        raise HTTPException(status_code=502, detail="Failed to send OTP via WhatsApp")
+
+    return {"message": "OTP sent to WhatsApp", "phone": body.phone}
+
+
+@router.post("/integrations/{integration_id}/whatsapp/verify-otp")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def verify_whatsapp_otp(
+    request: Request,
+    integration_id: int,
+    body: WhatsAppOTPRequest,
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+    db: Session = Depends(get_db),
+):
+    """Verify WhatsApp OTP code."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    if not integration.whatsapp_otp_code:
+        raise HTTPException(status_code=400, detail="No OTP pending — send OTP first")
+
+    if integration.whatsapp_otp_expires_at:
+        expires = integration.whatsapp_otp_expires_at
+        now = datetime.now(timezone.utc)
+        # Handle naive datetimes from SQLite
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires < now:
+            raise HTTPException(status_code=400, detail="OTP expired — request a new code")
+
+    if integration.whatsapp_otp_code != body.otp_code:
+        raise HTTPException(status_code=400, detail="Invalid OTP code")
+
+    integration.whatsapp_verified = True
+    integration.whatsapp_otp_code = None
+    integration.whatsapp_otp_expires_at = None
+
+    # Add whatsapp to delivery channels if not already there
+    digest_settings = integration.digest_settings
+    if digest_settings and "whatsapp" not in (digest_settings.delivery_channels or ""):
+        channels = digest_settings.delivery_channels or "in_app,email"
+        digest_settings.delivery_channels = f"{channels},whatsapp"
+
+    db.commit()
+    return {"message": "WhatsApp verified successfully", "phone": integration.whatsapp_phone}
+
+
+@router.delete("/integrations/{integration_id}/whatsapp")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def disconnect_whatsapp(
+    request: Request,
+    integration_id: int,
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+    db: Session = Depends(get_db),
+):
+    """Remove WhatsApp from an integration."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    integration.whatsapp_phone = None
+    integration.whatsapp_verified = False
+    integration.whatsapp_otp_code = None
+    integration.whatsapp_otp_expires_at = None
+
+    # Remove whatsapp from delivery channels
+    digest_settings = integration.digest_settings
+    if digest_settings and digest_settings.delivery_channels:
+        channels = [c.strip() for c in digest_settings.delivery_channels.split(",") if c.strip() != "whatsapp"]
+        digest_settings.delivery_channels = ",".join(channels)
+
+    db.commit()
+    return {"message": "WhatsApp disconnected"}

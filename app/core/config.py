@@ -124,6 +124,11 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     stripe_webhook_secret: str = ""
 
+    # Twilio WhatsApp (#2967)
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_whatsapp_from: str = ""  # e.g. +14155238886 (Twilio sandbox)
+
     # Rate limiting storage (memory:// for dev, redis://host:port for prod)
     rate_limit_storage_url: str = "memory://"
 
