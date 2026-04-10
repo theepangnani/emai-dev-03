@@ -19,7 +19,7 @@ class StudyGuide(Base):
     # Content
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)  # Markdown or JSON content
-    guide_type = Column(String(50), nullable=False, index=True)  # study_guide, quiz, flashcards
+    guide_type = Column(String(50), nullable=False, index=True)  # study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, answer_key
     focus_prompt = Column(String(2000), nullable=True)  # User-provided focus area saved for history
     is_truncated = Column(Boolean, default=False, nullable=False)
 
@@ -29,6 +29,14 @@ class StudyGuide(Base):
     content_hash = Column(String(64), nullable=True)  # SHA-256 for duplicate detection
     relationship_type = Column(String(20), nullable=False, default="version", server_default="version")  # "version" or "sub_guide"
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
+
+    # UTDF worksheet/template columns (§6.131, #2950, #3029)
+    template_key = Column(String(50), nullable=True)  # which template was used
+    num_questions = Column(Integer, nullable=True)  # for worksheets (5-20)
+    difficulty = Column(String(20), nullable=True)  # below_grade|grade_level|above_grade
+    answer_key_markdown = Column(Text, nullable=True)  # answer key content
+    weak_topics = Column(Text, nullable=True)  # JSON string of weak topic areas
+    ai_engine = Column(String(20), nullable=True)  # openai|claude_haiku|claude_sonnet (G11)
 
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary

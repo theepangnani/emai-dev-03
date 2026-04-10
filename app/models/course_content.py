@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Index
+from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func, text
 
@@ -55,6 +55,12 @@ class CourseContent(Base):
     document_type = Column(String(30), nullable=True)  # teacher_notes, course_syllabus, past_exam, mock_exam, project_brief, lab_experiment, textbook_excerpt, custom
     study_goal = Column(String(30), nullable=True)  # upcoming_test, final_exam, assignment, lab_prep, general_review, discussion, parent_review
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
+
+    # UTDF classification columns (§6.131, #2950)
+    detected_subject = Column(String(50), nullable=True)  # math|science|english|french|history|geography|computer_studies|other
+    detection_confidence = Column(Float, nullable=True)  # 0.0-1.0
+    template_key = Column(String(50), nullable=True)  # resolved template key
+    classification_override = Column(Boolean, nullable=True, default=False)  # true if parent manually corrected
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

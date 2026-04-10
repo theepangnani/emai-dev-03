@@ -22,6 +22,9 @@ VALID_DOCUMENT_TYPES = [
     "lab_experiment",
     "textbook_excerpt",
     "custom",
+    "worksheet",
+    "student_test",
+    "quiz_paper",
 ]
 
 VALID_SUBJECTS = [
