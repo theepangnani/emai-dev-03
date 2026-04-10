@@ -91,6 +91,7 @@ const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').the
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
 const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage').then((m) => ({ default: m.EmailDigestPage })));
+const GmailOAuthCallbackPage = lazyRetry(() => import('./pages/GmailOAuthCallbackPage').then((m) => ({ default: m.GmailOAuthCallbackPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
 const SurveyPage = lazyRetry(() => import('./pages/SurveyPage').then((m) => ({ default: m.SurveyPage })));
@@ -135,6 +136,7 @@ function App() {
               <Route path="/survey" element={<SurveyPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/oauth/gmail/callback" element={<GmailOAuthCallbackPage />} />
               <Route
                 path="/dashboard"
                 element={
