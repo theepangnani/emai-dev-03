@@ -80,6 +80,6 @@ class TestDocumentClassifierService:
         assert result["document_type"] == "past_exam"
 
     def test_all_valid_types_are_defined(self):
-        """VALID_DOCUMENT_TYPES should have all 8 types."""
-        assert len(VALID_DOCUMENT_TYPES) == 8
+        """VALID_DOCUMENT_TYPES should have all 11 types."""
+        assert len(VALID_DOCUMENT_TYPES) == 11
         assert "custom" in VALID_DOCUMENT_TYPES

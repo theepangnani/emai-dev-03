@@ -60,7 +60,7 @@ class CourseContent(Base):
     detected_subject = Column(String(50), nullable=True)  # math|science|english|french|history|geography|computer_studies|other
     detection_confidence = Column(Float, nullable=True)  # 0.0-1.0
     template_key = Column(String(50), nullable=True)  # resolved template key
-    classification_override = Column(Boolean, nullable=True, default=False)  # true if parent manually corrected
+    classification_override = Column(Boolean, nullable=False, default=False, server_default=text("false"))  # true if parent manually corrected
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
