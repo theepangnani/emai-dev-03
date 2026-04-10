@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse as _StreamingResponse, JSONResponse
 from sqlalchemy import or_, and_, func as sa_func
@@ -569,17 +570,21 @@ def check_duplicate(
 # ============================================
 
 
+class ClassifyDocumentRequest(BaseModel):
+    text_content: str = ""
+    filename: str = ""
+
+
 @router.post("/classify-document")
 @limiter.limit("20/minute", key_func=get_user_id_or_ip)
 async def classify_document(
     request: Request,
-    text_content: str = Form(...),
-    filename: str = Form(""),
+    body: ClassifyDocumentRequest,
     current_user: User = Depends(get_current_user),
 ):
     """Auto-detect document type from uploaded content (§6.105.3)."""
     from app.services.document_classifier import DocumentClassifierService
-    result = DocumentClassifierService.classify(text_content[:800], filename)
+    result = DocumentClassifierService.classify(body.text_content[:800], body.filename)
     return result
 
 
