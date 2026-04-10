@@ -3,6 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UploadMaterialWizard from '../UploadMaterialWizard'
 
+// Mock CreateClassModal — it calls useAuth() which requires AuthProvider
+vi.mock('../CreateClassModal', () => ({
+  default: () => null,
+}))
+
 // Mock coursesApi used by the wizard on open
 vi.mock('../../api/courses', () => ({
   coursesApi: {
