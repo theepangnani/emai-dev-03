@@ -382,6 +382,86 @@ class TestAIUsageHistory:
         assert after == before + 1
 
 
+# ── UTDF: check_ai_usage cost parameter tests (S15 #2961) ────
+
+class TestCheckAIUsageCost:
+    """Test the cost parameter on check_ai_usage."""
+
+    def test_check_ai_usage_default_cost(self, db_session):
+        """Default cost=1 should work for users with remaining credits."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.services.ai_usage import check_ai_usage
+
+        email = "aiu_cost_default@test.com"
+        user = db_session.query(User).filter(User.email == email).first()
+        if not user:
+            hashed = get_password_hash(PASSWORD)
+            user = User(
+                email=email, full_name="Cost Default User", role=UserRole.STUDENT,
+                hashed_password=hashed, ai_usage_count=5, ai_usage_limit=20,
+            )
+            db_session.add(user)
+            db_session.commit()
+            db_session.refresh(user)
+
+        # Should not raise — 5 used of 20, default cost=1 is fine
+        check_ai_usage(user, db_session)
+
+    def test_check_ai_usage_cost_2(self, db_session):
+        """1 remaining credit + cost=2 should raise 429."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.services.ai_usage import check_ai_usage
+        from fastapi import HTTPException
+
+        email = "aiu_cost_2@test.com"
+        user = db_session.query(User).filter(User.email == email).first()
+        if not user:
+            hashed = get_password_hash(PASSWORD)
+            user = User(
+                email=email, full_name="Cost 2 User", role=UserRole.STUDENT,
+                hashed_password=hashed, ai_usage_count=19, ai_usage_limit=20,
+            )
+            db_session.add(user)
+            db_session.commit()
+            db_session.refresh(user)
+        else:
+            user.ai_usage_count = 19
+            user.ai_usage_limit = 20
+            db_session.commit()
+
+        # 1 remaining, cost=2 should fail
+        with pytest.raises(HTTPException) as exc_info:
+            check_ai_usage(user, db_session, cost=2)
+        assert exc_info.value.status_code == 429
+
+    def test_check_ai_usage_cost_0(self, db_session):
+        """Cost=0 (free action) should always pass, even at limit."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.services.ai_usage import check_ai_usage
+
+        email = "aiu_cost_0@test.com"
+        user = db_session.query(User).filter(User.email == email).first()
+        if not user:
+            hashed = get_password_hash(PASSWORD)
+            user = User(
+                email=email, full_name="Cost 0 User", role=UserRole.STUDENT,
+                hashed_password=hashed, ai_usage_count=20, ai_usage_limit=20,
+            )
+            db_session.add(user)
+            db_session.commit()
+            db_session.refresh(user)
+        else:
+            user.ai_usage_count = 20
+            user.ai_usage_limit = 20
+            db_session.commit()
+
+        # cost=0 should pass even at limit
+        check_ai_usage(user, db_session, cost=0)
+
+
 # ── Regression: paginated format & summary (#1353) ──────────
 
 class TestAdminAIUsageResponseFormat:

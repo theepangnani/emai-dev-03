@@ -7,6 +7,8 @@ from app.services.study_guide_strategy import (
     DEFAULT_TEMPLATE,
     DOCUMENT_TYPES,
     STUDY_GOALS,
+    TEMPLATE_PROMPTS,
+    resolve_template_key,
 )
 
 
@@ -121,3 +123,105 @@ class TestStudyGuideStrategyService:
         # All should be unique
         unique_templates = set(templates.values())
         assert len(unique_templates) == len(templates), "Some document types produce identical templates"
+
+
+# ── UTDF Template Resolver Tests (S15 #2961) ────────────────────────
+
+class TestResolveTemplateKey:
+    """Test the resolve_template_key function."""
+
+    def test_resolve_template_math_worksheet(self):
+        """Math + worksheet should resolve to 'worksheet_math_word_problems'."""
+        key = resolve_template_key("teacher_notes", "math", "worksheet")
+        assert key == "worksheet_math_word_problems"
+        assert key in TEMPLATE_PROMPTS
+
+    def test_resolve_template_generic(self):
+        """Unknown subject + study_guide should resolve to 'study_guide_overview'."""
+        key = resolve_template_key("teacher_notes", "unknown", "study_guide")
+        assert key == "study_guide_overview"
+        assert key in TEMPLATE_PROMPTS
+
+    def test_resolve_template_high_level_summary(self):
+        """Any input with requested_output='high_level_summary' should return 'high_level_summary'."""
+        key = resolve_template_key("past_exam", "math", "high_level_summary")
+        assert key == "high_level_summary"
+        assert key in TEMPLATE_PROMPTS
+
+    def test_resolve_template_math_study_guide(self):
+        """Math + study_guide should resolve to 'study_guide_math'."""
+        key = resolve_template_key("textbook_excerpt", "math", "study_guide")
+        assert key == "study_guide_math"
+
+    def test_resolve_template_science_study_guide(self):
+        """Science + study_guide should resolve to 'study_guide_science'."""
+        key = resolve_template_key("teacher_notes", "science", "study_guide")
+        assert key == "study_guide_science"
+
+    def test_resolve_template_english_study_guide(self):
+        """English + study_guide should resolve to 'study_guide_english'."""
+        key = resolve_template_key("textbook_excerpt", "english", "study_guide")
+        assert key == "study_guide_english"
+
+    def test_resolve_template_french_study_guide(self):
+        """French + study_guide should resolve to 'study_guide_english' (shared template)."""
+        key = resolve_template_key("teacher_notes", "french", "study_guide")
+        assert key == "study_guide_english"
+
+    def test_resolve_template_english_worksheet(self):
+        """English + worksheet should resolve to 'worksheet_english'."""
+        key = resolve_template_key("teacher_notes", "english", "worksheet")
+        assert key == "worksheet_english"
+
+    def test_resolve_template_french_worksheet(self):
+        """French + worksheet should resolve to 'worksheet_french'."""
+        key = resolve_template_key("teacher_notes", "french", "worksheet")
+        assert key == "worksheet_french"
+
+    def test_resolve_template_generic_worksheet(self):
+        """Unknown subject + worksheet should resolve to 'worksheet_general'."""
+        key = resolve_template_key("teacher_notes", "unknown", "worksheet")
+        assert key == "worksheet_general"
+
+    def test_all_template_keys_exist_in_prompts(self):
+        """Every possible key from resolve_template_key should exist in TEMPLATE_PROMPTS."""
+        subjects = ["math", "science", "english", "french", "unknown"]
+        outputs = ["study_guide", "worksheet", "high_level_summary"]
+        for subj in subjects:
+            for out in outputs:
+                key = resolve_template_key("teacher_notes", subj, out)
+                assert key in TEMPLATE_PROMPTS, f"Key '{key}' not in TEMPLATE_PROMPTS"
+
+
+class TestGoalModifierWithTemplateKey:
+    """Test that GOAL_MODIFIERS are still applied when template_key is used."""
+
+    def test_goal_modifier_layered(self):
+        """Goal modifier should be appended even when using a template_key."""
+        result = StudyGuideStrategyService.get_prompt_template(
+            template_key="study_guide_math",
+            study_goal="upcoming_test",
+        )
+        # Should contain the math template content
+        assert "formulas" in result.lower() or "math" in result.lower()
+        # Should also contain the goal modifier
+        assert "STUDY GOAL" in result
+        assert "Upcoming Test" in result
+
+    def test_template_key_takes_priority_over_document_type(self):
+        """template_key should override document_type for template selection."""
+        result = StudyGuideStrategyService.get_prompt_template(
+            document_type="past_exam",
+            template_key="worksheet_math_word_problems",
+        )
+        # Should use the worksheet template, not the past_exam template
+        assert "word problem" in result.lower()
+
+    def test_template_key_with_focus_area(self):
+        """template_key + focus_area should both be present."""
+        result = StudyGuideStrategyService.get_prompt_template(
+            template_key="study_guide_science",
+            focus_area="photosynthesis",
+        )
+        assert "FOCUS AREA" in result
+        assert "photosynthesis" in result

@@ -24,7 +24,9 @@ VALID_DOCUMENT_TYPES = [
     "quiz_paper",
 ]
 
-CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type.
+VALID_SUBJECTS = ["math", "science", "english", "french", "mixed", "unknown"]
+
+CLASSIFICATION_PROMPT = """You are a document classifier for a K-12 education platform. Analyze the following document content and filename to determine the document type and subject area.
 
 Document types:
 - teacher_notes: Lecture slides, class notes, printed handouts, annotated worksheets
@@ -36,8 +38,16 @@ Document types:
 - textbook_excerpt: Chapter section, reference reading, supplementary material
 - custom: Cannot be classified into any of the above categories
 
+Subject areas:
+- math: Mathematics, algebra, geometry, calculus, statistics
+- science: Physics, chemistry, biology, environmental science
+- english: English language arts, literature, writing, reading comprehension
+- french: French language, French literature
+- mixed: Multiple subjects clearly present
+- unknown: Cannot determine the subject
+
 Respond with ONLY a JSON object (no markdown fences):
-{"document_type": "<type>", "confidence": <0.0-1.0>}"""
+{"document_type": "<type>", "detected_subject": "<subject>", "confidence": <0.0-1.0>}"""
 
 
 class DocumentClassifierService:
@@ -53,14 +63,14 @@ class DocumentClassifierService:
             filename: The original filename of the uploaded document
 
         Returns:
-            dict with keys: document_type (str), confidence (float)
+            dict with keys: document_type (str), detected_subject (str), confidence (float)
         """
         if not extracted_text or not extracted_text.strip():
             logger.info("Empty text provided for classification, returning 'custom'")
-            return {"document_type": "custom", "confidence": 0.0}
+            return {"document_type": "custom", "detected_subject": "unknown", "confidence": 0.0}
 
-        # Use first 800 chars for classification (cost-efficient)
-        text_snippet = extracted_text[:800].strip()
+        # Use first 2000 chars for classification (balances cost and accuracy)
+        text_snippet = extracted_text[:2000].strip()
 
         user_message = f"Filename: {filename}\n\nDocument content (excerpt):\n{text_snippet}"
 
@@ -80,6 +90,7 @@ class DocumentClassifierService:
 
             parsed = json.loads(response_text)
             doc_type = parsed.get("document_type", "custom")
+            detected_subject = parsed.get("detected_subject", "unknown")
             confidence = float(parsed.get("confidence", 0.0))
 
             # Validate document type
@@ -88,16 +99,21 @@ class DocumentClassifierService:
                 doc_type = "custom"
                 confidence = 0.0
 
+            # Validate detected subject
+            if detected_subject not in VALID_SUBJECTS:
+                logger.warning(f"AI returned invalid detected_subject: {detected_subject}, falling back to 'unknown'")
+                detected_subject = "unknown"
+
             # Low confidence fallback
             if confidence < 0.4:
                 logger.info(f"Low confidence ({confidence}) for type '{doc_type}', returning as-is for user confirmation")
 
-            logger.info(f"Document classified as '{doc_type}' with confidence {confidence:.2f}")
-            return {"document_type": doc_type, "confidence": confidence}
+            logger.info(f"Document classified as '{doc_type}' (subject={detected_subject}) with confidence {confidence:.2f}")
+            return {"document_type": doc_type, "detected_subject": detected_subject, "confidence": confidence}
 
         except json.JSONDecodeError as e:
             logger.warning(f"Failed to parse classification response: {e}")
-            return {"document_type": "custom", "confidence": 0.0}
+            return {"document_type": "custom", "detected_subject": "unknown", "confidence": 0.0}
         except Exception as e:
             logger.warning(f"Document classification failed (returning custom): {e}")
-            return {"document_type": "custom", "confidence": 0.0}
+            return {"document_type": "custom", "detected_subject": "unknown", "confidence": 0.0}

@@ -108,6 +108,7 @@ function getHeader(documentType: string): string {
 
 export default function MaterialTypeSuggestionChips({
   documentType,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   detectedSubject: _detectedSubject,
   onChipClick,
   generatingAction,
