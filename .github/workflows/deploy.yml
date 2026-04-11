@@ -160,19 +160,40 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: BUILD_DATE=${{ github.event.head_commit.timestamp }}
 
+      - name: Detect database mode
+        id: db-mode
+        run: |
+          # Check if Cloud SQL proxy annotation exists on the current service
+          CLOUDSQL=$(gcloud run services describe ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --format="value(spec.template.metadata.annotations['run.googleapis.com/cloudsql-instances'])" 2>/dev/null || echo "")
+          if [[ -n "$CLOUDSQL" ]]; then
+            echo "mode=cloudsql" >> "$GITHUB_OUTPUT"
+            echo "Database mode: Cloud SQL (proxy: $CLOUDSQL)"
+          else
+            echo "mode=gce" >> "$GITHUB_OUTPUT"
+            echo "Database mode: GCE self-hosted (no Cloud SQL proxy)"
+          fi
+
       - name: Deploy to Cloud Run
         run: |
+          # Build Cloud SQL flag only if currently using Cloud SQL
+          CLOUDSQL_FLAG=""
+          if [[ "${{ steps.db-mode.outputs.mode }}" == "cloudsql" ]]; then
+            CLOUDSQL_FLAG="--add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:emai-db"
+          fi
+
           gcloud run deploy ${{ env.SERVICE }} \
             --image ${{ env.IMAGE }}:${{ github.sha }} \
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
-            --add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:emai-db \
+            $CLOUDSQL_FLAG \
             --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca,CANONICAL_DOMAIN=www.classbridge.ca,USE_GCS=true,GCS_BUCKET_NAME=classbridge-files,APP_VERSION=${{ github.sha }},GITHUB_TOKEN=${{ secrets.BUG_REPORT_GITHUB_TOKEN }},FROM_EMAIL=noreply@classbridge.ca" \
             --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest" \
             --memory 1Gi \
             --cpu 1 \
-            --min-instances 1 \
+            --min-instances 0 \
             --max-instances 3 \
             --cpu-boost \
             --startup-probe httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,failureThreshold=24,timeoutSeconds=5 \
