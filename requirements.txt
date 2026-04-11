@@ -40,6 +40,7 @@ aiofiles>=24.1.0
 
 # Email
 sendgrid>=6.10.0
+twilio>=9.0.0
 
 # Scheduling
 apscheduler>=3.10.0
