@@ -1035,10 +1035,12 @@ def get_child_overview(
         )
 
     # Count study guides for the child's user account
+    # Use func.count with only the id column to avoid loading deferred UTDF columns
+    from sqlalchemy import func as sa_func
     study_guides_count = (
-        db.query(StudyGuide)
+        db.query(sa_func.count(StudyGuide.id))
         .filter(StudyGuide.user_id == student.user_id)
-        .count()
+        .scalar()
     )
 
     # Batch-fetch teachers for all courses
