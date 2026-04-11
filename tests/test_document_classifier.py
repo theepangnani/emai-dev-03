@@ -13,7 +13,7 @@ class TestDocumentClassifierService:
         """Empty text should return custom with 0 confidence."""
         result = await DocumentClassifierService.classify("", "test.pdf")
         assert result["document_type"] == "custom"
-        assert result["detected_subject"] == "unknown"
+        assert result["detected_subject"] == "other"
         assert result["confidence"] == 0.0
 
     @pytest.mark.asyncio
@@ -21,7 +21,7 @@ class TestDocumentClassifierService:
         """None/whitespace text should return custom."""
         result = await DocumentClassifierService.classify("   ", "test.pdf")
         assert result["document_type"] == "custom"
-        assert result["detected_subject"] == "unknown"
+        assert result["detected_subject"] == "other"
         assert result["confidence"] == 0.0
 
     @pytest.mark.asyncio
@@ -59,7 +59,7 @@ class TestDocumentClassifierService:
 
         result = await DocumentClassifierService.classify("Some content", "file.pdf")
         assert result["document_type"] == "custom"
-        assert result["detected_subject"] == "unknown"
+        assert result["detected_subject"] == "other"
         assert result["confidence"] == 0.0
 
     @pytest.mark.asyncio
@@ -70,7 +70,7 @@ class TestDocumentClassifierService:
 
         result = await DocumentClassifierService.classify("Some content", "file.pdf")
         assert result["document_type"] == "custom"
-        assert result["detected_subject"] == "unknown"
+        assert result["detected_subject"] == "other"
         assert result["confidence"] == 0.0
 
     @pytest.mark.asyncio
@@ -95,22 +95,24 @@ class TestDocumentClassifierService:
 
     # ── UTDF Tests (S15 #2961) ───────────────────────────────────
 
+    @pytest.mark.asyncio
     @patch("app.services.document_classifier.get_anthropic_client")
-    def test_classify_math_exam(self, mock_client):
+    async def test_classify_math_exam(self, mock_client):
         """Math exam content should return detected_subject='math' with high confidence."""
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text='{"document_type": "past_exam", "detected_subject": "math", "confidence": 0.92}')]
         mock_client.return_value.messages.create.return_value = mock_response
 
-        result = DocumentClassifierService.classify(
+        result = await DocumentClassifierService.classify(
             "Grade 10 Math Final Exam\nQuestion 1: Solve 2x + 5 = 17\nQuestion 2: Factor x^2 - 9",
             "math_exam_2025.pdf",
         )
         assert result["detected_subject"] == "math"
         assert result["confidence"] >= 0.80
 
+    @pytest.mark.asyncio
     @patch("app.services.document_classifier.get_anthropic_client")
-    def test_classify_uses_2000_chars(self, mock_client):
+    async def test_classify_uses_2000_chars(self, mock_client):
         """Classifier should send first 2000 chars of extracted text to the AI."""
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text='{"document_type": "teacher_notes", "detected_subject": "science", "confidence": 0.8}')]
@@ -118,7 +120,7 @@ class TestDocumentClassifierService:
 
         # Create text longer than 2000 chars
         long_text = "A" * 3000
-        DocumentClassifierService.classify(long_text, "notes.pdf")
+        await DocumentClassifierService.classify(long_text, "notes.pdf")
 
         # Verify the user message sent to the AI contains at most 2000 chars of the original
         call_args = mock_client.return_value.messages.create.call_args
@@ -128,39 +130,41 @@ class TestDocumentClassifierService:
         # Should NOT contain the full 3000 chars
         assert "A" * 2001 not in user_message
 
+    @pytest.mark.asyncio
     @patch("app.services.document_classifier.get_anthropic_client")
-    def test_classify_retries_on_timeout(self, mock_client):
+    async def test_classify_retries_on_timeout(self, mock_client):
         """Timeout on first attempt should fall back to custom (fail-open)."""
-        import httpx
         mock_client.return_value.messages.create.side_effect = Exception("Connection timed out")
 
-        result = DocumentClassifierService.classify("Some math content", "test.pdf")
+        result = await DocumentClassifierService.classify("Some math content", "test.pdf")
         assert result["document_type"] == "custom"
-        assert result["detected_subject"] == "unknown"
+        assert result["detected_subject"] == "other"
         assert result["confidence"] == 0.0
 
+    @pytest.mark.asyncio
     @patch("app.services.document_classifier.get_anthropic_client")
-    def test_classify_mixed_subject(self, mock_client):
+    async def test_classify_mixed_subject(self, mock_client):
         """Multi-subject content should return detected_subject='mixed'."""
         mock_response = MagicMock()
         mock_response.content = [MagicMock(text='{"document_type": "teacher_notes", "detected_subject": "mixed", "confidence": 0.75}')]
         mock_client.return_value.messages.create.return_value = mock_response
 
-        result = DocumentClassifierService.classify(
+        result = await DocumentClassifierService.classify(
             "Math: Solve for x. English: Write an essay. Science: Describe photosynthesis.",
             "mixed_review.pdf",
         )
         assert result["detected_subject"] == "mixed"
 
+    @pytest.mark.asyncio
     @patch("app.services.document_classifier.get_anthropic_client")
-    def test_invalid_subject_falls_back_to_unknown(self, mock_client):
-        """Invalid detected_subject from AI should fall back to 'unknown'."""
+    async def test_invalid_subject_falls_back_to_other(self, mock_client):
+        """Invalid detected_subject from AI should fall back to 'other'."""
         mock_response = MagicMock()
-        mock_response.content = [MagicMock(text='{"document_type": "teacher_notes", "detected_subject": "history", "confidence": 0.8}')]
+        mock_response.content = [MagicMock(text='{"document_type": "teacher_notes", "detected_subject": "underwater_basket_weaving", "confidence": 0.8}')]
         mock_client.return_value.messages.create.return_value = mock_response
 
-        result = DocumentClassifierService.classify("World War II notes", "history.pdf")
-        assert result["detected_subject"] == "unknown"
+        result = await DocumentClassifierService.classify("Some content", "test.pdf")
+        assert result["detected_subject"] == "other"
 
     def test_valid_subjects_defined(self):
         """VALID_SUBJECTS should include the expected subject values."""

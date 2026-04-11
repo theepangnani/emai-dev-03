@@ -189,7 +189,7 @@ class TestResolveTemplateKey:
         outputs = ["study_guide", "worksheet", "high_level_summary"]
         for subj in subjects:
             for out in outputs:
-                key = resolve_template_key("teacher_notes", subj, out)
+                key = resolve_template_key(subj, out)
                 assert key in TEMPLATE_PROMPTS, f"Key '{key}' not in TEMPLATE_PROMPTS"
 
 
