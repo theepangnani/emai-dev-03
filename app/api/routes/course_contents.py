@@ -2284,7 +2284,7 @@ async def classify_content(
 
     from app.services.document_classifier import DocumentClassifierService
 
-    result = DocumentClassifierService.classify_subject(
+    result = await DocumentClassifierService.classify_subject(
         content.text_content, content.original_filename or ""
     )
 

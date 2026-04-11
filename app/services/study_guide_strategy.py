@@ -182,6 +182,32 @@ def resolve_template_key(
 # Subjects that route to generic templates (no subject-specific customization)
 GENERIC_SUBJECTS = {"mixed", "unknown", None}
 
+# Worksheet prompt templates (#2956) — moved from study.py (S1)
+WORKSHEET_PROMPT_TEMPLATES = {
+    "worksheet_general": (
+        "Create a worksheet with {num_questions} mixed questions based on the following material. "
+        "Number each question clearly and add answer blanks or space for student responses."
+    ),
+    "worksheet_math_word_problems": (
+        "Create a worksheet with {num_questions} real-world word problems based on the following material. "
+        "Include step-by-step working space for each problem. Use LaTeX notation ($$...$$) for mathematical formulas."
+    ),
+    "worksheet_english": (
+        "Create a worksheet with {num_questions} English exercises based on the following material. "
+        "Include a mix of grammar, reading comprehension, and short writing prompts."
+    ),
+    "worksheet_french": (
+        "Create a worksheet with {num_questions} French exercises based on the following material. "
+        "Include a mix of vocabulary, verb conjugation, and translation exercises."
+    ),
+}
+
+DIFFICULTY_LABELS = {
+    "below_grade": "slightly below grade level (easier, more scaffolding)",
+    "grade_level": "at grade level",
+    "above_grade": "above grade level (more challenging, extension-level)",
+}
+
 
 class StudyGuideStrategyService:
     """Service that selects and builds AI prompts based on document type and study goal."""
