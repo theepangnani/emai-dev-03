@@ -323,6 +323,8 @@ app.include_router(csv_import.router, prefix="/api")
 app.include_router(weekly_report.router, prefix="/api")
 app.include_router(journey.router, prefix="/api")
 app.include_router(parent_email_digest.router, prefix="/api")
+from app.api.routes import admin_outreach_templates
+app.include_router(admin_outreach_templates.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -453,6 +455,8 @@ async def startup_event():
         seed_faq(db)
         seed_grades(db)
         seed_wallet_data(db)
+        from app.services.outreach_template_seed import seed_outreach_templates
+        seed_outreach_templates(db)
     finally:
         db.close()
 
