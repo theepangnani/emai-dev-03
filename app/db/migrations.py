@@ -2220,25 +2220,25 @@ def _run_migrations_inner(engine, settings, logger):
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(50)"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (detected_subject likely exists): %s", e)
+        logger.info("UTDF migration skipped (detected_subject likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN detection_confidence FLOAT"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (detection_confidence likely exists): %s", e)
+        logger.info("UTDF migration skipped (detection_confidence likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN template_key VARCHAR(50)"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (course_contents.template_key likely exists): %s", e)
+        logger.info("UTDF migration skipped (course_contents.template_key likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN classification_override BOOLEAN DEFAULT FALSE"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (classification_override likely exists): %s", e)
+        logger.info("UTDF migration skipped (classification_override likely exists): %s", e)
 
     # --- UTDF: study_guides worksheet/template columns (§6.131, #2950, #3029) ---
     try:
@@ -2246,48 +2246,48 @@ def _run_migrations_inner(engine, settings, logger):
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN template_key VARCHAR(50)"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (study_guides.template_key likely exists): %s", e)
+        logger.info("UTDF migration skipped (study_guides.template_key likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN num_questions INTEGER"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (num_questions likely exists): %s", e)
+        logger.info("UTDF migration skipped (num_questions likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN difficulty VARCHAR(20)"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (difficulty likely exists): %s", e)
+        logger.info("UTDF migration skipped (difficulty likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN answer_key_markdown TEXT"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (answer_key_markdown likely exists): %s", e)
+        logger.info("UTDF migration skipped (answer_key_markdown likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN weak_topics TEXT"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (weak_topics likely exists): %s", e)
+        logger.info("UTDF migration skipped (weak_topics likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE study_guides ADD COLUMN ai_engine VARCHAR(20)"))
             conn.commit()
     except Exception as e:
-        logger.debug("UTDF migration skipped (ai_engine likely exists): %s", e)
+        logger.info("UTDF migration skipped (ai_engine likely exists): %s", e)
     # --- G4: Subject classification columns on course_contents (#3022) ---
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(30)"))
             conn.commit()
     except Exception as e:
-        logger.debug("detected_subject migration skipped (column likely exists): %s", e)
+        logger.info("detected_subject migration skipped (column likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE course_contents ADD COLUMN subject_confidence FLOAT"))
             conn.commit()
     except Exception as e:
-        logger.debug("subject_confidence migration skipped (column likely exists): %s", e)
+        logger.info("subject_confidence migration skipped (column likely exists): %s", e)
         logger.warning("WhatsApp column migration (#2967, #3054) failed: %s", e)
