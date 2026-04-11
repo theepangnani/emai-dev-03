@@ -327,6 +327,8 @@ app.include_router(journey.router, prefix="/api")
 app.include_router(parent_email_digest.router, prefix="/api")
 from app.api.routes import admin_outreach_templates
 app.include_router(admin_outreach_templates.router, prefix="/api")
+from app.api.routes import admin_outreach
+app.include_router(admin_outreach.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
