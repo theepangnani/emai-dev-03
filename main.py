@@ -66,6 +66,7 @@ logger.info("Database tables created/verified")
 # Background migrations may be blocked by advisory lock from previous instance.
 # These are idempotent (try/except on "column already exists").
 _is_pg = "sqlite" not in settings.database_url
+print(f"[UTDF-MIGRATION] _is_pg={_is_pg} database_url_prefix={settings.database_url[:20]}", flush=True)
 if _is_pg:
     _utdf_cols = [
         ("course_contents", "detected_subject", "VARCHAR(50)"),
@@ -88,8 +89,10 @@ if _is_pg:
                 except Exception as _col_err:
                     logger.warning("Column %s.%s migration note: %s", _tbl, _col, _col_err)
             _conn.commit()
+            print("[UTDF-MIGRATION] All columns committed successfully", flush=True)
             logger.info("UTDF synchronous column migration completed")
     except Exception as _conn_err:
+        print(f"[UTDF-MIGRATION] FAILED: {_conn_err}", flush=True)
         logger.error("UTDF synchronous migration FAILED (connection level): %s", _conn_err)
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
