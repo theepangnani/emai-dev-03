@@ -391,20 +391,20 @@ Standalone Customer Database (CRM) for admin outreach to parents/prospects. 4 ne
 **Data model:** 4 new tables: parent_contacts, parent_contact_notes, outreach_templates, outreach_log
 
 **M1 — Backend Foundation:**
-- [ ] [CB-PCM-S1] DB models + migrations: 4 tables (#2975)
-- [ ] [CB-PCM-S2] Pydantic schemas (#2976)
+- [x] [CB-PCM-S1] DB models + migrations: 4 tables (#2975)
+- [x] [CB-PCM-S2] Pydantic schemas (#2976)
 
 **M2 — Backend APIs:**
-- [ ] [CB-PCM-S3] Customer contacts CRUD API (#2977)
-- [ ] [CB-PCM-S4] Outreach templates CRUD API + 5 seed templates (#2978)
-- [ ] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
+- [x] [CB-PCM-S3] Customer contacts CRUD API (#2977)
+- [x] [CB-PCM-S4] Outreach templates CRUD API + 5 seed templates (#2978)
+- [x] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
 
 **M3 — Frontend:**
-- [ ] [CB-PCM-S6] Frontend — Admin Customer Database page (#2980)
-- [ ] [CB-PCM-S7] Frontend — Unified Outreach Composer (#2981)
+- [x] [CB-PCM-S6] Frontend — Admin Customer Database page (#2980)
+- [x] [CB-PCM-S7] Frontend — Unified Outreach Composer (#2981)
 
 **M4 — Quality:**
-- [ ] [CB-PCM-S9] Tests — backend + frontend (#2983)
+- [x] [CB-PCM-S9] Tests — backend + frontend (#2983)
 
 ---
 

@@ -868,7 +868,7 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 
 ---
 
-### 6.132 Admin Customer Database — CRM, Branded Email & Messaging (CB-PCM-001, #2974) - PLANNED
+### 6.132 Admin Customer Database — CRM, Branded Email & Messaging (CB-PCM-001, #2974) - IMPLEMENTED
 
 Standalone **Customer Database** (CRM) within the Admin panel for managing parent/prospective customer contacts, sending branded ClassBridge emails from templates, and WhatsApp/SMS messaging via Twilio. Independent of the existing `users` table — this is an outreach system for pre-registration relationship management.
 
@@ -939,11 +939,11 @@ Admins need to manage parent relationships outside the platform's registered use
 
 #### Stories
 
-- [ ] [CB-PCM-S1] DB models + migrations (#2975)
-- [ ] [CB-PCM-S2] Pydantic schemas (#2976)
-- [ ] [CB-PCM-S3] Customer contacts CRUD API (#2977)
-- [ ] [CB-PCM-S4] Outreach templates CRUD API + seed (#2978)
-- [ ] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
-- [ ] [CB-PCM-S6] Frontend — Customer Database page (#2980)
-- [ ] [CB-PCM-S7] Frontend ��� Unified Outreach Composer (#2981)
-- [ ] [CB-PCM-S9] Tests — backend + frontend (#2983)
+- [x] [CB-PCM-S1] DB models + migrations (#2975) — PR #3106
+- [x] [CB-PCM-S2] Pydantic schemas (#2976) — PR #3106
+- [x] [CB-PCM-S3] Customer contacts CRUD API (#2977) — PR #3107
+- [x] [CB-PCM-S4] Outreach templates CRUD API + seed (#2978) — PR #3108
+- [x] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
+- [x] [CB-PCM-S6] Frontend — Customer Database page (#2980)
+- [x] [CB-PCM-S7] Frontend ��� Unified Outreach Composer (#2981)
+- [x] [CB-PCM-S9] Tests — backend + frontend (#2983)
