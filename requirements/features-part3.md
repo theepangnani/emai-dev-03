@@ -5156,7 +5156,7 @@ Study guides surface helpful external links (videos, interactive tools, articles
 
 ---
 
-### 6.131 Unified Template + Detection Framework (CB-UTDF-001, #2948) - PLANNED (Phase 2)
+### 6.131 Unified Template + Detection Framework (CB-UTDF-001, #2948) - PARTIALLY DEPLOYED (Phase 2)
 
 Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material type, subject, student, and teacher from uploaded documents, then show context-aware suggestion chips and route generation to the correct named template. Adds worksheet generation as a new first-class output type.
 
@@ -5206,3 +5206,15 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
 
 **Architecture review fixes (G1–G12):** #3019–#3030
+
+**Deployment Status (2026-04-10): PARTIALLY DEPLOYED**
+- Code merged to master across 17 parallel streams (S1–S15 + architecture fixes)
+- Frontend components live (ClassificationBar, chips, disambiguation modal, worksheets tab)
+- Backend endpoints deployed but UTDF-specific DB columns **blocked** — ALTER TABLE migrations never ran due to PostgreSQL advisory lock issue (#3079)
+- Hotfixes applied during deployment session:
+  - Commented out UTDF model columns in `course_content.py` and `study_guide.py` to prevent INSERT crashes
+  - Commented out UTDF fields in response schemas (`CourseContentResponse`, `StudyGuideResponse`)
+  - Attempted `deferred()` workaround — failed because deferred only affects SELECT, not INSERT/UPDATE
+- **Blocking issue:** #3079 — `pg_advisory_lock(1)` blocks indefinitely during rolling deployments
+- **Re-enable ticket:** #3080 — uncomment columns/schemas after advisory lock fix
+- **Lessons learned:** #3081 (deferred() not a migration safety mechanism), #3082 (Pydantic from_attributes triggers deferred loads)
