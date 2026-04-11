@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
@@ -156,6 +156,31 @@ class ParentContactStats(BaseModel):
     by_status: dict[str, int]
     recent_outreach_count: int
     contacts_without_consent: int
+
+
+# ── Contact Notes ───────────────────────────────────────────────────────
+# ── Bulk Operations ────────────────────────────────────────────────────
+class BulkDeleteRequest(BaseModel):
+    ids: list[int] = Field(min_length=1)
+
+
+class BulkStatusRequest(BaseModel):
+    ids: list[int] = Field(min_length=1)
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v):
+        valid = {"lead", "contacted", "interested", "converted", "archived", "unresponsive"}
+        if v not in valid:
+            raise ValueError(f"Invalid status. Must be one of: {', '.join(sorted(valid))}")
+        return v
+
+
+class BulkTagRequest(BaseModel):
+    ids: list[int] = Field(min_length=1)
+    tag: str = Field(min_length=1, max_length=50)
+    action: Literal["add", "remove"]
 
 
 # ── Contact Notes ───────────────────────────────────────────────────────
