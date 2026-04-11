@@ -85,8 +85,12 @@ if "sqlite" not in settings.database_url:
                 _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_typ}"))
                 _conn.commit()
                 logger.info("Added column %s.%s", _tbl, _col)
-        except Exception:
-            pass  # Column already exists
+        except Exception as _e:
+            _emsg = str(_e)
+            if "already exists" in _emsg or "duplicate column" in _emsg.lower():
+                pass  # Column already exists — expected
+            else:
+                logger.error("UTDF column migration FAILED for %s.%s: %s", _tbl, _col, _emsg)
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
