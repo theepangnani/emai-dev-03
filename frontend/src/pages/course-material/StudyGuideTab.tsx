@@ -272,7 +272,7 @@ export function StudyGuideTab({
 
   const handleChipClick = (action: string, templateKey?: string) => {
     setGeneratingAction(templateKey || action);
-    if (action === 'quiz' && onFormatSelect) {
+    if ((action === 'quiz' || action === 'practice_test') && onFormatSelect) {
       onFormatSelect('quiz' as StudyFormat);
       return;
     }
