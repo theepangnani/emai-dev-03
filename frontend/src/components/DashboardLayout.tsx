@@ -127,6 +127,14 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M12 6v6l4 2"/>
     </svg>
   ),
+  'Customer DB': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
   Briefings: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -364,6 +372,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       items.push({ label: 'Waitlist', path: '/admin/waitlist' });
       items.push({ label: 'Survey Results', path: '/admin/survey' });
       items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
+      items.push({ label: 'Customer DB', path: '/admin/contacts' });
     }
 
     items.push({ label: 'Help', path: '/help' });
