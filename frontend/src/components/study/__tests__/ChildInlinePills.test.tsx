@@ -16,7 +16,7 @@ describe('ChildInlinePills', () => {
   it('renders nothing for single child', () => {
     const { container } = render(
       <ChildInlinePills
-        children={[children[0]]}
+        childList={[children[0]]}
         selectedChildId={null}
         suggestedChildId={null}
         courseId={100}
@@ -29,7 +29,7 @@ describe('ChildInlinePills', () => {
   it('renders pills for multiple children', () => {
     render(
       <ChildInlinePills
-        children={children}
+        childList={children}
         selectedChildId={null}
         suggestedChildId={null}
         courseId={100}
@@ -44,7 +44,7 @@ describe('ChildInlinePills', () => {
   it('marks selected child as pressed', () => {
     render(
       <ChildInlinePills
-        children={children}
+        childList={children}
         selectedChildId={1}
         suggestedChildId={null}
         courseId={100}
@@ -59,7 +59,7 @@ describe('ChildInlinePills', () => {
     const onSelect = vi.fn();
     render(
       <ChildInlinePills
-        children={children}
+        childList={children}
         selectedChildId={null}
         suggestedChildId={null}
         courseId={100}
@@ -73,7 +73,7 @@ describe('ChildInlinePills', () => {
   it('shows grade badge', () => {
     render(
       <ChildInlinePills
-        children={children}
+        childList={children}
         selectedChildId={null}
         suggestedChildId={null}
         courseId={100}
@@ -87,7 +87,7 @@ describe('ChildInlinePills', () => {
   it('highlights suggested child', () => {
     const { container } = render(
       <ChildInlinePills
-        children={children}
+        childList={children}
         selectedChildId={null}
         suggestedChildId={2}
         courseId={100}
