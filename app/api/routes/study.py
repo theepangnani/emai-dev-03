@@ -78,6 +78,20 @@ INSUFFICIENT_TEXT_MSG = (
 MIN_QUESTION_CHARS = 10
 
 
+def _cleanup_empty_guide(guide_id: int, logger) -> None:
+    """Delete a study guide record if it has no content (stream failure cleanup)."""
+    try:
+        from app.db.database import SessionLocal
+        with SessionLocal() as db:
+            guide = db.get(StudyGuide, guide_id)
+            if guide and not guide.content:
+                db.delete(guide)
+                db.commit()
+                logger.info("Deleted empty study guide %d after stream failure", guide_id)
+    except Exception as e:
+        logger.warning("Failed to clean up empty guide %d: %s", guide_id, e)
+
+
 def _apply_parent_question_guards(
     body, description: str, title: str, current_user: User,
 ) -> tuple[str, str]:
@@ -2325,17 +2339,7 @@ async def generate_child_guide_stream(
                     return
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
-            # Clean up empty placeholder record (#3076)
-            try:
-                from app.db.database import SessionLocal
-                with SessionLocal() as cleanup_db:
-                    orphan = cleanup_db.get(StudyGuide, child_guide_id)
-                    if orphan and not orphan.content:
-                        cleanup_db.delete(orphan)
-                        cleanup_db.commit()
-                        logger.info("Deleted empty child guide %d after stream failure", child_guide_id)
-            except Exception as ce:
-                logger.warning("Failed to clean up empty child guide %d: %s", child_guide_id, ce)
+            _cleanup_empty_guide(child_guide_id, logger)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3274,17 +3278,7 @@ async def generate_study_guide_stream_endpoint(
 
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
-            # Clean up empty placeholder record (#3076)
-            try:
-                from app.db.database import SessionLocal
-                with SessionLocal() as cleanup_db:
-                    orphan = cleanup_db.get(StudyGuide, guide_id)
-                    if orphan and not orphan.content:
-                        cleanup_db.delete(orphan)
-                        cleanup_db.commit()
-                        logger.info("Deleted empty study guide %d after stream failure", guide_id)
-            except Exception as ce:
-                logger.warning("Failed to clean up empty guide %d: %s", guide_id, ce)
+            _cleanup_empty_guide(guide_id, logger)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
