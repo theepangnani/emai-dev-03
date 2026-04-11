@@ -2213,22 +2213,29 @@ def _run_migrations_inner(engine, settings, logger):
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
         with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_phone VARCHAR(20)"))
+            conn.commit()
+            logger.info("Added whatsapp_phone column to parent_gmail_integrations (#3083)")
+    except Exception as e:
+        logger.debug("WhatsApp migration skipped (whatsapp_phone likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_verified BOOLEAN DEFAULT FALSE"))
             conn.commit()
     except Exception as e:
-        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+        logger.debug("WhatsApp migration skipped (whatsapp_verified likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_code VARCHAR(6)"))
             conn.commit()
     except Exception as e:
-        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+        logger.debug("WhatsApp migration skipped (whatsapp_otp_code likely exists): %s", e)
     try:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_otp_expires_at TIMESTAMP"))
             conn.commit()
     except Exception as e:
-        logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+        logger.debug("WhatsApp migration skipped (whatsapp_otp_expires_at likely exists): %s", e)
 
     # --- UTDF: course_content classification columns (§6.131, #2950) ---
     try:
