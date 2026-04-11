@@ -35,6 +35,11 @@ VALID_SUBJECTS = [
     "history",
     "geography",
     "computer_studies",
+    "art",
+    "music",
+    "phys_ed",
+    "computer_science",
+    "business",
     "other",
     "mixed",
     "unknown",
@@ -237,7 +242,7 @@ class DocumentClassifierService:
         }
 
     @staticmethod
-    def classify_subject(extracted_text: str, filename: str = "") -> dict:
+    async def classify_subject(extracted_text: str, filename: str = "") -> dict:
         """
         Classify the academic subject of a document.
 
@@ -259,7 +264,8 @@ class DocumentClassifierService:
 
         try:
             client = get_anthropic_client()
-            result = client.messages.create(
+            result = await asyncio.to_thread(
+                client.messages.create,
                 model="claude-haiku-4-5-20251001",
                 max_tokens=100,
                 system=SUBJECT_CLASSIFICATION_PROMPT,

@@ -3371,30 +3371,7 @@ async def generate_study_guide_stream_endpoint(
 # Worksheet Generation (#2956)
 # ============================================
 
-WORKSHEET_PROMPT_TEMPLATES = {
-    "worksheet_general": (
-        "Create a worksheet with {num_questions} mixed questions based on the following material. "
-        "Number each question clearly and add answer blanks or space for student responses."
-    ),
-    "worksheet_math_word_problems": (
-        "Create a worksheet with {num_questions} real-world word problems based on the following material. "
-        "Include step-by-step working space for each problem. Use LaTeX notation ($$...$$) for mathematical formulas."
-    ),
-    "worksheet_english": (
-        "Create a worksheet with {num_questions} English exercises based on the following material. "
-        "Include a mix of grammar, reading comprehension, and short writing prompts."
-    ),
-    "worksheet_french": (
-        "Create a worksheet with {num_questions} French exercises based on the following material. "
-        "Include a mix of vocabulary, verb conjugation, and translation exercises."
-    ),
-}
-
-DIFFICULTY_LABELS = {
-    "below_grade": "slightly below grade level (easier, more scaffolding)",
-    "grade_level": "at grade level",
-    "above_grade": "above grade level (more challenging, extension-level)",
-}
+from app.services.study_guide_strategy import WORKSHEET_PROMPT_TEMPLATES, DIFFICULTY_LABELS
 
 
 @router.post("/worksheets/generate", response_model=WorksheetResponse)
@@ -3505,7 +3482,7 @@ async def analyze_weak_areas(
         raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
 
     # Check AI credits (costs 2 credits)
-    check_ai_usage(current_user, db)
+    check_ai_usage(current_user, db, cost=2)
 
     # Call Claude Sonnet for weak area analysis
     system_prompt = (
