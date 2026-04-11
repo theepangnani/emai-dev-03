@@ -62,6 +62,32 @@ from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
+# CRITICAL: Add UTDF columns synchronously before any request can hit the model.
+# Background migrations may be blocked by advisory lock from previous instance.
+# These are idempotent (try/except on "column already exists").
+if "sqlite" not in settings.database_url:
+    _utdf_cols = [
+        ("course_contents", "detected_subject", "VARCHAR(50)"),
+        ("course_contents", "detection_confidence", "FLOAT"),
+        ("course_contents", "subject_confidence", "FLOAT"),
+        ("course_contents", "template_key", "VARCHAR(50)"),
+        ("course_contents", "classification_override", "BOOLEAN DEFAULT FALSE"),
+        ("study_guides", "template_key", "VARCHAR(50)"),
+        ("study_guides", "num_questions", "INTEGER"),
+        ("study_guides", "difficulty", "VARCHAR(20)"),
+        ("study_guides", "answer_key_markdown", "TEXT"),
+        ("study_guides", "weak_topics", "TEXT"),
+        ("study_guides", "ai_engine", "VARCHAR(20)"),
+    ]
+    for _tbl, _col, _typ in _utdf_cols:
+        try:
+            with engine.connect() as _conn:
+                _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_typ}"))
+                _conn.commit()
+                logger.info("Added column %s.%s", _tbl, _col)
+        except Exception:
+            pass  # Column already exists
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
