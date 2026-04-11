@@ -31,13 +31,13 @@ class StudyGuide(Base):
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
 
     # UTDF worksheet/template columns (§6.131, #2950, #3029)
-    # Using deferred() so columns are NOT in default SELECT — prevents crashes if migration hasn't run
-    template_key = deferred(Column(String(50), nullable=True))
-    num_questions = deferred(Column(Integer, nullable=True))
-    difficulty = deferred(Column(String(20), nullable=True))
-    answer_key_markdown = deferred(Column(Text, nullable=True))
-    weak_topics = deferred(Column(Text, nullable=True))
-    ai_engine = deferred(Column(String(20), nullable=True))
+    # TEMPORARILY REMOVED — columns do not yet exist in production PostgreSQL.
+    # template_key = Column(String(50), nullable=True)
+    # num_questions = Column(Integer, nullable=True)
+    # difficulty = Column(String(20), nullable=True)
+    # answer_key_markdown = Column(Text, nullable=True)
+    # weak_topics = Column(Text, nullable=True)
+    # ai_engine = Column(String(20), nullable=True)
 
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary

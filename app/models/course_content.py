@@ -57,13 +57,14 @@ class CourseContent(Base):
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
     # UTDF classification columns (§6.131, #2950, #3022)
-    # Using deferred() so these columns are NOT included in default SELECT queries.
-    # This prevents crashes if the ALTER TABLE migration hasn't run yet on PostgreSQL.
-    detected_subject = deferred(Column(String(50), nullable=True))
-    detection_confidence = deferred(Column(Float, nullable=True))
-    subject_confidence = deferred(Column(Float, nullable=True))
-    template_key = deferred(Column(String(50), nullable=True))
-    classification_override = deferred(Column(Boolean, nullable=True, default=False, server_default=text("false")))
+    # TEMPORARILY REMOVED from model — columns do not yet exist in production PostgreSQL.
+    # The advisory lock blocks background migrations. Once migrations are confirmed,
+    # uncomment these and remove from the deferred exclusion.
+    # detected_subject = Column(String(50), nullable=True)
+    # detection_confidence = Column(Float, nullable=True)
+    # subject_confidence = Column(Float, nullable=True)
+    # template_key = Column(String(50), nullable=True)
+    # classification_override = Column(Boolean, nullable=True, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
