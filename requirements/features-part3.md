@@ -5209,11 +5209,14 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - [x] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
 - [x] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
 
+**Chip action routing requirement (#3100):** Each `MaterialTypeSuggestionChips` action MUST route to the correct tab or generator. Actions like `quiz`, `practice_test`, and `flashcards` must call `onFormatSelect` to switch tabs — they must NOT fall through to the default `onGenerate()` path which creates a study guide overview. The `handleChipClick` function in `StudyGuideTab.tsx` uses a `TAB_ACTIONS` routing map for this purpose. New chip actions that target a specific tab must be added to this map.
+
 **Architecture review fixes (G1–G12):** #3019–#3030
 
 **PRs:**
 - PR #3068 — Main UTDF implementation (17 parallel streams merged via integration branch)
 - PR #3085 — Post-deployment fixes (Gmail callback, classifier prompt, pagination, PDF export, guide cleanup, digest format)
+- PR #3102 — Fix `practice_test` chip action routing to quiz tab (#3100)
 
 **Deployment Incident Summary (2026-04-10/11):**
 - 2026-04-10 21:08 — PR #3068 merged to master
