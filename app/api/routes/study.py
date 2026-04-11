@@ -3,7 +3,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse as _StreamingResponse, JSONResponse
 from sqlalchemy import or_, and_, func as sa_func
 from sqlalchemy.orm import Session, selectinload
@@ -2325,6 +2325,17 @@ async def generate_child_guide_stream(
                     return
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
+            # Clean up empty placeholder record (#3076)
+            try:
+                from app.db.database import SessionLocal
+                with SessionLocal() as cleanup_db:
+                    orphan = cleanup_db.get(StudyGuide, child_guide_id)
+                    if orphan and not orphan.content:
+                        cleanup_db.delete(orphan)
+                        cleanup_db.commit()
+                        logger.info("Deleted empty child guide %d after stream failure", child_guide_id)
+            except Exception as ce:
+                logger.warning("Failed to clean up empty child guide %d: %s", child_guide_id, ce)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3263,6 +3274,17 @@ async def generate_study_guide_stream_endpoint(
 
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
+            # Clean up empty placeholder record (#3076)
+            try:
+                from app.db.database import SessionLocal
+                with SessionLocal() as cleanup_db:
+                    orphan = cleanup_db.get(StudyGuide, guide_id)
+                    if orphan and not orphan.content:
+                        cleanup_db.delete(orphan)
+                        cleanup_db.commit()
+                        logger.info("Deleted empty study guide %d after stream failure", guide_id)
+            except Exception as ce:
+                logger.warning("Failed to clean up empty guide %d: %s", guide_id, ce)
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3623,6 +3645,8 @@ async def get_worksheet(
 @router.get("/worksheets", response_model=list[WorksheetResponse])
 async def list_worksheets(
     content_id: int | None = None,
+    skip: int = 0,
+    limit: int = Query(default=50, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -3634,7 +3658,7 @@ async def list_worksheets(
     )
     if content_id is not None:
         query = query.filter(StudyGuide.course_content_id == content_id)
-    guides = query.order_by(StudyGuide.created_at.desc()).limit(50).all()
+    guides = query.order_by(StudyGuide.created_at.desc()).offset(skip).limit(limit).all()
     return [WorksheetResponse.model_validate(g) for g in guides]
 
     logger.info(

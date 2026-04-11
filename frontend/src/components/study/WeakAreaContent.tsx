@@ -25,8 +25,17 @@ export default function WeakAreaContent({ content, weakTopics }: WeakAreaContent
     window.print();
   }, []);
 
-  const handleDownloadPdf = useCallback(() => {
-    // No dedicated PDF export utility available; falls back to browser print dialog
+  const handleDownloadPdf = useCallback(async () => {
+    try {
+      const { downloadAsPdf } = await import('../../utils/exportUtils');
+      const el = document.querySelector('.weak-area-analysis');
+      if (el instanceof HTMLElement) {
+        await downloadAsPdf(el, 'weak-area-analysis');
+        return;
+      }
+    } catch {
+      // fall through to print fallback
+    }
     window.print();
   }, []);
 

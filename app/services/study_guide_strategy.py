@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 DOCUMENT_TYPES = {
     "teacher_notes", "course_syllabus", "past_exam", "mock_exam",
     "project_brief", "lab_experiment", "textbook_excerpt", "custom",
-    "parent_question"
+    "parent_question", "worksheet", "student_test", "quiz_paper",
 }
 
 # Study goal enum values
@@ -46,6 +46,12 @@ PROMPT_TEMPLATES: dict[str, str] = {
     "lab_experiment": """Based on this lab/experiment material, write a 3-5 sentence summary of the experiment's purpose, key variables, and what students need to prepare. Do NOT include full procedures, safety protocols, or analysis templates — those will be covered in focused sub-guides.""",
 
     "textbook_excerpt": """Based on this textbook excerpt, write a 3-5 sentence summary of the main ideas and key terms introduced. Do NOT include detailed explanations, definitions, or worked examples — those will be covered in focused sub-guides.""",
+
+    "worksheet": """Based on this worksheet, write a 3-5 sentence summary of the topics and skills being practiced. Do NOT reproduce individual questions or provide answers — those will be covered in focused sub-guides the student can explore via suggestion chips.""",
+
+    "student_test": """Based on this completed/marked test, write a 3-5 sentence summary identifying the topics tested, areas of strength, and areas where the student lost marks. Do NOT reproduce questions or rework solutions — those will be covered in focused sub-guides.""",
+
+    "quiz_paper": """Based on this quiz paper, write a 3-5 sentence summary of the topics and question types covered. Do NOT reproduce questions or provide answers — those will be covered in focused sub-guides the student can explore via suggestion chips.""",
 
     "parent_question": """The content below is an open-ended question from a parent about their child's education. Do NOT summarize source material — there is none. Instead, ANSWER the question directly and create a COMPREHENSIVE, DETAILED study preparation guide.
 

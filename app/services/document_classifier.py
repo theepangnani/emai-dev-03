@@ -54,6 +54,9 @@ MATERIAL_TYPE_LABELS = {
     "project_brief": "Project Brief",
     "lab_experiment": "Lab Experiment",
     "textbook_excerpt": "Textbook Excerpt",
+    "worksheet": "Worksheet",
+    "student_test": "Student Test",
+    "quiz_paper": "Quiz Paper",
     "custom": "Custom Document",
 }
 
@@ -67,6 +70,9 @@ Document types:
 - project_brief: Assignment rubric, project guidelines, inquiry task, performance task
 - lab_experiment: Lab procedure, experiment report template, data collection sheet
 - textbook_excerpt: Chapter section, reference reading, supplementary material
+- worksheet: Blank worksheet with answer fields, practice problems, fill-in-the-blank exercises
+- student_test: Student's completed/marked test or quiz with grades/corrections
+- quiz_paper: Quiz or short test paper (unmarked)
 - custom: Cannot be classified into any of the above categories
 
 Subjects:
