@@ -63,7 +63,7 @@ export function EmailDigestSetupWizard({
   const [deliveryTime, setDeliveryTime] = useState('07:00');
   const [timezone, setTimezone] = useState('America/Toronto');
   const [digestFormat, setDigestFormat] = useState('full');
-  const [channels, setChannels] = useState<string[]>(['email']);
+  const [channels, setChannels] = useState<string[]>(['in_app', 'email']);
 
   // Focus trap ref
   const modalRef = useRef<HTMLDivElement>(null);
@@ -83,7 +83,7 @@ export function EmailDigestSetupWizard({
       setDeliveryTime('07:00');
       setTimezone('America/Toronto');
       setDigestFormat('full');
-      setChannels(['email']);
+      setChannels(['in_app', 'email']);
     }
   }, [open, childName]);
 
