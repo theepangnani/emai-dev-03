@@ -3639,7 +3639,7 @@ async def get_worksheet(
 @router.get("/worksheets", response_model=list[WorksheetResponse])
 async def list_worksheets(
     content_id: int | None = None,
-    skip: int = 0,
+    skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
