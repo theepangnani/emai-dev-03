@@ -21,6 +21,7 @@ import { MindMapTab } from './course-material/MindMapTab';
 import { VideosLinksTab } from './course-material/VideosLinksTab';
 import { BriefingTab } from './course-material/BriefingTab';
 import { AccessLogTab } from './course-material/AccessLogTab';
+import { WorksheetsTab } from './course-material/WorksheetsTab';
 import { ReplaceDocumentModal } from './course-material/ReplaceDocumentModal';
 import { EditMaterialModal } from '../components/EditMaterialModal';
 import { AIWarningBanner } from '../components/AICreditsDisplay';
@@ -42,8 +43,8 @@ import { LinkedMaterialsPanel } from '../components/LinkedMaterialsPanel';
 import { useLinkedMaterials } from '../hooks/useLinkedMaterials';
 import './CourseMaterialDetailPage.css';
 
-type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'mindmap' | 'videos' | 'briefing' | 'access-log';
-const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'mindmap', 'videos', 'briefing', 'access-log'];
+type TabKey = 'document' | 'guide' | 'quiz' | 'flashcards' | 'worksheets' | 'mindmap' | 'videos' | 'briefing' | 'access-log';
+const VALID_TABS: TabKey[] = ['document', 'guide', 'quiz', 'flashcards', 'worksheets', 'mindmap', 'videos', 'briefing', 'access-log'];
 
 /* ── Tab icon components ──────────────────────── */
 function DocIcon() {
@@ -85,6 +86,17 @@ function FlashcardIcon() {
   );
 }
 
+function WorksheetsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="1.5" width="12" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5 5h6M5 7.5h6M5 10h4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+      <rect x="4" y="12" width="3" height="1.5" rx="0.5" stroke="currentColor" strokeWidth="0.8"/>
+      <rect x="9" y="12" width="3" height="1.5" rx="0.5" stroke="currentColor" strokeWidth="0.8"/>
+    </svg>
+  );
+}
+
 function MindMapIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -112,6 +124,16 @@ function BriefingTabIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M11 1H5a2 2 0 00-2 2v10a2 2 0 002 2h6a2 2 0 002-2V3a2 2 0 00-2-2z" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M6 5h4M6 7.5h4M6 10h2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="3" cy="8" r="1.5" fill="currentColor"/>
+      <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+      <circle cx="13" cy="8" r="1.5" fill="currentColor"/>
     </svg>
   );
 }
@@ -834,22 +856,34 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  const tabs: { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode; badge?: number }[] = [
+  // Worksheets are conditionally visible — only when at least one exists.
+  // For now, no worksheets API exists yet, so hasWorksheets is always false.
+  const hasWorksheets = false;
+
+  type TabDef = { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode; badge?: number };
+
+  const docTab: TabDef = { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> };
+
+  // Primary tabs — always visible in the tab bar
+  const primaryTabs: TabDef[] = [
+    docTab,
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
+    ...(hasWorksheets ? [{ key: 'worksheets' as TabKey, label: 'Worksheets', shortLabel: 'Sheets', hasContent: true, icon: <WorksheetsIcon /> }] : []),
+  ];
+
+  // "More" dropdown tabs — Mind Map, Videos, Briefing
+  const moreTabs: TabDef[] = [
     { key: 'mindmap' as TabKey, label: 'Mind Map', shortLabel: 'Map', hasContent: !!mindMapGuide, icon: <MindMapIcon /> },
     ...(resourceLinkCount > 0 ? [{ key: 'videos' as TabKey, label: `Videos & Links (${resourceLinkCount})`, shortLabel: 'Links', hasContent: true, icon: <VideosIcon />, badge: resourceLinkCount }] : []),
     ...(isParent ? [{ key: 'briefing' as TabKey, label: 'Parent Briefing', shortLabel: 'Briefing', hasContent: !!briefingNote, icon: <BriefingTabIcon /> }] : []),
-    // access-log removed from tabs — rendered as collapsible section inside Source Document tab.
-    // Backward compat for ?tab=access-log URLs is handled in the URL sync useEffect.
-    { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> },
   ];
 
-  const guideTab = tabs.find(t => t.key === 'guide')!;
-  const docTab = tabs.find(t => t.key === 'document')!;
-  const studyTabs = tabs.filter(t => t.key !== 'document');
-  const activeStudyTab = studyTabs.find(t => t.key === activeTab);
+  // access-log removed from tabs — rendered as collapsible section inside Source Document tab.
+  // Backward compat for ?tab=access-log URLs is handled in the URL sync useEffect.
+
+  const activeMoreTab = moreTabs.find(t => t.key === activeTab);
 
   return (
     <DashboardLayout showBackButton headerSlot={() => null}>
@@ -952,45 +986,55 @@ export function CourseMaterialDetailPage() {
 
         {/* ── Tab navigation ───────────────────────── */}
         <div className="cm-tabs" role="tablist">
-          {/* Study Guide dropdown — contains all study tools */}
-          <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
+          {/* Primary tabs — always visible */}
+          {primaryTabs.map(tab => (
             <button
-              className={`cm-tab${activeTab !== 'document' ? ' active' : ' has-content'}`}
-              onClick={() => { if (activeTab !== 'document') { setShowMoreDropdown(v => !v); } else { setActiveTab('guide'); } }}
-              aria-haspopup="menu"
-              aria-expanded={showMoreDropdown}
+              key={tab.key}
+              className={`cm-tab${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ' has-content'}${tab.key === 'document' ? ' source-doc' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
             >
-              <span className="cm-tab-icon">{activeStudyTab && activeTab !== 'guide' ? activeStudyTab.icon : guideTab.icon}</span>
-              <span className="cm-tab-label">{activeStudyTab && activeTab !== 'guide' ? activeStudyTab.label : 'Study Guide'}</span>
-              <span className="cm-tab-label-short">{activeStudyTab && activeTab !== 'guide' ? activeStudyTab.shortLabel : 'Guide'}</span>
-              <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span className="cm-tab-icon">{tab.icon}</span>
+              <span className="cm-tab-label">{tab.label}</span>
+              <span className="cm-tab-label-short">{tab.shortLabel}</span>
             </button>
-            {showMoreDropdown && (
-              <div className="cm-more-dropdown" role="menu" onKeyDown={handleDropdownKeyDown}>
-                {studyTabs.map(tab => (
-                  <button
-                    key={tab.key}
-                    className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
-                    role="menuitem"
-                    tabIndex={-1}
-                    onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
-                  >
-                    <span className="cm-tab-icon">{tab.icon}</span>
-                    <span>{tab.label}</span>
-                    {!tab.hasContent && <span className="cm-tab-empty-dot" />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          ))}
 
-          {/* Source Document - always visible */}
-          <button key="document" className={`cm-tab${activeTab === 'document' ? ' active' : ''}${!docTab.hasContent ? ' empty' : ' has-content'} source-doc`}
-            onClick={() => setActiveTab('document')} role="tab" aria-selected={activeTab === 'document'}>
-            <span className="cm-tab-icon">{docTab.icon}</span>
-            <span className="cm-tab-label">{docTab.label}</span>
-            <span className="cm-tab-label-short">{docTab.shortLabel}</span>
-          </button>
+          {/* "More" dropdown — Mind Map, Videos, Briefing */}
+          {moreTabs.length > 0 && (
+            <div className="cm-tab-more-wrapper" ref={moreDropdownRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMoreDropdown(false); }}>
+              <button
+                className={`cm-tab cm-tab-more-btn${activeMoreTab ? ' active' : ''}`}
+                onClick={() => setShowMoreDropdown(v => !v)}
+                aria-haspopup="menu"
+                aria-expanded={showMoreDropdown}
+                aria-label="More tools"
+              >
+                <span className="cm-tab-icon">{activeMoreTab ? activeMoreTab.icon : <MoreIcon />}</span>
+                <span className="cm-tab-label">{activeMoreTab ? activeMoreTab.label : 'More'}</span>
+                <span className="cm-tab-label-short">{activeMoreTab ? activeMoreTab.shortLabel : 'More'}</span>
+                <svg className="cm-tab-more-arrow" width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5L7.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+              {showMoreDropdown && (
+                <div className="cm-more-dropdown" role="menu" onKeyDown={handleDropdownKeyDown}>
+                  {moreTabs.map(tab => (
+                    <button
+                      key={tab.key}
+                      className={`cm-more-dropdown-item${activeTab === tab.key ? ' active' : ''}${!tab.hasContent ? ' empty' : ''}`}
+                      role="menuitem"
+                      tabIndex={-1}
+                      onClick={() => { setActiveTab(tab.key); setShowMoreDropdown(false); }}
+                    >
+                      <span className="cm-tab-icon">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {!tab.hasContent && <span className="cm-tab-empty-dot" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Tab content ──────────────────────────── */}
@@ -1129,6 +1173,16 @@ export function CourseMaterialDetailPage() {
               courseName={content?.course_name}
               createdAt={flashcardSet?.created_at}
               courseId={content?.course_id}
+            />
+          )}
+
+          {activeTab === 'worksheets' && (
+            <WorksheetsTab
+              courseContentId={contentId}
+              hasSourceContent={hasSourceContent}
+              atLimit={atLimit}
+              generating={generating}
+              onViewDocument={() => setActiveTab('document')}
             />
           )}
 

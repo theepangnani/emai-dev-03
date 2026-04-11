@@ -180,6 +180,12 @@ def _run_migrations_inner(engine, settings, logger):
             if "content_hash" not in existing_cols:
                 conn.execute(text("ALTER TABLE study_guides ADD COLUMN content_hash VARCHAR(64)"))
                 logger.info("Added 'content_hash' column to study_guides")
+            if "weak_topics" not in existing_cols:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN weak_topics TEXT"))
+                logger.info("Added 'weak_topics' column to study_guides")
+            if "ai_engine" not in existing_cols:
+                conn.execute(text("ALTER TABLE study_guides ADD COLUMN ai_engine VARCHAR(50)"))
+                logger.info("Added 'ai_engine' column to study_guides")
             conn.commit()
         if "courses" in inspector.get_table_names():
             existing_cols = {c["name"] for c in inspector.get_columns("courses")}
@@ -2149,11 +2155,44 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("Compound index #2830 skipped: %s", e)
 
-    # --- M2: WhatsApp columns on parent_gmail_integrations (#2967) ---
+    # --- S9: answer_key_markdown on study_guides (#2957) ---
     try:
         with engine.connect() as conn:
-            conn.execute(text("ALTER TABLE parent_gmail_integrations ADD COLUMN whatsapp_phone VARCHAR(20)"))
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN answer_key_markdown TEXT"))
             conn.commit()
+            logger.info("Added answer_key_markdown column to study_guides (#2957)")
+    except Exception as e:
+        logger.debug("answer_key_markdown migration skipped (column likely exists): %s", e)
+
+    # --- M2: WhatsApp columns on parent_gmail_integrations (#2967) ---
+    # --- M2: WhatsApp columns on parent_gmail_integrations (#2967, #3054) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "parent_gmail_integrations" in _inspector.get_table_names():
+                _existing = {c["name"] for c in _inspector.get_columns("parent_gmail_integrations")}
+                _is_pg = "sqlite" not in settings.database_url
+                _wa_cols = [
+                    ("whatsapp_phone", "VARCHAR(20)"),
+                    ("whatsapp_verified", "BOOLEAN DEFAULT FALSE"),
+                    ("whatsapp_otp_code", "VARCHAR(6)"),
+                    ("whatsapp_otp_expires_at", "TIMESTAMPTZ" if _is_pg else "DATETIME"),
+                ]
+                for _col_name, _col_type in _wa_cols:
+                    if _col_name not in _existing:
+                        try:
+                            conn.execute(text(
+                                f"ALTER TABLE parent_gmail_integrations ADD COLUMN {_col_name} {_col_type}"
+                            ))
+                            conn.commit()
+                            logger.info("Added %s column to parent_gmail_integrations (#2967)", _col_name)
+                        except Exception as col_err:
+                            conn.rollback()
+                            logger.warning(
+                                "Failed to add %s to parent_gmail_integrations (#2967): %s",
+                                _col_name, col_err,
+                            )
+                logger.info("WhatsApp columns verified on parent_gmail_integrations (#2967)")
     except Exception as e:
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
     try:
@@ -2174,3 +2213,81 @@ def _run_migrations_inner(engine, settings, logger):
             conn.commit()
     except Exception as e:
         logger.debug("WhatsApp migration skipped (column likely exists): %s", e)
+
+    # --- UTDF: course_content classification columns (§6.131, #2950) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(50)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (detected_subject likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN detection_confidence FLOAT"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (detection_confidence likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN template_key VARCHAR(50)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (course_contents.template_key likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN classification_override BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (classification_override likely exists): %s", e)
+
+    # --- UTDF: study_guides worksheet/template columns (§6.131, #2950, #3029) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN template_key VARCHAR(50)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (study_guides.template_key likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN num_questions INTEGER"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (num_questions likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN difficulty VARCHAR(20)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (difficulty likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN answer_key_markdown TEXT"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (answer_key_markdown likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN weak_topics TEXT"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (weak_topics likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE study_guides ADD COLUMN ai_engine VARCHAR(20)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("UTDF migration skipped (ai_engine likely exists): %s", e)
+    # --- G4: Subject classification columns on course_contents (#3022) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN detected_subject VARCHAR(30)"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("detected_subject migration skipped (column likely exists): %s", e)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE course_contents ADD COLUMN subject_confidence FLOAT"))
+            conn.commit()
+    except Exception as e:
+        logger.debug("subject_confidence migration skipped (column likely exists): %s", e)
+        logger.warning("WhatsApp column migration (#2967, #3054) failed: %s", e)

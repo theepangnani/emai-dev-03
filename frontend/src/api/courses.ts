@@ -30,6 +30,8 @@ export interface CourseContentItem {
   document_type: string | null;
   study_goal: string | null;
   study_goal_text: string | null;
+  detected_subject: string | null;
+  subject_confidence: number | null;
 }
 
 export interface SourceFileItem {
@@ -465,6 +467,11 @@ export const courseContentsApi = {
   listCategories: async () => {
     const response = await api.get('/api/course-contents/categories');
     return response.data as string[];
+  },
+
+  classifyContent: async (contentId: number): Promise<CourseContentItem> => {
+    const response = await api.post(`/api/course-contents/${contentId}/classify`);
+    return response.data;
   },
 
   download: async (id: number, originalFilename?: string) => {

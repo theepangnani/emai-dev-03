@@ -45,12 +45,16 @@ from app.schemas.study import (
     StudyGuideTreeResponse,
     SaveQAAsGuideRequest,
     SaveQAAsMaterialRequest,
+    ClassifyDocumentResponse,
+    WorksheetGenerateRequest,
+    WorksheetResponse,
+    WeakAreaAnalyzeRequest,
 )
 from app.api.deps import get_current_user, can_access_course
 from app.services.audit_service import log_action
 from app.models.content_image import ContentImage
-from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
-from app.services.ai_usage import check_ai_usage, increment_ai_usage
+from app.services.ai_service import generate_study_guide, generate_study_guide_stream, generate_quiz, generate_flashcards, generate_mind_map, generate_content, check_content_safe, check_texts_safe, get_last_ai_usage, get_max_tokens_for_document_type, SUB_GUIDE_MAX_TOKENS
+from app.services.ai_usage import check_ai_usage, increment_ai_usage, log_ai_usage
 from app.services.notification_service import notify_parents_of_student
 from app.models.notification import NotificationType
 from app.services.file_processor import (
@@ -575,16 +579,16 @@ class ClassifyDocumentRequest(BaseModel):
     filename: str = ""
 
 
-@router.post("/classify-document")
+@router.post("/classify-document", response_model=ClassifyDocumentResponse)
 @limiter.limit("20/minute", key_func=get_user_id_or_ip)
 async def classify_document(
     request: Request,
     body: ClassifyDocumentRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Auto-detect document type from uploaded content (§6.105.3)."""
+    """Auto-detect document type and subject from uploaded content (§6.105.3)."""
     from app.services.document_classifier import DocumentClassifierService
-    result = DocumentClassifierService.classify(body.text_content[:800], body.filename)
+    result = await DocumentClassifierService.classify(body.text_content, body.filename)
     return result
 
 
@@ -1535,6 +1539,95 @@ async def generate_mind_map_endpoint(
         created_at=study_guide.created_at,
         auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
     )
+
+
+# ============================================
+# Answer Key Generation (§18.2, #2957, #3021)
+# ============================================
+
+
+@router.post("/worksheets/{worksheet_id}/answer-key")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def generate_answer_key(
+    worksheet_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate an answer key for a worksheet and store it on the same row."""
+    from app.schemas.study import AnswerKeyResponse
+
+    # Look up the study guide
+    guide = db.query(StudyGuide).filter(StudyGuide.id == worksheet_id).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+
+    # Validate guide_type is worksheet
+    if guide.guide_type != "worksheet":
+        raise HTTPException(status_code=400, detail="Study guide is not a worksheet")
+
+    # Access control: owner or parent of owner
+    has_access = guide.user_id == current_user.id
+    if not has_access and current_user.role == UserRole.PARENT:
+        children_user_ids = get_linked_children_user_ids(db, current_user.id)
+        has_access = guide.user_id in children_user_ids
+    if not has_access:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+
+    # Check AI usage (free, but still logged per PRD §18.2)
+    check_ai_usage(current_user, db)
+
+    # If already generated, return existing
+    if guide.answer_key_markdown:
+        return AnswerKeyResponse.model_validate(guide)
+
+    # Generate answer key via AI
+    system_prompt = (
+        "You are an expert teacher creating an answer key for a student worksheet. "
+        "Provide clear, numbered answers that match the worksheet questions exactly. "
+        "For math problems, include step-by-step solutions showing all work. "
+        "For English/French language questions, include brief explanations of why each answer is correct. "
+        "Use clean Markdown formatting. Use LaTeX notation ($...$) for math expressions."
+    )
+
+    prompt = f"""Generate a complete answer key for the following worksheet.
+Match each answer to its corresponding question number.
+
+**Worksheet content:**
+{guide.content}
+
+Provide the full answer key in Markdown format:"""
+
+    from app.services.ai_service import generate_content
+    try:
+        answer_key, _stop_reason = await generate_content(
+            prompt, system_prompt, max_tokens=4096, temperature=0.3
+        )
+    except Exception as e:
+        logger.error("Answer key generation failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
+
+    # Store on the same row
+    guide.answer_key_markdown = answer_key
+
+    # Log usage with 0 credits (free per PRD §18.2)
+    _usage = get_last_ai_usage() or {}
+    log_ai_usage(
+        current_user, db,
+        generation_type="answer_key",
+        credits_used=0,
+        prompt_tokens=_usage.get("prompt_tokens"),
+        completion_tokens=_usage.get("completion_tokens"),
+        total_tokens=_usage.get("total_tokens"),
+        estimated_cost_usd=_usage.get("estimated_cost_usd"),
+        model_name=_usage.get("model_name"),
+    )
+
+    log_action(db, user_id=current_user.id, action="create", resource_type="answer_key", resource_id=guide.id)
+    db.commit()
+    db.refresh(guide)
+
+    return AnswerKeyResponse.model_validate(guide)
 
 
 # ============================================
@@ -3272,3 +3365,281 @@ async def generate_study_guide_stream_endpoint(
             yield f"event: error\ndata: {json.dumps({'message': 'Failed to save study guide. Please try again.'})}\n\n"
 
     return _StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# ============================================
+# Worksheet Generation (#2956)
+# ============================================
+
+from app.services.study_guide_strategy import WORKSHEET_PROMPT_TEMPLATES, DIFFICULTY_LABELS
+
+
+@router.post("/worksheets/generate", response_model=WorksheetResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_worksheet_endpoint(
+    request: Request,
+    body: WorksheetGenerateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a printable worksheet from course content."""
+    # Validate content access
+    cc = db.query(CourseContent).filter(CourseContent.id == body.content_id).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Course content not found")
+    if cc.course_id and not can_access_course(db, current_user, cc.course_id):
+        raise HTTPException(status_code=403, detail="No access to this course content")
+
+    source_text = cc.text_content or cc.description or ""
+    if not source_text or len(source_text.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Safety check
+    safe, reason = check_content_safe(source_text)
+    if not safe:
+        raise HTTPException(status_code=400, detail=reason)
+
+    # Check AI usage
+    check_ai_usage(current_user, db)
+
+    # Build prompt
+    template_prompt = WORKSHEET_PROMPT_TEMPLATES[body.template_key].format(
+        num_questions=body.num_questions,
+    )
+    difficulty_desc = DIFFICULTY_LABELS[body.difficulty]
+
+    prompt = (
+        f"{template_prompt}\n\n"
+        f"Difficulty: {difficulty_desc}\n\n"
+        f"Format the worksheet in clean Markdown. "
+        f"Use numbered lists (1., 2., ...) for questions. "
+        f"Include a clear title at the top.\n\n"
+        f"After the worksheet, add a section titled '## Answer Key' with answers to all questions.\n\n"
+        f"--- SOURCE MATERIAL ---\n{source_text[:8000]}"
+    )
+
+    system_prompt = (
+        "You are an experienced K-12 teacher creating worksheets for students. "
+        "Produce clear, age-appropriate questions. Output valid Markdown only."
+    )
+
+    try:
+        raw_content, _stop = await generate_content(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=2000,
+            temperature=0.7,
+        )
+    except Exception as e:
+        logger.error("Worksheet generation failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI generation failed: {type(e).__name__}")
+
+    # Split content and answer key
+    worksheet_md = raw_content
+    answer_key_md = None
+    answer_key_markers = ["## Answer Key", "## Answer key", "## ANSWER KEY"]
+    for marker in answer_key_markers:
+        if marker in raw_content:
+            parts = raw_content.split(marker, 1)
+            worksheet_md = parts[0].rstrip()
+            answer_key_md = (marker + parts[1]).strip()
+            break
+
+    # Increment AI usage
+    _usage = get_last_ai_usage() or {}
+    increment_ai_usage(
+        current_user, db, generation_type="worksheet", course_material_id=body.content_id,
+        is_regeneration=False, **_usage,
+    )
+
+    # Enforce limit and save
+    enforce_study_guide_limit(db, current_user)
+    title = f"Worksheet: {cc.title}"
+
+# Weak Area Analysis (#2958)
+# ============================================
+
+
+@router.post("/weak-area/analyze", response_model=StudyGuideResponse)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def analyze_weak_areas(
+    request: Request,
+    body: WeakAreaAnalyzeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Analyze a student's test to identify weak areas using Claude Sonnet."""
+    import asyncio as _asyncio
+    from app.services.ai_service import get_anthropic_client, _calc_cost
+
+    # Validate content_id
+    cc = db.query(CourseContent).filter(CourseContent.id == body.content_id).first()
+    if not cc:
+        raise HTTPException(status_code=404, detail="Course content not found")
+
+    text_content = cc.text_content or cc.description or ""
+    if not text_content or len(text_content.strip()) < MIN_EXTRACTION_CHARS:
+        raise HTTPException(status_code=422, detail=INSUFFICIENT_TEXT_MSG)
+
+    # Check AI credits (costs 2 credits)
+    check_ai_usage(current_user, db, cost=2)
+
+    # Call Claude Sonnet for weak area analysis
+    system_prompt = (
+        "You are an expert educational analyst. Analyze the student's test and "
+        "identify 2-5 specific weak areas where the student needs improvement. "
+        "For each weak area, explain what the student got wrong or struggled with, "
+        "why it matters, and suggest specific actions to improve."
+    )
+    user_prompt = (
+        f"Here is the student's test/assessment document:\n\n"
+        f"---\n{text_content}\n---\n\n"
+        f"Please analyze this document and identify 2-5 specific weak areas. "
+        f"Format your response as markdown with ## headings for each weak area. "
+        f"Under each heading, include:\n"
+        f"- **What went wrong:** Brief description\n"
+        f"- **Why it matters:** Importance of this topic\n"
+        f"- **How to improve:** Specific actionable suggestions\n\n"
+        f"At the very end of your response, include a line in this exact format:\n"
+        f"WEAK_TOPICS: [\"topic1\", \"topic2\", \"topic3\"]\n"
+        f"where each topic is a short 2-5 word label for the weak area."
+    )
+
+    try:
+        client = get_anthropic_client()
+        message = await _asyncio.to_thread(
+            client.messages.create,
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        raw_content = message.content[0].text
+        input_tokens = message.usage.input_tokens
+        output_tokens = message.usage.output_tokens
+    except Exception as e:
+        logger.error("Weak area analysis failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {type(e).__name__}")
+
+    # Parse WEAK_TOPICS from response
+    weak_topics_list = []
+    analysis_content = raw_content
+    import re as _re
+    topics_match = _re.search(r'WEAK_TOPICS:\s*(\[.*?\])', raw_content, _re.DOTALL)
+    if topics_match:
+        try:
+            weak_topics_list = json.loads(topics_match.group(1))
+            # Remove the WEAK_TOPICS line from the display content
+            analysis_content = raw_content[:topics_match.start()].rstrip()
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse WEAK_TOPICS JSON from AI response")
+
+    # Increment AI usage (2 credits for weak area analysis)
+    cost = _calc_cost("claude-sonnet-4-20250514", input_tokens, output_tokens)
+    increment_ai_usage(
+        current_user, db, generation_type="weak_area_analysis",
+        course_material_id=body.content_id,
+        prompt_tokens=input_tokens,
+        completion_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
+        estimated_cost_usd=cost,
+        model_name="claude-sonnet-4-20250514",
+        wallet_debit_amount=2,
+    )
+
+    # Save as study guide
+    title = f"Weak Area Analysis: {cc.title or 'Assessment'}"
+    enforce_study_guide_limit(db, current_user)
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=cc.course_id,
+        course_content_id=cc.id,
+        title=title,
+        content=worksheet_md,
+        guide_type="worksheet",
+        template_key=body.template_key,
+        num_questions=body.num_questions,
+        difficulty=body.difficulty,
+        answer_key_markdown=answer_key_md,
+    )
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create review task
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        cc.course_id, cc.id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    # Award XP (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "study_guide")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
+    return WorksheetResponse(
+        id=study_guide.id,
+        user_id=study_guide.user_id,
+        course_id=study_guide.course_id,
+        course_content_id=study_guide.course_content_id,
+        title=study_guide.title,
+        content=study_guide.content,
+        guide_type="worksheet",
+        template_key=study_guide.template_key,
+        num_questions=study_guide.num_questions,
+        difficulty=study_guide.difficulty,
+        answer_key_markdown=study_guide.answer_key_markdown,
+        created_at=study_guide.created_at,
+        auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
+    )
+
+
+@router.get("/worksheets/{worksheet_id}", response_model=WorksheetResponse)
+async def get_worksheet(
+    worksheet_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a single worksheet by ID."""
+    guide = db.query(StudyGuide).filter(
+        StudyGuide.id == worksheet_id,
+        StudyGuide.guide_type == "worksheet",
+    ).first()
+    if not guide:
+        raise HTTPException(status_code=404, detail="Worksheet not found")
+    if guide.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your worksheet")
+    return WorksheetResponse.model_validate(guide)
+
+
+@router.get("/worksheets", response_model=list[WorksheetResponse])
+async def list_worksheets(
+    content_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List worksheets, optionally filtered by content_id."""
+    query = db.query(StudyGuide).filter(
+        StudyGuide.user_id == current_user.id,
+        StudyGuide.guide_type == "worksheet",
+        StudyGuide.archived_at.is_(None),
+    )
+    if content_id is not None:
+        query = query.filter(StudyGuide.course_content_id == content_id)
+    guides = query.order_by(StudyGuide.created_at.desc()).limit(50).all()
+    return [WorksheetResponse.model_validate(g) for g in guides]
+
+    logger.info(
+        "Weak area analysis created | user_id=%s | guide_id=%s | topics=%s",
+        current_user.id, study_guide.id, weak_topics_list,
+    )
+
+    return StudyGuideResponse.model_validate(study_guide)

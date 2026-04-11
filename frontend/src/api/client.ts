@@ -163,6 +163,7 @@ export type {
   SharedWithMeGuide,
   StudyGuideTreeNode,
   StudyGuideTreeResponse,
+  Worksheet,
 } from './study';
 export { messagesApi } from './messages';
 export type {

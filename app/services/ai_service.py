@@ -181,21 +181,23 @@ async def generate_content(
 
             return content, stop_reason
 
-        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+                raise
             last_error = e
             duration_ms = (time.time() - start_time) * 1000
             if attempt <= max_retries:
                 backoff = 2 ** (attempt - 1)  # 1s, 2s
                 logger.warning(
                     f"AI generation transient error (attempt {attempt}/{max_retries + 1}) | "
-                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e} | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e} | "
                     f"retrying in {backoff}s"
                 )
                 await asyncio.sleep(backoff)
             else:
                 logger.error(
                     f"AI generation failed after {attempt} attempts | "
-                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}"
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
                 )
                 raise
 
@@ -268,17 +270,19 @@ async def generate_content_stream(
             },
         }
 
-    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+        if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+            raise
         duration_ms = (time.time() - start_time) * 1000
         logger.error(
             f"Content stream failed | duration={duration_ms:.2f}ms | "
-            f"error={type(e).__name__}: {e}"
+            f"error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
         )
         yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
 
     except Exception as e:
         duration_ms = (time.time() - start_time) * 1000
-        logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={str(e)}")
+        logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}")
         yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
 
 
@@ -677,20 +681,22 @@ async def generate_study_guide_stream(
             }
             return  # Success — exit retry loop
 
-        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.InternalServerError) as e:
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+                raise
             duration_ms = (time.time() - start_time) * 1000
             if attempt <= max_retries:
                 backoff = 2 ** (attempt - 1)
                 logger.warning(
                     f"Study guide stream transient error (attempt {attempt}/{max_retries + 1}) | "
-                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e} | "
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e} | "
                     f"retrying in {backoff}s"
                 )
                 await asyncio.sleep(backoff)
             else:
                 logger.error(
                     f"Study guide stream failed after {attempt} attempts | "
-                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}"
+                    f"duration={duration_ms:.2f}ms | error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
                 )
                 yield {"event": "error", "data": "AI service is temporarily unavailable. Please try again."}
                 return

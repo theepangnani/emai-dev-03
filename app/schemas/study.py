@@ -52,6 +52,9 @@ class StudyGuideResponse(BaseModel):
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
     suggestion_topics: str | None = None
+    answer_key_markdown: str | None = None
+    weak_topics: str | None = None  # JSON array of weak topic strings
+    ai_engine: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True
@@ -63,6 +66,18 @@ class StudyGuideResponse(BaseModel):
     viewed_at: datetime | None = None
     viewed_count: int = 0
     shared_with_name: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class AnswerKeyResponse(BaseModel):
+    """Response after generating an answer key for a worksheet."""
+    id: int
+    title: str
+    guide_type: str
+    answer_key_markdown: str | None = None
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -232,7 +247,7 @@ class StudyGuideUpdate(BaseModel):
 class GenerateChildRequest(BaseModel):
     """Request to generate a child sub-guide from selected text."""
     topic: str = Field(min_length=3, max_length=5000)  # The selected text
-    guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards
+    guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, answer_key
     custom_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus (e.g., "make it harder")
     # §6.106: Strategy context inherited from parent
     document_type: str | None = Field(default=None, max_length=30)
@@ -243,8 +258,8 @@ class GenerateChildRequest(BaseModel):
     @field_validator('guide_type')
     @classmethod
     def validate_guide_type(cls, v: str) -> str:
-        if v not in ('study_guide', 'quiz', 'flashcards'):
-            raise ValueError('guide_type must be study_guide, quiz, or flashcards')
+        if v not in ('study_guide', 'quiz', 'flashcards', 'worksheet', 'weak_area_analysis', 'high_level_summary', 'answer_key'):
+            raise ValueError('guide_type must be study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, or answer_key')
         return v
 
     @field_validator('topic', 'custom_prompt', mode='before')
@@ -264,6 +279,12 @@ class DuplicateCheckRequest(BaseModel):
     @classmethod
     def _strip_whitespace(cls, v: object) -> object:
         return strip_whitespace(v)
+
+
+class WeakAreaAnalyzeRequest(BaseModel):
+    """Request to analyze weak areas from a test/exam."""
+    content_id: int
+    student_id: int | None = None
 
 
 class StudyGuideTreeNode(BaseModel):
@@ -302,3 +323,68 @@ class SaveQAAsMaterialRequest(BaseModel):
     """Save a Q&A response as a course material."""
     content: str = Field(..., min_length=1)
     title: str = Field(default="", max_length=255)
+
+
+class ClassifyDocumentResponse(BaseModel):
+    """Response from document classification endpoint."""
+    document_type: str
+    confidence: float
+    detected_subject: str = "other"
+    subject_keywords_found: list[str] = []
+    material_type_display: str = "Custom Document"
+    error: bool = False
+
+
+# ── Worksheet generation (#2956) ──
+
+WORKSHEET_TEMPLATES = {
+    "worksheet_general",
+    "worksheet_math_word_problems",
+    "worksheet_english",
+    "worksheet_french",
+}
+
+WORKSHEET_DIFFICULTIES = {"below_grade", "grade_level", "above_grade"}
+
+
+class WorksheetGenerateRequest(BaseModel):
+    """Request to generate a worksheet."""
+    content_id: int
+    template_key: str = Field(default="worksheet_general", max_length=50)
+    num_questions: int = Field(default=10, ge=5, le=20)
+    difficulty: str = Field(default="grade_level", max_length=20)
+    student_id: int | None = None
+
+    @field_validator('template_key')
+    @classmethod
+    def validate_template_key(cls, v: str) -> str:
+        if v not in WORKSHEET_TEMPLATES:
+            raise ValueError(f"template_key must be one of: {', '.join(sorted(WORKSHEET_TEMPLATES))}")
+        return v
+
+    @field_validator('difficulty')
+    @classmethod
+    def validate_difficulty(cls, v: str) -> str:
+        if v not in WORKSHEET_DIFFICULTIES:
+            raise ValueError(f"difficulty must be one of: {', '.join(sorted(WORKSHEET_DIFFICULTIES))}")
+        return v
+
+
+class WorksheetResponse(BaseModel):
+    """Worksheet response."""
+    id: int
+    user_id: int
+    course_id: int | None
+    course_content_id: int | None
+    title: str
+    content: str
+    guide_type: str = "worksheet"
+    template_key: str | None = None
+    num_questions: int | None = None
+    difficulty: str | None = None
+    answer_key_markdown: str | None = None
+    created_at: datetime
+    auto_created_tasks: list[AutoCreatedTask] = []
+
+    class Config:
+        from_attributes = True

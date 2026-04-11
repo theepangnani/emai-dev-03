@@ -36,6 +36,7 @@ from app.services.material_hierarchy import create_material_hierarchy, get_linke
 from app.schemas.course_content import (
     BulkArchiveRequest,
     BulkCategorizeRequest,
+    ClassificationOverrideRequest,
     CourseContentCreate,
     CourseContentUpdate,
     CourseContentResponse,
@@ -2232,3 +2233,69 @@ def get_content_access_log(
         total_downloads=total_downloads,
         unique_viewers=len(viewer_ids),
     )
+
+
+@router.patch("/{content_id}/classification")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def update_classification(
+    request: Request,
+    content_id: int,
+    classification: ClassificationOverrideRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Override the auto-detected document_type and/or detected_subject."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if classification.document_type is not None:
+        content.document_type = classification.document_type
+    if classification.detected_subject is not None:
+        content.detected_subject = classification.detected_subject
+
+    content.classification_override = True
+    db.commit()
+    db.refresh(content)
+    return content
+
+
+@router.post("/{content_id}/classify", response_model=CourseContentResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def classify_content(
+    request: Request,
+    content_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Lazy classification for legacy materials (#3023)."""
+    content = db.query(CourseContent).filter(CourseContent.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    if not can_access_material(db, current_user, content):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not content.text_content or not content.text_content.strip():
+        raise HTTPException(status_code=400, detail="No text content available for classification")
+
+    from app.services.document_classifier import DocumentClassifierService
+
+    result = await DocumentClassifierService.classify_subject(
+        content.text_content, content.original_filename or ""
+    )
+
+    content.detected_subject = result["detected_subject"]
+    content.subject_confidence = result["confidence"]
+    db.commit()
+    db.refresh(content)
+
+    logger.info(
+        "Classified content %d as subject=%s (confidence=%.2f)",
+        content_id, result["detected_subject"], result["confidence"],
+    )
+
+    return content
