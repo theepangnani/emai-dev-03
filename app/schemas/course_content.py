@@ -150,10 +150,9 @@ class CourseContentResponse(BaseModel):
     document_type: Optional[str] = None
     study_goal: Optional[str] = None
     study_goal_text: Optional[str] = None
-    # UTDF fields disabled until PG columns confirmed (#3079)
-    # detected_subject: Optional[str] = None
-    # classification_override: Optional[bool] = False
-    # subject_confidence: Optional[float] = None
+    detected_subject: Optional[str] = None
+    classification_override: Optional[bool] = False
+    subject_confidence: Optional[float] = None
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None

@@ -796,3 +796,53 @@ def list_xp_awards(
     return {"items": items, "total": total}
 
 
+
+
+# ============================================
+# Manual Migration Endpoint (#3079)
+# ============================================
+
+@router.post("/run-migrations")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def run_migrations_manual(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Run pending ALTER TABLE migrations on-demand.
+
+    Needed because Cloud Run background migration thread can be blocked
+    by PostgreSQL advisory locks from previous instances (#3079).
+    """
+    from sqlalchemy import text
+    from app.db.database import engine
+
+    results = []
+    migrations = [
+        ("course_contents", "detected_subject", "VARCHAR(50)"),
+        ("course_contents", "detection_confidence", "DOUBLE PRECISION"),
+        ("course_contents", "subject_confidence", "DOUBLE PRECISION"),
+        ("course_contents", "template_key", "VARCHAR(50)"),
+        ("course_contents", "classification_override", "BOOLEAN DEFAULT FALSE"),
+        ("study_guides", "template_key", "VARCHAR(50)"),
+        ("study_guides", "num_questions", "INTEGER"),
+        ("study_guides", "difficulty", "VARCHAR(20)"),
+        ("study_guides", "answer_key_markdown", "TEXT"),
+        ("study_guides", "weak_topics", "TEXT"),
+        ("study_guides", "ai_engine", "VARCHAR(20)"),
+        ("parent_gmail_integrations", "whatsapp_phone", "VARCHAR(20)"),
+        ("parent_gmail_integrations", "whatsapp_verified", "BOOLEAN DEFAULT FALSE"),
+        ("parent_gmail_integrations", "whatsapp_otp_code", "VARCHAR(6)"),
+        ("parent_gmail_integrations", "whatsapp_otp_expires_at", "TIMESTAMP"),
+    ]
+
+    with engine.connect() as conn:
+        for tbl, col, typ in migrations:
+            try:
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}"))
+                results.append({"table": tbl, "column": col, "status": "added_or_exists"})
+            except Exception as e:
+                results.append({"table": tbl, "column": col, "status": "error", "detail": str(e)})
+        conn.commit()
+
+    return {"migrations_run": len(migrations), "results": results}
