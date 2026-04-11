@@ -65,11 +65,12 @@ logger.info("Database tables created/verified")
 # CRITICAL: Add UTDF columns synchronously before any request can hit the model.
 # Background migrations may be blocked by advisory lock from previous instance.
 # These are idempotent (try/except on "column already exists").
-if "sqlite" not in settings.database_url:
+_is_pg = "sqlite" not in settings.database_url
+if _is_pg:
     _utdf_cols = [
         ("course_contents", "detected_subject", "VARCHAR(50)"),
-        ("course_contents", "detection_confidence", "FLOAT"),
-        ("course_contents", "subject_confidence", "FLOAT"),
+        ("course_contents", "detection_confidence", "DOUBLE PRECISION"),
+        ("course_contents", "subject_confidence", "DOUBLE PRECISION"),
         ("course_contents", "template_key", "VARCHAR(50)"),
         ("course_contents", "classification_override", "BOOLEAN DEFAULT FALSE"),
         ("study_guides", "template_key", "VARCHAR(50)"),
@@ -79,18 +80,17 @@ if "sqlite" not in settings.database_url:
         ("study_guides", "weak_topics", "TEXT"),
         ("study_guides", "ai_engine", "VARCHAR(20)"),
     ]
-    for _tbl, _col, _typ in _utdf_cols:
-        try:
-            with engine.connect() as _conn:
-                _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_typ}"))
-                _conn.commit()
-                logger.info("Added column %s.%s", _tbl, _col)
-        except Exception as _e:
-            _emsg = str(_e)
-            if "already exists" in _emsg or "duplicate column" in _emsg.lower():
-                pass  # Column already exists — expected
-            else:
-                logger.error("UTDF column migration FAILED for %s.%s: %s", _tbl, _col, _emsg)
+    try:
+        with engine.connect() as _conn:
+            for _tbl, _col, _typ in _utdf_cols:
+                try:
+                    _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN IF NOT EXISTS {_col} {_typ}"))
+                except Exception as _col_err:
+                    logger.warning("Column %s.%s migration note: %s", _tbl, _col, _col_err)
+            _conn.commit()
+            logger.info("UTDF synchronous column migration completed")
+    except Exception as _conn_err:
+        logger.error("UTDF synchronous migration FAILED (connection level): %s", _conn_err)
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
