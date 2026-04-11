@@ -57,12 +57,13 @@ class CourseContent(Base):
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
     # UTDF classification columns (§6.131, #2950, #3022)
-    # Re-enabled after advisory lock fix (#3079)
-    detected_subject = Column(String(50), nullable=True)
-    detection_confidence = Column(Float, nullable=True)
-    subject_confidence = Column(Float, nullable=True)
-    template_key = Column(String(50), nullable=True)
-    classification_override = Column(Boolean, nullable=True, default=False, server_default=text("false"))
+    # DISABLED — PG migrations not running on Cloud Run. Needs manual DB migration.
+    # See #3079 for root cause. Re-enable after columns confirmed in production PG.
+    # detected_subject = Column(String(50), nullable=True)
+    # detection_confidence = Column(Float, nullable=True)
+    # subject_confidence = Column(Float, nullable=True)
+    # template_key = Column(String(50), nullable=True)
+    # classification_override = Column(Boolean, nullable=True, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

@@ -31,13 +31,14 @@ class StudyGuide(Base):
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
 
     # UTDF worksheet/template columns (§6.131, #2950, #3029)
-    # Re-enabled after advisory lock fix (#3079)
-    template_key = Column(String(50), nullable=True)
-    num_questions = Column(Integer, nullable=True)
-    difficulty = Column(String(20), nullable=True)
-    answer_key_markdown = Column(Text, nullable=True)
-    weak_topics = Column(Text, nullable=True)
-    ai_engine = Column(String(20), nullable=True)
+    # DISABLED — PG migrations not running on Cloud Run. Needs manual DB migration.
+    # See #3079 for root cause. Re-enable after columns confirmed in production PG.
+    # template_key = Column(String(50), nullable=True)
+    # num_questions = Column(Integer, nullable=True)
+    # difficulty = Column(String(20), nullable=True)
+    # answer_key_markdown = Column(Text, nullable=True)
+    # weak_topics = Column(Text, nullable=True)
+    # ai_engine = Column(String(20), nullable=True)
 
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary

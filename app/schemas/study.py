@@ -52,9 +52,10 @@ class StudyGuideResponse(BaseModel):
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
     suggestion_topics: str | None = None
-    answer_key_markdown: str | None = None
-    weak_topics: str | None = None
-    ai_engine: str | None = None
+    # UTDF fields disabled until PG columns confirmed (#3079)
+    # answer_key_markdown: str | None = None
+    # weak_topics: str | None = None
+    # ai_engine: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True
