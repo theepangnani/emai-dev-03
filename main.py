@@ -29,6 +29,7 @@ from app.api.routes import csv_import
 from app.api.routes import weekly_report
 from app.api.routes import journey
 from app.api.routes import parent_email_digest
+from app.api.routes import admin_contacts
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -272,6 +273,7 @@ app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_waitlist.router, prefix="/api")
+app.include_router(admin_contacts.router, prefix="/api")
 app.include_router(invites.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
