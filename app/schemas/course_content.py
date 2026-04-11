@@ -150,9 +150,11 @@ class CourseContentResponse(BaseModel):
     document_type: Optional[str] = None
     study_goal: Optional[str] = None
     study_goal_text: Optional[str] = None
-    detected_subject: Optional[str] = None
-    classification_override: Optional[bool] = False
-    subject_confidence: Optional[float] = None
+    # UTDF fields — excluded from default response until DB migration confirmed.
+    # Uncomment after ALTER TABLE has run on production PostgreSQL.
+    # detected_subject: Optional[str] = None
+    # classification_override: Optional[bool] = False
+    # subject_confidence: Optional[float] = None
     created_at: datetime
     updated_at: Optional[datetime]
     archived_at: Optional[datetime] = None
