@@ -1,0 +1,476 @@
+.outreach-composer {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.outreach-composer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.outreach-composer-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.outreach-composer-back-btn {
+  background: none;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text-secondary, #666);
+}
+
+.outreach-composer-back-btn:hover {
+  background: var(--bg-hover, #f5f5f5);
+}
+
+/* Channel Tabs */
+.outreach-composer-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color, #ddd);
+  margin-bottom: 24px;
+}
+
+.outreach-composer-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.outreach-composer-tab:hover {
+  color: var(--text-primary, #333);
+}
+
+.outreach-composer-tab--active {
+  color: var(--primary-color, #4f46e5);
+  border-bottom-color: var(--primary-color, #4f46e5);
+}
+
+/* Steps */
+.outreach-composer-steps {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.outreach-composer-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+}
+
+.outreach-composer-step--active {
+  color: var(--primary-color, #4f46e5);
+  font-weight: 600;
+}
+
+.outreach-composer-step--done {
+  color: var(--success-color, #16a34a);
+}
+
+.outreach-composer-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary, #f3f4f6);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.outreach-composer-step--active .outreach-composer-step-number {
+  background: var(--primary-color, #4f46e5);
+  color: white;
+}
+
+.outreach-composer-step--done .outreach-composer-step-number {
+  background: var(--success-color, #16a34a);
+  color: white;
+}
+
+.outreach-composer-step-separator {
+  width: 20px;
+  height: 1px;
+  background: var(--border-color, #ddd);
+}
+
+/* Recipients */
+.outreach-composer-recipients {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.outreach-composer-recipients h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.outreach-composer-recipient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.outreach-composer-recipient {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--bg-secondary, #f9fafb);
+  font-size: 0.875rem;
+}
+
+.outreach-composer-recipient--disabled {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.outreach-composer-recipient-name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.outreach-composer-recipient-contact {
+  color: var(--text-secondary, #666);
+  font-size: 0.8rem;
+}
+
+.outreach-composer-recipient-badge {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--warning-bg, #fef3c7);
+  color: var(--warning-color, #92400e);
+}
+
+.outreach-composer-valid-count {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+}
+
+/* Template & Message */
+.outreach-composer-message {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.outreach-composer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outreach-composer-field label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #555);
+}
+
+.outreach-composer-field select,
+.outreach-composer-field input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.outreach-composer-field textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  min-height: 160px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.outreach-composer-char-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #666);
+  text-align: right;
+}
+
+.outreach-composer-warning {
+  font-size: 0.8rem;
+  color: var(--warning-color, #92400e);
+  background: var(--warning-bg, #fef3c7);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+/* Variable Chips */
+.outreach-composer-variables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.outreach-composer-variable-chip {
+  padding: 4px 10px;
+  background: var(--bg-secondary, #f3f4f6);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: monospace;
+}
+
+.outreach-composer-variable-chip:hover {
+  background: var(--primary-bg, #eef2ff);
+  border-color: var(--primary-color, #4f46e5);
+}
+
+/* Preview */
+.outreach-composer-preview {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.outreach-composer-preview h3 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+}
+
+.outreach-composer-preview-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+}
+
+.outreach-composer-preview-body {
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Actions */
+.outreach-composer-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  gap: 12px;
+}
+
+.outreach-composer-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+
+.outreach-composer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.outreach-composer-btn--primary {
+  background: var(--primary-color, #4f46e5);
+  color: white;
+}
+
+.outreach-composer-btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.outreach-composer-btn--secondary {
+  background: var(--bg-secondary, #f3f4f6);
+  color: var(--text-primary, #333);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.outreach-composer-btn--secondary:hover:not(:disabled) {
+  background: var(--bg-hover, #e5e7eb);
+}
+
+/* Results */
+.outreach-composer-results {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+
+.outreach-composer-results h3 {
+  margin: 0 0 12px;
+}
+
+.outreach-composer-results-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.outreach-composer-results-stat {
+  text-align: center;
+}
+
+.outreach-composer-results-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.outreach-composer-results-stat-value--success {
+  color: var(--success-color, #16a34a);
+}
+
+.outreach-composer-results-stat-value--error {
+  color: var(--error-color, #dc2626);
+}
+
+.outreach-composer-results-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #666);
+}
+
+.outreach-composer-errors {
+  margin-top: 12px;
+  text-align: left;
+  font-size: 0.8rem;
+}
+
+.outreach-composer-errors ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.outreach-composer-errors li {
+  padding: 4px 0;
+  color: var(--error-color, #dc2626);
+}
+
+/* Confirm Modal */
+.outreach-composer-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.outreach-composer-modal {
+  background: var(--bg-primary, white);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.outreach-composer-modal h3 {
+  margin: 0 0 12px;
+}
+
+.outreach-composer-modal p {
+  margin: 0 0 20px;
+  color: var(--text-secondary, #666);
+  font-size: 0.9rem;
+}
+
+.outreach-composer-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Info banner */
+.outreach-composer-info-banner {
+  background: var(--info-bg, #dbeafe);
+  color: var(--info-color, #1e40af);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* Preview modal */
+.outreach-composer-preview-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.outreach-composer-preview-modal {
+  background: var(--bg-primary, white);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.outreach-composer-preview-modal h3 {
+  margin: 0 0 16px;
+}
+
+.outreach-composer-preview-modal-body {
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .outreach-composer-tabs {
+    overflow-x: auto;
+  }
+
+  .outreach-composer-actions {
+    flex-direction: column;
+  }
+
+  .outreach-composer-results-stats {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

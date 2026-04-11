@@ -101,6 +101,7 @@ const BadgesPage = lazyRetry(() => import('./pages/BadgesPage').then((m) => ({ d
 const StudyTimelinePage = lazyRetry(() => import('./pages/StudyTimelinePage').then((m) => ({ default: m.StudyTimelinePage })));
 const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m) => ({ default: m.ReportCardPage })));
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
+const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -406,6 +407,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/contacts/compose"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminOutreachComposer />
                   </ProtectedRoute>
                 }
               />
