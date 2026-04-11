@@ -2340,6 +2340,14 @@ async def generate_child_guide_stream(
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
             _cleanup_empty_guide(child_guide_id, logger)
+            # Log activity for failed generation (#3076)
+            try:
+                from app.db.database import SessionLocal
+                with SessionLocal() as log_db:
+                    log_action(log_db, user_id=user_id, action="error", resource_type="study_guide",
+                               resource_id=child_guide_id, details=f"Stream generation failed: {type(e).__name__}: {e}")
+            except Exception:
+                pass  # Don't let logging failure mask the original error
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3279,6 +3287,14 @@ async def generate_study_guide_stream_endpoint(
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
             _cleanup_empty_guide(guide_id, logger)
+            # Log activity for failed generation (#3076)
+            try:
+                from app.db.database import SessionLocal
+                with SessionLocal() as log_db:
+                    log_action(log_db, user_id=user_id, action="error", resource_type="study_guide",
+                               resource_id=guide_id, details=f"Stream generation failed: {type(e).__name__}: {e}")
+            except Exception:
+                pass  # Don't let logging failure mask the original error
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
