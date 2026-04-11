@@ -5207,14 +5207,30 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 
 **Architecture review fixes (G1–G12):** #3019–#3030
 
-**Deployment Status (2026-04-10): PARTIALLY DEPLOYED**
-- Code merged to master across 17 parallel streams (S1–S15 + architecture fixes)
-- Frontend components live (ClassificationBar, chips, disambiguation modal, worksheets tab)
-- Backend endpoints deployed but UTDF-specific DB columns **blocked** — ALTER TABLE migrations never ran due to PostgreSQL advisory lock issue (#3079)
-- Hotfixes applied during deployment session:
-  - Commented out UTDF model columns in `course_content.py` and `study_guide.py` to prevent INSERT crashes
-  - Commented out UTDF fields in response schemas (`CourseContentResponse`, `StudyGuideResponse`)
-  - Attempted `deferred()` workaround — failed because deferred only affects SELECT, not INSERT/UPDATE
-- **Blocking issue:** #3079 — `pg_advisory_lock(1)` blocks indefinitely during rolling deployments
-- **Re-enable ticket:** #3080 — uncomment columns/schemas after advisory lock fix
-- **Lessons learned:** #3081 (deferred() not a migration safety mechanism), #3082 (Pydantic from_attributes triggers deferred loads)
+**PRs:**
+- PR #3068 — Main UTDF implementation (17 parallel streams merged via integration branch)
+- PR #3085 — Post-deployment fixes (Gmail callback, classifier prompt, pagination, PDF export, guide cleanup, digest format)
+
+**Deployment Incident Summary (2026-04-10/11):**
+- 2026-04-10 21:08 — PR #3068 merged to master
+- 2026-04-10 21:18 — Production 500 errors: PostgreSQL ALTER TABLE migrations blocked by `pg_advisory_lock(1)` held by previous Cloud Run instance
+- 2026-04-11 01:00–04:00 — Hotfix attempts: deferred columns, synchronous migrations, advisory lock fix
+- 2026-04-11 ~17:30 — Final resolution: columns manually added via Cloud SQL Studio, code redeployed with columns enabled
+- 2026-04-11 17:40 — PR #3085 merged with additional fixes
+- 2026-04-11 — PR #3091: PR review fixes (dead code removal, skip validation, cleanup dedup, frontend empty state for failed guides, activity logging)
+- **Key lesson:** replaced `pg_advisory_lock` with `pg_try_advisory_lock` (3 retries, 5s wait) to prevent future deadlocks
+- **Deployment issues:** #3070–#3075 (PR review fixes), #3077–#3078 (pagination, PDF export), #3079 (advisory lock root cause), #3080 (re-enable columns), #3081–#3082 (documentation), #3083 (Gmail callback)
+- **Follow-up issues:** #3089 (health check schema verification), #3090 (migration-aware traffic routing)
+- **PR review issues (PR #3091):** #3086 (dead code), #3087 (skip validation), #3088 (cleanup dedup), #3076 (frontend empty state + activity log), #3092 (suggestion: consolidate log_action)
+
+**Study Guide Failure Handling (#3076):**
+- Backend: `_cleanup_empty_guide()` helper deletes orphaned study guide records (empty content) on stream failure
+- Backend: `log_action()` records failed generations in the activity log (`action="error"`)
+- Frontend: `StudyGuideTab` shows "Generation failed" with Regenerate button when `studyGuide` exists but `content` is empty
+- Prevents blank study guides from appearing in the UI after API errors
+
+**Remaining open architecture review items (future enhancements):**
+- #3021 — Contradictory answer key storage design
+- #3022 — Multi-subject document detection
+- #3023 — Dual chip code paths for legacy materials
+- #3024 — teacher_notes enum chip set ambiguity
