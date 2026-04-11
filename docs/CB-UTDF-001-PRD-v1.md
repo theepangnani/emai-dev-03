@@ -746,3 +746,31 @@ Architecture review issues G1–G12 (#3019–#3030) track cross-cutting fixes id
 | G10 | Confidence threshold configurability | #3028 |
 | G11 | Telemetry — classification accuracy tracking | #3029 |
 | G12 | Documentation — UTDF developer guide | #3030 |
+
+---
+
+## 20. Deployment Report (2026-04-11)
+
+### Deployment Timeline
+- **2026-04-10 21:08** — PR #3068 merged to master (17 parallel streams)
+- **2026-04-10 21:18** — First deploy: tests passed but production 500 errors on all course_contents queries
+- **Root cause:** PostgreSQL ALTER TABLE migrations blocked by `pg_advisory_lock(1)` held by previous Cloud Run instance
+- **2026-04-11 01:00–04:00** — Multiple hotfix attempts: deferred columns, synchronous migrations, advisory lock fix
+- **2026-04-11 ~17:30** — Final resolution: columns manually added via Cloud SQL Studio + code redeployed with columns enabled
+- **2026-04-11 17:40** — PR #3085 merged (Gmail callback, classifier prompt, pagination, PDF export, guide cleanup, digest format)
+
+### Lessons Learned
+1. **pg_advisory_lock blocks forever** — replaced with pg_try_advisory_lock (3 retries, 5s wait)
+2. **SQLAlchemy deferred() doesn't prevent INSERT crashes** — only affects SELECT queries
+3. **Pydantic from_attributes triggers deferred loads** — response schema fields must match actual DB columns
+4. **Cloud Run keeps old instances alive** — must use `gcloud run services update-traffic --to-latest` after deploy
+5. **Module-level logger output may not reach Cloud Run logs** — use print(flush=True) for startup debugging
+6. **Admin migration endpoint added** — POST /api/admin/run-migrations for future column additions
+
+### Issues Created During Deployment
+- #3070–#3075: PR review findings (all fixed)
+- #3077–#3078: Enhancement suggestions (pagination, PDF export — fixed in #3085)
+- #3079: Advisory lock root cause (fixed)
+- #3080: Re-enable columns (fixed)
+- #3081–#3082: Documentation (added to CLAUDE.md)
+- #3083: Gmail callback (fixed in #3085)

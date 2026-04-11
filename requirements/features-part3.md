@@ -5156,14 +5156,13 @@ Study guides surface helpful external links (videos, interactive tools, articles
 
 ---
 
-### 6.131 Unified Template + Detection Framework (CB-UTDF-001, #2948) - PARTIALLY DEPLOYED (Phase 2)
+### 6.131 Unified Template + Detection Framework (CB-UTDF-001, #2948) - DEPLOYED (2026-04-11)
 
 Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material type, subject, student, and teacher from uploaded documents, then show context-aware suggestion chips and route generation to the correct named template. Adds worksheet generation as a new first-class output type.
 
 **PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
-**Target:** May–June 2026
 
-**Key capabilities:**
+**Deployed features:**
 - Named template library (8 subject-specific templates)
 - Subject/class auto-detection via extended Claude Haiku classification
 - Multi-child disambiguation modal
@@ -5174,6 +5173,11 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - High-level summary chip
 - Weak area analysis (Claude Sonnet)
 - Manual detection override UI
+- ClassificationBar, ClassificationOverridePanel, ChildDisambiguationModal (frontend)
+- Worksheets tab on CourseDetailPage
+- Mobile support via WebView approach
+- Worksheet pagination and PDF export
+- Gmail callback fix for email digest setup
 
 **Data model:** Extends existing `study_guides` table with `guide_type='worksheet'` and `guide_type='weak_area_analysis'`. New columns: `template_key`, `num_questions`, `difficulty`, `answer_key_markdown`, `weak_topics`. New columns on `course_content`: `detected_subject`, `detection_confidence`, `classification_override`.
 
@@ -5190,31 +5194,39 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 
 **Existing upload backfill:** No batch backfill. Pre-UTDF materials show generic chips (current behavior) + "Detect subject" opt-in link for on-demand classification (free, no credits consumed).
 
-**Stories (13):**
-- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
-- [ ] [CB-UTDF-S2] DB migration: new columns on course_content + study_guides (#2950)
-- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
-- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
-- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
-- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
-- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
-- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
-- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957)
-- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
-- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
-- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
-- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
+**Stories (13) — all IMPLEMENTED:**
+- [x] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
+- [x] [CB-UTDF-S2] DB migration: new columns on course_content + study_guides (#2950)
+- [x] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
+- [x] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
+- [x] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
+- [x] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
+- [x] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
+- [x] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
+- [x] [CB-UTDF-S9] Answer key generation endpoint (#2957)
+- [x] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
+- [x] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
+- [x] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
+- [x] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
 
 **Architecture review fixes (G1–G12):** #3019–#3030
 
-**Deployment Status (2026-04-10): PARTIALLY DEPLOYED**
-- Code merged to master across 17 parallel streams (S1–S15 + architecture fixes)
-- Frontend components live (ClassificationBar, chips, disambiguation modal, worksheets tab)
-- Backend endpoints deployed but UTDF-specific DB columns **blocked** — ALTER TABLE migrations never ran due to PostgreSQL advisory lock issue (#3079)
-- Hotfixes applied during deployment session:
-  - Commented out UTDF model columns in `course_content.py` and `study_guide.py` to prevent INSERT crashes
-  - Commented out UTDF fields in response schemas (`CourseContentResponse`, `StudyGuideResponse`)
-  - Attempted `deferred()` workaround — failed because deferred only affects SELECT, not INSERT/UPDATE
-- **Blocking issue:** #3079 — `pg_advisory_lock(1)` blocks indefinitely during rolling deployments
-- **Re-enable ticket:** #3080 — uncomment columns/schemas after advisory lock fix
-- **Lessons learned:** #3081 (deferred() not a migration safety mechanism), #3082 (Pydantic from_attributes triggers deferred loads)
+**PRs:**
+- PR #3068 — Main UTDF implementation (17 parallel streams merged via integration branch)
+- PR #3085 — Post-deployment fixes (Gmail callback, classifier prompt, pagination, PDF export, guide cleanup, digest format)
+
+**Deployment Incident Summary (2026-04-10/11):**
+- 2026-04-10 21:08 — PR #3068 merged to master
+- 2026-04-10 21:18 — Production 500 errors: PostgreSQL ALTER TABLE migrations blocked by `pg_advisory_lock(1)` held by previous Cloud Run instance
+- 2026-04-11 01:00–04:00 — Hotfix attempts: deferred columns, synchronous migrations, advisory lock fix
+- 2026-04-11 ~17:30 — Final resolution: columns manually added via Cloud SQL Studio, code redeployed with columns enabled
+- 2026-04-11 17:40 — PR #3085 merged with additional fixes
+- **Key lesson:** replaced `pg_advisory_lock` with `pg_try_advisory_lock` (3 retries, 5s wait) to prevent future deadlocks
+- **Deployment issues:** #3070–#3075 (PR review fixes), #3077–#3078 (pagination, PDF export), #3079 (advisory lock root cause), #3080 (re-enable columns), #3081–#3082 (documentation), #3083 (Gmail callback)
+- **Follow-up issues:** #3089 (health check schema verification), #3090 (migration-aware traffic routing)
+
+**Remaining open architecture review items (future enhancements):**
+- #3021 — Contradictory answer key storage design
+- #3022 — Multi-subject document detection
+- #3023 — Dual chip code paths for legacy materials
+- #3024 — teacher_notes enum chip set ambiguity

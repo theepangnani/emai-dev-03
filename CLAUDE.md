@@ -40,6 +40,9 @@ npm run lint
 - **Auth:** Register/Login → JWT in localStorage → Axios interceptor
 - **DB tables** created at startup via `create_all()` (no Alembic). New columns need `ALTER TABLE` migrations in `main.py`.
 - **Migration safety:** `deferred()` on a SQLAlchemy column only prevents SELECT loading — INSERT/UPDATE still include the column and will crash if it doesn't exist in the DB. Similarly, Pydantic `from_attributes=True` triggers lazy loads on deferred columns during serialization. If a column doesn't exist in production yet, it must be commented out of both the model AND the response schema.
+- **Migration locking:** Use `pg_try_advisory_lock` (NOT `pg_advisory_lock`) with 3 retries and 5s wait. `pg_advisory_lock` blocks forever if a previous Cloud Run instance holds the lock.
+- **Admin migration endpoint:** `POST /api/admin/run-migrations` — use for manual column additions when startup migrations fail.
+- **Cloud Run traffic routing:** After deploy, run `gcloud run services update-traffic --to-latest` to ensure traffic shifts to the new revision (old instances may stay alive and hold locks).
 - **API prefix:** `/api`. Frontend base URL: `VITE_API_URL` (default `http://localhost:8000`)
 
 ## Config
