@@ -383,6 +383,31 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
 - [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
 
+#### CB-PCM-001 — Admin Customer Database: CRM, Branded Email & Messaging (Phase 2, §6.132) — #2974
+
+Standalone Customer Database (CRM) for admin outreach to parents/prospects. 4 new tables, SendGrid email, Twilio WhatsApp/SMS, branded templates, audit logging.
+
+**Target:** April 2026
+**Data model:** 4 new tables: parent_contacts, parent_contact_notes, outreach_templates, outreach_log
+
+**M1 — Backend Foundation:**
+- [ ] [CB-PCM-S1] DB models + migrations: 4 tables (#2975)
+- [ ] [CB-PCM-S2] Pydantic schemas (#2976)
+
+**M2 — Backend APIs:**
+- [ ] [CB-PCM-S3] Customer contacts CRUD API (#2977)
+- [ ] [CB-PCM-S4] Outreach templates CRUD API + 5 seed templates (#2978)
+- [ ] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
+
+**M3 — Frontend:**
+- [ ] [CB-PCM-S6] Frontend — Admin Customer Database page (#2980)
+- [ ] [CB-PCM-S7] Frontend — Unified Outreach Composer (#2981)
+
+**M4 — Quality:**
+- [ ] [CB-PCM-S9] Tests — backend + frontend (#2983)
+
+---
+
 #### UI/UX Audit — Phase 1 Improvements (#668)
 
 **Audit Report:** [design/UI_AUDIT_REPORT.md](../design/UI_AUDIT_REPORT.md)
