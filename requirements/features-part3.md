@@ -5221,9 +5221,19 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - 2026-04-11 01:00–04:00 — Hotfix attempts: deferred columns, synchronous migrations, advisory lock fix
 - 2026-04-11 ~17:30 — Final resolution: columns manually added via Cloud SQL Studio, code redeployed with columns enabled
 - 2026-04-11 17:40 — PR #3085 merged with additional fixes
+- 2026-04-11 18:36 — PR #3091 merged: PR review fixes (dead code, skip validation, cleanup dedup, frontend empty state, activity logging, Print/PDF gating)
+- 2026-04-11 18:47 — Deployed revision `classbridge-01055-q96` (manual trigger — daily auto-deploy limit reached)
 - **Key lesson:** replaced `pg_advisory_lock` with `pg_try_advisory_lock` (3 retries, 5s wait) to prevent future deadlocks
 - **Deployment issues:** #3070–#3075 (PR review fixes), #3077–#3078 (pagination, PDF export), #3079 (advisory lock root cause), #3080 (re-enable columns), #3081–#3082 (documentation), #3083 (Gmail callback)
+- **PR review issues (all closed):** #3086 (dead code), #3087 (skip validation), #3088 (cleanup dedup), #3092 (log_action consolidation), #3094 (Print/PDF gating), #3076 (frontend empty state + activity log)
 - **Follow-up issues:** #3089 (health check schema verification), #3090 (migration-aware traffic routing)
+
+**Study Guide Failure Handling (#3076) — DEPLOYED:**
+- Backend: `_cleanup_empty_guide(guide_id, logger, *, user_id, error)` helper handles both record deletion and activity logging in one call
+- Backend: Failed generations recorded in activity log (`action="error"`) for parent/admin visibility
+- Frontend: `StudyGuideTab` shows "Generation failed" notice when `studyGuide` exists but `content` is empty
+- Frontend: Print/PDF buttons hidden for empty guides; single Regenerate button in action bar
+- Prevents blank study guides from appearing in the UI after API errors
 
 **Remaining open architecture review items (future enhancements):**
 - #3021 — Contradictory answer key storage design
