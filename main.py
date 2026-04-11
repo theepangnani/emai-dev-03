@@ -59,6 +59,7 @@ from app.models.bug_report import BugReport  # noqa: F401
 from app.models.daily_quiz import DailyQuiz  # noqa: F401
 from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 from app.models.teacher_thanks import TeacherThanks  # noqa: F401
+from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 

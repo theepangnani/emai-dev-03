@@ -47,6 +47,7 @@ from app.models.bug_report import BugReport
 from app.models.daily_quiz import DailyQuiz
 from app.models.journey_hint import JourneyHint
 from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog
+from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog
 
 
 __all__ = [
@@ -122,4 +123,8 @@ __all__ = [
     "ParentGmailIntegration",
     "ParentDigestSettings",
     "DigestDeliveryLog",
+    "ParentContact",
+    "ParentContactNote",
+    "OutreachTemplate",
+    "OutreachLog",
 ]
