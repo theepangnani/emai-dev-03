@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DateTime, Text, Index
-from sqlalchemy.orm import relationship, backref, deferred
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func, text
 
 from app.db.database import Base
@@ -57,14 +57,12 @@ class CourseContent(Base):
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
     # UTDF classification columns (§6.131, #2950, #3022)
-    # TEMPORARILY REMOVED from model — columns do not yet exist in production PostgreSQL.
-    # The advisory lock blocks background migrations. Once migrations are confirmed,
-    # uncomment these and remove from the deferred exclusion.
-    # detected_subject = Column(String(50), nullable=True)
-    # detection_confidence = Column(Float, nullable=True)
-    # subject_confidence = Column(Float, nullable=True)
-    # template_key = Column(String(50), nullable=True)
-    # classification_override = Column(Boolean, nullable=True, default=False, server_default=text("false"))
+    # Re-enabled after advisory lock fix (#3079)
+    detected_subject = Column(String(50), nullable=True)
+    detection_confidence = Column(Float, nullable=True)
+    subject_confidence = Column(Float, nullable=True)
+    template_key = Column(String(50), nullable=True)
+    classification_override = Column(Boolean, nullable=True, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

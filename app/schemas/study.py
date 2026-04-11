@@ -52,10 +52,9 @@ class StudyGuideResponse(BaseModel):
     parent_summary: str | None = None
     curriculum_codes: str | None = None  # JSON string
     suggestion_topics: str | None = None
-    # UTDF fields — excluded until DB migration confirmed on production PG.
-    # answer_key_markdown: str | None = None
-    # weak_topics: str | None = None
-    # ai_engine: str | None = None
+    answer_key_markdown: str | None = None
+    weak_topics: str | None = None
+    ai_engine: str | None = None
     created_at: datetime
     archived_at: datetime | None = None
     safety_checked: bool = True

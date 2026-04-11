@@ -147,18 +147,34 @@ def run_startup_migrations(engine, settings, logger):
     """
     _is_sqlite = "sqlite" in settings.database_url
     _migration_lock_conn = None
+    _lock_acquired = False
+
     if not _is_sqlite:
         _migration_lock_conn = engine.connect()
-        _migration_lock_conn.execute(text("SELECT pg_advisory_lock(1)"))
-        logger.info("Acquired advisory lock for migrations")
+        # Use pg_try_advisory_lock instead of pg_advisory_lock to avoid
+        # blocking forever if a previous Cloud Run instance holds the lock.
+        # Retry up to 3 times with 5-second waits. (#3079)
+        for _attempt in range(1, 4):
+            result = _migration_lock_conn.execute(text("SELECT pg_try_advisory_lock(1)"))
+            _lock_acquired = result.scalar()
+            if _lock_acquired:
+                logger.info("Acquired advisory lock for migrations (attempt %d)", _attempt)
+                break
+            logger.warning("Advisory lock held by another instance (attempt %d/3), retrying in 5s...", _attempt)
+            import time
+            time.sleep(5)
+
+        if not _lock_acquired:
+            logger.warning("Could not acquire advisory lock after 3 attempts — running migrations without lock")
 
     try:
         _run_migrations_inner(engine, settings, logger)
     finally:
         if _migration_lock_conn is not None:
-            _migration_lock_conn.execute(text("SELECT pg_advisory_unlock(1)"))
+            if _lock_acquired:
+                _migration_lock_conn.execute(text("SELECT pg_advisory_unlock(1)"))
+                logger.info("Released advisory lock after migrations")
             _migration_lock_conn.close()
-            logger.info("Released advisory lock after migrations")
 
 
 # ---------------------------------------------------------------------------
