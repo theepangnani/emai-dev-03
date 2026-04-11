@@ -272,15 +272,21 @@ export function StudyGuideTab({
 
   const handleChipClick = (action: string, templateKey?: string) => {
     setGeneratingAction(templateKey || action);
-    if ((action === 'quiz' || action === 'practice_test') && onFormatSelect) {
-      onFormatSelect('quiz' as StudyFormat);
+
+    // Actions that route to a different tab
+    const TAB_ACTIONS: Record<string, StudyFormat> = {
+      quiz: 'quiz',
+      practice_test: 'quiz',
+      flashcards: 'flashcards',
+    };
+    const targetTab = TAB_ACTIONS[action];
+    if (targetTab && onFormatSelect) {
+      setGeneratingAction(null);
+      onFormatSelect(targetTab);
       return;
     }
-    if (action === 'flashcards' && onFormatSelect) {
-      onFormatSelect('flashcards' as StudyFormat);
-      return;
-    }
-    // For study_guide actions with or without a template key
+
+    // Remaining actions generate a study guide variant via onGenerate
     onGenerate({
       documentType: documentType || autoDetectedType || undefined,
       studyGoal: studyGoal || undefined,
