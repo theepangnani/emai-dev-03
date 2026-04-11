@@ -3660,10 +3660,3 @@ async def list_worksheets(
         query = query.filter(StudyGuide.course_content_id == content_id)
     guides = query.order_by(StudyGuide.created_at.desc()).offset(skip).limit(limit).all()
     return [WorksheetResponse.model_validate(g) for g in guides]
-
-    logger.info(
-        "Weak area analysis created | user_id=%s | guide_id=%s | topics=%s",
-        current_user.id, study_guide.id, weak_topics_list,
-    )
-
-    return StudyGuideResponse.model_validate(study_guide)
