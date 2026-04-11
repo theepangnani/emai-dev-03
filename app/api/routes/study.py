@@ -78,6 +78,20 @@ INSUFFICIENT_TEXT_MSG = (
 MIN_QUESTION_CHARS = 10
 
 
+def _cleanup_empty_guide(guide_id: int, logger) -> None:
+    """Delete a study guide record if it has no content (stream failure cleanup)."""
+    try:
+        from app.db.database import SessionLocal
+        with SessionLocal() as db:
+            guide = db.get(StudyGuide, guide_id)
+            if guide and not guide.content:
+                db.delete(guide)
+                db.commit()
+                logger.info("Deleted empty study guide %d after stream failure", guide_id)
+    except Exception as e:
+        logger.warning("Failed to clean up empty guide %d: %s", guide_id, e)
+
+
 def _apply_parent_question_guards(
     body, description: str, title: str, current_user: User,
 ) -> tuple[str, str]:
@@ -2325,17 +2339,15 @@ async def generate_child_guide_stream(
                     return
         except Exception as e:
             logger.error("SSE child guide stream failed: %s: %s", type(e).__name__, e)
-            # Clean up empty placeholder record (#3076)
+            _cleanup_empty_guide(child_guide_id, logger)
+            # Log activity for failed generation (#3076)
             try:
                 from app.db.database import SessionLocal
-                with SessionLocal() as cleanup_db:
-                    orphan = cleanup_db.get(StudyGuide, child_guide_id)
-                    if orphan and not orphan.content:
-                        cleanup_db.delete(orphan)
-                        cleanup_db.commit()
-                        logger.info("Deleted empty child guide %d after stream failure", child_guide_id)
-            except Exception as ce:
-                logger.warning("Failed to clean up empty child guide %d: %s", child_guide_id, ce)
+                with SessionLocal() as log_db:
+                    log_action(log_db, user_id=user_id, action="error", resource_type="study_guide",
+                               resource_id=child_guide_id, details=f"Stream generation failed: {type(e).__name__}: {e}")
+            except Exception:
+                pass  # Don't let logging failure mask the original error
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3274,17 +3286,15 @@ async def generate_study_guide_stream_endpoint(
 
         except Exception as e:
             logger.error("SSE study guide stream failed: %s: %s", type(e).__name__, e)
-            # Clean up empty placeholder record (#3076)
+            _cleanup_empty_guide(guide_id, logger)
+            # Log activity for failed generation (#3076)
             try:
                 from app.db.database import SessionLocal
-                with SessionLocal() as cleanup_db:
-                    orphan = cleanup_db.get(StudyGuide, guide_id)
-                    if orphan and not orphan.content:
-                        cleanup_db.delete(orphan)
-                        cleanup_db.commit()
-                        logger.info("Deleted empty study guide %d after stream failure", guide_id)
-            except Exception as ce:
-                logger.warning("Failed to clean up empty guide %d: %s", guide_id, ce)
+                with SessionLocal() as log_db:
+                    log_action(log_db, user_id=user_id, action="error", resource_type="study_guide",
+                               resource_id=guide_id, details=f"Stream generation failed: {type(e).__name__}: {e}")
+            except Exception:
+                pass  # Don't let logging failure mask the original error
             yield f"event: error\ndata: {json.dumps({'message': 'AI generation failed. Please try again.'})}\n\n"
             return
 
@@ -3645,7 +3655,7 @@ async def get_worksheet(
 @router.get("/worksheets", response_model=list[WorksheetResponse])
 async def list_worksheets(
     content_id: int | None = None,
-    skip: int = 0,
+    skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -3660,10 +3670,3 @@ async def list_worksheets(
         query = query.filter(StudyGuide.course_content_id == content_id)
     guides = query.order_by(StudyGuide.created_at.desc()).offset(skip).limit(limit).all()
     return [WorksheetResponse.model_validate(g) for g in guides]
-
-    logger.info(
-        "Weak area analysis created | user_id=%s | guide_id=%s | topics=%s",
-        current_user.id, study_guide.id, weak_topics_list,
-    )
-
-    return StudyGuideResponse.model_validate(study_guide)

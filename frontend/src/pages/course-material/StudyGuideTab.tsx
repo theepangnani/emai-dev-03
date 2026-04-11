@@ -321,6 +321,15 @@ export function StudyGuideTab({
           )}
           <ContentMetaBar courseName={courseName} createdAt={createdAt || studyGuide.created_at} linkedTasks={linkedTasks} courseId={courseId} />
           <LinkedTasksBanner tasks={linkedTasks} />
+          {!studyGuide.content && !isStreaming && (
+            <div className="cm-tab-card-body" style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>Study guide generation failed. Please try again.</p>
+              <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
+                <button className="cm-action-btn" onClick={() => onGenerate()} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate Study Guide</button>
+                {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
+              </span>
+            </div>
+          )}
           {studyGuide.parent_summary && (
             <ParentSummaryCard summary={studyGuide.parent_summary} />
           )}
@@ -330,7 +339,7 @@ export function StudyGuideTab({
                 <StreamingMarkdown content={streamingContent} isStreaming={true} />
               </ContentCard>
             </div>
-          ) : (
+          ) : studyGuide.content ? (
             <>
               {generating === 'study_guide' && !isStreaming && (
                 <div className="cm-regen-status">
@@ -353,7 +362,7 @@ export function StudyGuideTab({
                 </ContentCard>
               </div>
             </>
-          )}
+          ) : null}
           {!isStreaming && parsedSuggestionTopics.length > 0 && (
             <StudyGuideSuggestionChips
               topics={parsedSuggestionTopics}
