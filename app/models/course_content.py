@@ -1,7 +1,7 @@
 import enum
 
 from sqlalchemy import Boolean, Column, Float, Integer, String, ForeignKey, DateTime, Text, Index
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, deferred
 from sqlalchemy.sql import func, text
 
 from app.db.database import Base
@@ -57,11 +57,13 @@ class CourseContent(Base):
     study_goal_text = Column(String(200), nullable=True)  # Free-form focus text for study goal
 
     # UTDF classification columns (§6.131, #2950, #3022)
-    detected_subject = Column(String(50), nullable=True)  # math|science|english|french|history|geography|computer_studies|other|mixed|unknown
-    detection_confidence = Column(Float, nullable=True)  # 0.0-1.0
-    subject_confidence = Column(Float, nullable=True)  # 0.0–1.0 confidence score (alias)
-    template_key = Column(String(50), nullable=True)  # resolved template key
-    classification_override = Column(Boolean, nullable=False, default=False, server_default=text("false"))  # true if parent manually corrected
+    # Using deferred() so these columns are NOT included in default SELECT queries.
+    # This prevents crashes if the ALTER TABLE migration hasn't run yet on PostgreSQL.
+    detected_subject = deferred(Column(String(50), nullable=True))
+    detection_confidence = deferred(Column(Float, nullable=True))
+    subject_confidence = deferred(Column(Float, nullable=True))
+    template_key = deferred(Column(String(50), nullable=True))
+    classification_override = deferred(Column(Boolean, nullable=True, default=False, server_default=text("false")))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

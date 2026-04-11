@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Index
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, deferred
 from sqlalchemy.sql import func
 
 from app.db.database import Base
@@ -31,12 +31,13 @@ class StudyGuide(Base):
     generation_context = Column(Text, nullable=True)  # Selected text that triggered sub-guide generation
 
     # UTDF worksheet/template columns (§6.131, #2950, #3029)
-    template_key = Column(String(50), nullable=True)  # which template was used
-    num_questions = Column(Integer, nullable=True)  # for worksheets (5-20)
-    difficulty = Column(String(20), nullable=True)  # below_grade|grade_level|above_grade
-    answer_key_markdown = Column(Text, nullable=True)  # answer key content
-    weak_topics = Column(Text, nullable=True)  # JSON string of weak topic areas
-    ai_engine = Column(String(20), nullable=True)  # openai|claude_haiku|claude_sonnet (G11)
+    # Using deferred() so columns are NOT in default SELECT — prevents crashes if migration hasn't run
+    template_key = deferred(Column(String(50), nullable=True))
+    num_questions = deferred(Column(Integer, nullable=True))
+    difficulty = deferred(Column(String(20), nullable=True))
+    answer_key_markdown = deferred(Column(Text, nullable=True))
+    weak_topics = deferred(Column(Text, nullable=True))
+    ai_engine = deferred(Column(String(20), nullable=True))
 
     # Study Guide Strategy Pattern (§6.105, #1972)
     parent_summary = Column(Text, nullable=True)  # Parent-facing simplified summary
