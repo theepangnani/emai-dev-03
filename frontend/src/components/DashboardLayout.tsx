@@ -17,6 +17,25 @@ import { JourneyWelcomeModal } from './JourneyWelcomeModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import '../pages/Dashboard.css';
 
+const NAV_CLASS_MAP = {
+  sidebar: {
+    item: 'sidebar-link',
+    icon: 'sidebar-link-icon',
+    label: 'sidebar-link-label',
+    badge: 'sidebar-badge',
+    divider: 'sidebar-divider',
+    groupTitle: 'sidebar-group-title',
+  },
+  'ps-nav': {
+    item: 'ps-nav-item',
+    icon: 'ps-nav-icon',
+    label: 'ps-nav-label',
+    badge: 'ps-nav-badge',
+    divider: 'ps-divider',
+    groupTitle: 'ps-group-title',
+  },
+} as const;
+
 interface SidebarAction {
   label: string;
   icon?: string;
@@ -519,13 +538,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     showTitleAttr?: boolean;
   }) => {
     const { classPrefix, onNavigate, isActive, showTitleAttr } = opts;
-    const itemClass = classPrefix === 'sidebar' ? 'sidebar-link' : 'ps-nav-item';
-    const iconClass = classPrefix === 'sidebar' ? 'sidebar-link-icon' : 'ps-nav-icon';
-    const labelClass = classPrefix === 'sidebar' ? 'sidebar-link-label' : 'ps-nav-label';
-    const badgeClass = classPrefix === 'sidebar' ? 'sidebar-badge' : 'ps-nav-badge';
-
-    const dividerClass = classPrefix === 'sidebar' ? 'sidebar-divider' : 'ps-divider';
-    const groupTitleClass = classPrefix === 'sidebar' ? 'sidebar-group-title' : 'ps-group-title';
+    const cls = NAV_CLASS_MAP[classPrefix];
 
     return navItems.map((item, index) => {
       const active = isActive(item.path);
@@ -536,9 +549,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         <Fragment key={item.path}>
           {showGroupHeader && (
             <>
-              <div className={dividerClass} />
+              <div className={cls.divider} />
               <button
-                className={groupTitleClass}
+                className={cls.groupTitle}
                 onClick={() => toggleGroupCollapsed(item.group!)}
                 aria-expanded={!isCollapsed}
               >
@@ -549,18 +562,18 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           )}
           {!isCollapsed && (
             <button
-              className={`${itemClass}${active ? ' active' : ''}`}
+              className={`${cls.item}${active ? ' active' : ''}`}
               onClick={() => onNavigate(item.path)}
               aria-current={active ? 'page' : undefined}
               {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
             >
-              <span className={iconClass}><NavIcon name={item.label} /></span>
-              <span className={labelClass}>{item.label}</span>
+              <span className={cls.icon}><NavIcon name={item.label} /></span>
+              <span className={cls.label}>{item.label}</span>
               {item.path === '/messages' && unreadCount > 0 && (
-                <span className={badgeClass}>{unreadCount}</span>
+                <span className={cls.badge}>{unreadCount}</span>
               )}
               {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-                <span className={badgeClass}>{pendingStudyCount}</span>
+                <span className={cls.badge}>{pendingStudyCount}</span>
               )}
             </button>
           )}
