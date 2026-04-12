@@ -268,9 +268,9 @@ export function AdminDashboard() {
 
             {/* Feature Toggles — managed via dedicated page */}
             <div style={{ marginTop: 16 }}>
-              <a href="/admin/features" style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary, #2563eb)', textDecoration: 'none' }}>
+              <Link to="/admin/features" style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary, #2563eb)', textDecoration: 'none' }}>
                 Manage Features &rarr;
-              </a>
+              </Link>
             </div>
           </div>
         </section>

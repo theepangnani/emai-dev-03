@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../api/admin';
 import type { FeatureFlagItem } from '../api/admin';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -12,6 +13,7 @@ export function AdminFeaturesPage() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const loadFeatures = async () => {
     setLoading(true);
@@ -36,6 +38,7 @@ export function AdminFeaturesPage() {
         prev.map(f => f.key === key ? { ...f, enabled: result.enabled, updated_at: new Date().toISOString() } : f)
       );
       toast(`${key.replace(/_/g, ' ')} ${result.enabled ? 'enabled' : 'disabled'}`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['feature-toggles'] });
     } catch (err) {
       console.error('Failed to toggle feature:', err);
       toast('Failed to update feature', 'error');
@@ -85,6 +88,7 @@ export function AdminFeaturesPage() {
                       checked={f.enabled}
                       disabled={toggling[f.key]}
                       onChange={() => handleToggle(f.key, f.enabled)}
+                      aria-label={`Toggle ${f.name}`}
                     />
                     <span className="admin-toggle-slider" />
                   </label>
