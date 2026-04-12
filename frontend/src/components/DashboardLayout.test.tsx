@@ -70,4 +70,12 @@ describe('DashboardLayout', () => {
     renderLayout('teacher')
     expect(screen.getAllByText('Teacher Comms').length).toBeGreaterThanOrEqual(1)
   })
+
+  it('shows admin nav items with Admin Tools group header', () => {
+    renderLayout('admin')
+    expect(screen.getAllByText('Analytics').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Waitlist').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Customer DB').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Admin Tools').length).toBeGreaterThanOrEqual(1)
+  })
 })
