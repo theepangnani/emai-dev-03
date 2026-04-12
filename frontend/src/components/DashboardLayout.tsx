@@ -244,6 +244,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [reconnecting, setReconnecting] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('navGroupCollapsed');
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
   const { canInstall, installApp } = usePWAInstall();
 
   useEffect(() => {
@@ -497,6 +503,14 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
   const showVerifyBanner = user && !user.email_verified && !verifyBannerDismissed;
 
+  const toggleGroupCollapsed = useCallback((group: string) => {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [group]: !prev[group] };
+      localStorage.setItem('navGroupCollapsed', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   // Shared nav-item renderer to deduplicate slide-out and persistent sidebar (#3144)
   const renderNavItems = (opts: {
     classPrefix: 'sidebar' | 'ps-nav';
@@ -517,29 +531,39 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       const active = isActive(item.path);
       const prevGroup = index > 0 ? navItems[index - 1].group : undefined;
       const showGroupHeader = item.group && item.group !== prevGroup;
+      const isCollapsed = item.group ? !!collapsedGroups[item.group] : false;
       return (
         <Fragment key={item.path}>
           {showGroupHeader && (
             <>
               <div className={dividerClass} />
-              <div className={groupTitleClass}>{item.group}</div>
+              <button
+                className={groupTitleClass}
+                onClick={() => toggleGroupCollapsed(item.group!)}
+                aria-expanded={!isCollapsed}
+              >
+                <span className="group-title-chevron">{isCollapsed ? '\u25B8' : '\u25BE'}</span>
+                {item.group}
+              </button>
             </>
           )}
-          <button
-            className={`${itemClass}${active ? ' active' : ''}`}
-            onClick={() => onNavigate(item.path)}
-            aria-current={active ? 'page' : undefined}
-            {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
-          >
-            <span className={iconClass}><NavIcon name={item.label} /></span>
-            <span className={labelClass}>{item.label}</span>
-            {item.path === '/messages' && unreadCount > 0 && (
-              <span className={badgeClass}>{unreadCount}</span>
-            )}
-            {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-              <span className={badgeClass}>{pendingStudyCount}</span>
-            )}
-          </button>
+          {!isCollapsed && (
+            <button
+              className={`${itemClass}${active ? ' active' : ''}`}
+              onClick={() => onNavigate(item.path)}
+              aria-current={active ? 'page' : undefined}
+              {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
+            >
+              <span className={iconClass}><NavIcon name={item.label} /></span>
+              <span className={labelClass}>{item.label}</span>
+              {item.path === '/messages' && unreadCount > 0 && (
+                <span className={badgeClass}>{unreadCount}</span>
+              )}
+              {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                <span className={badgeClass}>{pendingStudyCount}</span>
+              )}
+            </button>
+          )}
         </Fragment>
       );
     });
