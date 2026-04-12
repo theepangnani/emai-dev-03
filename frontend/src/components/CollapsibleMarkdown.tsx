@@ -18,7 +18,7 @@ function splitAtH2(markdown: string): { preamble: string; sections: MarkdownSect
 
   let inCodeBlock = false;
   for (const line of lines) {
-    if (line.trim().startsWith('```')) {
+    if (line.trimStart().startsWith('```')) {
       inCodeBlock = !inCodeBlock;
     }
     const match = !inCodeBlock && line.match(/^##\s+(.+)/);
