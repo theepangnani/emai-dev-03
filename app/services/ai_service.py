@@ -224,66 +224,95 @@ async def generate_content_stream(
         - {"event": "error", "data": "<message>"}  on failure
     """
     start_time = time.time()
+    max_retries = 2
 
-    try:
-        client = get_async_anthropic_client()
-        full_content = ""
+    for attempt in range(1, max_retries + 2):  # 1-indexed, up to max_retries+1 attempts
+        chunks_yielded = False
+        try:
+            client = get_async_anthropic_client()
+            full_content = ""
 
-        async with client.messages.stream(
-            model=settings.claude_model,
-            system=system_prompt,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=temperature,
-        ) as stream:
-            async for text in stream.text_stream:
-                full_content += text
-                yield {"event": "chunk", "data": text}
+            async with client.messages.stream(
+                model=settings.claude_model,
+                system=system_prompt,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=temperature,
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_content += text
+                    chunks_yielded = True
+                    yield {"event": "chunk", "data": text}
 
-            final = await stream.get_final_message()
-            input_tok = final.usage.input_tokens
-            output_tok = final.usage.output_tokens
-            stop_reason = final.stop_reason
-            is_truncated = stop_reason == "max_tokens"
+                final = await stream.get_final_message()
+                input_tok = final.usage.input_tokens
+                output_tok = final.usage.output_tokens
+                stop_reason = final.stop_reason
+                is_truncated = stop_reason == "max_tokens"
 
-        model = settings.claude_model
-        _last_ai_usage.set({
-            "prompt_tokens": input_tok,
-            "completion_tokens": output_tok,
-            "total_tokens": input_tok + output_tok,
-            "model_name": model,
-            "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
-        })
+            model = settings.claude_model
+            _last_ai_usage.set({
+                "prompt_tokens": input_tok,
+                "completion_tokens": output_tok,
+                "total_tokens": input_tok + output_tok,
+                "model_name": model,
+                "estimated_cost_usd": _calc_cost(model, input_tok, output_tok),
+            })
 
-        duration_ms = (time.time() - start_time) * 1000
-        logger.info(
-            f"Content stream completed | duration={duration_ms:.2f}ms | "
-            f"input_tokens={input_tok} | output_tokens={output_tok} | "
-            f"stop_reason={stop_reason}"
-        )
+            duration_ms = (time.time() - start_time) * 1000
+            logger.info(
+                f"Content stream completed | attempt={attempt} | duration={duration_ms:.2f}ms | "
+                f"input_tokens={input_tok} | output_tokens={output_tok} | "
+                f"stop_reason={stop_reason}"
+            )
 
-        yield {
-            "event": "done",
-            "data": {
-                "is_truncated": is_truncated,
-                "full_content": full_content,
-            },
-        }
+            yield {
+                "event": "done",
+                "data": {
+                    "is_truncated": is_truncated,
+                    "full_content": full_content,
+                },
+            }
+            return  # Success — exit the retry loop
 
-    except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
-        if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
-            raise
-        duration_ms = (time.time() - start_time) * 1000
-        logger.error(
-            f"Content stream failed | duration={duration_ms:.2f}ms | "
-            f"error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
-        )
-        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
+            if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
+                raise
+            duration_ms = (time.time() - start_time) * 1000
 
-    except Exception as e:
-        duration_ms = (time.time() - start_time) * 1000
-        logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}")
-        yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+            # If chunks were already sent, don't retry to avoid duplicate content (#2905)
+            if chunks_yielded:
+                logger.error(
+                    f"Content stream failed mid-stream (no retry) | attempt={attempt} | "
+                    f"duration={duration_ms:.2f}ms | "
+                    f"error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
+                )
+                yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+                return
+
+            if attempt <= max_retries:
+                backoff = 2 ** (attempt - 1)  # 1s, 2s
+                logger.warning(
+                    f"Content stream transient error (attempt {attempt}/{max_retries + 1}) | "
+                    f"duration={duration_ms:.2f}ms | "
+                    f"error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e} | "
+                    f"retrying in {backoff}s"
+                )
+                await asyncio.sleep(backoff)
+            else:
+                logger.error(
+                    f"Content stream failed after {attempt} attempts | "
+                    f"duration={duration_ms:.2f}ms | "
+                    f"error={type(e).__name__}(status={getattr(e, 'status_code', '?')}): {e}"
+                )
+                yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+                return
+
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}")
+            yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
+            return
 
 
 async def summarize_teacher_communication(

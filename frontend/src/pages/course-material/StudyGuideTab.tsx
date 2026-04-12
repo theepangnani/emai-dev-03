@@ -109,6 +109,7 @@ export function StudyGuideTab({
   const [exporting, setExporting] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [continuingContent, setContinuingContent] = useState('');
+  const [continueError, setContinueError] = useState('');
 
   // Abort in-flight continue stream on unmount
   useEffect(() => {
@@ -182,6 +183,7 @@ export function StudyGuideTab({
 
     setContinuing(true);
     setContinuingContent('');
+    setContinueError('');
 
     const token = localStorage.getItem('token') || '';
     const apiBase = import.meta.env.VITE_API_URL ?? '';
@@ -229,8 +231,12 @@ export function StudyGuideTab({
             } else if (sseEvent.event === 'error') {
               if (controller.signal.aborted) return;
               // Error from backend — fall back to non-streaming
-              await studyApi.continueGuide(studyGuide.id);
-              onContinue?.();
+              try {
+                await studyApi.continueGuide(studyGuide.id);
+                onContinue?.();
+              } catch {
+                setContinueError('Failed to continue study guide. Please try again.');
+              }
               return;
             }
           } catch {
@@ -240,7 +246,7 @@ export function StudyGuideTab({
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      // silently fail — user can retry
+      setContinueError('Failed to continue study guide. Please try again.');
     } finally {
       continueAbortRef.current = null;
       setContinuing(false);
@@ -407,9 +413,14 @@ export function StudyGuideTab({
                   </div>
                 </>
               ) : (
-                <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
-                  {'\u2728'} Continue generating
-                </button>
+                <>
+                  <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
+                    {'\u2728'} Continue generating
+                  </button>
+                  {continueError && (
+                    <p style={{ color: 'var(--color-error, #d32f2f)', fontSize: '0.85rem', margin: '0.5rem 0 0' }}>{continueError}</p>
+                  )}
+                </>
               )}
             </div>
           )}

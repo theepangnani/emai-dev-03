@@ -16,7 +16,12 @@ interface TableOfContentsProps {
 function parseHeadings(markdown: string): TocItem[] {
   const items: TocItem[] = [];
   const lines = markdown.split('\n');
+  let inCodeBlock = false;
   for (const line of lines) {
+    if (line.trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+    }
+    if (inCodeBlock) continue;
     const match = line.match(/^(#{2,3})\s+(.+)/);
     if (!match) continue;
     const level = match[1].length as 2 | 3;
