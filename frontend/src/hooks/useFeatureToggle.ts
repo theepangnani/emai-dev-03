@@ -18,7 +18,8 @@ const DEFAULTS: FeatureToggles = {
   analytics: false,
 };
 
-async function fetchFeatures(): Promise<FeatureToggles> {
+// Export for direct query usage (e.g., FeatureGate)
+export async function fetchFeatures(): Promise<FeatureToggles> {
   const { data } = await api.get<FeatureToggles>('/api/features');
   return data;
 }
