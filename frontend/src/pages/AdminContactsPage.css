@@ -614,6 +614,8 @@
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
 }
 
 .admin-contacts-modal-actions {
