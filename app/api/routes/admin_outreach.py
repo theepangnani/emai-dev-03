@@ -83,19 +83,20 @@ def list_outreach_logs(
     total = query.count()
     logs = query.order_by(OutreachLog.created_at.desc()).offset(skip).limit(limit).all()
 
-    # Build response with joined names
+    # Bulk-fetch contacts and templates to avoid N+1 queries
+    contact_ids_set = {l.parent_contact_id for l in logs if l.parent_contact_id}
+    template_ids_set = {l.template_id for l in logs if l.template_id}
+    contacts_map = {}
+    if contact_ids_set:
+        contacts_map = {c.id: c for c in db.query(ParentContact).filter(ParentContact.id.in_(contact_ids_set)).all()}
+    templates_map = {}
+    if template_ids_set:
+        templates_map = {t.id: t for t in db.query(OutreachTemplate).filter(OutreachTemplate.id.in_(template_ids_set)).all()}
+
     items = []
     for log in logs:
-        contact = (
-            db.query(ParentContact).filter(ParentContact.id == log.parent_contact_id).first()
-            if log.parent_contact_id
-            else None
-        )
-        template = (
-            db.query(OutreachTemplate).filter(OutreachTemplate.id == log.template_id).first()
-            if log.template_id
-            else None
-        )
+        contact = contacts_map.get(log.parent_contact_id)
+        template = templates_map.get(log.template_id)
         items.append(
             OutreachLogResponse(
                 id=log.id,

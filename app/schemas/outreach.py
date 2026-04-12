@@ -96,8 +96,6 @@ class OutreachLogResponse(BaseModel):
     error_message: str | None = None
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class OutreachLogListResponse(BaseModel):
     items: list[OutreachLogResponse]
