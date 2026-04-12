@@ -158,11 +158,11 @@ export function AdminContactsPage() {
     setModalOpen(true);
   };
 
-  // Open edit modal — goes straight to step 2 (details)
+  // Open edit modal — starts at step 1 with same 3-step flow
   const openEditModal = (contact: ParentContact) => {
     setEditingContact(contact);
     setCreatedContactId(contact.id);
-    setModalStep(2);
+    setModalStep(1);
     setFormData({
       full_name: contact.full_name,
       email: contact.email || '',
@@ -583,19 +583,17 @@ export function AdminContactsPage() {
               <button className="admin-contacts-modal-close" onClick={closeModal}>&times;</button>
 
               {/* Step indicator */}
-              {!editingContact && (
-                <div className="admin-contacts-modal-steps">
+              <div className="admin-contacts-modal-steps">
                   <div className={`modal-step-dot ${modalStep >= 1 ? 'active' : ''}`}>1</div>
                   <div className="modal-step-line" />
                   <div className={`modal-step-dot ${modalStep >= 2 ? 'active' : ''}`}>2</div>
                   <div className="modal-step-line" />
                   <div className={`modal-step-dot ${modalStep >= 3 ? 'active' : ''}`}>3</div>
                 </div>
-              )}
 
               <h2>{editingContact ? 'Edit Contact' : modalStep === 1 ? 'Add Contact' : modalStep === 2 ? 'Child & School' : 'Tags & Consent'}</h2>
-              {!editingContact && modalStep === 1 && (
-                <p className="admin-contacts-modal-subtitle">Start with the basics. You can add more details next.</p>
+              {modalStep === 1 && (
+                <p className="admin-contacts-modal-subtitle">{editingContact ? 'Update the basics, then continue to details.' : 'Start with the basics. You can add more details next.'}</p>
               )}
 
               {/* Step 1: Name, Email, Phone */}
