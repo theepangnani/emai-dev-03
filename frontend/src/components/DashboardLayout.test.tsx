@@ -73,9 +73,21 @@ describe('DashboardLayout', () => {
 
   it('shows admin nav items with Admin Tools group header', () => {
     renderLayout('admin')
+    // Core nav items
+    expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Classes').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Materials').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Messages').length).toBeGreaterThanOrEqual(1)
+    // Admin Tools group header
+    expect(screen.getAllByText('Admin Tools').length).toBeGreaterThanOrEqual(1)
+    // All admin items
     expect(screen.getAllByText('Analytics').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Waitlist').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Survey Results').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('AI Usage').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Customer DB').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Admin Tools').length).toBeGreaterThanOrEqual(1)
+    // Help
+    expect(screen.getAllByText('Help').length).toBeGreaterThanOrEqual(1)
   })
 })
