@@ -18,7 +18,7 @@ function parseHeadings(markdown: string): TocItem[] {
   const lines = markdown.split('\n');
   let inCodeBlock = false;
   for (const line of lines) {
-    if (line.trimEnd().startsWith('```')) {
+    if (line.trim().startsWith('```')) {
       inCodeBlock = !inCodeBlock;
     }
     if (inCodeBlock) continue;

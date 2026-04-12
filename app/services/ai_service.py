@@ -225,7 +225,6 @@ async def generate_content_stream(
     """
     start_time = time.time()
     max_retries = 2
-    last_error: Exception | None = None
 
     for attempt in range(1, max_retries + 2):  # 1-indexed, up to max_retries+1 attempts
         chunks_yielded = False
@@ -279,7 +278,6 @@ async def generate_content_stream(
         except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.APIStatusError) as e:
             if isinstance(e, anthropic.APIStatusError) and e.status_code < 500:
                 raise
-            last_error = e
             duration_ms = (time.time() - start_time) * 1000
 
             # If chunks were already sent, don't retry to avoid duplicate content (#2905)
@@ -315,10 +313,6 @@ async def generate_content_stream(
             logger.error(f"Content stream failed | duration={duration_ms:.2f}ms | error={type(e).__name__}: {e}")
             yield {"event": "error", "data": f"AI generation failed: {type(e).__name__}"}
             return
-
-    # Should not reach here, but just in case
-    if last_error:
-        yield {"event": "error", "data": f"AI generation failed: {type(last_error).__name__}"}
 
 
 async def summarize_teacher_communication(
