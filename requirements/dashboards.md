@@ -79,8 +79,10 @@ The `DashboardLayout` renders an **always icon-only left sidebar** on desktop (�
 **Admin navigation grouping** (#3141):
 - Admin role has many nav items; group them with section headers/dividers
 - **Core** (no header): Home, Classes, Materials, Tasks, Messages
-- **Admin Tools** (section header + divider): Analytics, Waitlist, Survey Results, AI Usage, Customer DB
+- **Admin Tools** (collapsible section header + divider): Analytics, Waitlist, Survey Results, AI Usage, Customer DB
 - **Support** (bottom, no header): Help, Report a Bug, Show Tutorial
+- Group headers are **collapsible** — clicking toggles visibility of items; state persisted in `localStorage` (`navGroupCollapsed` key)
+- Chevron indicator (▾/▸) shows expanded/collapsed state
 - Group headers render in both the slide-out menu (mobile) and persistent sidebar (desktop)
 - Mobile bottom tab bar unchanged (only shows first 5 core items)
 
