@@ -90,10 +90,10 @@ The ClassBridge Team""",
 <p style="color:#334155;font-size:15px;line-height:1.6;">Parents using ClassBridge tell us the same thing: <em>"I finally know what\u2019s going on at school."</em></p>
 <p style="color:#334155;font-size:15px;line-height:1.6;">Here\u2019s what makes ClassBridge different:</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
-<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>\ud83d\udcda AI Study Guides</strong> \u2014 Upload any school document and get a personalized study guide in seconds</td></tr>
-<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>\ud83d\udcdd Practice Quizzes</strong> \u2014 AI generates quizzes at Easy, Medium, or Hard levels</td></tr>
-<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>\ud83d\udcca Assignment Tracking</strong> \u2014 See all upcoming deadlines and grades in one place</td></tr>
-<tr><td style="padding:10px 0;"><strong>\ud83d\udcac Teacher Communication</strong> \u2014 Message teachers directly through the platform</td></tr>
+<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>&#128218; AI Study Guides</strong> \u2014 Upload any school document and get a personalized study guide in seconds</td></tr>
+<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>&#128221; Practice Quizzes</strong> \u2014 AI generates quizzes at Easy, Medium, or Hard levels</td></tr>
+<tr><td style="padding:10px 0;border-bottom:1px solid #f1f5f9;"><strong>&#128202; Assignment Tracking</strong> \u2014 See all upcoming deadlines and grades in one place</td></tr>
+<tr><td style="padding:10px 0;"><strong>&#128172; Teacher Communication</strong> \u2014 Message teachers directly through the platform</td></tr>
 </table>
 <p style="text-align:center;margin:32px 0;">
 <a href="{{classbridge_url}}/waitlist" style="background:#4f46e5;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Get Started Free</a>
@@ -126,9 +126,9 @@ The ClassBridge Team""",
 <p style="color:#334155;font-size:15px;line-height:1.6;">This is our last email \u2014 we don\u2019t want to be a nuisance!</p>
 <p style="color:#334155;font-size:15px;line-height:1.6;">We\u2019re currently running a <strong>limited pilot program</strong> for ClassBridge, and spots are filling up. As an early adopter, you\u2019ll get:</p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
-<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">\ud83c\udf81</strong> Free access during the pilot period</td></tr>
-<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">\ud83d\udca1</strong> Direct input on features we build next</td></tr>
-<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">\ud83d\ude80</strong> Priority support from our team</td></tr>
+<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">&#127873;</strong> Free access during the pilot period</td></tr>
+<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">&#128161;</strong> Direct input on features we build next</td></tr>
+<tr><td style="padding:8px 0;"><strong style="color:#4f46e5;">&#128640;</strong> Priority support from our team</td></tr>
 </table>
 <p style="color:#334155;font-size:15px;line-height:1.6;">If ClassBridge sounds like it could help you stay connected to {{child_name}}\u2019s education, we\u2019d love to have you.</p>
 <p style="text-align:center;margin:32px 0;">
@@ -158,7 +158,7 @@ Click below to create your account:
 
 Welcome aboard!
 The ClassBridge Team""",
-        "body_html": """<h2 style="color:#1e293b;margin:0 0 16px 0;">\ud83c\udf89 You\u2019re Invited!</h2>
+        "body_html": """<h2 style="color:#1e293b;margin:0 0 16px 0;">&#127881; You\u2019re Invited!</h2>
 <p style="color:#334155;font-size:15px;line-height:1.6;">Hi {{full_name}},</p>
 <p style="color:#334155;font-size:15px;line-height:1.6;">Great news \u2014 you\u2019ve been selected for the <strong>ClassBridge pilot program</strong>!</p>
 <p style="color:#334155;font-size:15px;line-height:1.6;">ClassBridge is an AI-powered education platform that connects with Google Classroom to help you track {{child_name}}\u2019s progress and provide personalized study tools.</p>
