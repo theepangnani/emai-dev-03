@@ -30,6 +30,7 @@ from app.api.routes import weekly_report
 from app.api.routes import journey
 from app.api.routes import parent_email_digest
 from app.api.routes import admin_contacts
+from app.api.routes import features as features_route
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -329,6 +330,7 @@ from app.api.routes import admin_outreach_templates
 app.include_router(admin_outreach_templates.router, prefix="/api")
 from app.api.routes import admin_outreach
 app.include_router(admin_outreach.router, prefix="/api")
+app.include_router(features_route.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -451,6 +453,7 @@ async def startup_event():
     from app.services.inspiration_service import seed_messages, sync_new_messages
     from app.services.faq_seed_service import seed_faq
     from app.services.grade_seed_service import seed_grades
+    from app.services.feature_seed_service import seed_features
 
     # Seed inspiration messages, FAQ entries, and grade records if tables are empty
     db = SessionLocal()
@@ -462,6 +465,7 @@ async def startup_event():
         seed_wallet_data(db)
         from app.services.outreach_template_seed import seed_outreach_templates
         seed_outreach_templates(db)
+        seed_features(db)
     finally:
         db.close()
 

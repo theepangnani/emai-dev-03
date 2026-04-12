@@ -959,3 +959,34 @@ Admins need to manage parent relationships outside the platform's registered use
 - #3126/#3135 — Trailing slash 404 on /admin/contacts/
 - #3136/#3137 — Transparent modal background fix
 - Surrogate emoji rendering fix
+
+---
+
+### 6.133 Admin Feature Management — Toggle Features On/Off (#3145, #3146, #3147)
+
+Database-backed feature management system allowing admins to enable/disable platform features on demand via a dedicated admin page. Features are OFF by default and persist across server restarts.
+
+**Epic Issues:** #3145 (backend), #3146 (admin page), #3147 (nav/route gating)
+
+#### Motivation
+
+Report Cards, Analytics, and School Board Connectivity are not ready for all users yet. Admins need a way to toggle these features on/off without code deploys — enabling staged rollouts and quick kill-switches.
+
+#### Managed Features (Phase 1)
+
+| Key | Name | Default | Gates |
+|-----|------|---------|-------|
+| `report_cards` | Report Cards | OFF | `/school-report-cards` route + sidebar nav (parent, student) |
+| `analytics` | Analytics | OFF | `/analytics` route + sidebar nav (parent, student, admin) |
+| `school_board_connectivity` | School Board Connectivity | OFF | Future feature — no route yet |
+
+#### Implementation
+
+1. **Database model** — `feature_flags` table: `id`, `key` (unique), `name`, `description`, `enabled` (default false), `created_at`, `updated_at`
+2. **Seed service** — Seeds 3 features on startup if table empty
+3. **Admin API** — `GET /api/admin/features` (list), `PATCH /api/admin/features/{key}` (toggle)
+4. **Public API** — `GET /api/features` (authenticated, returns merged config + DB flags as `{key: bool}`)
+5. **Admin page** — `/admin/features` with toggle switches, descriptions, last-updated timestamps
+6. **FeatureGate component** — Wraps routes; redirects to `/dashboard` if feature disabled
+7. **Sidebar gating** — `DashboardLayout.tsx` conditionally shows nav items based on `useFeatureToggles()` hook
+8. **Existing flags** (`google_classroom`, `waitlist_enabled`) remain in `config.py` — not migrated

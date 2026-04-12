@@ -27,6 +27,17 @@ vi.mock('./NotificationBell', () => ({
   NotificationBell: () => <div data-testid="notification-bell" />,
 }))
 
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeatureToggles: () => ({
+    google_classroom: false,
+    waitlist_enabled: false,
+    school_board_connectivity: false,
+    report_cards: true,
+    analytics: true,
+  }),
+  useFeature: () => true,
+}))
+
 import { DashboardLayout } from './DashboardLayout'
 
 function renderLayout(role: string) {
@@ -74,6 +85,7 @@ describe('DashboardLayout', () => {
   it('shows admin nav items with Admin Tools group header', () => {
     renderLayout('admin')
     expect(screen.getAllByText('Analytics').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Features').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Waitlist').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Customer DB').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Admin Tools').length).toBeGreaterThanOrEqual(1)

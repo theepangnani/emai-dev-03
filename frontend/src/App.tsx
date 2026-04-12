@@ -7,6 +7,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './components/Toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import './App.css';
 
@@ -88,6 +89,7 @@ const AccountSettingsPage = lazyRetry(() => import('./pages/AccountSettingsPage'
 const CalendarImportPage = lazyRetry(() => import('./pages/CalendarImportPage').then((m) => ({ default: m.CalendarImportPage })));
 const ConfirmDeletionPage = lazyRetry(() => import('./pages/ConfirmDeletionPage').then((m) => ({ default: m.ConfirmDeletionPage })));
 const AdminDeletionRequestsPage = lazyRetry(() => import('./pages/AdminDeletionRequestsPage').then((m) => ({ default: m.AdminDeletionRequestsPage })));
+const AdminFeaturesPage = lazyRetry(() => import('./pages/AdminFeaturesPage').then((m) => ({ default: m.AdminFeaturesPage })));
 const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').then((m) => ({ default: m.ParentAITools })));
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
@@ -191,7 +193,9 @@ function App() {
                 path="/school-report-cards"
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student']}>
-                    <ReportCardAnalysis />
+                    <FeatureGate feature="report_cards">
+                      <ReportCardAnalysis />
+                    </FeatureGate>
                   </ProtectedRoute>
                 }
               />
@@ -215,7 +219,9 @@ function App() {
                 path="/analytics"
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'admin']}>
-                    <AnalyticsPage />
+                    <FeatureGate feature="analytics">
+                      <AnalyticsPage />
+                    </FeatureGate>
                   </ProtectedRoute>
                 }
               />
@@ -473,6 +479,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminDeletionRequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/features"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminFeaturesPage />
                   </ProtectedRoute>
                 }
               />

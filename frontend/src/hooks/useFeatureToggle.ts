@@ -1,14 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 
-interface FeatureToggles {
+export interface FeatureToggles {
   google_classroom: boolean;
   waitlist_enabled: boolean;
+  school_board_connectivity: boolean;
+  report_cards: boolean;
+  analytics: boolean;
+  [key: string]: boolean;
 }
 
 const DEFAULTS: FeatureToggles = {
   google_classroom: false,
   waitlist_enabled: false,
+  school_board_connectivity: false,
+  report_cards: false,
+  analytics: false,
 };
 
 async function fetchFeatures(): Promise<FeatureToggles> {
