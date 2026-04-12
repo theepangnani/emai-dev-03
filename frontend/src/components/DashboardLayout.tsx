@@ -15,6 +15,7 @@ import { SpeedDialFAB } from './SpeedDialFAB';
 import { BugReportModal } from './BugReportModal';
 import { JourneyWelcomeModal } from './JourneyWelcomeModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { useFeatureToggles } from '../hooks/useFeatureToggle';
 import '../pages/Dashboard.css';
 
 const NAV_CLASS_MAP = {
@@ -225,6 +226,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="18" x2="11" y2="18"/>
     </svg>
   ),
+  Features: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -351,30 +358,38 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
+  const features = useFeatureToggles();
+
   const navItems = useMemo(() => {
     if (user?.role === 'parent') {
-      return [
+      const items: Array<{ label: string; path: string; group?: string }> = [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
-        { label: 'Report Cards', path: '/school-report-cards' },
-        { label: 'Analytics', path: '/analytics' },
+      ];
+      if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
+      items.push(
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
-      ];
+      );
+      return items;
     }
 
     if (user?.role === 'student') {
-      return [
+      const items: Array<{ label: string; path: string; group?: string }> = [
         { label: 'Home', path: '/dashboard' },
         { label: 'Study', path: '/study' },
-        { label: 'Report Cards', path: '/school-report-cards' },
-        { label: 'Analytics', path: '/analytics' },
+      ];
+      if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
+      items.push(
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
-      ];
+      );
+      return items;
     }
 
     const items: Array<{ label: string; path: string; group?: string }> = [
@@ -390,8 +405,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     }
 
     if (user?.role === 'admin') {
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics', group: 'Admin Tools' });
       items.push(
-        { label: 'Analytics', path: '/analytics', group: 'Admin Tools' },
+        { label: 'Features', path: '/admin/features', group: 'Admin Tools' },
         { label: 'Waitlist', path: '/admin/waitlist', group: 'Admin Tools' },
         { label: 'Survey Results', path: '/admin/survey', group: 'Admin Tools' },
         { label: 'AI Usage', path: '/admin/ai-usage', group: 'Admin Tools' },
@@ -402,7 +418,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'Help', path: '/help' });
 
     return items;
-  }, [user?.role]);
+  }, [user?.role, features.report_cards, features.analytics]);
 
   useEffect(() => {
     const loadUnreadCount = async () => {

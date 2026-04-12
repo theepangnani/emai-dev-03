@@ -48,6 +48,7 @@ from app.models.daily_quiz import DailyQuiz
 from app.models.journey_hint import JourneyHint
 from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog
+from app.models.feature_flag import FeatureFlag
 
 
 __all__ = [
@@ -127,4 +128,5 @@ __all__ = [
     "ParentContactNote",
     "OutreachTemplate",
     "OutreachLog",
+    "FeatureFlag",
 ]

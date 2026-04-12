@@ -66,9 +66,7 @@ export function AdminDashboard() {
   const [showBroadcastHistory, setShowBroadcastHistory] = useState(false);
   const [usersExpanded, setUsersExpanded] = useState(true);
 
-  // Feature toggles state
-  const [featureToggles, setFeatureToggles] = useState<Record<string, boolean>>({});
-  const [toggleLoading, setToggleLoading] = useState<Record<string, boolean>>({});
+  // Feature toggles now managed via /admin/features page
 
   // Individual message state
   const [messageUser, setMessageUser] = useState<AdminUserItem | null>(null);
@@ -92,11 +90,10 @@ export function AdminDashboard() {
 
   const loadStats = async () => {
     try {
-      const [statsData, allUsersData, auditData, featuresData] = await Promise.allSettled([
+      const [statsData, allUsersData, auditData] = await Promise.allSettled([
         adminApi.getStats(),
         adminApi.getUsers({ limit: 5000 }),
         adminApi.getAuditLogs({ limit: 5 }),
-        adminApi.getFeatureToggles(),
       ]);
 
       if (statsData.status === 'fulfilled') {
@@ -122,24 +119,8 @@ export function AdminDashboard() {
         setRecentActivity(auditData.value.items);
       }
 
-      if (featuresData.status === 'fulfilled') {
-        setFeatureToggles(featuresData.value);
-      }
     } catch {
       // Failed to load stats
-    }
-  };
-
-  const handleToggleFeature = async (key: string) => {
-    const current = featureToggles[key] ?? false;
-    setToggleLoading(prev => ({ ...prev, [key]: true }));
-    try {
-      const result = await adminApi.updateFeatureToggle(key, !current);
-      setFeatureToggles(prev => ({ ...prev, [key]: result.enabled }));
-    } catch {
-      // Failed to toggle
-    } finally {
-      setToggleLoading(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -285,20 +266,11 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            {/* Feature Toggles */}
+            {/* Feature Toggles — managed via dedicated page */}
             <div style={{ marginTop: 16 }}>
-              <h4 style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>Feature Toggles</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {Object.entries(featureToggles).map(([key, enabled]) => (
-                  <label key={key} className="admin-role-checkbox-row" style={{ padding: '6px 10px', borderRadius: '8px', background: 'var(--bg-secondary, #f9f9f9)', fontSize: 13 }}>
-                    <input type="checkbox" checked={enabled} disabled={toggleLoading[key]} onChange={() => handleToggleFeature(key)} />
-                    <span style={{ fontWeight: 500 }}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: enabled ? 'var(--success, #22c55e)' : 'var(--text-muted, #888)' }}>
-                      {toggleLoading[key] ? '...' : enabled ? 'On' : 'Off'}
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <a href="/admin/features" style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary, #2563eb)', textDecoration: 'none' }}>
+                Manage Features &rarr;
+              </a>
             </div>
           </div>
         </section>
