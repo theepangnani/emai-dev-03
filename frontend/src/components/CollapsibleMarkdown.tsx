@@ -16,8 +16,12 @@ function splitAtH2(markdown: string): { preamble: string; sections: MarkdownSect
   const sections: MarkdownSection[] = [];
   let current: { title: string; id: string; lines: string[] } | null = null;
 
+  let inCodeBlock = false;
   for (const line of lines) {
-    const match = line.match(/^##\s+(.+)/);
+    if (line.trimEnd().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+    }
+    const match = !inCodeBlock && line.match(/^##\s+(.+)/);
     if (match) {
       // Flush previous section
       if (current) {
