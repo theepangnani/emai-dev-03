@@ -1,5 +1,4 @@
 import logging
-import html
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
@@ -17,25 +16,10 @@ from app.schemas.outreach import (
     OutreachTemplatePreviewRequest,
     OutreachTemplatePreviewResponse,
 )
+from app.services.outreach_service import render_template_text, render_template_html
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/outreach-templates", tags=["Admin Outreach Templates"])
-
-
-def render_template_text(text: str, variables: dict[str, str]) -> str:
-    """Replace {{var_name}} placeholders with values (no escaping)."""
-    result = text
-    for key, value in variables.items():
-        result = result.replace(f"{{{{{key}}}}}", value)
-    return result
-
-
-def render_template_html(text: str, variables: dict[str, str]) -> str:
-    """Replace {{var_name}} placeholders with HTML-escaped values."""
-    result = text
-    for key, value in variables.items():
-        result = result.replace(f"{{{{{key}}}}}", html.escape(value))
-    return result
 
 
 @router.get("/", response_model=OutreachTemplateListResponse)

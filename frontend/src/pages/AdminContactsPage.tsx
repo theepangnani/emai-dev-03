@@ -12,7 +12,7 @@ import './AdminContactsPage.css';
 const PAGE_SIZE = 25;
 
 const STATUS_OPTIONS = ['lead', 'contacted', 'interested', 'converted', 'archived', 'unresponsive'];
-const SOURCE_OPTIONS = ['manual', 'waitlist', 'referral', 'event', 'website', 'other'];
+const SOURCE_OPTIONS = ['manual', 'csv_import', 'waitlist', 'referral'];
 
 export function AdminContactsPage() {
   const navigate = useNavigate();

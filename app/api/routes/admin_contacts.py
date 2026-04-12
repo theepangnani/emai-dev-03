@@ -4,7 +4,7 @@ from io import StringIO
 import csv
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
@@ -62,11 +62,17 @@ async def list_contacts(
 
     # Get total before tag filtering (tag filter is Python-side for SQLite JSON compat)
     if tag:
-        # Fetch all matching and filter in Python
-        all_contacts = query.order_by(ParentContact.created_at.desc()).all()
-        filtered = [c for c in all_contacts if c.tags and tag in c.tags]
-        total = len(filtered)
-        items = filtered[skip:skip + limit]
+        from app.core.config import settings
+        if "sqlite" not in settings.database_url:
+            from sqlalchemy import text
+            query = query.filter(text("tags::jsonb @> :tag_arr").bindparams(tag_arr=f'["{tag}"]'))
+            total = query.count()
+            items = query.order_by(ParentContact.created_at.desc()).offset(skip).limit(limit).all()
+        else:
+            all_contacts = query.order_by(ParentContact.created_at.desc()).limit(5000).all()
+            filtered = [c for c in all_contacts if c.tags and tag in c.tags]
+            total = len(filtered)
+            items = filtered[skip:skip + limit]
     else:
         total = query.count()
         items = query.order_by(ParentContact.created_at.desc()).offset(skip).limit(limit).all()
@@ -172,7 +178,9 @@ async def export_csv(
     if school:
         query = query.filter(ParentContact.school_name.ilike(f"%{escape_like(school)}%"))
 
-    contacts = query.order_by(ParentContact.created_at.desc()).all()
+    MAX_CSV_ROWS = 10000
+    contacts = query.order_by(ParentContact.created_at.desc()).limit(MAX_CSV_ROWS).all()
+    truncated = len(contacts) == MAX_CSV_ROWS
 
     output = StringIO()
     writer = csv.writer(output)
@@ -190,10 +198,13 @@ async def export_csv(
         ])
 
     output.seek(0)
+    headers = {"Content-Disposition": "attachment; filename=contacts_export.csv"}
+    if truncated:
+        headers["X-Truncated"] = f"true; limit={MAX_CSV_ROWS}"
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=contacts_export.csv"},
+        headers=headers,
     )
 
 
@@ -240,15 +251,19 @@ async def create_contact(
         details=f"Created contact: {contact.full_name}",
     )
 
-    response = ParentContactResponse.model_validate(contact)
-    # Include duplicate warning in response if needed
+    response_data = ParentContactResponse.model_validate(contact)
     if duplicate_warning:
         logger.warning(duplicate_warning)
-    return response
+        return JSONResponse(
+            content=response_data.model_dump(mode="json"),
+            status_code=201,
+            headers={"X-Duplicate-Warning": duplicate_warning},
+        )
+    return response_data
 
 
 # ── Get Single Contact ─────────────────────────────────────────────────────
-@router.get("/{contact_id}", response_model=ParentContactResponse)
+@router.get("/{contact_id}")
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 async def get_contact(
     request: Request,
