@@ -77,7 +77,7 @@ def _create_contact(client, headers, data=None):
         "status": "lead",
         "source": "manual",
     }
-    resp = client.post("/api/admin/contacts/", json=payload, headers=headers)
+    resp = client.post("/api/admin/contacts", json=payload, headers=headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
@@ -86,11 +86,11 @@ def _create_contact(client, headers, data=None):
 
 class TestContactsAuth:
     def test_non_admin_cannot_list(self, client, parent_headers):
-        resp = client.get("/api/admin/contacts/", headers=parent_headers)
+        resp = client.get("/api/admin/contacts", headers=parent_headers)
         assert resp.status_code == 403
 
     def test_non_admin_cannot_create(self, client, parent_headers, sample_contact_data):
-        resp = client.post("/api/admin/contacts/", json=sample_contact_data, headers=parent_headers)
+        resp = client.post("/api/admin/contacts", json=sample_contact_data, headers=parent_headers)
         assert resp.status_code == 403
 
     def test_non_admin_cannot_delete(self, client, parent_headers):
@@ -98,7 +98,7 @@ class TestContactsAuth:
         assert resp.status_code == 403
 
     def test_unauthenticated_gets_401(self, client):
-        resp = client.get("/api/admin/contacts/")
+        resp = client.get("/api/admin/contacts")
         assert resp.status_code in (401, 403)
 
 
@@ -106,7 +106,7 @@ class TestContactsAuth:
 
 class TestContactCreate:
     def test_create_valid_contact(self, client, admin_headers, sample_contact_data):
-        resp = client.post("/api/admin/contacts/", json=sample_contact_data, headers=admin_headers)
+        resp = client.post("/api/admin/contacts", json=sample_contact_data, headers=admin_headers)
         assert resp.status_code == 201
         data = resp.json()
         assert data["full_name"] == "Jane Doe"
@@ -116,30 +116,30 @@ class TestContactCreate:
         assert data["id"] is not None
 
     def test_create_missing_full_name(self, client, admin_headers):
-        resp = client.post("/api/admin/contacts/", json={"email": "x@y.com"}, headers=admin_headers)
+        resp = client.post("/api/admin/contacts", json={"email": "x@y.com"}, headers=admin_headers)
         assert resp.status_code == 422
 
     def test_create_empty_full_name(self, client, admin_headers):
-        resp = client.post("/api/admin/contacts/", json={"full_name": ""}, headers=admin_headers)
+        resp = client.post("/api/admin/contacts", json={"full_name": ""}, headers=admin_headers)
         assert resp.status_code == 422
 
     def test_create_duplicate_email_still_succeeds(self, client, admin_headers):
         payload = {"full_name": "Dup One", "email": "dup@example.com", "status": "lead", "source": "manual"}
-        r1 = client.post("/api/admin/contacts/", json=payload, headers=admin_headers)
+        r1 = client.post("/api/admin/contacts", json=payload, headers=admin_headers)
         assert r1.status_code == 201
         payload2 = {"full_name": "Dup Two", "email": "dup@example.com", "status": "lead", "source": "manual"}
-        r2 = client.post("/api/admin/contacts/", json=payload2, headers=admin_headers)
+        r2 = client.post("/api/admin/contacts", json=payload2, headers=admin_headers)
         assert r2.status_code == 201
 
     def test_create_with_consent_sets_consent_date(self, client, admin_headers):
         payload = {"full_name": "Consented User", "consent_given": True, "status": "lead", "source": "manual"}
-        resp = client.post("/api/admin/contacts/", json=payload, headers=admin_headers)
+        resp = client.post("/api/admin/contacts", json=payload, headers=admin_headers)
         assert resp.status_code == 201
         assert resp.json()["consent_date"] is not None
 
     def test_create_invalid_status(self, client, admin_headers):
         payload = {"full_name": "Bad Status", "status": "invalid_status", "source": "manual"}
-        resp = client.post("/api/admin/contacts/", json=payload, headers=admin_headers)
+        resp = client.post("/api/admin/contacts", json=payload, headers=admin_headers)
         assert resp.status_code == 422
 
 
@@ -148,7 +148,7 @@ class TestContactCreate:
 class TestContactList:
     def test_list_returns_items_and_total(self, client, admin_headers):
         _create_contact(client, admin_headers, {"full_name": "List Test", "status": "lead", "source": "manual"})
-        resp = client.get("/api/admin/contacts/", headers=admin_headers)
+        resp = client.get("/api/admin/contacts", headers=admin_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -157,7 +157,7 @@ class TestContactList:
 
     def test_search_by_name(self, client, admin_headers):
         _create_contact(client, admin_headers, {"full_name": "UniqueSearchName99", "status": "lead", "source": "manual"})
-        resp = client.get("/api/admin/contacts/?search=UniqueSearchName99", headers=admin_headers)
+        resp = client.get("/api/admin/contacts?search=UniqueSearchName99", headers=admin_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert data["total"] >= 1
@@ -165,7 +165,7 @@ class TestContactList:
 
     def test_status_filter(self, client, admin_headers):
         _create_contact(client, admin_headers, {"full_name": "Archived Pal", "status": "archived", "source": "manual"})
-        resp = client.get("/api/admin/contacts/?status=archived", headers=admin_headers)
+        resp = client.get("/api/admin/contacts?status=archived", headers=admin_headers)
         assert resp.status_code == 200
         for item in resp.json()["items"]:
             assert item["status"] == "archived"
@@ -174,7 +174,7 @@ class TestContactList:
         # Create a few contacts
         for i in range(3):
             _create_contact(client, admin_headers, {"full_name": f"Page{i}", "status": "lead", "source": "manual"})
-        resp = client.get("/api/admin/contacts/?skip=0&limit=2", headers=admin_headers)
+        resp = client.get("/api/admin/contacts?skip=0&limit=2", headers=admin_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["items"]) <= 2

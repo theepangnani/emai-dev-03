@@ -31,7 +31,7 @@ def admin_headers(client, admin_user):
 
 @pytest.fixture()
 def contact_with_email(client, admin_headers):
-    resp = client.post("/api/admin/contacts/", json={
+    resp = client.post("/api/admin/contacts", json={
         "full_name": "Email Contact",
         "email": "outreach.target@example.com",
         "status": "lead",
@@ -43,7 +43,7 @@ def contact_with_email(client, admin_headers):
 
 @pytest.fixture()
 def contact_without_email(client, admin_headers):
-    resp = client.post("/api/admin/contacts/", json={
+    resp = client.post("/api/admin/contacts", json={
         "full_name": "No Email Contact",
         "phone": "+14165559999",
         "status": "lead",
@@ -55,7 +55,7 @@ def contact_without_email(client, admin_headers):
 
 @pytest.fixture()
 def template(client, admin_headers):
-    resp = client.post("/api/admin/outreach-templates/", json={
+    resp = client.post("/api/admin/outreach-templates", json={
         "name": "Outreach Test Tpl",
         "subject": "Hello {{full_name}}",
         "body_text": "Hi {{full_name}}, check out ClassBridge!",

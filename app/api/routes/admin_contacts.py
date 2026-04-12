@@ -28,7 +28,7 @@ router = APIRouter(prefix="/admin/contacts", tags=["Admin Contacts"])
 
 
 # ── List Contacts ──────────────────────────────────────────────────────────
-@router.get("/", response_model=ParentContactListResponse)
+@router.get("", response_model=ParentContactListResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 async def list_contacts(
     request: Request,
@@ -209,7 +209,7 @@ async def export_csv(
 
 
 # ── Create Contact ─────────────────────────────────────────────────────────
-@router.post("/", response_model=ParentContactResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ParentContactResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def create_contact(
     request: Request,

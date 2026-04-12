@@ -448,7 +448,7 @@ async def startup_event():
     from app.jobs.assignment_reminders import check_assignment_reminders
     from app.jobs.task_reminders import check_task_reminders
     from app.jobs.notification_reminders import check_notification_reminders
-    from app.services.inspiration_service import seed_messages
+    from app.services.inspiration_service import seed_messages, sync_new_messages
     from app.services.faq_seed_service import seed_faq
     from app.services.grade_seed_service import seed_grades
 
@@ -456,6 +456,7 @@ async def startup_event():
     db = SessionLocal()
     try:
         seed_messages(db)
+        sync_new_messages(db)
         seed_faq(db)
         seed_grades(db)
         seed_wallet_data(db)

@@ -47,14 +47,14 @@ def _create_template(client, headers, data=None):
         "template_type": "email",
         "variables": ["full_name"],
     }
-    resp = client.post("/api/admin/outreach-templates/", json=payload, headers=headers)
+    resp = client.post("/api/admin/outreach-templates", json=payload, headers=headers)
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
 class TestTemplateCreate:
     def test_create_template(self, client, admin_headers, sample_template):
-        resp = client.post("/api/admin/outreach-templates/", json=sample_template, headers=admin_headers)
+        resp = client.post("/api/admin/outreach-templates", json=sample_template, headers=admin_headers)
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "Welcome Email"
@@ -63,18 +63,18 @@ class TestTemplateCreate:
         assert "full_name" in data["variables"]
 
     def test_create_missing_body_text(self, client, admin_headers):
-        resp = client.post("/api/admin/outreach-templates/", json={"name": "No Body"}, headers=admin_headers)
+        resp = client.post("/api/admin/outreach-templates", json={"name": "No Body"}, headers=admin_headers)
         assert resp.status_code == 422
 
     def test_create_missing_name(self, client, admin_headers):
-        resp = client.post("/api/admin/outreach-templates/", json={"body_text": "hi"}, headers=admin_headers)
+        resp = client.post("/api/admin/outreach-templates", json={"body_text": "hi"}, headers=admin_headers)
         assert resp.status_code == 422
 
 
 class TestTemplateList:
     def test_list_templates(self, client, admin_headers):
         _create_template(client, admin_headers)
-        resp = client.get("/api/admin/outreach-templates/", headers=admin_headers)
+        resp = client.get("/api/admin/outreach-templates", headers=admin_headers)
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -83,7 +83,7 @@ class TestTemplateList:
 
     def test_filter_by_type(self, client, admin_headers):
         _create_template(client, admin_headers, {"name": "SMS T", "body_text": "hi", "template_type": "sms", "variables": []})
-        resp = client.get("/api/admin/outreach-templates/?template_type=sms", headers=admin_headers)
+        resp = client.get("/api/admin/outreach-templates?template_type=sms", headers=admin_headers)
         assert resp.status_code == 200
         for item in resp.json()["items"]:
             assert item["template_type"] == "sms"
