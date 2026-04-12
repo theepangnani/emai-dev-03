@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/outreach-templates", tags=["Admin Outreach Templates"])
 
 
-@router.get("/", response_model=OutreachTemplateListResponse)
+@router.get("", response_model=OutreachTemplateListResponse)
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def list_templates(
     request: Request,
@@ -45,7 +45,7 @@ def list_templates(
     return OutreachTemplateListResponse(items=items, total=total)
 
 
-@router.post("/", response_model=OutreachTemplateResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=OutreachTemplateResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def create_template(
     request: Request,
