@@ -352,42 +352,44 @@ Parents connect personal Gmail via OAuth (`gmail.readonly`). Child's school emai
 **M5 — Public Launch (September 2026):**
 - [ ] Historical digest archive + weekly roll-up (#2656)
 
-#### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2, §6.131) — #2948-#2961
+#### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2, §6.131) — DEPLOYED (2026-04-11)
 
 Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material type, subject, student, and teacher from uploaded documents, show context-aware suggestion chips, and route generation to the correct named template. Adds worksheet generation as a new first-class output type.
 
 **PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
-**Target:** May–June 2026
+**Deployed:** April 11, 2026
 **Data model:** Extends `study_guides` table with `guide_type='worksheet'` and `guide_type='weak_area_analysis'` (no new tables)
 
 **Credit costs:** Worksheet = 1 credit, Answer Key = free, High Level Summary = free, Weak Area Analysis = 2 credits
 
-**M1 — Core Infrastructure (May 2026):**
-- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
-- [ ] [CB-UTDF-S2] DB migration: detected_subject, template_key, worksheet columns (#2950)
-- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
+**M1 — Core Infrastructure:**
+- [x] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
+- [x] [CB-UTDF-S2] DB migration: detected_subject, template_key, worksheet columns (#2950)
+- [x] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
 
-**M2 — UI & Detection (May–June 2026):**
-- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
-- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
-- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
-- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
+**M2 — UI & Detection:**
+- [x] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
+- [x] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
+- [x] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
+- [x] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
 
-**M3 — Generation (June 2026):**
-- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
-- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957)
-- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
+**M3 — Generation:**
+- [x] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
+- [x] [CB-UTDF-S9] Answer key generation endpoint (#2957)
+- [x] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
 
-**M4 — Integration & Polish (June 2026):**
-- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
-- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
-- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
+**M4 — Integration & Polish:**
+- [x] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
+- [x] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
+- [x] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
 
-#### CB-PCM-001 — Admin Customer Database: CRM, Branded Email & Messaging (Phase 2, §6.132) — #2974
+**PRs:** #3068 (main), #3085 (post-deploy fixes), #3091 (PR review fixes)
+
+#### CB-PCM-001 — Admin Customer Database: CRM, Branded Email & Messaging (Phase 2, §6.132) — DEPLOYED (2026-04-12)
 
 Standalone Customer Database (CRM) for admin outreach to parents/prospects. 4 new tables, SendGrid email, Twilio WhatsApp/SMS, branded templates, audit logging.
 
-**Target:** April 2026
+**Deployed:** April 12, 2026
 **Data model:** 4 new tables: parent_contacts, parent_contact_notes, outreach_templates, outreach_log
 
 **M1 — Backend Foundation:**

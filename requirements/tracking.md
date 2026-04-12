@@ -5,6 +5,18 @@
 - **Bugs fixed:** 400+ bugs closed
 - **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
 
+**Apr 9-12 — Customer Database Epic & UTDF Deployment:**
+- CB-PCM-001 Customer Database deployed (§6.132): 8 stories, 25 endpoints, 53 tests, 4 new tables (PRs #3106-#3112, merged via #3113)
+- 8 PR review fixes for Customer Database (#3114-#3121)
+- Post-deploy fixes: trailing slash 404 (#3126/#3135), transparent modal (#3136/#3137), checkbox appearance, surrogate emoji
+- CB-UTDF-001 fully deployed (§6.131): all 15 stories live, pg_advisory_lock deadlock fixed (#3070-#3083, #3085, #3091)
+- Practice test chip routing fix (#3100/#3102)
+- Inspiration messages expanded to 80 per role (#3128-#3132)
+- Code block parser fix (#3123), error feedback fix (#3124), stream retry fix (#3127)
+- Features-part3.md split into 5 files (#3104)
+- GCP cost optimization: DB switch script, deploy.yml fix (#3099)
+- Open enhancements created: #3139, #3140, #3141, #3105, #3101, #3089, #3090, #3093, #3097, #3098
+
 **Apr 1 — GitHub Actions Optimization & Repo Privacy:**
 - Issue #2817: Security scanning restricted to master-only pushes (PR #2813)
 - Issue #2818: Path filters, concurrency groups, and 10/day auto-deploy limit added (PR #2815)
@@ -1115,26 +1127,63 @@ Current feature issues are tracked in GitHub:
 - ~~Issue #2089: Error Dialog → Report Bug Link (§6.116)~~ ✅
 - ~~Issue #2103: Bug Report Bot Protection (§6.117)~~ ✅
 
-### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2) — #2948-#2961
+### CB-UTDF-001 — Unified Template + Detection Framework (Phase 2) — DEPLOYED (2026-04-11)
 
 **Epic:** Unified Template + Detection Framework for Study Guide & Worksheet Generation
 **PRD:** [docs/CB-UTDF-001-PRD-v1.md](../docs/CB-UTDF-001-PRD-v1.md)
-**Section:** §6.131 | **Target:** May–June 2026 | **Stories:** 13
+**Section:** §6.131 | **Deployed:** April 11, 2026 | **Stories:** 13 (all complete)
 
-- [ ] **Epic** — [Epic] CB-UTDF-001: Unified Template + Detection Framework (#2948)
-- [ ] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949) — Planned
-- [ ] [CB-UTDF-S2] DB migration: detected_subject, template_key, worksheet columns (#2950) — Planned
-- [ ] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951) — Planned
-- [ ] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952) — Planned
-- [ ] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953) — Planned
-- [ ] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954) — Planned
-- [ ] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955) — Planned
-- [ ] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956) — Planned
-- [ ] [CB-UTDF-S9] Answer key generation endpoint (#2957) — Planned
-- [ ] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958) — Planned
-- [ ] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959) — Planned
-- [ ] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960) — Planned
-- [ ] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961) — Planned
+- [x] **Epic** — [Epic] CB-UTDF-001: Unified Template + Detection Framework (#2948)
+- [x] [CB-UTDF-S1] Extend document classification: add subject + confidence (#2949)
+- [x] [CB-UTDF-S2] DB migration: new columns on course_content + study_guides (#2950)
+- [x] [CB-UTDF-S3] Template key resolver + High Level Summary variant (#2951)
+- [x] [CB-UTDF-S4] ClassificationBar component + teacher auto-assignment (#2952)
+- [x] [CB-UTDF-S5] ChildDisambiguationModal — multi-child selector (#2953)
+- [x] [CB-UTDF-S6] MaterialTypeSuggestionChips — type-driven chip sets (#2954)
+- [x] [CB-UTDF-S7] ClassificationOverridePanel + PATCH endpoint (#2955)
+- [x] [CB-UTDF-S8] Worksheet generation: POST endpoint + viewer (#2956)
+- [x] [CB-UTDF-S9] Answer key generation endpoint (#2957)
+- [x] [CB-UTDF-S10] Weak area analysis: Claude Sonnet endpoint + viewer (#2958)
+- [x] [CB-UTDF-S13] CourseDetailPage: add Worksheets tab (#2959)
+- [x] [CB-UTDF-S14] Mobile (Expo): ClassificationBar + chips (#2960)
+- [x] [CB-UTDF-S15] Tests: classifier unit, integration, E2E (#2961)
+
+**PRs:** #3068 (main implementation), #3085 (post-deployment fixes), #3091 (PR review fixes)
+**Deployment incident:** pg_advisory_lock deadlock → fixed with pg_try_advisory_lock
+**Post-deploy fixes:** #3070–#3078, #3079–#3083, #3085, #3091
+
+### CB-PCM-001 — Admin Customer Database: CRM, Branded Email & Messaging — DEPLOYED (2026-04-12)
+
+**Epic:** #2974 — Admin Customer Database
+**Section:** §6.132 | **Deployed:** April 12, 2026 | **Stories:** 8 (all complete)
+**Data model:** 4 new tables: parent_contacts, parent_contact_notes, outreach_templates, outreach_log
+**Scope:** 25 API endpoints, 2 frontend pages, 53 tests, 5 branded seed email templates
+
+- [x] [CB-PCM-S1] DB models + migrations (#2975) — PR #3106
+- [x] [CB-PCM-S2] Pydantic schemas (#2976) — PR #3106
+- [x] [CB-PCM-S3] Customer contacts CRUD API (#2977) — PR #3107
+- [x] [CB-PCM-S4] Outreach templates CRUD API + seed (#2978) — PR #3108
+- [x] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979) — PR #3109
+- [x] [CB-PCM-S6] Frontend — Customer Database page (#2980) — PR #3110
+- [x] [CB-PCM-S7] Frontend — Unified Outreach Composer (#2981) — PR #3111
+- [x] [CB-PCM-S9] Tests — backend + frontend (#2983) — PR #3112
+
+**Integration PR:** #3113 (merged all 8 stories)
+
+**PR review fixes (all closed):**
+- #3114 — N+1 query in outreach log list
+- #3115 — Tag filter memory (PG JSON contains + SQLite 5000 cap)
+- #3116 — SOURCE_OPTIONS mismatch
+- #3117 — Duplicate warning header
+- #3118 — Render function dedup
+- #3119 — CSV export limit (10000 row cap)
+- #3120 — get_contact detail response
+- #3121 — OutreachLogResponse schema
+
+**Post-deployment fixes:**
+- #3126/#3135 — Trailing slash 404
+- #3136/#3137 — Transparent modal fix
+- Checkbox appearance fix, surrogate emoji fix
 
 ### Phase 3+ — Open
 - Issue #506: University Pathway Alignment
