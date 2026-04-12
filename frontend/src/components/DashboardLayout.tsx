@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
@@ -352,27 +352,26 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       ];
     }
 
-    const items: Array<{ label: string; path: string }> = [
+    const items: Array<{ label: string; path: string; group?: string }> = [
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
       { label: 'Materials', path: '/course-materials' },
-    ];
-
-    items.push(
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
-    );
+    ];
 
     if (user?.role === 'teacher') {
       items.push({ label: 'Teacher Comms', path: '/teacher-communications' });
     }
 
     if (user?.role === 'admin') {
-      items.push({ label: 'Analytics', path: '/analytics' });
-      items.push({ label: 'Waitlist', path: '/admin/waitlist' });
-      items.push({ label: 'Survey Results', path: '/admin/survey' });
-      items.push({ label: 'AI Usage', path: '/admin/ai-usage' });
-      items.push({ label: 'Customer DB', path: '/admin/contacts' });
+      items.push(
+        { label: 'Analytics', path: '/analytics', group: 'Admin Tools' },
+        { label: 'Waitlist', path: '/admin/waitlist', group: 'Admin Tools' },
+        { label: 'Survey Results', path: '/admin/survey', group: 'Admin Tools' },
+        { label: 'AI Usage', path: '/admin/ai-usage', group: 'Admin Tools' },
+        { label: 'Customer DB', path: '/admin/contacts', group: 'Admin Tools' },
+      );
     }
 
     items.push({ label: 'Help', path: '/help' });
@@ -619,23 +618,34 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       <div className={`slide-menu${menuOpen ? ' open' : ''}`}>
         <div className="sidebar-title">Navigation</div>
         <nav className="sidebar-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
-              onClick={() => handleNavClick(item.path)}
-              aria-current={location.pathname === item.path ? 'page' : undefined}
-            >
-              <span className="sidebar-link-icon"><NavIcon name={item.label} /></span>
-              <span className="sidebar-link-label">{item.label}</span>
-              {item.path === '/messages' && unreadCount > 0 && (
-                <span className="sidebar-badge">{unreadCount}</span>
-              )}
-              {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-                <span className="sidebar-badge">{pendingStudyCount}</span>
-              )}
-            </button>
-          ))}
+          {navItems.map((item, index) => {
+            const prevGroup = index > 0 ? navItems[index - 1].group : undefined;
+            const showGroupHeader = item.group && item.group !== prevGroup;
+            return (
+              <React.Fragment key={item.path}>
+                {showGroupHeader && (
+                  <>
+                    <div className="sidebar-divider" />
+                    <div className="sidebar-group-title">{item.group}</div>
+                  </>
+                )}
+                <button
+                  className={`sidebar-link${location.pathname === item.path ? ' active' : ''}`}
+                  onClick={() => handleNavClick(item.path)}
+                  aria-current={location.pathname === item.path ? 'page' : undefined}
+                >
+                  <span className="sidebar-link-icon"><NavIcon name={item.label} /></span>
+                  <span className="sidebar-link-label">{item.label}</span>
+                  {item.path === '/messages' && unreadCount > 0 && (
+                    <span className="sidebar-badge">{unreadCount}</span>
+                  )}
+                  {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                    <span className="sidebar-badge">{pendingStudyCount}</span>
+                  )}
+                </button>
+              </React.Fragment>
+            );
+          })}
           <button
             className="sidebar-link"
             onClick={() => {
@@ -705,25 +715,36 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
           aria-label="Main navigation"
         >
           <nav className="persistent-sidebar-nav">
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                className={`ps-nav-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
-                onClick={() => navigate(item.path)}
-                title={item.label}
-                aria-label={item.label}
-                aria-current={location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 'page' : undefined}
-              >
-                <span className="ps-nav-icon"><NavIcon name={item.label} /></span>
-                <span className="ps-nav-label">{item.label}</span>
-                {item.path === '/messages' && unreadCount > 0 && (
-                  <span className="ps-nav-badge">{unreadCount}</span>
-                )}
-                {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-                  <span className="ps-nav-badge">{pendingStudyCount}</span>
-                )}
-              </button>
-            ))}
+            {navItems.map((item, index) => {
+              const prevGroup = index > 0 ? navItems[index - 1].group : undefined;
+              const showGroupHeader = item.group && item.group !== prevGroup;
+              return (
+                <React.Fragment key={item.path}>
+                  {showGroupHeader && (
+                    <>
+                      <div className="ps-divider" />
+                      <div className="ps-group-title">{item.group}</div>
+                    </>
+                  )}
+                  <button
+                    className={`ps-nav-item${location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? ' active' : ''}`}
+                    onClick={() => navigate(item.path)}
+                    title={item.label}
+                    aria-label={item.label}
+                    aria-current={location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path)) ? 'page' : undefined}
+                  >
+                    <span className="ps-nav-icon"><NavIcon name={item.label} /></span>
+                    <span className="ps-nav-label">{item.label}</span>
+                    {item.path === '/messages' && unreadCount > 0 && (
+                      <span className="ps-nav-badge">{unreadCount}</span>
+                    )}
+                    {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                      <span className="ps-nav-badge">{pendingStudyCount}</span>
+                    )}
+                  </button>
+                </React.Fragment>
+              );
+            })}
             <button
               className="ps-nav-item"
               onClick={() => setBugReportOpen(true)}
