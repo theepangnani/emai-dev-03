@@ -312,7 +312,7 @@
   bottom: 0;
   width: 480px;
   max-width: 90vw;
-  background: var(--color-bg);
+  background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   z-index: 1001;
   transform: translateX(100%);
@@ -475,7 +475,7 @@
 
 .admin-contacts-modal {
   position: relative;
-  background: var(--color-bg);
+  background: var(--color-surface);
   border-radius: 16px 16px 0 0;
   padding: 24px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
   width: 100%;
