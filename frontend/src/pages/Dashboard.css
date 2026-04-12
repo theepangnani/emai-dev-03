@@ -514,6 +514,18 @@
   border-top: 1px dashed var(--color-border);
 }
 
+.ps-group-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  padding: 0 8px 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* FAB toggle button for quick actions */
 .ps-fab-toggle {
   display: flex;
@@ -771,6 +783,15 @@
   height: 1px;
   background: var(--color-border);
   margin: 4px 0;
+}
+
+.sidebar-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-muted);
+  font-weight: 600;
+  padding: 2px 0 0;
 }
 
 .sidebar-action {
