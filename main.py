@@ -29,6 +29,7 @@ from app.api.routes import csv_import
 from app.api.routes import weekly_report
 from app.api.routes import journey
 from app.api.routes import parent_email_digest
+from app.api.routes import admin_contacts
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -59,6 +60,7 @@ from app.models.bug_report import BugReport  # noqa: F401
 from app.models.daily_quiz import DailyQuiz  # noqa: F401
 from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 from app.models.teacher_thanks import TeacherThanks  # noqa: F401
+from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -271,6 +273,7 @@ app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_waitlist.router, prefix="/api")
+app.include_router(admin_contacts.router, prefix="/api")
 app.include_router(invites.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(course_contents.router, prefix="/api")
@@ -322,6 +325,10 @@ app.include_router(csv_import.router, prefix="/api")
 app.include_router(weekly_report.router, prefix="/api")
 app.include_router(journey.router, prefix="/api")
 app.include_router(parent_email_digest.router, prefix="/api")
+from app.api.routes import admin_outreach_templates
+app.include_router(admin_outreach_templates.router, prefix="/api")
+from app.api.routes import admin_outreach
+app.include_router(admin_outreach.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
@@ -452,6 +459,8 @@ async def startup_event():
         seed_faq(db)
         seed_grades(db)
         seed_wallet_data(db)
+        from app.services.outreach_template_seed import seed_outreach_templates
+        seed_outreach_templates(db)
     finally:
         db.close()
 

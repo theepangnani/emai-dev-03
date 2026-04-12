@@ -865,3 +865,85 @@ Enhance the existing §3.9 Study Guide Strategy Pattern to auto-detect material 
 - #3022 — Multi-subject document detection
 - #3023 — Dual chip code paths for legacy materials
 - #3024 — teacher_notes enum chip set ambiguity
+
+---
+
+### 6.132 Admin Customer Database — CRM, Branded Email & Messaging (CB-PCM-001, #2974) - IMPLEMENTED
+
+Standalone **Customer Database** (CRM) within the Admin panel for managing parent/prospective customer contacts, sending branded ClassBridge emails from templates, and WhatsApp/SMS messaging via Twilio. Independent of the existing `users` table — this is an outreach system for pre-registration relationship management.
+
+**Epic:** #2974
+
+#### Motivation
+
+Admins need to manage parent relationships outside the platform's registered user base — for outreach, onboarding campaigns, school board demos, and pilot communication. The existing broadcast system only reaches registered users. This fills the gap between "interested parent" and "registered user."
+
+#### Key Capabilities
+
+1. **Customer Database** — Add/edit/delete contacts with name, email, phone, school, child info, notes. CRM pipeline statuses (lead → contacted → interested → converted). Independent of `users` table with optional linking when contact converts.
+2. **Contact Notes** — Timestamped notes per contact for tracking interactions.
+3. **PIPEDA Compliance** — Consent tracking (consent_given boolean + date) for Canadian privacy law.
+4. **Email Templates** — 5 branded ClassBridge email templates with variable substitution. Admin CRUD for custom templates.
+5. **On-Demand Email** — Select contacts (single or bulk), pick a template, preview branded HTML, send via SendGrid.
+6. **WhatsApp / SMS** — Send messages via Twilio (WhatsApp Business API or SMS). Graceful degradation when Twilio not configured.
+7. **Outreach Log** — Every send attempt logged with rendered body snapshot for audit trail.
+
+#### Data Model (4 New Tables)
+
+- `parent_contacts` — full_name, email, phone (E.164), school_name, child_name, child_grade, status (lead/contacted/interested/converted/archived/unresponsive), source, tags (JSON), linked_user_id (FK), consent_given, consent_date, timestamps
+- `parent_contact_notes` — parent_contact_id (FK CASCADE), note_text, created_by_user_id, created_at
+- `outreach_templates` — name, subject, body_html, body_text, template_type (email/whatsapp/sms), variables (JSON), is_active, timestamps
+- `outreach_log` — parent_contact_id (FK), template_id (FK), channel, status, recipient_detail, body_snapshot, sent_by_user_id, error_message, created_at
+
+#### API Endpoints
+
+**Customer Contacts (`/api/admin/contacts`):**
+- GET list (search, filter, paginate), GET stats, GET duplicates, POST create, GET/:id detail, PATCH/:id update, DELETE/:id, GET export/csv
+- Notes: GET/:id/notes, POST/:id/notes, DELETE/:id/notes/:noteId
+- Outreach history: GET/:id/outreach-history
+- Bulk: POST bulk-delete, bulk-status, bulk-tag
+
+**Outreach Templates (`/api/admin/outreach-templates`):**
+- GET list, POST create, GET/:id, PATCH/:id, DELETE/:id (soft), POST/:id/preview
+
+**Outreach Send (`/api/admin/outreach`):**
+- POST /send (email, WhatsApp, SMS), GET /log, GET /log/:id, GET /stats
+
+#### Seed Templates (5 Branded ClassBridge Emails)
+
+1. Initial Outreach — first contact introducing ClassBridge
+2. Follow-Up #1 (3 days) — gentle nudge
+3. Follow-Up #2 (7 days) — social proof, feature deep-dive
+4. Follow-Up #3 (14 days) — urgency, last chance
+5. Pilot Invite — direct invitation with registration token
+
+#### Frontend
+
+- `/admin/contacts` — Customer Database page (table, search, filters, stats, detail drawer, notes, outreach history)
+- `/admin/contacts/compose` — Unified Outreach Composer (Email/WhatsApp/SMS tabs, template selection, variable substitution, preview, bulk send)
+- Admin nav: "Customer DB" item in sidebar
+
+#### Security & Compliance
+
+- PIPEDA: consent_given + consent_date on contacts; UI warning when consent not recorded
+- XSS: HTML-escape all variable values before template substitution
+- Audit trail: body_snapshot captures rendered content at send time
+- Phone masking in application logs
+
+#### Tech
+
+- Email: SendGrid (existing)
+- WhatsApp/SMS: Twilio (new dependency: `twilio>=9.0.0`)
+- New env vars: `TWILIO_SMS_FROM`
+- Existing env vars used: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`
+
+#### Stories
+
+- [x] [CB-PCM-S1] DB models + migrations (#2975) — PR #3106
+- [x] [CB-PCM-S2] Pydantic schemas (#2976) — PR #3106
+- [x] [CB-PCM-S3] Customer contacts CRUD API (#2977) — PR #3107
+- [x] [CB-PCM-S4] Outreach templates CRUD API + seed (#2978) — PR #3108
+- [x] [CB-PCM-S5] Outreach send API — email, WhatsApp, SMS (#2979)
+- [x] [CB-PCM-S6] Frontend — Customer Database page (#2980)
+- [x] [CB-PCM-S7] Frontend ��� Unified Outreach Composer (#2981)
+- [x] [CB-PCM-S9] Tests — backend + frontend (#2983)
