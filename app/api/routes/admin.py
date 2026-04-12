@@ -613,8 +613,12 @@ def get_feature_toggles(
     """Get all feature flags (DB-backed + config-based)."""
     from app.models.feature_flag import FeatureFlag
 
+    config_flags = [
+        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "updated_at": None},
+        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "updated_at": None},
+    ]
     db_flags = db.query(FeatureFlag).order_by(FeatureFlag.id).all()
-    return [
+    return config_flags + [
         {
             "key": f.key,
             "name": f.name,
@@ -660,6 +664,7 @@ def update_feature_toggle(
         raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
 
     flag.enabled = body.enabled
+    flag.updated_at = datetime.now(timezone.utc)
     log_action(
         db,
         user_id=current_user.id,
