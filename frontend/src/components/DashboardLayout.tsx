@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, inspirationApi } from '../api/client';
@@ -510,25 +510,37 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     const labelClass = classPrefix === 'sidebar' ? 'sidebar-link-label' : 'ps-nav-label';
     const badgeClass = classPrefix === 'sidebar' ? 'sidebar-badge' : 'ps-nav-badge';
 
-    return navItems.map((item) => {
+    const dividerClass = classPrefix === 'sidebar' ? 'sidebar-divider' : 'ps-divider';
+    const groupTitleClass = classPrefix === 'sidebar' ? 'sidebar-group-title' : 'ps-group-title';
+
+    return navItems.map((item, index) => {
       const active = isActive(item.path);
+      const prevGroup = index > 0 ? navItems[index - 1].group : undefined;
+      const showGroupHeader = item.group && item.group !== prevGroup;
       return (
-        <button
-          key={item.path}
-          className={`${itemClass}${active ? ' active' : ''}`}
-          onClick={() => onNavigate(item.path)}
-          aria-current={active ? 'page' : undefined}
-          {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
-        >
-          <span className={iconClass}><NavIcon name={item.label} /></span>
-          <span className={labelClass}>{item.label}</span>
-          {item.path === '/messages' && unreadCount > 0 && (
-            <span className={badgeClass}>{unreadCount}</span>
+        <Fragment key={item.path}>
+          {showGroupHeader && (
+            <>
+              <div className={dividerClass} />
+              <div className={groupTitleClass}>{item.group}</div>
+            </>
           )}
-          {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-            <span className={badgeClass}>{pendingStudyCount}</span>
-          )}
-        </button>
+          <button
+            className={`${itemClass}${active ? ' active' : ''}`}
+            onClick={() => onNavigate(item.path)}
+            aria-current={active ? 'page' : undefined}
+            {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
+          >
+            <span className={iconClass}><NavIcon name={item.label} /></span>
+            <span className={labelClass}>{item.label}</span>
+            {item.path === '/messages' && unreadCount > 0 && (
+              <span className={badgeClass}>{unreadCount}</span>
+            )}
+            {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+              <span className={badgeClass}>{pendingStudyCount}</span>
+            )}
+          </button>
+        </Fragment>
       );
     });
   };
