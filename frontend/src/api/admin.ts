@@ -1,5 +1,14 @@
 import { api } from './client';
 
+// Feature Flag Types
+export interface FeatureFlagItem {
+  key: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  updated_at: string | null;
+}
+
 // Admin Types
 export interface AdminUserItem {
   id: number;
@@ -107,7 +116,19 @@ export const adminApi = {
 
   getFeatureToggles: async () => {
     const response = await api.get('/api/admin/features');
-    return response.data as Record<string, boolean>;
+    // New format returns array of objects; convert to flat dict for backward compat
+    const data = response.data;
+    if (Array.isArray(data)) {
+      const result: Record<string, boolean> = {};
+      for (const f of data) result[f.key] = f.enabled;
+      return result;
+    }
+    return data as Record<string, boolean>;
+  },
+
+  getFeatures: async () => {
+    const response = await api.get('/api/admin/features');
+    return response.data as FeatureFlagItem[];
   },
 
   updateFeatureToggle: async (key: string, enabled: boolean) => {

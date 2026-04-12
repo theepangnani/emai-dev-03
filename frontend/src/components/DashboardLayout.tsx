@@ -15,7 +15,27 @@ import { SpeedDialFAB } from './SpeedDialFAB';
 import { BugReportModal } from './BugReportModal';
 import { JourneyWelcomeModal } from './JourneyWelcomeModal';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { useFeatureToggles } from '../hooks/useFeatureToggle';
 import '../pages/Dashboard.css';
+
+const NAV_CLASS_MAP = {
+  sidebar: {
+    item: 'sidebar-link',
+    icon: 'sidebar-link-icon',
+    label: 'sidebar-link-label',
+    badge: 'sidebar-badge',
+    divider: 'sidebar-divider',
+    groupTitle: 'sidebar-group-title',
+  },
+  'ps-nav': {
+    item: 'ps-nav-item',
+    icon: 'ps-nav-icon',
+    label: 'ps-nav-label',
+    badge: 'ps-nav-badge',
+    divider: 'ps-divider',
+    groupTitle: 'ps-group-title',
+  },
+} as const;
 
 interface SidebarAction {
   label: string;
@@ -206,6 +226,12 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="18" x2="11" y2="18"/>
     </svg>
   ),
+  Features: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
 };
 
 const NavIcon = ({ name }: { name: string }) => {
@@ -244,6 +270,12 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   const [resendStatus, setResendStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [reconnecting, setReconnecting] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      const stored = localStorage.getItem('navGroupCollapsed');
+      return stored ? JSON.parse(stored) : {};
+    } catch { return {}; }
+  });
   const { canInstall, installApp } = usePWAInstall();
 
   useEffect(() => {
@@ -326,30 +358,38 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
   const hasMultipleRoles = (user?.roles?.length ?? 0) > 1;
 
+  const features = useFeatureToggles();
+
   const navItems = useMemo(() => {
     if (user?.role === 'parent') {
-      return [
+      const items: Array<{ label: string; path: string; group?: string }> = [
         { label: 'Home', path: '/dashboard' },
         { label: 'My Kids', path: '/my-kids' },
-        { label: 'Report Cards', path: '/school-report-cards' },
-        { label: 'Analytics', path: '/analytics' },
+      ];
+      if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
+      items.push(
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
-      ];
+      );
+      return items;
     }
 
     if (user?.role === 'student') {
-      return [
+      const items: Array<{ label: string; path: string; group?: string }> = [
         { label: 'Home', path: '/dashboard' },
         { label: 'Study', path: '/study' },
-        { label: 'Report Cards', path: '/school-report-cards' },
-        { label: 'Analytics', path: '/analytics' },
+      ];
+      if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
+      items.push(
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
-      ];
+      );
+      return items;
     }
 
     const items: Array<{ label: string; path: string; group?: string }> = [
@@ -365,8 +405,9 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     }
 
     if (user?.role === 'admin') {
+      if (features.analytics) items.push({ label: 'Analytics', path: '/analytics', group: 'Admin Tools' });
       items.push(
-        { label: 'Analytics', path: '/analytics', group: 'Admin Tools' },
+        { label: 'Features', path: '/admin/features', group: 'Admin Tools' },
         { label: 'Waitlist', path: '/admin/waitlist', group: 'Admin Tools' },
         { label: 'Survey Results', path: '/admin/survey', group: 'Admin Tools' },
         { label: 'AI Usage', path: '/admin/ai-usage', group: 'Admin Tools' },
@@ -377,7 +418,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     items.push({ label: 'Help', path: '/help' });
 
     return items;
-  }, [user?.role]);
+  }, [user?.role, features.report_cards, features.analytics]);
 
   useEffect(() => {
     const loadUnreadCount = async () => {
@@ -497,53 +538,65 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
 
   const showVerifyBanner = user && !user.email_verified && !verifyBannerDismissed;
 
+  const toggleGroupCollapsed = useCallback((group: string) => {
+    setCollapsedGroups(prev => {
+      const next = { ...prev, [group]: !prev[group] };
+      localStorage.setItem('navGroupCollapsed', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   // Shared nav-item renderer to deduplicate slide-out and persistent sidebar (#3144)
-  const renderNavItems = (opts: {
+  const renderNavItems = useCallback((opts: {
     classPrefix: 'sidebar' | 'ps-nav';
     onNavigate: (path: string) => void;
     isActive: (path: string) => boolean;
     showTitleAttr?: boolean;
   }) => {
     const { classPrefix, onNavigate, isActive, showTitleAttr } = opts;
-    const itemClass = classPrefix === 'sidebar' ? 'sidebar-link' : 'ps-nav-item';
-    const iconClass = classPrefix === 'sidebar' ? 'sidebar-link-icon' : 'ps-nav-icon';
-    const labelClass = classPrefix === 'sidebar' ? 'sidebar-link-label' : 'ps-nav-label';
-    const badgeClass = classPrefix === 'sidebar' ? 'sidebar-badge' : 'ps-nav-badge';
-
-    const dividerClass = classPrefix === 'sidebar' ? 'sidebar-divider' : 'ps-divider';
-    const groupTitleClass = classPrefix === 'sidebar' ? 'sidebar-group-title' : 'ps-group-title';
+    const cls = NAV_CLASS_MAP[classPrefix];
 
     return navItems.map((item, index) => {
       const active = isActive(item.path);
       const prevGroup = index > 0 ? navItems[index - 1].group : undefined;
       const showGroupHeader = item.group && item.group !== prevGroup;
+      const isCollapsed = item.group ? !!collapsedGroups[item.group] : false;
       return (
         <Fragment key={item.path}>
           {showGroupHeader && (
             <>
-              <div className={dividerClass} />
-              <div className={groupTitleClass}>{item.group}</div>
+              <div className={cls.divider} />
+              <button
+                className={cls.groupTitle}
+                onClick={() => toggleGroupCollapsed(item.group!)}
+                aria-expanded={!isCollapsed}
+              >
+                <span className="group-title-chevron">{isCollapsed ? '\u25B8' : '\u25BE'}</span>
+                {item.group}
+              </button>
             </>
           )}
-          <button
-            className={`${itemClass}${active ? ' active' : ''}`}
-            onClick={() => onNavigate(item.path)}
-            aria-current={active ? 'page' : undefined}
-            {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
-          >
-            <span className={iconClass}><NavIcon name={item.label} /></span>
-            <span className={labelClass}>{item.label}</span>
-            {item.path === '/messages' && unreadCount > 0 && (
-              <span className={badgeClass}>{unreadCount}</span>
-            )}
-            {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
-              <span className={badgeClass}>{pendingStudyCount}</span>
-            )}
-          </button>
+          {!isCollapsed && (
+            <button
+              className={`${cls.item}${active ? ' active' : ''}`}
+              onClick={() => onNavigate(item.path)}
+              aria-current={active ? 'page' : undefined}
+              {...(showTitleAttr ? { title: item.label, 'aria-label': item.label } : {})}
+            >
+              <span className={cls.icon}><NavIcon name={item.label} /></span>
+              <span className={cls.label}>{item.label}</span>
+              {item.path === '/messages' && unreadCount > 0 && (
+                <span className={cls.badge}>{unreadCount}</span>
+              )}
+              {item.path === '/dashboard' && user?.role === 'student' && pendingStudyCount > 0 && (
+                <span className={cls.badge}>{pendingStudyCount}</span>
+              )}
+            </button>
+          )}
         </Fragment>
       );
     });
-  };
+  }, [navItems, unreadCount, pendingStudyCount, user?.role, collapsedGroups, toggleGroupCollapsed]);
 
   return (
     <>

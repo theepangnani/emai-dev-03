@@ -515,6 +515,9 @@
 }
 
 .ps-group-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -524,6 +527,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.ps-group-title:hover {
+  color: var(--color-ink);
 }
 
 /* FAB toggle button for quick actions */
@@ -786,12 +798,29 @@
 }
 
 .sidebar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-ink-muted);
   font-weight: 600;
   padding: 2px 0 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebar-group-title:hover {
+  color: var(--color-ink);
+}
+
+.group-title-chevron {
+  font-size: 10px;
+  line-height: 1;
 }
 
 .sidebar-action {

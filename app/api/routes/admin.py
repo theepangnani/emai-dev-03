@@ -608,12 +608,26 @@ class FeatureToggleUpdate(BaseModel):
 def get_feature_toggles(
     request: Request,
     current_user: User = Depends(require_role(UserRole.ADMIN)),
+    db: Session = Depends(get_db),
 ):
-    """Get current feature toggle states."""
-    return {
-        "google_classroom": settings.google_classroom_enabled,
-        "waitlist_enabled": settings.waitlist_enabled,
-    }
+    """Get all feature flags (DB-backed + config-based)."""
+    from app.models.feature_flag import FeatureFlag
+
+    config_flags = [
+        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "updated_at": None},
+        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "updated_at": None},
+    ]
+    db_flags = db.query(FeatureFlag).order_by(FeatureFlag.id).all()
+    return config_flags + [
+        {
+            "key": f.key,
+            "name": f.name,
+            "description": f.description,
+            "enabled": f.enabled,
+            "updated_at": f.updated_at.isoformat() if f.updated_at else None,
+        }
+        for f in db_flags
+    ]
 
 
 @router.patch("/features/{feature_key}")
@@ -625,18 +639,32 @@ def update_feature_toggle(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    """Toggle a feature on or off at runtime.
+    """Toggle a feature on or off. Changes persist in the database."""
+    from app.models.feature_flag import FeatureFlag
 
-    Changes take effect immediately but reset on server restart.
-    Set the corresponding env var for persistence across restarts.
-    """
-    valid_features = {"google_classroom": "google_classroom_enabled", "waitlist_enabled": "waitlist_enabled"}
-    if feature_key not in valid_features:
+    # Handle legacy config-based flags
+    config_features = {"google_classroom": "google_classroom_enabled", "waitlist_enabled": "waitlist_enabled"}
+    if feature_key in config_features:
+        attr = config_features[feature_key]
+        setattr(settings, attr, body.enabled)
+        log_action(
+            db,
+            user_id=current_user.id,
+            action="update",
+            resource_type="feature_toggle",
+            details=f"{feature_key}={'enabled' if body.enabled else 'disabled'}",
+        )
+        db.commit()
+        logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
+        return {"feature": feature_key, "enabled": body.enabled}
+
+    # Handle DB-backed flags
+    flag = db.query(FeatureFlag).filter(FeatureFlag.key == feature_key).first()
+    if not flag:
         raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
 
-    attr = valid_features[feature_key]
-    setattr(settings, attr, body.enabled)
-
+    flag.enabled = body.enabled
+    flag.updated_at = datetime.now(timezone.utc)
     log_action(
         db,
         user_id=current_user.id,
