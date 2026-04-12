@@ -211,18 +211,33 @@ export function AdminContactsPage() {
     }
   };
 
-  // Step 2: Save remaining details → update existing contact
+  // Step 2: Save school/child details → advance to step 3
   const handleStep2Save = async () => {
     const id = createdContactId || editingContact?.id;
     if (!id) return;
     setFormSaving(true);
     const payload: Record<string, unknown> = {
-      full_name: formData.full_name.trim() || '(unnamed)',
-      email: formData.email.trim() || null,
-      phone: formData.phone.trim() || null,
       school_name: formData.school_name.trim() || null,
       child_name: formData.child_name.trim() || null,
       child_grade: formData.child_grade.trim() || null,
+    };
+    try {
+      await adminContactsApi.update(id, payload);
+      toast('Details saved', 'success');
+      setModalStep(3);
+    } catch {
+      toast('Failed to save details', 'error');
+    } finally {
+      setFormSaving(false);
+    }
+  };
+
+  // Step 3: Save source/tags/consent → close modal
+  const handleStep3Save = async () => {
+    const id = createdContactId || editingContact?.id;
+    if (!id) return;
+    setFormSaving(true);
+    const payload: Record<string, unknown> = {
       source: formData.source,
       tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
       consent_given: formData.consent_given,
@@ -561,7 +576,7 @@ export function AdminContactsPage() {
           )}
         </div>
 
-        {/* Add/Edit Modal — Progressive 2-step */}
+        {/* Add/Edit Modal — Progressive 3-step */}
         {modalOpen && (
           <div className="admin-contacts-modal-overlay" onClick={closeModal}>
             <div className="admin-contacts-modal" onClick={(e) => e.stopPropagation()}>
@@ -573,10 +588,12 @@ export function AdminContactsPage() {
                   <div className={`modal-step-dot ${modalStep >= 1 ? 'active' : ''}`}>1</div>
                   <div className="modal-step-line" />
                   <div className={`modal-step-dot ${modalStep >= 2 ? 'active' : ''}`}>2</div>
+                  <div className="modal-step-line" />
+                  <div className={`modal-step-dot ${modalStep >= 3 ? 'active' : ''}`}>3</div>
                 </div>
               )}
 
-              <h2>{editingContact ? 'Edit Contact' : modalStep === 1 ? 'Add Contact' : 'Contact Details'}</h2>
+              <h2>{editingContact ? 'Edit Contact' : modalStep === 1 ? 'Add Contact' : modalStep === 2 ? 'Child & School' : 'Tags & Consent'}</h2>
               {!editingContact && modalStep === 1 && (
                 <p className="admin-contacts-modal-subtitle">Start with the basics. You can add more details next.</p>
               )}
@@ -626,33 +643,34 @@ export function AdminContactsPage() {
                 </>
               )}
 
-              {/* Step 2: Remaining details */}
+              {/* Step 2: School & Child */}
               {modalStep === 2 && (
                 <>
                   <div className="admin-contacts-modal-field">
-                    <label>Full Name</label>
-                    <input type="text" value={formData.full_name} onChange={(e) => setFormData(d => ({ ...d, full_name: e.target.value }))} />
-                  </div>
-                  <div className="admin-contacts-modal-field">
-                    <label>Email</label>
-                    <input type="email" value={formData.email} onChange={(e) => setFormData(d => ({ ...d, email: e.target.value }))} />
-                  </div>
-                  <div className="admin-contacts-modal-field">
-                    <label>Phone</label>
-                    <input type="tel" value={formData.phone} onChange={(e) => setFormData(d => ({ ...d, phone: e.target.value }))} placeholder="+14165551234" />
-                  </div>
-                  <div className="admin-contacts-modal-field">
                     <label>School</label>
-                    <input type="text" value={formData.school_name} onChange={(e) => setFormData(d => ({ ...d, school_name: e.target.value }))} />
+                    <input type="text" value={formData.school_name} onChange={(e) => setFormData(d => ({ ...d, school_name: e.target.value }))} placeholder="Riverside Public School" autoFocus />
                   </div>
                   <div className="admin-contacts-modal-field">
                     <label>Child Name</label>
-                    <input type="text" value={formData.child_name} onChange={(e) => setFormData(d => ({ ...d, child_name: e.target.value }))} />
+                    <input type="text" value={formData.child_name} onChange={(e) => setFormData(d => ({ ...d, child_name: e.target.value }))} placeholder="Tommy" />
                   </div>
                   <div className="admin-contacts-modal-field">
                     <label>Child Grade</label>
-                    <input type="text" value={formData.child_grade} onChange={(e) => setFormData(d => ({ ...d, child_grade: e.target.value }))} />
+                    <input type="text" value={formData.child_grade} onChange={(e) => setFormData(d => ({ ...d, child_grade: e.target.value }))} placeholder="Grade 5" />
                   </div>
+                  <div className="admin-contacts-modal-actions">
+                    <button className="btn btn-secondary" onClick={() => setModalStep(1)}>Back</button>
+                    <button className="btn btn-secondary" onClick={closeModal}>Skip</button>
+                    <button className="btn btn-primary" onClick={handleStep2Save} disabled={formSaving}>
+                      {formSaving ? 'Saving...' : 'Save & Continue'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Step 3: Source, Tags & Consent */}
+              {modalStep === 3 && (
+                <>
                   <div className="admin-contacts-modal-field">
                     <label>Source</label>
                     <select value={formData.source} onChange={(e) => setFormData(d => ({ ...d, source: e.target.value }))}>
@@ -668,13 +686,9 @@ export function AdminContactsPage() {
                     <label htmlFor="consent-checkbox">PIPEDA Consent Given</label>
                   </div>
                   <div className="admin-contacts-modal-actions">
-                    {!editingContact && (
-                      <button className="btn btn-secondary" onClick={() => setModalStep(1)}>Back</button>
-                    )}
-                    <button className="btn btn-secondary" onClick={closeModal}>
-                      {editingContact ? 'Cancel' : 'Skip'}
-                    </button>
-                    <button className="btn btn-primary" onClick={handleStep2Save} disabled={formSaving}>
+                    <button className="btn btn-secondary" onClick={() => setModalStep(2)}>Back</button>
+                    <button className="btn btn-secondary" onClick={closeModal}>Skip</button>
+                    <button className="btn btn-primary" onClick={handleStep3Save} disabled={formSaving}>
                       {formSaving ? 'Saving...' : 'Save'}
                     </button>
                   </div>
