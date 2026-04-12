@@ -512,7 +512,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   }, []);
 
   // Shared nav-item renderer to deduplicate slide-out and persistent sidebar (#3144)
-  const renderNavItems = (opts: {
+  const renderNavItems = useCallback((opts: {
     classPrefix: 'sidebar' | 'ps-nav';
     onNavigate: (path: string) => void;
     isActive: (path: string) => boolean;
@@ -567,7 +567,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
         </Fragment>
       );
     });
-  };
+  }, [navItems, unreadCount, pendingStudyCount, user?.role, collapsedGroups, toggleGroupCollapsed]);
 
   return (
     <>
