@@ -30,12 +30,6 @@ export function FlashTutorSessionPage() {
   const [sessionXp, setSessionXp] = useState(0);
   const [startTime, setStartTime] = useState<number>(0);
 
-  // Load session and first question
-  useEffect(() => {
-    if (!sessionId) return;
-    loadQuestion();
-  }, [sessionId]);
-
   const loadQuestion = useCallback(async () => {
     try {
       setPhase('loading');
@@ -49,7 +43,7 @@ export function FlashTutorSessionPage() {
       setFeedback(null);
       setStartTime(Date.now());
       setPhase('question');
-    } catch (err: unknown) {
+    } catch {
       // Session might be completed
       try {
         const sess = await ileApi.getSession(sessionId);
@@ -59,11 +53,17 @@ export function FlashTutorSessionPage() {
           setPhase('results');
           return;
         }
-      } catch {}
+      } catch { /* ignore — fallthrough to error state */ }
       setError('Failed to load question');
       setPhase('error');
     }
   }, [sessionId]);
+
+  // Load session and first question
+  useEffect(() => {
+    if (!sessionId) return;
+    loadQuestion();
+  }, [sessionId, loadQuestion]);
 
   const handleSelectAnswer = (answer: string) => {
     if (submitting || phase !== 'question') return;
@@ -99,7 +99,7 @@ export function FlashTutorSessionPage() {
         // Learning Mode: show feedback
         setPhase('feedback');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to submit answer');
     } finally {
       setSubmitting(false);

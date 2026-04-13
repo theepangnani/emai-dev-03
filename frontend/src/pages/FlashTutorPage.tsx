@@ -141,7 +141,7 @@ export function FlashTutorPage() {
                 topics.map((t, i) => (
                   <button
                     key={`${t.subject}-${t.topic}-${i}`}
-                    className={`ft-topic-card ${selectedTopic === t ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
+                    className={`ft-topic-card ${selectedTopic?.subject === t.subject && selectedTopic?.topic === t.topic ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
                     onClick={() => setSelectedTopic(t)}
                   >
                     <span className="ft-topic-subject">{t.subject}</span>
