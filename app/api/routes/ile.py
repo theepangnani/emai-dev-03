@@ -48,14 +48,12 @@ async def create_session(
         if not body.child_student_id:
             raise HTTPException(400, "child_student_id required for Parent Teaching Mode")
         # Verify parent-child relationship
-        link = (
-            db.query(parent_students)
-            .filter(
-                parent_students.c.parent_id == current_user.id,
-            )
+        child_student_ids = [
+            r[0] for r in
+            db.query(parent_students.c.student_id)
+            .filter(parent_students.c.parent_id == current_user.id)
             .all()
-        )
-        child_student_ids = [r[1] for r in link]
+        ]
         child = (
             db.query(Student)
             .filter(
@@ -237,13 +235,6 @@ async def complete_session(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    # Award XP via xp_service (non-blocking)
-    try:
-        from app.services.xp_service import award_xp
-        award_xp(db, session.student_id, "ile_session_complete", context_id=f"ile_session_{session.id}")
-    except Exception:
-        pass  # XP is never blocking
-
     return ILESessionResults(**results)
 
 
@@ -288,8 +279,8 @@ async def get_session_results(
     if session.status not in ("completed", "abandoned"):
         raise HTTPException(400, "Session is not completed")
 
-    # Re-compute results from attempts
-    results = await ile_service.complete_session.__wrapped__(db, session) if session.status == "completed" else {}
+    # Reconstruct results from stored attempts without mutating state (#3225)
+    results = ile_service.get_session_results_from_attempts(db, session)
     if not results:
         raise HTTPException(400, "No results available")
     return ILESessionResults(**results)

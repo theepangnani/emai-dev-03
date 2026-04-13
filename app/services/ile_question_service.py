@@ -138,7 +138,25 @@ async def generate_questions(
     if not validated:
         raise ValueError("No valid questions generated")
 
-    return validated
+    # Content safety check on AI-generated questions
+    safe_questions = []
+    for q in validated:
+        is_safe, reason = check_content_safe(q["question"])
+        if is_safe:
+            safe_questions.append(q)
+        else:
+            logger.warning("Filtered unsafe question: %s", reason)
+
+    if len(safe_questions) < len(validated):
+        logger.warning(
+            "Content safety filtered %d/%d questions for %s/%s",
+            len(validated) - len(safe_questions), len(validated), subject, topic,
+        )
+
+    if not safe_questions:
+        raise ValueError("No safe questions generated")
+
+    return safe_questions
 
 
 async def generate_hint(

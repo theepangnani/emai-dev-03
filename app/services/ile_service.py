@@ -4,6 +4,7 @@ ILE Session Orchestrator — CB-ILE-001 (#3198).
 Manages the lifecycle of Flash Tutor sessions: create, answer, complete, abandon, resume.
 """
 import json
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
@@ -97,7 +98,10 @@ async def create_session(
         is_private_practice=is_private_practice,
         status="in_progress",
         current_question_index=0,
-        questions_json=json.dumps(questions),
+        questions_json=json.dumps([
+            {k: v for k, v in q.items() if not k.startswith("_")}
+            for q in questions
+        ]),
         course_id=course_id,
         course_content_id=course_content_id,
         started_at=now,
@@ -310,6 +314,17 @@ async def complete_session(db: Session, session: ILESession) -> dict:
     if session.status != "in_progress":
         raise ValueError("Session is not in progress")
 
+    # Batch-load all attempts in a single query (#3229)
+    all_attempts = (
+        db.query(ILEQuestionAttempt)
+        .filter(ILEQuestionAttempt.session_id == session.id)
+        .order_by(ILEQuestionAttempt.question_index, ILEQuestionAttempt.attempt_number)
+        .all()
+    )
+    attempts_by_q: dict[int, list[ILEQuestionAttempt]] = defaultdict(list)
+    for a in all_attempts:
+        attempts_by_q[a.question_index].append(a)
+
     # Calculate final score
     questions = json.loads(session.questions_json)
     total_correct = 0
@@ -318,7 +333,7 @@ async def complete_session(db: Session, session: ILESession) -> dict:
 
     for idx in range(len(questions)):
         q = questions[idx]
-        attempts = get_attempt_history(db, session.id, idx)
+        attempts = attempts_by_q.get(idx, [])
         final_attempt = attempts[-1] if attempts else None
         is_correct = final_attempt.is_correct if final_attempt else False
         if is_correct:
@@ -346,12 +361,79 @@ async def complete_session(db: Session, session: ILESession) -> dict:
     session.completed_at = datetime.now(timezone.utc)
     db.commit()
 
+    # Award XP once at status transition (#3227)
+    try:
+        from app.services.xp_service import award_xp
+        award_xp(db, session.student_id, "ile_session_complete", context_id=f"ile_session_{session.id}")
+    except Exception:
+        pass  # XP is never blocking
+
     percentage = (total_correct / len(questions) * 100) if questions else 0
 
     logger.info(
         "ILE session %d completed | student=%d score=%d/%d xp=%d",
         session.id, session.student_id, total_correct, len(questions), total_xp,
     )
+
+    return _build_results_dict(session, questions, question_results, total_correct, total_xp, attempts_by_q)
+
+
+def get_session_results_from_attempts(db: Session, session: ILESession) -> dict:
+    """Reconstruct results from stored attempts without mutating session state (#3225)."""
+    # Batch-load all attempts
+    all_attempts = (
+        db.query(ILEQuestionAttempt)
+        .filter(ILEQuestionAttempt.session_id == session.id)
+        .order_by(ILEQuestionAttempt.question_index, ILEQuestionAttempt.attempt_number)
+        .all()
+    )
+    attempts_by_q: dict[int, list[ILEQuestionAttempt]] = defaultdict(list)
+    for a in all_attempts:
+        attempts_by_q[a.question_index].append(a)
+
+    questions = json.loads(session.questions_json)
+    total_correct = 0
+    total_xp = 0
+    question_results = []
+
+    for idx in range(len(questions)):
+        q = questions[idx]
+        attempts = attempts_by_q.get(idx, [])
+        final_attempt = attempts[-1] if attempts else None
+        is_correct = final_attempt.is_correct if final_attempt else False
+        if is_correct:
+            total_correct += 1
+        q_xp = sum(a.xp_earned for a in attempts)
+        total_xp += q_xp
+
+        question_results.append({
+            "index": idx,
+            "question": q["question"],
+            "correct_answer": q["correct_answer"],
+            "student_answer": final_attempt.selected_answer if final_attempt else None,
+            "is_correct": is_correct,
+            "attempts": len(attempts),
+            "xp_earned": q_xp,
+            "difficulty": q.get("difficulty", session.difficulty),
+            "format": q.get("format", "mcq"),
+        })
+
+    return _build_results_dict(session, questions, question_results, total_correct, total_xp, attempts_by_q)
+
+
+def _build_results_dict(
+    session: ILESession,
+    questions: list[dict],
+    question_results: list[dict],
+    total_correct: int,
+    total_xp: int,
+    attempts_by_q: dict[int, list],
+) -> dict:
+    """Build the session results dictionary."""
+    percentage = (total_correct / len(questions) * 100) if questions else 0
+
+    # Compute streak from pre-fetched attempts
+    streak = _count_streak_from_attempts(attempts_by_q, len(questions) - 1)
 
     return {
         "session_id": session.id,
@@ -363,7 +445,7 @@ async def complete_session(db: Session, session: ILESession) -> dict:
         "percentage": round(percentage, 1),
         "total_xp": total_xp,
         "questions": question_results,
-        "streak_at_end": 0,  # Will be computed from attempts
+        "streak_at_end": streak,
         "time_taken_seconds": _session_duration_seconds(session),
         "weak_areas": [],
         "suggested_next_topic": None,
@@ -399,21 +481,28 @@ def get_available_topics(
     """Get available topics from student's courses.
 
     Returns list of {subject, topic, course_id, course_name}.
+    Uses a single joined query to avoid N+1 (#3229).
     """
     from app.models.course import Course, student_courses
     from app.models.course_content import CourseContent
+    from app.models.student import Student
 
-    # Get student's enrolled courses
-    course_ids = [
-        r[0] for r in
-        db.query(student_courses.c.course_id)
-        .filter(student_courses.c.student_id == student_id)
-        .all()
-    ]
+    # student_courses stores Student.id, not User.id — look up the Student record
+    student = db.query(Student).filter(Student.user_id == student_id).first()
+    if student:
+        course_ids = [
+            r[0] for r in
+            db.query(student_courses.c.course_id)
+            .filter(student_courses.c.student_id == student.id)
+            .all()
+        ]
+    else:
+        course_ids = []
 
-    # Also get courses created by or assigned to the student
-    own_courses = (
-        db.query(Course)
+    # Single query: join courses with their content
+    rows = (
+        db.query(Course, CourseContent)
+        .outerjoin(CourseContent, CourseContent.course_id == Course.id)
         .filter(
             (Course.id.in_(course_ids)) | (Course.created_by_user_id == student_id)
         )
@@ -421,24 +510,18 @@ def get_available_topics(
     )
 
     topics = []
-    for course in own_courses:
-        # Each course is a "subject"
-        # Each course content is a "topic"
-        contents = (
-            db.query(CourseContent)
-            .filter(CourseContent.course_id == course.id)
-            .all()
-        )
-        if contents:
-            for cc in contents:
-                topics.append({
-                    "subject": course.name,
-                    "topic": cc.title or f"Material {cc.id}",
-                    "course_id": course.id,
-                    "course_name": course.name,
-                })
-        else:
+    seen_courses_without_content: set[int] = set()
+    for course, cc in rows:
+        if cc is not None:
+            topics.append({
+                "subject": course.name,
+                "topic": cc.title or f"Material {cc.id}",
+                "course_id": course.id,
+                "course_name": course.name,
+            })
+        elif course.id not in seen_courses_without_content:
             # Course without specific content — use course name as topic
+            seen_courses_without_content.add(course.id)
             topics.append({
                 "subject": course.name,
                 "topic": course.name,
@@ -464,17 +547,32 @@ def _calculate_xp(mode: str, is_correct: bool, attempt_number: int) -> int:
 
 
 def _count_streak(db: Session, session_id: int, current_index: int) -> int:
-    """Count consecutive first-attempt correct answers up to current_index."""
+    """Count consecutive first-attempt correct answers up to current_index.
+
+    Used during submit_answer where we don't have pre-fetched attempts for
+    the full session yet (the current attempt hasn't been committed).
+    """
+    # Batch-load all attempts for the session (#3229)
+    all_attempts = (
+        db.query(ILEQuestionAttempt)
+        .filter(ILEQuestionAttempt.session_id == session_id)
+        .order_by(ILEQuestionAttempt.question_index, ILEQuestionAttempt.attempt_number)
+        .all()
+    )
+    attempts_by_q: dict[int, list[ILEQuestionAttempt]] = defaultdict(list)
+    for a in all_attempts:
+        attempts_by_q[a.question_index].append(a)
+
+    return _count_streak_from_attempts(attempts_by_q, current_index)
+
+
+def _count_streak_from_attempts(
+    attempts_by_q: dict[int, list], current_index: int
+) -> int:
+    """Count consecutive first-attempt correct answers from pre-fetched attempts."""
     streak = 0
     for idx in range(current_index, -1, -1):
-        attempts = (
-            db.query(ILEQuestionAttempt)
-            .filter(
-                ILEQuestionAttempt.session_id == session_id,
-                ILEQuestionAttempt.question_index == idx,
-            )
-            .all()
-        )
+        attempts = attempts_by_q.get(idx, [])
         if len(attempts) == 1 and attempts[0].is_correct:
             streak += 1
         else:
