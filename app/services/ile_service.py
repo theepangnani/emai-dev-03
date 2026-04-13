@@ -85,6 +85,19 @@ async def create_session(
                 "Complete or abandon it first."
             )
 
+    # Use calibration-recommended difficulty if caller used default (#3211)
+    if difficulty == "medium":
+        try:
+            recommended = get_recommended_difficulty(db, student_id, subject, topic)
+            if recommended:
+                difficulty = recommended
+                logger.info(
+                    "Using calibrated difficulty=%s for student=%d topic=%s",
+                    difficulty, student_id, topic,
+                )
+        except Exception:
+            pass  # Calibration is never blocking
+
     # Check format escalation
     question_format = ile_question_service.check_format_escalation(
         db, student_id, subject, topic,
@@ -446,28 +459,13 @@ async def complete_session(db: Session, session: ILESession) -> dict:
 
     percentage = (total_correct / len(questions) * 100) if questions else 0
 
-    # Update mastery + SM-2 spaced repetition (#3210)
+    # Update student calibration (non-blocking) (#3211)
     try:
-        from app.services.ile_mastery_service import update_mastery_after_session
-        total_first_attempt_correct = sum(
-            1 for idx in range(len(questions))
-            if (attempts_by_q.get(idx) and len(attempts_by_q[idx]) == 1
-                and attempts_by_q[idx][0].is_correct)
-        )
-        update_mastery_after_session(
-            db=db,
-            student_id=session.student_id,
-            subject=session.subject,
-            topic=session.topic,
-            total_correct=total_correct,
-            total_questions=len(questions),
-            total_first_attempt_correct=total_first_attempt_correct,
-            score_pct=percentage,
-            difficulty=session.difficulty,
-            grade_level=session.grade_level,
+        update_student_calibration(
+            db, session.student_id, session.subject, session.topic, percentage,
         )
     except Exception:
-        logger.warning("Failed to update mastery for session %d", session.id)
+        logger.warning("Calibration update failed for session %d", session.id)
 
     logger.info(
         "ILE session %d completed | student=%d score=%d/%d xp=%d",
@@ -647,6 +645,89 @@ def get_available_topics(
                 t["next_review_at"] = m.next_review_at
 
     return topics
+
+
+# ---------------------------------------------------------------------------
+# Student Calibration
+# ---------------------------------------------------------------------------
+
+def update_student_calibration(
+    db: Session, student_id: int, subject: str, topic: str, score_pct: float
+) -> None:
+    """Update calibration after session completion.
+
+    - Get or create calibration record
+    - Increment sessions_completed
+    - After 3 sessions: calculate baseline_accuracy (running average)
+    - Set recommended_difficulty based on accuracy
+    """
+    from app.models.ile_student_calibration import ILEStudentCalibration
+
+    cal = (
+        db.query(ILEStudentCalibration)
+        .filter(
+            ILEStudentCalibration.student_id == student_id,
+            ILEStudentCalibration.subject == subject,
+            ILEStudentCalibration.topic == topic,
+        )
+        .first()
+    )
+
+    if not cal:
+        cal = ILEStudentCalibration(
+            student_id=student_id,
+            subject=subject,
+            topic=topic,
+            sessions_completed=0,
+        )
+        db.add(cal)
+        db.flush()
+
+    old_count = cal.sessions_completed or 0
+    cal.sessions_completed = old_count + 1
+
+    # Track running average from session 1 so baseline is accurate at threshold
+    if cal.baseline_accuracy is not None:
+        # Running average: blend old baseline with new score
+        cal.baseline_accuracy = round(
+            (cal.baseline_accuracy * old_count + score_pct) / cal.sessions_completed,
+            1,
+        )
+    else:
+        # First session — initialise baseline to this score
+        cal.baseline_accuracy = round(score_pct, 1)
+
+    # Only set recommended difficulty after 3+ sessions
+    if cal.sessions_completed >= 3:
+        # Set recommended difficulty based on accuracy
+        if cal.baseline_accuracy < 50:
+            cal.recommended_difficulty = "easy"
+        elif cal.baseline_accuracy <= 80:
+            cal.recommended_difficulty = "medium"
+        else:
+            cal.recommended_difficulty = "challenging"
+
+    db.commit()
+
+
+def get_recommended_difficulty(
+    db: Session, student_id: int, subject: str, topic: str
+) -> str | None:
+    """Get recommended difficulty from calibration, if available."""
+    from app.models.ile_student_calibration import ILEStudentCalibration
+
+    cal = (
+        db.query(ILEStudentCalibration)
+        .filter(
+            ILEStudentCalibration.student_id == student_id,
+            ILEStudentCalibration.subject == subject,
+            ILEStudentCalibration.topic == topic,
+        )
+        .first()
+    )
+    if cal and cal.recommended_difficulty:
+        return cal.recommended_difficulty
+    return None
 
 
 # ---------------------------------------------------------------------------
