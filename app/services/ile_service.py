@@ -71,6 +71,19 @@ async def create_session(
                 "Complete or abandon it first."
             )
 
+    # Use calibration-recommended difficulty if caller used default
+    if difficulty == "medium":
+        try:
+            recommended = get_recommended_difficulty(db, student_id, subject, topic)
+            if recommended:
+                difficulty = recommended
+                logger.info(
+                    "Using calibrated difficulty=%s for student=%d topic=%s",
+                    difficulty, student_id, topic,
+                )
+        except Exception:
+            pass  # Calibration is never blocking
+
     # Generate questions
     questions = await ile_question_service.get_from_bank_or_generate(
         db=db,
@@ -370,6 +383,14 @@ async def complete_session(db: Session, session: ILESession) -> dict:
 
     percentage = (total_correct / len(questions) * 100) if questions else 0
 
+    # Update student calibration (non-blocking)
+    try:
+        update_student_calibration(
+            db, session.student_id, session.subject, session.topic, percentage,
+        )
+    except Exception:
+        logger.warning("Calibration update failed for session %d", session.id)
+
     logger.info(
         "ILE session %d completed | student=%d score=%d/%d xp=%d",
         session.id, session.student_id, total_correct, len(questions), total_xp,
@@ -530,6 +551,87 @@ def get_available_topics(
             })
 
     return topics
+
+
+# ---------------------------------------------------------------------------
+# Student Calibration
+# ---------------------------------------------------------------------------
+
+def update_student_calibration(
+    db: Session, student_id: int, subject: str, topic: str, score_pct: float
+) -> None:
+    """Update calibration after session completion.
+
+    - Get or create calibration record
+    - Increment sessions_completed
+    - After 3 sessions: calculate baseline_accuracy (running average)
+    - Set recommended_difficulty based on accuracy
+    """
+    from app.models.ile_student_calibration import ILEStudentCalibration
+
+    cal = (
+        db.query(ILEStudentCalibration)
+        .filter(
+            ILEStudentCalibration.student_id == student_id,
+            ILEStudentCalibration.subject == subject,
+            ILEStudentCalibration.topic == topic,
+        )
+        .first()
+    )
+
+    if not cal:
+        cal = ILEStudentCalibration(
+            student_id=student_id,
+            subject=subject,
+            topic=topic,
+            sessions_completed=0,
+        )
+        db.add(cal)
+        db.flush()
+
+    cal.sessions_completed = (cal.sessions_completed or 0) + 1
+
+    # After 3 sessions, compute running average baseline_accuracy
+    if cal.sessions_completed >= 3:
+        if cal.baseline_accuracy is not None:
+            # Running average: blend old baseline with new score
+            cal.baseline_accuracy = round(
+                (cal.baseline_accuracy * (cal.sessions_completed - 1) + score_pct)
+                / cal.sessions_completed,
+                1,
+            )
+        else:
+            cal.baseline_accuracy = round(score_pct, 1)
+
+        # Set recommended difficulty based on accuracy
+        if cal.baseline_accuracy < 50:
+            cal.recommended_difficulty = "easy"
+        elif cal.baseline_accuracy <= 80:
+            cal.recommended_difficulty = "medium"
+        else:
+            cal.recommended_difficulty = "challenging"
+
+    db.commit()
+
+
+def get_recommended_difficulty(
+    db: Session, student_id: int, subject: str, topic: str
+) -> str | None:
+    """Get recommended difficulty from calibration, if available."""
+    from app.models.ile_student_calibration import ILEStudentCalibration
+
+    cal = (
+        db.query(ILEStudentCalibration)
+        .filter(
+            ILEStudentCalibration.student_id == student_id,
+            ILEStudentCalibration.subject == subject,
+            ILEStudentCalibration.topic == topic,
+        )
+        .first()
+    )
+    if cal and cal.recommended_difficulty:
+        return cal.recommended_difficulty
+    return None
 
 
 # ---------------------------------------------------------------------------
