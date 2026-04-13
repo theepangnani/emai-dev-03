@@ -22,6 +22,7 @@ export function Login() {
   const waitlistEnabled = useFeature('waitlist_enabled');
   const botProtection = useBotProtection();
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const oauthProcessedRef = useRef(false);
 
   // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
   useEffect(() => {
@@ -32,13 +33,16 @@ export function Login() {
 
   // Handle OAuth callback — set the token, then let the user-loaded effect navigate
   useEffect(() => {
+    if (oauthProcessedRef.current) return;
     const token = searchParams.get('token');
     const oauthError = searchParams.get('error');
 
     if (token) {
+      oauthProcessedRef.current = true;
       loginWithToken(token);
       setSearchParams({}, { replace: true });
     } else if (oauthError) {
+      oauthProcessedRef.current = true;
       setError(`Google sign-in failed: ${oauthError}`);
       setSearchParams({}, { replace: true });
     }
