@@ -128,6 +128,7 @@ function UploadWizardStep1({
           </p>
           <textarea
             className="uw-textarea uw-question-textarea"
+            aria-label="Ask a question about your child's education"
             value={studyContent}
             onChange={(e) => onStudyContentChange(e.target.value)}
             placeholder={"e.g., My son is in grade 10, doing OSSLT in YRDSB. He was not successful the first time. How can I help him prep?"}
