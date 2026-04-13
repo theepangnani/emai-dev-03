@@ -97,7 +97,10 @@ async def create_session(
         is_private_practice=is_private_practice,
         status="in_progress",
         current_question_index=0,
-        questions_json=json.dumps(questions),
+        questions_json=json.dumps([
+            {k: v for k, v in q.items() if not k.startswith("_")}
+            for q in questions
+        ]),
         course_id=course_id,
         course_content_id=course_content_id,
         started_at=now,
