@@ -59,6 +59,7 @@ vi.mock('../api/client', () => ({
   },
   studyApi: {
     listGuides: (...args: any[]) => mockListGuides(...args),
+    listWorksheets: vi.fn().mockResolvedValue([]),
     resolveStudent: vi.fn().mockRejectedValue(new Error('not parent')),
   },
   parentApi: {
