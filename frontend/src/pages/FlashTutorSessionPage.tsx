@@ -73,13 +73,13 @@ export function FlashTutorSessionPage() {
     setSelectedAnswer(answer);
   };
 
-  const handleSubmit = async () => {
-    if (!selectedAnswer || submitting || !currentQ) return;
+  const handleSubmitAnswer = async (answerToSubmit: string) => {
+    if (!answerToSubmit || submitting || !currentQ) return;
     setSubmitting(true);
 
     try {
       const timeTaken = Date.now() - startTime;
-      const fb = await ileApi.submitAnswer(sessionId, selectedAnswer, timeTaken);
+      const fb = await ileApi.submitAnswer(sessionId, answerToSubmit, timeTaken);
       setFeedback(fb);
       setSessionXp(prev => prev + fb.xp_earned);
 
@@ -105,6 +105,11 @@ export function FlashTutorSessionPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedAnswer) return;
+    await handleSubmitAnswer(selectedAnswer);
   };
 
   const handleNext = async () => {
@@ -313,36 +318,7 @@ export function FlashTutorSessionPage() {
               question={q.question}
               onSubmit={(answer) => {
                 setSelectedAnswer(answer);
-                // Auto-submit for fill_blank
-                setTimeout(async () => {
-                  setSubmitting(true);
-                  try {
-                    const timeTaken = Date.now() - startTime;
-                    const fb = await ileApi.submitAnswer(sessionId, answer, timeTaken);
-                    setFeedback(fb);
-                    setSessionXp(prev => prev + fb.xp_earned);
-
-                    if (fb.is_correct && fb.attempt_number === 1) {
-                      setStreak(prev => prev + 1);
-                    } else if (fb.streak_broken) {
-                      setStreak(0);
-                    }
-
-                    if (session?.mode === 'testing') {
-                      if (fb.session_complete) {
-                        await handleComplete();
-                      } else {
-                        await loadQuestion();
-                      }
-                    } else {
-                      setPhase('feedback');
-                    }
-                  } catch {
-                    setError('Failed to submit answer');
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }, 0);
+                handleSubmitAnswer(answer);
               }}
               disabled={submitting || phase !== 'question'}
             />
@@ -352,6 +328,14 @@ export function FlashTutorSessionPage() {
         {/* Feedback bubbles (Learning Mode) */}
         {phase === 'feedback' && feedback && (
           <div className="fts-feedback">
+            {/* Show student's typed answer for fill_blank */}
+            {q.format === 'fill_blank' && selectedAnswer && (
+              <div className={`fts-typed-answer ${feedback.is_correct ? 'correct' : 'wrong'}`}>
+                Your answer: <strong>{selectedAnswer}</strong>
+                {feedback.is_correct ? ' ✓' : ' ✗'}
+              </div>
+            )}
+
             {feedback.hint && !feedback.question_complete && (
               <div className="fts-hint-bubble">
                 <span className="fts-bubble-label">💡 Hint</span>

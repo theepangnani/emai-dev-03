@@ -399,9 +399,18 @@ def _validate_question(q: dict) -> bool:
     if not all(k in q for k in required):
         return False
     if "options" in q:
+        # MCQ validation
         opts = q["options"]
         if not isinstance(opts, dict) or not all(k in opts for k in "ABCD"):
             return False
         if q["correct_answer"] not in "ABCD":
             return False
+    else:
+        # Fill-in-the-blank validation
+        answer = q["correct_answer"]
+        if not isinstance(answer, str) or not answer.strip():
+            return False
+        # Warn if question text has no blank indicator (still valid, just suboptimal)
+        if "_____" not in q["question"] and "____" not in q["question"] and "___" not in q["question"]:
+            logger.warning("Fill-blank question missing blank indicator: %.80s", q["question"])
     return True

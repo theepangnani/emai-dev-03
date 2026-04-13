@@ -39,7 +39,11 @@ export function FillBlankCard({ question, onSubmit, disabled }: FillBlankCardPro
 
   return (
     <div className="fts-fill-blank">
+      <label htmlFor="fts-fill-blank-input" className="fts-fill-blank-label">
+        Your answer
+      </label>
       <input
+        id="fts-fill-blank-input"
         ref={inputRef}
         type="text"
         className="fts-fill-blank-input"
@@ -50,7 +54,12 @@ export function FillBlankCard({ question, onSubmit, disabled }: FillBlankCardPro
         disabled={disabled}
         autoComplete="off"
         spellCheck={false}
+        maxLength={500}
+        aria-describedby="fts-fill-blank-hint"
       />
+      <span id="fts-fill-blank-hint" className="visually-hidden">
+        Type your answer and press Enter or click Submit
+      </span>
       <button
         className="fts-btn fts-btn-primary fts-fill-blank-submit"
         onClick={handleSubmit}

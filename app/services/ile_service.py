@@ -597,6 +597,7 @@ def _check_fill_blank_answer(student_answer: str, correct_answer: str) -> bool:
     - Trim whitespace
     - Strip trailing punctuation
     - Accept common variants (e.g. "the " prefix)
+    - Numeric equivalence (e.g. "2" == "2.0")
     """
     def _normalize(text: str) -> str:
         t = text.strip().lower()
@@ -608,7 +609,20 @@ def _check_fill_blank_answer(student_answer: str, correct_answer: str) -> bool:
                 t = t[len(prefix):]
         return t.strip()
 
-    return _normalize(student_answer) == _normalize(correct_answer)
+    norm_student = _normalize(student_answer)
+    norm_correct = _normalize(correct_answer)
+
+    if norm_student == norm_correct:
+        return True
+
+    # Numeric equivalence: "2" == "2.0", "0.5" == ".5"
+    try:
+        if float(norm_student) == float(norm_correct):
+            return True
+    except (ValueError, OverflowError):
+        pass
+
+    return False
 
 
 def _session_duration_seconds(session: ILESession) -> int | None:

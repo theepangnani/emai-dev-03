@@ -224,6 +224,24 @@
 .fts-option-x { color: var(--color-danger, #ef4444); }
 .fts-option-check { color: var(--color-success, #10b981); }
 
+/* Typed answer display (fill_blank) */
+.fts-typed-answer {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.fts-typed-answer.correct {
+  background: var(--color-success-bg, #ecfdf5);
+  border-left: 3px solid var(--color-success, #10b981);
+}
+
+.fts-typed-answer.wrong {
+  background: var(--color-danger-bg, #fef2f2);
+  border-left: 3px solid var(--color-danger, #ef4444);
+}
+
 /* Feedback bubbles */
 .fts-feedback {
   display: flex;
