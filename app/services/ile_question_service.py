@@ -360,6 +360,17 @@ async def get_from_bank_or_generate(
         subject, topic, grade_level, difficulty, blooms_tier, remaining,
         question_format=question_format,
     )
+
+    # Save newly generated questions to bank for future reuse
+    if generated and db is not None:
+        try:
+            from app.services.ile_cost_optimizer import save_questions_to_bank
+            save_questions_to_bank(
+                db, generated, subject, topic, grade_level, difficulty,
+            )
+        except Exception:
+            logger.warning("Failed to save generated questions to bank", exc_info=True)
+
     return bank_questions + generated
 
 

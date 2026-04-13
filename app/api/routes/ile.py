@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_role
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -26,6 +26,7 @@ from app.models.ile_topic_mastery import ILETopicMastery
 from app.services import ile_service
 from app.services import ile_mastery_service
 from app.services.ile_mastery_service import compute_glow_intensity
+from app.services import ile_cost_optimizer
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -412,3 +413,49 @@ async def get_session_history(
         )
         for s in sessions
     ]
+
+
+# ---------------------------------------------------------------------------
+# Admin — Question Bank Management
+# ---------------------------------------------------------------------------
+
+@router.post("/admin/prefill-bank")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def admin_prefill_bank(
+    request: Request,
+    subject: str,
+    topic: str,
+    grade_level: int,
+    difficulty: str = "medium",
+    count: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Trigger bank prefill for a specific topic (admin only)."""
+    added = await ile_cost_optimizer.prefill_question_bank(
+        db, subject, topic, grade_level, difficulty, count,
+    )
+    return {"added": added, "subject": subject, "topic": topic, "grade_level": grade_level}
+
+
+@router.post("/admin/cleanup-bank")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def admin_cleanup_bank(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Trigger cleanup of expired and flagged questions (admin only)."""
+    removed = ile_cost_optimizer.cleanup_expired_bank(db)
+    return {"removed": removed}
+
+
+@router.get("/admin/bank-stats")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def admin_bank_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Return question bank statistics (admin only)."""
+    return ile_cost_optimizer.get_bank_stats(db)
