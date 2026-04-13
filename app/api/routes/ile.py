@@ -17,10 +17,12 @@ from app.schemas.ile import (
     ILESessionResponse,
     ILESessionResults,
     ILESessionSummary,
+    ILESurpriseMe,
     ILETopic,
     ILETopicList,
 )
 from app.services import ile_service
+from app.services import ile_surprise_service
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -301,6 +303,24 @@ async def get_topics(
     topics_data = ile_service.get_available_topics(db, current_user.id)
     topics = [ILETopic(**t) for t in topics_data]
     return ILETopicList(topics=topics)
+
+
+@router.get("/topics/surprise-me", response_model=ILESurpriseMe)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def surprise_me(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pick a topic for Surprise Me, weighted by weak areas."""
+    try:
+        result = ile_surprise_service.get_surprise_topic(db, current_user.id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return ILESurpriseMe(
+        topic=ILETopic(**result["topic"]),
+        reason=result["reason"],
+    )
 
 
 # ---------------------------------------------------------------------------

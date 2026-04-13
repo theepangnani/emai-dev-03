@@ -178,4 +178,7 @@ export const ileApi = {
   // Topics
   getTopics: () =>
     api.get<{ topics: ILETopic[] }>('/ile/topics').then(r => r.data.topics),
+
+  getSurpriseMe: () =>
+    api.get<{ topic: ILETopic; reason: string }>('/ile/topics/surprise-me').then(r => r.data),
 };

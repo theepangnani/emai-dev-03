@@ -29,6 +29,8 @@ export function FlashTutorPage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [surpriseLoading, setSurpriseLoading] = useState(false);
+  const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
 
   // Fetch available topics
   const { data: topics = [], isLoading: topicsLoading } = useQuery({
@@ -69,6 +71,23 @@ export function FlashTutorPage() {
       setError(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleSurpriseMe = async () => {
+    setSurpriseLoading(true);
+    setSurpriseReason(null);
+    setError(null);
+    try {
+      const result = await ileApi.getSurpriseMe();
+      setSelectedTopic(result.topic);
+      setUseCustom(false);
+      setSurpriseReason(result.reason);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to get surprise topic';
+      setError(msg);
+    } finally {
+      setSurpriseLoading(false);
     }
   };
 
@@ -131,7 +150,20 @@ export function FlashTutorPage() {
 
         {/* Topic selection */}
         <div className="ft-section">
-          <h2>Topic</h2>
+          <div className="ft-topic-header">
+            <h2>Topic</h2>
+            <button
+              className="ft-btn ft-btn-surprise"
+              onClick={handleSurpriseMe}
+              disabled={surpriseLoading}
+            >
+              {surpriseLoading ? 'Picking...' : 'Surprise Me'}
+            </button>
+          </div>
+
+          {surpriseReason && (
+            <div className="ft-surprise-reason">{surpriseReason}</div>
+          )}
 
           {!useCustom && (
             <div className="ft-topics-grid">
