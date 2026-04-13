@@ -34,8 +34,7 @@ async def fetch_child_emails(
     - Deduplicates by gmail_message_id (source_id)
     """
     # Build list of monitored emails — prefer new table, fall back to legacy field
-    monitored = integration.monitored_emails if hasattr(integration, 'monitored_emails') else []
-    monitored_addresses = [m.email_address for m in monitored] if monitored else []
+    monitored_addresses = [m.email_address for m in integration.monitored_emails]
     if not monitored_addresses and integration.child_school_email:
         monitored_addresses = [integration.child_school_email]
     if not monitored_addresses:
@@ -180,8 +179,7 @@ async def verify_forwarding(
     Checks for at least 1 email from child_school_email in the last 30 days.
     Returns: {verified: bool, email_count: int, latest_email_date: str|None}
     """
-    monitored = integration.monitored_emails if hasattr(integration, 'monitored_emails') else []
-    monitored_addresses = [m.email_address for m in monitored] if monitored else []
+    monitored_addresses = [m.email_address for m in integration.monitored_emails]
     if not monitored_addresses and integration.child_school_email:
         monitored_addresses = [integration.child_school_email]
     if not monitored_addresses:
