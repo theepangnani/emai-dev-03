@@ -34,6 +34,7 @@ class ParentGmailIntegration(Base):
     parent = relationship("User", backref="gmail_integrations")
     digest_settings = relationship("ParentDigestSettings", back_populates="integration", uselist=False, cascade="all, delete-orphan")
     delivery_logs = relationship("DigestDeliveryLog", back_populates="integration", cascade="all, delete-orphan")
+    monitored_emails = relationship("ParentDigestMonitoredEmail", back_populates="integration", cascade="all, delete-orphan")
 
 
 class ParentDigestSettings(Base):
@@ -50,6 +51,21 @@ class ParentDigestSettings(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     integration = relationship("ParentGmailIntegration", back_populates="digest_settings")
+
+
+class ParentDigestMonitoredEmail(Base):
+    __tablename__ = "parent_digest_monitored_emails"
+    __table_args__ = (
+        UniqueConstraint("integration_id", "email_address", name="uq_integration_monitored_email"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id", ondelete="CASCADE"), nullable=False, index=True)
+    email_address = Column(String(255), nullable=False)
+    label = Column(String(100), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    integration = relationship("ParentGmailIntegration", back_populates="monitored_emails")
 
 
 class DigestDeliveryLog(Base):

@@ -33,9 +33,14 @@ async def fetch_child_emails(
     - On token refresh failure: sets is_active=False
     - Deduplicates by gmail_message_id (source_id)
     """
-    if not integration.child_school_email:
+    # Build list of monitored emails — prefer new table, fall back to legacy field
+    monitored = integration.monitored_emails if hasattr(integration, 'monitored_emails') else []
+    monitored_addresses = [m.email_address for m in monitored] if monitored else []
+    if not monitored_addresses and integration.child_school_email:
+        monitored_addresses = [integration.child_school_email]
+    if not monitored_addresses:
         logger.warning(
-            "Integration %d has no child_school_email configured",
+            "Integration %d has no monitored email addresses configured",
             integration.id,
         )
         return []
@@ -62,11 +67,15 @@ async def fetch_child_emails(
         logger.error("Integration %d has no access token", integration.id)
         return []
 
-    def _sync_fetch(at, rt, child_email, since_dt, max_res):
+    def _sync_fetch(at, rt, email_addresses, since_dt, max_res):
         """Synchronous Gmail fetch — runs in thread pool."""
         svc, creds = get_gmail_service(at, rt)
         epoch_seconds = int(since_dt.timestamp())
-        query = f'from:"{child_email}" in:inbox after:{epoch_seconds}'
+        if len(email_addresses) == 1:
+            query = f'from:"{email_addresses[0]}" in:inbox after:{epoch_seconds}'
+        else:
+            from_parts = " OR ".join(f'from:"{addr}"' for addr in email_addresses)
+            query = f'({from_parts}) in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
@@ -103,7 +112,7 @@ async def fetch_child_emails(
             _sync_fetch,
             access_token,
             refresh_token,
-            integration.child_school_email,
+            monitored_addresses,
             since,
             max_results,
         )
@@ -152,11 +161,11 @@ async def fetch_child_emails(
     db.commit()
 
     logger.info(
-        "Fetched %d emails for integration %d (parent %d, child email: %s)",
+        "Fetched %d emails for integration %d (parent %d, monitored: %s)",
         len(parsed),
         integration.id,
         integration.parent_id,
-        integration.child_school_email,
+        monitored_addresses,
     )
     return parsed
 
@@ -171,12 +180,16 @@ async def verify_forwarding(
     Checks for at least 1 email from child_school_email in the last 30 days.
     Returns: {verified: bool, email_count: int, latest_email_date: str|None}
     """
-    if not integration.child_school_email:
+    monitored = integration.monitored_emails if hasattr(integration, 'monitored_emails') else []
+    monitored_addresses = [m.email_address for m in monitored] if monitored else []
+    if not monitored_addresses and integration.child_school_email:
+        monitored_addresses = [integration.child_school_email]
+    if not monitored_addresses:
         return {
             "verified": False,
             "email_count": 0,
             "latest_email_date": None,
-            "message": "No child school email configured",
+            "message": "No monitored email addresses configured",
         }
 
     access_token = (
@@ -198,14 +211,18 @@ async def verify_forwarding(
             "message": "No access token",
         }
 
-    def _sync_verify(at, rt, child_email):
+    def _sync_verify(at, rt, email_addresses):
         """Synchronous Gmail verify — runs in thread pool."""
         svc, creds = get_gmail_service(at, rt)
 
         # Check last 30 days
         since_dt = datetime.now(timezone.utc) - timedelta(days=30)
         epoch_seconds = int(since_dt.timestamp())
-        query = f'from:"{child_email}" in:inbox after:{epoch_seconds}'
+        if len(email_addresses) == 1:
+            query = f'from:"{email_addresses[0]}" in:inbox after:{epoch_seconds}'
+        else:
+            from_parts = " OR ".join(f'from:"{addr}"' for addr in email_addresses)
+            query = f'({from_parts}) in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
@@ -243,7 +260,7 @@ async def verify_forwarding(
             _sync_verify,
             access_token,
             refresh_token,
-            integration.child_school_email,
+            monitored_addresses,
         )
     except HttpError as e:
         return {

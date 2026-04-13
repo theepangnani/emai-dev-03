@@ -1,6 +1,14 @@
 import { api } from './client';
 
 // Types matching backend schemas
+export interface MonitoredEmail {
+  id: number;
+  integration_id: number;
+  email_address: string;
+  label: string | null;
+  created_at: string;
+}
+
 export interface EmailDigestIntegration {
   id: number;
   parent_id: number;
@@ -14,6 +22,7 @@ export interface EmailDigestIntegration {
   paused_until: string | null;
   created_at: string;
   updated_at: string;
+  monitored_emails: MonitoredEmail[];
 }
 
 export interface EmailDigestSettings {
@@ -93,3 +102,13 @@ export const triggerSync = (integrationId: number) =>
 
 export const verifyForwarding = (integrationId: number) =>
   api.post(`/api/parent/email-digest/integrations/${integrationId}/verify-forwarding`);
+
+// Monitored emails (#3178)
+export const listMonitoredEmails = (integrationId: number) =>
+  api.get<MonitoredEmail[]>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`);
+
+export const addMonitoredEmail = (integrationId: number, data: { email_address: string; label?: string }) =>
+  api.post<MonitoredEmail>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`, data);
+
+export const removeMonitoredEmail = (integrationId: number, emailId: number) =>
+  api.delete(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails/${emailId}`);

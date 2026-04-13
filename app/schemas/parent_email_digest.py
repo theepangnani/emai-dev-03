@@ -41,6 +41,7 @@ class ParentGmailIntegrationResponse(ParentGmailIntegrationBase):
     whatsapp_verified: bool = False
     created_at: datetime
     updated_at: datetime
+    monitored_emails: list["MonitoredEmailResponse"] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -138,3 +139,30 @@ class WhatsAppOTPRequest(BaseModel):
         if not v.isdigit() or len(v) != 6:
             raise ValueError("OTP must be a 6-digit code")
         return v
+
+
+# ---------------------------------------------------------------------------
+# Monitored Emails (#3178)
+# ---------------------------------------------------------------------------
+
+class MonitoredEmailCreate(BaseModel):
+    email_address: str
+    label: Optional[str] = None
+
+    @field_validator("email_address")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", v):
+            raise ValueError("Invalid email address")
+        return v
+
+
+class MonitoredEmailResponse(BaseModel):
+    id: int
+    integration_id: int
+    email_address: str
+    label: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
