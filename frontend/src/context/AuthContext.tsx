@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { authApi } from '../api/client';
 
 const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -170,8 +170,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
+  const contextValue = useMemo(() => ({
+    user, token, isLoading, login, loginWithToken, register,
+    logout, switchRole, completeOnboarding, resendVerification, refreshUser
+  }), [user, token, isLoading, login, loginWithToken, register,
+       logout, switchRole, completeOnboarding, resendVerification, refreshUser]);
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, switchRole, completeOnboarding, resendVerification, refreshUser }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
       {showIdleWarning && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} role="alertdialog" aria-modal="true" aria-labelledby="session-expiring-title">
