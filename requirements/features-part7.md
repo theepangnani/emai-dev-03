@@ -542,7 +542,7 @@ Proactively guide users through their ClassBridge journey with smart, contextual
 
 ### 6.127 Parent Email Digest Integration (CB-PEDI-001) - PLANNED
 
-Parents connect their personal Gmail via OAuth (`gmail.readonly` scope). Their child's school email (e.g. YRDSB `@gapps.yrdsb.ca`) is forwarded to this personal Gmail. ClassBridge polls the parent's Gmail for emails from the child's school address, then uses Claude AI to summarize them into a configurable daily digest. Operates entirely within the parent's personal Gmail — no DTAP/MFIPPA approval required.
+Parents connect their personal Gmail via OAuth (`gmail.readonly`, `userinfo.email`, `userinfo.profile` scopes). Their child's school email (e.g. YRDSB `@gapps.yrdsb.ca`) is forwarded to this personal Gmail. ClassBridge polls the parent's Gmail for emails from the child's school address, then uses Claude AI to summarize them into a configurable daily digest. Operates entirely within the parent's personal Gmail — no DTAP/MFIPPA approval required. Parents can configure a whitelist of sender email addresses to monitor — only emails from these addresses are read.
 
 **PRD:** CB-PEDI-001-Parent-Email-Digest-PRD-v1.1
 **M0 Feasibility:** CONFIRMED (March 29, 2026) — YRDSB forwarding enabled, dual-parent filter-based forwarding validated.
@@ -585,6 +585,7 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 - [ ] F-11: Action items extraction — deadlines, forms, RSVPs surfaced separately (#2655)
 - [ ] F-12: Multi-child support UI (#2655)
 - [ ] F-15: WhatsApp notification channel — Twilio WhatsApp Business API, phone OTP verification, "brief" format for 1600 char limit, fallback to email on failure (#2967)
+- [ ] F-16: Multi-sender email whitelist — parents can add/remove/label multiple sender email addresses to monitor (e.g. teacher, school office, board); Gmail query uses `from:({email1} OR {email2})` pattern; migrates existing `child_school_email` to new `parent_digest_monitored_emails` table (#3178)
 
 **Phase 3 Features (M5, September 2026+):**
 - [ ] F-13: Historical digest archive — searchable in Parent Dashboard (#2656)
@@ -616,7 +617,7 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 **Compliance:**
 - DTAP: NOT required — operates on parent's personal Gmail only
 - MFIPPA risk: LOW — no direct access to board student accounts
-- OAuth scope: `gmail.readonly` only (no modify/send)
+- OAuth scope: `gmail.readonly` (no modify/send), `userinfo.email` + `userinfo.profile` (to identify connected Gmail address)
 
 **Milestones:**
 | Milestone | Target | Deliverable |
