@@ -80,7 +80,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const url = originalRequest?.url || '';
-    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password');
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password') || url.includes('/features');
 
     if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest._retry) {
       const refreshToken = localStorage.getItem('refresh_token');
