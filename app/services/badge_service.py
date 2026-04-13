@@ -61,6 +61,13 @@ BADGE_DEFINITIONS: list[dict] = [
         "badge_description": "Score higher 3 times",
         "icon": "\U0001f4c8",
     },
+    # Interactive Learning Engine (CB-ILE-001)
+    {
+        "badge_id": "ile_first_session",
+        "badge_name": "Flash Learner",
+        "badge_description": "Complete first Flash Tutor session",
+        "icon": "\u26a1",
+    },
 ]
 
 
@@ -140,6 +147,11 @@ _BADGE_CHECKERS: dict[str, dict] = {
     "quiz_improver": {
         "check": lambda db, sid: _count_actions(db, sid, ["quiz_improvement"]) >= 3,
         "actions": {"quiz_improvement"},
+    },
+    # Interactive Learning Engine (CB-ILE-001)
+    "ile_first_session": {
+        "check": lambda db, sid: _count_actions(db, sid, ["ile_session_complete"]) >= 1,
+        "actions": {"ile_session_complete"},
     },
 }
 

@@ -49,6 +49,11 @@ from app.models.journey_hint import JourneyHint
 from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog
 from app.models.feature_flag import FeatureFlag
+from app.models.ile_session import ILESession
+from app.models.ile_question_attempt import ILEQuestionAttempt
+from app.models.ile_topic_mastery import ILETopicMastery
+from app.models.ile_question_bank import ILEQuestionBank
+from app.models.ile_student_calibration import ILEStudentCalibration
 
 
 __all__ = [
@@ -129,4 +134,9 @@ __all__ = [
     "OutreachTemplate",
     "OutreachLog",
     "FeatureFlag",
+    "ILESession",
+    "ILEQuestionAttempt",
+    "ILETopicMastery",
+    "ILEQuestionBank",
+    "ILEStudentCalibration",
 ]

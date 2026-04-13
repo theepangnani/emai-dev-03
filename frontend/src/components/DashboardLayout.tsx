@@ -322,6 +322,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       '/notifications': 'Notifications',
       '/link-requests': 'Link Requests',
       '/quiz-history': 'Quiz History',
+      '/flash-tutor': 'Flash Tutor',
       '/settings/emails': 'Email Settings',
       '/settings/notifications': 'Notification Preferences',
       '/settings/account': 'Account Settings',
@@ -396,6 +397,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
       { label: 'Materials', path: '/course-materials' },
+      { label: 'Flash Tutor', path: '/flash-tutor' },
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
     ];
