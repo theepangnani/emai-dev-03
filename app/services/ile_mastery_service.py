@@ -68,10 +68,10 @@ def update_spaced_repetition(mastery: ILETopicMastery, quality_score: int) -> No
 
     if q >= 3:
         # Successful recall — grow interval
+        # SM-2: first successful = 1 day, second successful = 6, then *= EF
         prev_interval = mastery.review_interval_days or 1
-        if prev_interval == 1:
-            new_interval = 1
-        elif prev_interval <= 6:
+        if prev_interval < 6:
+            # First or second successful review — advance to 6
             new_interval = 6
         else:
             new_interval = round(prev_interval * ef)
