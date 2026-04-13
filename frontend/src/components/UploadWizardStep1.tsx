@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 
 import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION } from '../constants/upload';
 
@@ -71,9 +71,8 @@ function UploadWizardStep1({
   onDragLeave,
   onDrop,
 }: UploadWizardStep1Props) {
-  const questionPlaceholder = useMemo(
-    () => QUESTION_PLACEHOLDERS[Math.floor(Math.random() * QUESTION_PLACEHOLDERS.length)],
-    []
+  const [questionPlaceholder] = useState(
+    () => QUESTION_PLACEHOLDERS[Math.floor(Math.random() * QUESTION_PLACEHOLDERS.length)]
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
