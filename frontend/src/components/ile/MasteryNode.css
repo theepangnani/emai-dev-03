@@ -1,0 +1,102 @@
+/* MasteryNode — Memory Glow visual node (#3210) */
+.mastery-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 2px solid var(--border-default, #e2e8f0);
+  border-radius: 12px;
+  background: var(--surface-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 calc(8px + 12px * var(--glow-intensity, 0)) var(--glow-color, transparent);
+}
+
+.mastery-node:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 calc(12px + 16px * var(--glow-intensity, 0)) var(--glow-color, transparent);
+}
+
+/* Overdue pulse animation */
+.mastery-node--overdue {
+  border-color: rgba(239, 68, 68, 0.5);
+  animation: mastery-pulse 2s ease-in-out infinite;
+}
+
+@keyframes mastery-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.mastery-node__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mastery-node__subject {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+.mastery-node__weak {
+  font-size: 0.6rem;
+  color: var(--text-error, #dc2626);
+  background: var(--surface-error, #fef2f2);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.mastery-node__topic {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.mastery-node__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.mastery-node__score {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mastery-node__status {
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.mastery-node__status--ok {
+  color: var(--text-success, #16a34a);
+  background: var(--surface-success, #f0fdf4);
+}
+
+.mastery-node__status--overdue {
+  color: var(--text-error, #dc2626);
+  background: var(--surface-error, #fef2f2);
+}
+
+.mastery-node__review {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}

@@ -11,6 +11,8 @@ from app.schemas.ile import (
     ILEAnswerFeedback,
     ILEAnswerSubmit,
     ILECurrentQuestion,
+    ILEMasteryEntry,
+    ILEMasteryMap,
     ILEQuestion,
     ILEQuestionOption,
     ILESessionCreate,
@@ -20,7 +22,9 @@ from app.schemas.ile import (
     ILETopic,
     ILETopicList,
 )
+from app.models.ile_topic_mastery import ILETopicMastery
 from app.services import ile_service
+from app.services.ile_mastery_service import compute_glow_intensity
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -333,3 +337,53 @@ async def get_session_history(
         )
         for s in sessions
     ]
+
+
+# ---------------------------------------------------------------------------
+# Mastery
+# ---------------------------------------------------------------------------
+
+@router.get("/mastery", response_model=ILEMasteryMap)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_mastery_map(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get the student's mastery map with glow intensities."""
+    entries = (
+        db.query(ILETopicMastery)
+        .filter(ILETopicMastery.student_id == current_user.id)
+        .order_by(ILETopicMastery.last_session_at.desc())
+        .all()
+    )
+
+    mastery_entries = []
+    mastered_count = 0
+    weak_count = 0
+
+    for e in entries:
+        glow = compute_glow_intensity(e.next_review_at)
+        mastery_entries.append(ILEMasteryEntry(
+            subject=e.subject,
+            topic=e.topic,
+            total_sessions=e.total_sessions,
+            avg_attempts=e.avg_attempts_per_question or 0.0,
+            is_weak_area=e.is_weak_area,
+            current_difficulty=e.current_difficulty,
+            last_score_pct=e.last_score_pct,
+            next_review_at=e.next_review_at,
+            glow_intensity=glow,
+        ))
+        if e.is_weak_area:
+            weak_count += 1
+        elif (e.last_score_pct or 0) >= 80:
+            mastered_count += 1
+
+    return ILEMasteryMap(
+        student_id=current_user.id,
+        entries=mastery_entries,
+        total_topics=len(entries),
+        mastered_topics=mastered_count,
+        weak_topics=weak_count,
+    )

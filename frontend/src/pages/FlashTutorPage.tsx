@@ -8,9 +8,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
-import type { ILETopic } from '../api/ile';
+import type { ILETopic, ILEMasteryEntry } from '../api/ile';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { MasteryNode } from '../components/ile/MasteryNode';
 import './FlashTutorPage.css';
 
 type Mode = 'learning' | 'testing';
@@ -40,6 +41,12 @@ export function FlashTutorPage() {
   const { data: activeSession } = useQuery({
     queryKey: ['ile-active-session'],
     queryFn: () => ileApi.getActiveSession(),
+  });
+
+  // Fetch mastery map for Memory Glow (#3210)
+  const { data: masteryMap } = useQuery({
+    queryKey: ['ile-mastery'],
+    queryFn: () => ileApi.getMasteryMap(),
   });
 
   const handleStart = async () => {
@@ -78,6 +85,21 @@ export function FlashTutorPage() {
     }
   };
 
+  const handleMasteryClick = (entry: ILEMasteryEntry) => {
+    setUseCustom(false);
+    setCustomSubject('');
+    setCustomTopic('');
+    // Find matching topic from course list or set as custom
+    const match = topics.find(t => t.subject === entry.subject && t.topic === entry.topic);
+    if (match) {
+      setSelectedTopic(match);
+    } else {
+      setUseCustom(true);
+      setCustomSubject(entry.subject);
+      setCustomTopic(entry.topic);
+    }
+  };
+
   return (
     <DashboardLayout showBackButton headerSlot={() => null}>
       <div className="flash-tutor-page">
@@ -103,6 +125,25 @@ export function FlashTutorPage() {
             <button className="ft-btn ft-btn-primary" onClick={handleResume}>
               Resume Session
             </button>
+          </div>
+        )}
+
+        {/* Mastery — Memory Glow (#3210) */}
+        {masteryMap && masteryMap.entries.length > 0 && (
+          <div className="ft-section">
+            <h2>Your Topics</h2>
+            <div className="ft-mastery-grid">
+              {/* Show overdue first, then by glow intensity ascending */}
+              {[...masteryMap.entries]
+                .sort((a, b) => a.glow_intensity - b.glow_intensity)
+                .map(entry => (
+                  <MasteryNode
+                    key={`${entry.subject}-${entry.topic}`}
+                    entry={entry}
+                    onClick={handleMasteryClick}
+                  />
+                ))}
+            </div>
           </div>
         )}
 
