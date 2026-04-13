@@ -17,10 +17,14 @@ DIFFICULTY_LEVELS = ["easy", "medium", "challenging"]
 CONSECUTIVE_FIRST_ATTEMPT_CORRECT_TO_INCREASE = 2
 CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE = 2
 
+# Use the larger threshold so one query covers both checks
+_LOOKBACK = max(
+    CONSECUTIVE_FIRST_ATTEMPT_CORRECT_TO_INCREASE,
+    CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE,
+)
 
-def adjust_within_session(
-    db: Session, session: ILESession, latest_attempt: ILEQuestionAttempt
-) -> str | None:
+
+def adjust_within_session(db: Session, session: ILESession) -> str | None:
     """Adjust difficulty within a session based on performance.
 
     Rules:
@@ -35,12 +39,10 @@ def adjust_within_session(
     if current_idx is None:
         return None
 
-    # Get completed question indices (up to and including the latest)
-    # We need the last N completed questions' attempt patterns
-    completed_questions = (
+    # Single query: get the last N completed questions (correct answers only)
+    recent_correct = (
         db.query(
             ILEQuestionAttempt.question_index,
-            ILEQuestionAttempt.is_correct,
             ILEQuestionAttempt.attempt_number,
         )
         .filter(
@@ -48,45 +50,27 @@ def adjust_within_session(
             ILEQuestionAttempt.is_correct == True,  # noqa: E712
         )
         .order_by(ILEQuestionAttempt.question_index.desc())
-        .limit(CONSECUTIVE_FIRST_ATTEMPT_CORRECT_TO_INCREASE)
+        .limit(_LOOKBACK)
         .all()
     )
 
     # Check for increase: last N questions all first-attempt correct
-    if len(completed_questions) >= CONSECUTIVE_FIRST_ATTEMPT_CORRECT_TO_INCREASE:
-        all_first_attempt = all(
-            row.attempt_number == 1 for row in completed_questions
-        )
-        if all_first_attempt and current_idx < len(DIFFICULTY_LEVELS) - 1:
+    n_inc = CONSECUTIVE_FIRST_ATTEMPT_CORRECT_TO_INCREASE
+    if len(recent_correct) >= n_inc:
+        top = recent_correct[:n_inc]
+        if all(row.attempt_number == 1 for row in top) and current_idx < len(DIFFICULTY_LEVELS) - 1:
             new_difficulty = DIFFICULTY_LEVELS[current_idx + 1]
             _apply_change(db, session, current_difficulty, new_difficulty)
             return new_difficulty
 
     # Check for decrease: last N completed questions all multi-attempt
-    # Re-query to get multi-attempt pattern
-    if len(completed_questions) >= CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE:
-        # Get the final (correct) attempt for each of the last N completed questions
-        recent_correct = (
-            db.query(
-                ILEQuestionAttempt.question_index,
-                ILEQuestionAttempt.attempt_number,
-            )
-            .filter(
-                ILEQuestionAttempt.session_id == session.id,
-                ILEQuestionAttempt.is_correct == True,  # noqa: E712
-            )
-            .order_by(ILEQuestionAttempt.question_index.desc())
-            .limit(CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE)
-            .all()
-        )
-        if len(recent_correct) >= CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE:
-            all_multi_attempt = all(
-                row.attempt_number > 1 for row in recent_correct
-            )
-            if all_multi_attempt and current_idx > 0:
-                new_difficulty = DIFFICULTY_LEVELS[current_idx - 1]
-                _apply_change(db, session, current_difficulty, new_difficulty)
-                return new_difficulty
+    n_dec = CONSECUTIVE_MULTI_ATTEMPT_TO_DECREASE
+    if len(recent_correct) >= n_dec:
+        top = recent_correct[:n_dec]
+        if all(row.attempt_number > 1 for row in top) and current_idx > 0:
+            new_difficulty = DIFFICULTY_LEVELS[current_idx - 1]
+            _apply_change(db, session, current_difficulty, new_difficulty)
+            return new_difficulty
 
     return None
 

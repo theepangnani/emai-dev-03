@@ -280,8 +280,9 @@ async def submit_answer(
     # Adaptive difficulty adjustment
     difficulty_changed = None
     if question_complete:
+        db.flush()  # Ensure latest attempt is visible (autoflush=False)
         difficulty_changed = ile_adaptive_service.adjust_within_session(
-            db, session, attempt
+            db, session
         )
 
     # Advance session if question is complete
