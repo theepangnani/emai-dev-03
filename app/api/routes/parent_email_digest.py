@@ -170,7 +170,7 @@ def gmail_callback(
     # Exchange code for tokens
     try:
         tokens = exchange_gmail_code(code=body.code, redirect_uri=body.redirect_uri)
-    except Exception:
+    except (_requests.RequestException, ValueError, KeyError):
         logger.exception("Gmail OAuth token exchange failed for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -187,6 +187,13 @@ def gmail_callback(
     userinfo = _get_gmail_userinfo(tokens["access_token"])
     gmail_address = userinfo.get("email") if userinfo else None
     google_id = userinfo.get("id", "") if userinfo else ""
+
+    if not gmail_address:
+        logger.warning("Gmail userinfo returned no email for user %s", current_user.id)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not retrieve your Gmail address from Google. Please try again.",
+        )
 
     # Upsert: update if parent already has an integration, else create
     existing = (
@@ -231,6 +238,7 @@ def _get_gmail_userinfo(access_token: str) -> dict | None:
         )
         if resp.ok:
             return resp.json()
+        logger.warning("Gmail userinfo returned %s: %s", resp.status_code, resp.text[:200])
     except _requests.RequestException:
         logger.exception("Failed to fetch Gmail userinfo")
     return None
