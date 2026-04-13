@@ -188,6 +188,12 @@ def gmail_callback(
     gmail_address = userinfo.get("email") if userinfo else None
     google_id = userinfo.get("id", "") if userinfo else ""
 
+    if not gmail_address:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not retrieve Gmail address from Google. Please try again.",
+        )
+
     # Upsert: update if parent already has an integration, else create
     existing = (
         db.query(ParentGmailIntegration)
