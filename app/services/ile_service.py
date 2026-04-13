@@ -446,6 +446,29 @@ async def complete_session(db: Session, session: ILESession) -> dict:
 
     percentage = (total_correct / len(questions) * 100) if questions else 0
 
+    # Update mastery + SM-2 spaced repetition (#3210)
+    try:
+        from app.services.ile_mastery_service import update_mastery_after_session
+        total_first_attempt_correct = sum(
+            1 for idx in range(len(questions))
+            if (attempts_by_q.get(idx) and len(attempts_by_q[idx]) == 1
+                and attempts_by_q[idx][0].is_correct)
+        )
+        update_mastery_after_session(
+            db=db,
+            student_id=session.student_id,
+            subject=session.subject,
+            topic=session.topic,
+            total_correct=total_correct,
+            total_questions=len(questions),
+            total_first_attempt_correct=total_first_attempt_correct,
+            score_pct=percentage,
+            difficulty=session.difficulty,
+            grade_level=session.grade_level,
+        )
+    except Exception:
+        logger.warning("Failed to update mastery for session %d", session.id)
+
     logger.info(
         "ILE session %d completed | student=%d score=%d/%d xp=%d",
         session.id, session.student_id, total_correct, len(questions), total_xp,

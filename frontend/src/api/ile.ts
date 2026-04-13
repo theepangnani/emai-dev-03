@@ -123,6 +123,26 @@ export interface ILETopic {
   next_review_at: string | null;
 }
 
+export interface ILEMasteryEntry {
+  subject: string;
+  topic: string;
+  total_sessions: number;
+  avg_attempts: number;
+  is_weak_area: boolean;
+  current_difficulty: string;
+  last_score_pct: number | null;
+  next_review_at: string | null;
+  glow_intensity: number;
+}
+
+export interface ILEMasteryMap {
+  student_id: number;
+  entries: ILEMasteryEntry[];
+  total_topics: number;
+  mastered_topics: number;
+  weak_topics: number;
+}
+
 export interface ILESessionCreate {
   mode: 'learning' | 'testing' | 'parent_teaching';
   subject: string;
@@ -178,4 +198,8 @@ export const ileApi = {
   // Topics
   getTopics: () =>
     api.get<{ topics: ILETopic[] }>('/ile/topics').then(r => r.data.topics),
+
+  // Mastery
+  getMasteryMap: () =>
+    api.get<ILEMasteryMap>('/ile/mastery').then(r => r.data),
 };

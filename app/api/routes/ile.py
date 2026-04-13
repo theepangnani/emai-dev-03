@@ -22,8 +22,10 @@ from app.schemas.ile import (
     ILETopic,
     ILETopicList,
 )
+from app.models.ile_topic_mastery import ILETopicMastery
 from app.services import ile_service
 from app.services import ile_mastery_service
+from app.services.ile_mastery_service import compute_glow_intensity
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -312,32 +314,45 @@ async def get_topics(
 
 @router.get("/mastery", response_model=ILEMasteryMap)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
-async def get_mastery(
+async def get_mastery_map(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get student's topic mastery data."""
-    entries = ile_mastery_service.get_student_mastery(db, current_user.id)
-    mastery_entries = [
-        ILEMasteryEntry(
-            subject=m.subject,
-            topic=m.topic,
-            total_sessions=m.total_sessions,
-            avg_attempts=m.avg_attempts_per_question,
-            is_weak_area=m.is_weak_area,
-            current_difficulty=m.current_difficulty,
-            last_score_pct=m.last_score_pct,
-            next_review_at=m.next_review_at,
-        )
-        for m in entries
-    ]
-    weak_count = sum(1 for e in mastery_entries if e.is_weak_area)
-    mastered_count = sum(1 for e in mastery_entries if not e.is_weak_area and e.total_sessions > 0)
+    """Get the student's mastery map with glow intensities."""
+    entries = (
+        db.query(ILETopicMastery)
+        .filter(ILETopicMastery.student_id == current_user.id)
+        .order_by(ILETopicMastery.last_session_at.desc())
+        .all()
+    )
+
+    mastery_entries = []
+    mastered_count = 0
+    weak_count = 0
+
+    for e in entries:
+        glow = compute_glow_intensity(e.next_review_at)
+        mastery_entries.append(ILEMasteryEntry(
+            subject=e.subject,
+            topic=e.topic,
+            total_sessions=e.total_sessions,
+            avg_attempts=e.avg_attempts_per_question or 0.0,
+            is_weak_area=e.is_weak_area,
+            current_difficulty=e.current_difficulty,
+            last_score_pct=e.last_score_pct,
+            next_review_at=e.next_review_at,
+            glow_intensity=glow,
+        ))
+        if e.is_weak_area:
+            weak_count += 1
+        elif (e.last_score_pct or 0) >= 80:
+            mastered_count += 1
+
     return ILEMasteryMap(
         student_id=current_user.id,
         entries=mastery_entries,
-        total_topics=len(mastery_entries),
+        total_topics=len(entries),
         mastered_topics=mastered_count,
         weak_topics=weak_count,
     )
