@@ -105,27 +105,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, [token]);
 
-  const login = async (identifier: string, password: string, botFields?: { website?: string; started_at?: number }) => {
+  const login = useCallback(async (identifier: string, password: string, botFields?: { website?: string; started_at?: number }) => {
     const data = await authApi.login(identifier, password, botFields);
     localStorage.setItem('token', data.access_token);
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
     setToken(data.access_token);
     const userData = await authApi.getMe();
     setUser(userData);
-  };
+  }, []);
 
-  const loginWithToken = (newToken: string, refreshToken?: string) => {
+  const loginWithToken = useCallback((newToken: string, refreshToken?: string) => {
     localStorage.setItem('token', newToken);
     if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
     setToken(newToken);
-  };
+  }, []);
 
-  const register = async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string; website?: string; started_at?: number; email_consent?: boolean }) => {
+  const register = useCallback(async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string; website?: string; started_at?: number; email_consent?: boolean }) => {
     await authApi.register(data);
     // Login with email or username, whichever was provided
     const identifier = data.email || data.username || '';
     await login(identifier, data.password);
-  };
+  }, [login]);
 
   const logout = useCallback(() => {
     // Best-effort server-side token revocation
@@ -141,12 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutRef.current = logout;
   }, [logout]);
 
-  const switchRole = async (role: string) => {
+  const switchRole = useCallback(async (role: string) => {
     const userData = await authApi.switchRole(role);
     setUser(userData);
-  };
+  }, []);
 
-  const completeOnboarding = async (roles: string[], teacherType?: string) => {
+  const completeOnboarding = useCallback(async (roles: string[], teacherType?: string) => {
     const responseData = await authApi.completeOnboarding(roles, teacherType);
     // The onboarding endpoint now returns new JWT tokens along with user data
     if (responseData.access_token) {
@@ -159,16 +159,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Refresh user data from the server to get the updated state
     const userData = await authApi.getMe();
     setUser(userData);
-  };
+  }, []);
 
-  const resendVerification = async () => {
+  const resendVerification = useCallback(async () => {
     await authApi.resendVerification();
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const userData = await authApi.getMe();
     setUser(userData);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, switchRole, completeOnboarding, resendVerification, refreshUser }}>

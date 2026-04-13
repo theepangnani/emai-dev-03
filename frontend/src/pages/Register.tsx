@@ -35,6 +35,7 @@ export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
   const usernameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const callbackProcessedRef = useRef(false);
   const features = useFeatureToggles();
   const botProtection = useBotProtection();
 
@@ -46,8 +47,10 @@ export function Register() {
 
   // Handle waitlist token from URL
   useEffect(() => {
+    if (callbackProcessedRef.current) return;
     const token = searchParams.get('token');
     if (token) {
+      callbackProcessedRef.current = true;
       setWaitlistToken(token);
       setWaitlistVerifying(true);
       authApi.verifyWaitlistToken(token)
@@ -73,11 +76,13 @@ export function Register() {
 
   // Handle Google OAuth redirect with pre-fill data
   useEffect(() => {
+    if (callbackProcessedRef.current) return;
     const googleEmail = searchParams.get('google_email');
     const googleName = searchParams.get('google_name');
     const googleId = searchParams.get('google_id');
 
     if (googleEmail && googleId) {
+      callbackProcessedRef.current = true;
       setFormData((prev) => ({
         ...prev,
         email: googleEmail,
