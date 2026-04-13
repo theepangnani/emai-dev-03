@@ -115,38 +115,43 @@ def _get_current_streak(db: Session, student_id: int) -> int:
 
 
 def _has_ile_streak_5(db: Session, student_id: int) -> bool:
-    """Check if student has a streak of 5+ first-attempt correct in any ILE session."""
+    """Check if student has a streak of 5+ first-attempt correct in any ILE session.
+
+    Uses a single joined query to avoid N+1 (#3252).
+    """
     from app.models.ile_session import ILESession
     from app.models.ile_question_attempt import ILEQuestionAttempt
 
-    # Get completed sessions
-    sessions = (
-        db.query(ILESession)
+    # Single query: load all attempts for all completed sessions
+    rows = (
+        db.query(ILEQuestionAttempt.session_id, ILEQuestionAttempt.question_index,
+                 ILEQuestionAttempt.attempt_number, ILEQuestionAttempt.is_correct,
+                 ILESession.question_count)
+        .join(ILESession, ILEQuestionAttempt.session_id == ILESession.id)
         .filter(
             ILESession.student_id == student_id,
             ILESession.status == "completed",
         )
+        .order_by(ILEQuestionAttempt.session_id, ILEQuestionAttempt.question_index,
+                  ILEQuestionAttempt.attempt_number)
         .all()
     )
-    for session in sessions:
-        # Load attempts grouped by question_index
-        attempts = (
-            db.query(ILEQuestionAttempt)
-            .filter(ILEQuestionAttempt.session_id == session.id)
-            .order_by(ILEQuestionAttempt.question_index, ILEQuestionAttempt.attempt_number)
-            .all()
-        )
-        # Group by question_index
-        by_q: dict[int, list] = {}
-        for a in attempts:
-            by_q.setdefault(a.question_index, []).append(a)
+    if not rows:
+        return False
 
-        # Count max consecutive first-attempt correct
+    # Group by session, then by question_index
+    sessions: dict[int, dict] = {}
+    session_qcount: dict[int, int] = {}
+    for sid, qidx, anum, is_correct, qcount in rows:
+        sessions.setdefault(sid, {}).setdefault(qidx, []).append((anum, is_correct))
+        session_qcount[sid] = qcount
+
+    for sid, by_q in sessions.items():
         streak = 0
         max_streak = 0
-        for idx in range(session.question_count):
+        for idx in range(session_qcount.get(sid, 0)):
             q_attempts = by_q.get(idx, [])
-            if len(q_attempts) == 1 and q_attempts[0].is_correct:
+            if len(q_attempts) == 1 and q_attempts[0][1]:  # (attempt_number, is_correct)
                 streak += 1
                 max_streak = max(max_streak, streak)
             else:

@@ -589,20 +589,22 @@ def update_student_calibration(
         db.add(cal)
         db.flush()
 
-    cal.sessions_completed = (cal.sessions_completed or 0) + 1
+    old_count = cal.sessions_completed or 0
+    cal.sessions_completed = old_count + 1
 
-    # After 3 sessions, compute running average baseline_accuracy
+    # Track running average from session 1 so baseline is accurate at threshold
+    if cal.baseline_accuracy is not None:
+        # Running average: blend old baseline with new score
+        cal.baseline_accuracy = round(
+            (cal.baseline_accuracy * old_count + score_pct) / cal.sessions_completed,
+            1,
+        )
+    else:
+        # First session — initialise baseline to this score
+        cal.baseline_accuracy = round(score_pct, 1)
+
+    # Only set recommended difficulty after 3+ sessions
     if cal.sessions_completed >= 3:
-        if cal.baseline_accuracy is not None:
-            # Running average: blend old baseline with new score
-            cal.baseline_accuracy = round(
-                (cal.baseline_accuracy * (cal.sessions_completed - 1) + score_pct)
-                / cal.sessions_completed,
-                1,
-            )
-        else:
-            cal.baseline_accuracy = round(score_pct, 1)
-
         # Set recommended difficulty based on accuracy
         if cal.baseline_accuracy < 50:
             cal.recommended_difficulty = "easy"
