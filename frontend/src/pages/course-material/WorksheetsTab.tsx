@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { Worksheet } from '../../api/study';
-import type { StudyGuide } from '../../api/client';
 import { WorksheetContent } from '../../components/study/WorksheetContent';
 import { GenerationSpinner } from '../../components/GenerationSpinner';
 type TemplateKey = 'worksheet_general' | 'worksheet_math_word_problems' | 'worksheet_english' | 'worksheet_french';
@@ -28,7 +27,7 @@ interface WorksheetsTabProps {
   atLimit: boolean;
   generating: string | null;
   onGenerate: (opts: { template_key: string; difficulty: string; num_questions: number }) => void;
-  onDelete: (guide: StudyGuide) => void;
+  onDelete: (guide: { id: number; title: string }) => void;
   onViewDocument: () => void;
   courseName?: string | null;
   createdAt?: string | null;
@@ -115,7 +114,7 @@ export function WorksheetsTab({
               </button>
               {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
             </span>
-            <button className="cm-action-btn danger" onClick={() => onDelete(worksheet as unknown as StudyGuide)}>{'\u{1F5D1}\uFE0F'} Delete</button>
+            <button className="cm-action-btn danger" onClick={() => onDelete(worksheet)}>{'\u{1F5D1}\uFE0F'} Delete</button>
             <button className="cm-action-btn" onClick={onViewDocument} title="View Source Document">{'\u{1F4C4}'} View Source</button>
           </div>
           {generating === 'worksheet' && (

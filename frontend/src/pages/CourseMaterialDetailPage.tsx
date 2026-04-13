@@ -699,7 +699,7 @@ export function CourseMaterialDetailPage() {
     }
   }, [stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDeleteGuide = async (guide: StudyGuide) => {
+  const handleDeleteGuide = async (guide: { id: number; title: string }) => {
     const ok = await confirm({
       title: 'Archive Study Material',
       message: `Archive "${guide.title}"? You can restore it later from the archive.`,
