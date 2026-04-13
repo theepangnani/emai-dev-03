@@ -316,3 +316,85 @@
   padding-top: 8px;
   border-top: 1px solid var(--color-border, #f3f4f6);
 }
+
+/* Monitored emails (#3178) */
+.ed-monitored-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.ed-monitored-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--color-bg-hover, #f9fafb);
+  border-radius: 8px;
+}
+
+.ed-monitored-email {
+  font-size: 0.875rem;
+  color: var(--color-text-primary, #111827);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ed-monitored-label {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #6b7280);
+  background: var(--color-border, #e5e7eb);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ed-monitored-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #9ca3af);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ed-monitored-remove:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ed-monitored-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ed-add-email-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.ed-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--color-bg-card, #fff);
+  color: var(--color-text-primary, #111827);
+}
+
+.ed-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #4A90D9);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.12);
+}
