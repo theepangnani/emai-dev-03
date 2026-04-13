@@ -1,6 +1,6 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 
-import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION } from '../constants/upload';
+import { MAX_FILE_SIZE_MB, MAX_FILES_PER_SESSION, QUESTION_PLACEHOLDERS } from '../constants/upload';
 
 const ACCEPTED_TYPES = '.pdf,.docx,.doc,.txt,.md,.xlsx,.xls,.csv,.pptx,.ppt,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.zip';
 
@@ -62,6 +62,9 @@ function UploadWizardStep1({
   onDragLeave,
   onDrop,
 }: UploadWizardStep1Props) {
+  const [questionPlaceholder] = useState(
+    () => QUESTION_PLACEHOLDERS[Math.floor(Math.random() * QUESTION_PLACEHOLDERS.length)]
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,9 +131,10 @@ function UploadWizardStep1({
           </p>
           <textarea
             className="uw-textarea uw-question-textarea"
+            aria-label="Ask a question about your child's education"
             value={studyContent}
             onChange={(e) => onStudyContentChange(e.target.value)}
-            placeholder={"e.g., My son is in grade 10, doing OSSLT in YRDSB. He was not successful the first time. How can I help him prep?"}
+            placeholder={questionPlaceholder}
             rows={5}
             disabled={isGenerating}
           />
@@ -158,7 +162,7 @@ function UploadWizardStep1({
             {selectedFiles.length > 0 ? (
               <div className="uw-file-list" onClick={(e) => e.stopPropagation()}>
                 {selectedFiles.map((f, idx) => (
-                  <div key={idx} className="uw-file-item">
+                  <div key={`${f.name}-${f.size}-${f.lastModified}-${idx}`} className="uw-file-item">
                     <span className="uw-file-icon">&#128196;</span>
                     <div className="uw-file-info">
                       <span className="uw-file-name">{f.name}</span>
@@ -235,7 +239,7 @@ function UploadWizardStep1({
               <div className="uw-pasted-images-thumbs">
                 {pastedImages.map((img, idx) => (
                   <PastedImageThumb
-                    key={idx}
+                    key={`${img.name}-${img.size}-${img.lastModified}-${idx}`}
                     file={img}
                     index={idx}
                     onRemove={() => onRemovePastedImage(idx)}
