@@ -45,6 +45,34 @@ Return a JSON array of objects with keys:
 "question", "options" (object with A/B/C/D), "correct_answer" (A/B/C/D), "explanation" (1-2 sentences why correct), "difficulty", "blooms_tier"
 """
 
+_FILL_BLANK_SYSTEM = (
+    "You are an expert K-12 educational question writer. "
+    "Generate fill-in-the-blank questions that are clear, age-appropriate, "
+    "and aligned with the Ontario curriculum where applicable. "
+    "Return ONLY valid JSON with no markdown fences."
+)
+
+_FILL_BLANK_PROMPT = """\
+Generate {count} fill-in-the-blank questions for:
+- Subject: {subject}
+- Topic: {topic}
+- Grade level: {grade_level}
+- Difficulty: {difficulty}
+- Bloom's taxonomy tier: {blooms_tier}
+
+Requirements:
+- Each question should have a clear blank to fill (use _____ in the question text)
+- The correct answer should be a single word or short phrase (1-4 words)
+- Answers should be unambiguous
+- Use grade-appropriate language
+- Avoid cultural or gender bias
+
+Return a JSON array of objects with keys:
+"question", "correct_answer" (the text that fills the blank), "explanation" (1-2 sentences why correct), "difficulty", "blooms_tier"
+
+Do NOT include an "options" field — these are typed-answer questions.
+"""
+
 _HINT_SYSTEM = (
     "You are a patient K-12 tutor. Generate a scaffolding hint that "
     "guides the student toward the answer WITHOUT revealing it. "
@@ -102,18 +130,30 @@ async def generate_questions(
     Returns a list of question dicts with keys:
     question, options, correct_answer, explanation, difficulty, blooms_tier
     """
-    prompt = _MCQ_PROMPT.format(
-        count=count,
-        subject=subject,
-        topic=topic,
-        grade_level=grade_level or "middle school",
-        difficulty=difficulty,
-        blooms_tier=blooms_tier,
-    )
+    if question_format == "fill_blank":
+        prompt = _FILL_BLANK_PROMPT.format(
+            count=count,
+            subject=subject,
+            topic=topic,
+            grade_level=grade_level or "middle school",
+            difficulty=difficulty,
+            blooms_tier=blooms_tier,
+        )
+        system_prompt = _FILL_BLANK_SYSTEM
+    else:
+        prompt = _MCQ_PROMPT.format(
+            count=count,
+            subject=subject,
+            topic=topic,
+            grade_level=grade_level or "middle school",
+            difficulty=difficulty,
+            blooms_tier=blooms_tier,
+        )
+        system_prompt = _MCQ_SYSTEM
 
     content, _ = await generate_content(
         prompt=prompt,
-        system_prompt=_MCQ_SYSTEM,
+        system_prompt=system_prompt,
         max_tokens=2000,
         temperature=0.8,
     )
@@ -137,6 +177,10 @@ async def generate_questions(
 
     if not validated:
         raise ValueError("No valid questions generated")
+
+    # Tag format on each question
+    for q in validated:
+        q["format"] = question_format
 
     # Content safety check on AI-generated questions
     safe_questions = []
@@ -260,6 +304,32 @@ def get_from_bank(
     return questions
 
 
+def check_format_escalation(db: Session, student_id: int, subject: str, topic: str) -> str:
+    """Check if student should escalate from MCQ to fill_blank.
+
+    Rule: After 2 correct MCQ sessions (score >= 80%) on same topic -> fill_blank.
+    Uses ile_topic_mastery.mcq_correct_streak field.
+    """
+    from app.models.ile_topic_mastery import ILETopicMastery
+
+    mastery = (
+        db.query(ILETopicMastery)
+        .filter(
+            ILETopicMastery.student_id == student_id,
+            ILETopicMastery.subject == subject,
+            ILETopicMastery.topic == topic,
+        )
+        .first()
+    )
+    if mastery and mastery.mcq_correct_streak >= 2:
+        logger.info(
+            "Format escalation: mcq->fill_blank for student=%d topic=%s/%s (streak=%d)",
+            student_id, subject, topic, mastery.mcq_correct_streak,
+        )
+        return "fill_blank"
+    return "mcq"
+
+
 async def get_from_bank_or_generate(
     db: Session,
     subject: str,
@@ -268,9 +338,13 @@ async def get_from_bank_or_generate(
     difficulty: str = "medium",
     blooms_tier: str = "recall",
     count: int = 5,
+    question_format: str = "mcq",
 ) -> list[dict]:
     """Try bank first, fall back to on-demand generation."""
     bank_questions = get_from_bank(db, subject, topic, grade_level, difficulty, count)
+
+    # Filter bank questions to matching format
+    bank_questions = [q for q in bank_questions if q.get("format", "mcq") == question_format]
 
     if len(bank_questions) >= count:
         logger.info("Served %d questions from bank for %s/%s", count, subject, topic)
@@ -279,11 +353,12 @@ async def get_from_bank_or_generate(
     # Generate remaining
     remaining = count - len(bank_questions)
     logger.info(
-        "Bank had %d/%d questions for %s/%s, generating %d",
-        len(bank_questions), count, subject, topic, remaining,
+        "Bank had %d/%d questions for %s/%s (format=%s), generating %d",
+        len(bank_questions), count, subject, topic, question_format, remaining,
     )
     generated = await generate_questions(
         subject, topic, grade_level, difficulty, blooms_tier, remaining,
+        question_format=question_format,
     )
     return bank_questions + generated
 

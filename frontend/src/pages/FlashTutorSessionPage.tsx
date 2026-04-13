@@ -9,6 +9,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ileApi } from '../api/ile';
 import type { ILECurrentQuestion, ILEAnswerFeedback, ILESessionResults, ILESession } from '../api/ile';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { FillBlankCard } from '../components/ile/FillBlankCard';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error';
@@ -275,7 +276,7 @@ export function FlashTutorSessionPage() {
           )}
 
           {/* MCQ Options */}
-          {q.options && (
+          {q.format !== 'fill_blank' && q.options && (
             <div className="fts-options">
               {(Object.entries(q.options) as [string, string][]).map(([key, text]) => {
                 const isDisabled = currentQ.disabled_options.includes(key);
@@ -304,6 +305,47 @@ export function FlashTutorSessionPage() {
                 );
               })}
             </div>
+          )}
+
+          {/* Fill-in-the-Blank Input */}
+          {q.format === 'fill_blank' && phase === 'question' && (
+            <FillBlankCard
+              question={q.question}
+              onSubmit={(answer) => {
+                setSelectedAnswer(answer);
+                // Auto-submit for fill_blank
+                setTimeout(async () => {
+                  setSubmitting(true);
+                  try {
+                    const timeTaken = Date.now() - startTime;
+                    const fb = await ileApi.submitAnswer(sessionId, answer, timeTaken);
+                    setFeedback(fb);
+                    setSessionXp(prev => prev + fb.xp_earned);
+
+                    if (fb.is_correct && fb.attempt_number === 1) {
+                      setStreak(prev => prev + 1);
+                    } else if (fb.streak_broken) {
+                      setStreak(0);
+                    }
+
+                    if (session?.mode === 'testing') {
+                      if (fb.session_complete) {
+                        await handleComplete();
+                      } else {
+                        await loadQuestion();
+                      }
+                    } else {
+                      setPhase('feedback');
+                    }
+                  } catch {
+                    setError('Failed to submit answer');
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }, 0);
+              }}
+              disabled={submitting || phase !== 'question'}
+            />
           )}
         </div>
 
@@ -337,7 +379,7 @@ export function FlashTutorSessionPage() {
 
         {/* Action buttons */}
         <div className="fts-actions">
-          {phase === 'question' && (
+          {phase === 'question' && q.format !== 'fill_blank' && (
             <button
               className="fts-btn fts-btn-primary"
               onClick={handleSubmit}
