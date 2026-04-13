@@ -88,7 +88,7 @@ export function Register() {
       // Clear URL params
       setSearchParams({});
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isGoogleSignup = googleData !== null;
   const isWaitlistSignup = waitlistEmail !== null;
