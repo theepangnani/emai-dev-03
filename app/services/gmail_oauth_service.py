@@ -13,9 +13,12 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Only request gmail.readonly — minimal scope for email digest polling
+# gmail.readonly for email digest polling, userinfo.email + profile to
+# identify the connected Gmail address in the OAuth callback.
 GMAIL_OAUTH_SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
 GOOGLE_AUTH_URI = "https://accounts.google.com/o/oauth2/auth"
