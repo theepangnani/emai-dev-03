@@ -72,47 +72,51 @@ export function EmailDigestSetupWizard({
 
   // Reset on open/close — check for existing integration
   useEffect(() => {
-    if (open) {
-      setError('');
-      setGmailConnected(false);
-      setConnectedEmail('');
-      setIntegrationId(null);
-      setOauthState('');
-      setMonitoredEmails([]);
-      setNewEmail('');
-      setNewLabel('');
-      setChildFirstName(childName ?? '');
-      setDeliveryTime('07:00');
-      setTimezone('America/Toronto');
-      setDigestFormat('full');
-      setChannels(['in_app', 'email']);
+    if (!open) return;
+    let cancelled = false;
 
-      // Check if the parent already has an integration
-      setLoading(true);
-      setStep(1);
-      listIntegrations()
-        .then(({ data }) => {
-          if (data.length > 0) {
-            const integration = data[0];
-            setGmailConnected(true);
-            setConnectedEmail(integration.gmail_address);
-            setIntegrationId(integration.id);
-            if (integration.child_school_email) {
-              setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
-            }
-            if (integration.child_first_name) {
-              setChildFirstName(integration.child_first_name);
-            }
-            setStep(2);
+    setError('');
+    setGmailConnected(false);
+    setConnectedEmail('');
+    setIntegrationId(null);
+    setOauthState('');
+    setMonitoredEmails([]);
+    setNewEmail('');
+    setNewLabel('');
+    setChildFirstName(childName ?? '');
+    setDeliveryTime('07:00');
+    setTimezone('America/Toronto');
+    setDigestFormat('full');
+    setChannels(['in_app', 'email']);
+
+    // Check if the parent already has an integration
+    setLoading(true);
+    setStep(1);
+    listIntegrations()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data.length > 0) {
+          const integration = data[0];
+          setGmailConnected(true);
+          setConnectedEmail(integration.gmail_address);
+          setIntegrationId(integration.id);
+          if (integration.child_school_email) {
+            setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
           }
-        })
-        .catch(() => {
-          // Silently fall back to Step 1 on error
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    }
+          if (integration.child_first_name) {
+            setChildFirstName(integration.child_first_name);
+          }
+          setStep(2);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to Step 1 on error
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [open, childName]);
 
   // Close on Escape
