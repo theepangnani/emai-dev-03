@@ -373,6 +373,7 @@ async def complete_session(db: Session, session: ILESession) -> dict:
         from app.services.ile_mastery_service import update_mastery_after_session
         update_mastery_after_session(db, session, question_results)
     except Exception:
+        db.rollback()
         logger.warning("Failed to update mastery for session %d", session.id, exc_info=True)
 
     percentage = (total_correct / len(questions) * 100) if questions else 0

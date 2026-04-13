@@ -6,6 +6,7 @@ Detects weak areas based on average attempts per question.
 """
 from datetime import datetime, timezone
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
@@ -132,7 +133,11 @@ def _get_or_create_mastery(
     topic: str,
     grade_level: int | None,
 ) -> ILETopicMastery:
-    """Get existing mastery record or create a new one."""
+    """Get existing mastery record or create a new one.
+
+    Handles race conditions: if two concurrent requests both try to create,
+    the loser catches IntegrityError, rolls back, and re-fetches.
+    """
     mastery = (
         db.query(ILETopicMastery)
         .filter(
@@ -143,12 +148,24 @@ def _get_or_create_mastery(
         .first()
     )
     if mastery is None:
-        mastery = ILETopicMastery(
-            student_id=student_id,
-            subject=subject,
-            topic=topic,
-            grade_level=grade_level,
-        )
-        db.add(mastery)
-        db.flush()
+        try:
+            mastery = ILETopicMastery(
+                student_id=student_id,
+                subject=subject,
+                topic=topic,
+                grade_level=grade_level,
+            )
+            db.add(mastery)
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            mastery = (
+                db.query(ILETopicMastery)
+                .filter(
+                    ILETopicMastery.student_id == student_id,
+                    ILETopicMastery.subject == subject,
+                    ILETopicMastery.topic == topic,
+                )
+                .first()
+            )
     return mastery
