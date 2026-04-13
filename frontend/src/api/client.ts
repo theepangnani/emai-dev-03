@@ -80,9 +80,9 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const url = originalRequest?.url || '';
-    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password') || url.includes('/features');
+    const shouldSkip401Redirect = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/accept-invite') || url.includes('/auth/refresh') || url.includes('/auth/forgot-password') || url.includes('/auth/reset-password') || url.includes('/features');
 
-    if (error.response?.status === 401 && !isAuthEndpoint && !originalRequest._retry) {
+    if (error.response?.status === 401 && !shouldSkip401Redirect && !originalRequest._retry) {
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         localStorage.removeItem('token');
@@ -123,7 +123,7 @@ api.interceptors.response.use(
       }
     }
 
-    if (error.response?.status === 401 && !isAuthEndpoint) {
+    if (error.response?.status === 401 && !shouldSkip401Redirect) {
       localStorage.removeItem('token');
       localStorage.removeItem('refresh_token');
       window.location.href = '/login';
