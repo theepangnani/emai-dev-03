@@ -1151,6 +1151,7 @@ Current feature issues are tracked in GitHub:
 **PRs:** #3068 (main implementation), #3085 (post-deployment fixes), #3091 (PR review fixes)
 **Deployment incident:** pg_advisory_lock deadlock → fixed with pg_try_advisory_lock
 **Post-deploy fixes:** #3070–#3078, #3079–#3083, #3085, #3091
+**Defect (2026-04-12):** #3173 — `generate_worksheet_endpoint` truncated during merge (500 on generate), #3174 — `analyze_weak_areas` using wrong variables from same botched merge. Fixed in #3175.
 
 ### CB-PCM-001 — Admin Customer Database: CRM, Branded Email & Messaging — DEPLOYED (2026-04-12)
 
