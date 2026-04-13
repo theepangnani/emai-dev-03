@@ -171,7 +171,7 @@ function UploadWizardStep1({
             {selectedFiles.length > 0 ? (
               <div className="uw-file-list" onClick={(e) => e.stopPropagation()}>
                 {selectedFiles.map((f, idx) => (
-                  <div key={`${f.name}-${f.size}-${f.lastModified}`} className="uw-file-item">
+                  <div key={`${f.name}-${f.size}-${f.lastModified}-${idx}`} className="uw-file-item">
                     <span className="uw-file-icon">&#128196;</span>
                     <div className="uw-file-info">
                       <span className="uw-file-name">{f.name}</span>
@@ -248,7 +248,7 @@ function UploadWizardStep1({
               <div className="uw-pasted-images-thumbs">
                 {pastedImages.map((img, idx) => (
                   <PastedImageThumb
-                    key={`${img.name}-${img.size}-${img.lastModified}`}
+                    key={`${img.name}-${img.size}-${img.lastModified}-${idx}`}
                     file={img}
                     index={idx}
                     onRemove={() => onRemovePastedImage(idx)}
