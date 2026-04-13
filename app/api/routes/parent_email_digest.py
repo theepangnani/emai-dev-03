@@ -189,9 +189,10 @@ def gmail_callback(
     google_id = userinfo.get("id", "") if userinfo else ""
 
     if not gmail_address:
+        logger.warning("Gmail userinfo returned no email for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not retrieve Gmail address from Google. Please try again.",
+            detail="Could not retrieve your Gmail address from Google. Please try again.",
         )
 
     # Upsert: update if parent already has an integration, else create
@@ -237,6 +238,7 @@ def _get_gmail_userinfo(access_token: str) -> dict | None:
         )
         if resp.ok:
             return resp.json()
+        logger.warning("Gmail userinfo returned %s: %s", resp.status_code, resp.text[:200])
     except _requests.RequestException:
         logger.exception("Failed to fetch Gmail userinfo")
     return None
