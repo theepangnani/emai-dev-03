@@ -48,14 +48,12 @@ async def create_session(
         if not body.child_student_id:
             raise HTTPException(400, "child_student_id required for Parent Teaching Mode")
         # Verify parent-child relationship
-        link = (
-            db.query(parent_students)
-            .filter(
-                parent_students.c.parent_id == current_user.id,
-            )
+        child_student_ids = [
+            r[0] for r in
+            db.query(parent_students.c.student_id)
+            .filter(parent_students.c.parent_id == current_user.id)
             .all()
-        )
-        child_student_ids = [r[1] for r in link]
+        ]
         child = (
             db.query(Student)
             .filter(
