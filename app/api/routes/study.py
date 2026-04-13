@@ -3488,6 +3488,57 @@ async def generate_worksheet_endpoint(
     enforce_study_guide_limit(db, current_user)
     title = f"Worksheet: {cc.title}"
 
+    study_guide = StudyGuide(
+        user_id=current_user.id,
+        course_id=cc.course_id,
+        course_content_id=cc.id,
+        title=title,
+        content=worksheet_md,
+        guide_type="worksheet",
+        template_key=body.template_key,
+        num_questions=body.num_questions,
+        difficulty=body.difficulty,
+        answer_key_markdown=answer_key_md,
+    )
+    db.add(study_guide)
+    db.flush()
+
+    # Auto-create review task
+    today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    critical_dates = [{"date": today_str, "title": f"Review: {title}", "priority": "medium"}]
+    created_tasks = auto_create_tasks_from_dates(
+        db, critical_dates, current_user, study_guide.id,
+        cc.course_id, cc.id,
+    )
+
+    db.commit()
+    db.refresh(study_guide)
+
+    # Award XP (non-blocking)
+    try:
+        from app.services.xp_service import XpService
+        XpService.award_xp(db, current_user.id, "study_guide")
+    except Exception as e:
+        logger.warning(f"XP award failed (non-blocking): {e}")
+
+    _notify_parents_of_study_material(db, current_user, study_guide.id, study_guide.title)
+
+    return WorksheetResponse(
+        id=study_guide.id,
+        user_id=study_guide.user_id,
+        course_id=study_guide.course_id,
+        course_content_id=study_guide.course_content_id,
+        title=study_guide.title,
+        content=study_guide.content,
+        guide_type="worksheet",
+        template_key=study_guide.template_key,
+        num_questions=study_guide.num_questions,
+        difficulty=study_guide.difficulty,
+        answer_key_markdown=study_guide.answer_key_markdown,
+        created_at=study_guide.created_at,
+        auto_created_tasks=[AutoCreatedTask(**t) for t in created_tasks],
+    )
+
 # Weak Area Analysis (#2958)
 # ============================================
 
