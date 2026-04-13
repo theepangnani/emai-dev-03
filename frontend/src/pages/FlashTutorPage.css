@@ -136,6 +136,47 @@
   color: var(--text-secondary);
 }
 
+/* Topic header with Surprise Me */
+.ft-topic-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ft-topic-header h2 {
+  margin: 0;
+}
+
+.ft-btn-surprise {
+  background: var(--surface-accent, #eef2ff);
+  color: var(--accent-primary, #6366f1);
+  border: 1px solid var(--accent-primary, #6366f1);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+}
+
+.ft-btn-surprise:not(:disabled):hover {
+  background: var(--accent-primary, #6366f1);
+  color: white;
+}
+
+.ft-btn-surprise:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ft-surprise-reason {
+  padding: 8px 12px;
+  background: var(--surface-accent, #eef2ff);
+  color: var(--accent-primary, #6366f1);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
 /* Topics grid */
 .ft-topics-grid {
   display: grid;

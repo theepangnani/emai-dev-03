@@ -202,4 +202,7 @@ export const ileApi = {
   // Mastery
   getMasteryMap: () =>
     api.get<ILEMasteryMap>('/ile/mastery').then(r => r.data),
+
+  getSurpriseMe: () =>
+    api.get<{ topic: ILETopic; reason: string }>('/ile/topics/surprise-me').then(r => r.data),
 };

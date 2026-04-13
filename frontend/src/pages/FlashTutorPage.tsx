@@ -43,6 +43,8 @@ export function FlashTutorPage() {
   const [creating, setCreating] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [surpriseLoading, setSurpriseLoading] = useState(false);
+  const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
 
   // Fetch available topics
   const { data: topics = [], isLoading: topicsLoading } = useQuery({
@@ -108,6 +110,23 @@ export function FlashTutorPage() {
       setError(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleSurpriseMe = async () => {
+    setSurpriseLoading(true);
+    setSurpriseReason(null);
+    setError(null);
+    try {
+      const result = await ileApi.getSurpriseMe();
+      setSelectedTopic(result.topic);
+      setUseCustom(false);
+      setSurpriseReason(result.reason);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to get surprise topic';
+      setError(msg);
+    } finally {
+      setSurpriseLoading(false);
     }
   };
 
@@ -217,7 +236,20 @@ export function FlashTutorPage() {
 
         {/* Topic selection */}
         <div className="ft-section">
-          <h2>Topic</h2>
+          <div className="ft-topic-header">
+            <h2>Topic</h2>
+            <button
+              className="ft-btn ft-btn-surprise"
+              onClick={handleSurpriseMe}
+              disabled={surpriseLoading}
+            >
+              {surpriseLoading ? 'Picking...' : 'Surprise Me'}
+            </button>
+          </div>
+
+          {surpriseReason && (
+            <div className="ft-surprise-reason">{surpriseReason}</div>
+          )}
 
           {!useCustom && (
             <div className="ft-topics-grid">
@@ -228,7 +260,7 @@ export function FlashTutorPage() {
                   <button
                     key={`${t.subject}-${t.topic}-${i}`}
                     className={`ft-topic-card ${selectedTopic?.subject === t.subject && selectedTopic?.topic === t.topic ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
-                    onClick={() => setSelectedTopic(t)}
+                    onClick={() => { setSelectedTopic(t); setSurpriseReason(null); }}
                   >
                     <span className="ft-topic-subject">{t.subject}</span>
                     <span className="ft-topic-name">{t.topic}</span>
@@ -241,7 +273,7 @@ export function FlashTutorPage() {
             </div>
           )}
 
-          <button className="ft-toggle-custom" onClick={() => setUseCustom(!useCustom)}>
+          <button className="ft-toggle-custom" onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}>
             {useCustom ? 'Choose from my courses' : 'Enter custom topic'}
           </button>
 
