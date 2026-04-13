@@ -11,6 +11,8 @@ from app.schemas.ile import (
     ILEAnswerFeedback,
     ILEAnswerSubmit,
     ILECurrentQuestion,
+    ILEMasteryEntry,
+    ILEMasteryMap,
     ILEQuestion,
     ILEQuestionOption,
     ILESessionCreate,
@@ -21,6 +23,7 @@ from app.schemas.ile import (
     ILETopicList,
 )
 from app.services import ile_service
+from app.services import ile_mastery_service
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -301,6 +304,67 @@ async def get_topics(
     topics_data = ile_service.get_available_topics(db, current_user.id)
     topics = [ILETopic(**t) for t in topics_data]
     return ILETopicList(topics=topics)
+
+
+# ---------------------------------------------------------------------------
+# Mastery
+# ---------------------------------------------------------------------------
+
+@router.get("/mastery", response_model=ILEMasteryMap)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_mastery(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get student's topic mastery data."""
+    entries = ile_mastery_service.get_student_mastery(db, current_user.id)
+    mastery_entries = [
+        ILEMasteryEntry(
+            subject=m.subject,
+            topic=m.topic,
+            total_sessions=m.total_sessions,
+            avg_attempts=m.avg_attempts_per_question,
+            is_weak_area=m.is_weak_area,
+            current_difficulty=m.current_difficulty,
+            last_score_pct=m.last_score_pct,
+            next_review_at=m.next_review_at,
+        )
+        for m in entries
+    ]
+    weak_count = sum(1 for e in mastery_entries if e.is_weak_area)
+    mastered_count = sum(1 for e in mastery_entries if not e.is_weak_area and e.total_sessions > 0)
+    return ILEMasteryMap(
+        student_id=current_user.id,
+        entries=mastery_entries,
+        total_topics=len(mastery_entries),
+        mastered_topics=mastered_count,
+        weak_topics=weak_count,
+    )
+
+
+@router.get("/mastery/weak-areas", response_model=list[ILEMasteryEntry])
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_weak_areas(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get topics flagged as weak areas."""
+    entries = ile_mastery_service.get_weak_areas(db, current_user.id)
+    return [
+        ILEMasteryEntry(
+            subject=m.subject,
+            topic=m.topic,
+            total_sessions=m.total_sessions,
+            avg_attempts=m.avg_attempts_per_question,
+            is_weak_area=m.is_weak_area,
+            current_difficulty=m.current_difficulty,
+            last_score_pct=m.last_score_pct,
+            next_review_at=m.next_review_at,
+        )
+        for m in entries
+    ]
 
 
 # ---------------------------------------------------------------------------

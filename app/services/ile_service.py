@@ -436,6 +436,14 @@ async def complete_session(db: Session, session: ILESession) -> dict:
     except Exception:
         pass  # XP is never blocking
 
+    # Update topic mastery after session completion (#3206)
+    try:
+        from app.services.ile_mastery_service import update_mastery_after_session
+        update_mastery_after_session(db, session, question_results)
+    except Exception:
+        db.rollback()
+        logger.warning("Failed to update mastery for session %d", session.id, exc_info=True)
+
     percentage = (total_correct / len(questions) * 100) if questions else 0
 
     logger.info(
@@ -596,6 +604,24 @@ def get_available_topics(
                 "course_id": course.id,
                 "course_name": course.name,
             })
+
+    # Enrich topics with mastery data (#3206)
+    if topics:
+        from app.models.ile_topic_mastery import ILETopicMastery
+        mastery_rows = (
+            db.query(ILETopicMastery)
+            .filter(ILETopicMastery.student_id == student_id)
+            .all()
+        )
+        mastery_map = {
+            (m.subject, m.topic): m for m in mastery_rows
+        }
+        for t in topics:
+            m = mastery_map.get((t["subject"], t["topic"]))
+            if m:
+                t["mastery_pct"] = m.last_score_pct
+                t["is_weak_area"] = m.is_weak_area
+                t["next_review_at"] = m.next_review_at
 
     return topics
 
