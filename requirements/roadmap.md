@@ -1005,5 +1005,13 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 - [x] **DB connection pool** — Reduced pool to prevent PostgreSQL slot exhaustion (#2769) (IMPLEMENTED)
 - [x] **Child guide dedup** — Proper dedup + student visibility for parent sub-guides (#2758, #2765, PR #2764) (IMPLEMENTED)
 
+#### Interactive Learning Engine (CB-ILE-001) — April 13, 2026
+
+- [x] **M0: Foundation** — 5 DB tables, session orchestrator, AI question generation, Flash Tutor UI, XP/badge integration (PR #3224 + #3232) (IMPLEMENTED)
+- [ ] **M1: Learning Mode + Adaptive** — Hints, explanations, retry loop, within-session difficulty adjustment, session persistence (#3203-#3205)
+- [ ] **M2: Topic Mastery + Cost Optimization** — Weak area detection, Surprise Me, Fill-in-the-Blank, question bank pre-gen, SM-2 spaced repetition (#3206-#3211)
+- [ ] **M3: Parent Teaching + Polish** — Parent Teaching Mode, Private Practice, Career Connect, Email Digest integration (#3212-#3215)
+- [ ] **M4: Hardening + Analytics** — Cost logging, anti-gaming, admin analytics, quiz migration (#3216-#3217)
+
 ---
 
