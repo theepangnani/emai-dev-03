@@ -110,8 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', data.access_token);
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
     setToken(data.access_token);
-    const userData = await authApi.getMe();
-    setUser(userData);
   }, []);
 
   const loginWithToken = useCallback((newToken: string, refreshToken?: string) => {
@@ -156,9 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setToken(responseData.access_token);
     }
-    // Refresh user data from the server to get the updated state
-    const userData = await authApi.getMe();
-    setUser(userData);
   }, []);
 
   const resendVerification = useCallback(async () => {
