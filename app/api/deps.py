@@ -39,6 +39,35 @@ def _is_token_blacklisted(db: Session, jti: str) -> bool:
     return result
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+
+def get_current_user_optional(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Return the current user if a valid token is provided, otherwise None."""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+    except JWTError:
+        return None
+
+    jti = payload.get("jti")
+    if jti and _is_token_blacklisted(db, jti):
+        return None
+
+    user = db.query(User).filter(User.id == int(user_id)).first()
+    if user is None or user.is_deleted:
+        return None
+
+    request.state.user_id = user.id
+    return user
 
 
 def get_current_user(
