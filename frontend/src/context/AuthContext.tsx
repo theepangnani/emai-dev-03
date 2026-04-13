@@ -141,12 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutRef.current = logout;
   }, [logout]);
 
-  const switchRole = async (role: string) => {
+  const switchRole = useCallback(async (role: string) => {
     const userData = await authApi.switchRole(role);
     setUser(userData);
-  };
+  }, []);
 
-  const completeOnboarding = async (roles: string[], teacherType?: string) => {
+  const completeOnboarding = useCallback(async (roles: string[], teacherType?: string) => {
     const responseData = await authApi.completeOnboarding(roles, teacherType);
     // The onboarding endpoint now returns new JWT tokens along with user data
     if (responseData.access_token) {
@@ -159,16 +159,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Refresh user data from the server to get the updated state
     const userData = await authApi.getMe();
     setUser(userData);
-  };
+  }, []);
 
-  const resendVerification = async () => {
+  const resendVerification = useCallback(async () => {
     await authApi.resendVerification();
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const userData = await authApi.getMe();
     setUser(userData);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, switchRole, completeOnboarding, resendVerification, refreshUser }}>
