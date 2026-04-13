@@ -52,6 +52,34 @@
   color: var(--text-secondary);
 }
 
+.ft-resume-meta {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.ft-resume-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ft-btn-ghost {
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default, #e2e8f0);
+  font-size: 0.8rem;
+}
+
+.ft-btn-ghost:hover {
+  background: var(--surface-secondary, #f1f5f9);
+}
+
+.ft-btn-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Sections */
 .ft-section {
   margin-bottom: 24px;

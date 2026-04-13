@@ -4,9 +4,9 @@
  * Entry point for the Interactive Learning Engine.
  * Students/parents select subject, topic, mode, and configuration.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
 import type { ILETopic } from '../api/ile';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -16,8 +16,20 @@ import './FlashTutorPage.css';
 type Mode = 'learning' | 'testing';
 type Difficulty = 'easy' | 'medium' | 'challenging';
 
+/** Format remaining time as a human-readable string (e.g. "12h left", "45m left"). */
+function formatTimeRemaining(expiresAt: string | null | undefined): string | null {
+  if (!expiresAt) return null;
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
+}
+
 export function FlashTutorPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Form state
   const [mode, setMode] = useState<Mode>('learning');
@@ -28,6 +40,7 @@ export function FlashTutorPage() {
   const [questionCount, setQuestionCount] = useState(5);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [creating, setCreating] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch available topics
@@ -41,6 +54,25 @@ export function FlashTutorPage() {
     queryKey: ['ile-active-session'],
     queryFn: () => ileApi.getActiveSession(),
   });
+
+  const timeRemaining = useMemo(
+    () => formatTimeRemaining(activeSession?.expires_at),
+    [activeSession?.expires_at],
+  );
+
+  const handleStartFresh = async () => {
+    if (!activeSession || abandoning) return;
+    setAbandoning(true);
+    setError(null);
+    try {
+      await ileApi.abandonSession(activeSession.id);
+      queryClient.invalidateQueries({ queryKey: ['ile-active-session'] });
+    } catch {
+      setError('Failed to abandon session');
+    } finally {
+      setAbandoning(false);
+    }
+  };
 
   const handleStart = async () => {
     const subject = useCustom ? customSubject : selectedTopic?.subject;
@@ -97,12 +129,25 @@ export function FlashTutorPage() {
             <div className="ft-resume-info">
               <span className="ft-resume-label">Session in progress</span>
               <span className="ft-resume-detail">
-                {activeSession.subject} — {activeSession.topic} ({activeSession.current_question_index}/{activeSession.question_count})
+                {activeSession.subject} — {activeSession.topic}
+              </span>
+              <span className="ft-resume-meta">
+                Question {activeSession.current_question_index + 1}/{activeSession.question_count}
+                {timeRemaining && <> &middot; {timeRemaining}</>}
               </span>
             </div>
-            <button className="ft-btn ft-btn-primary" onClick={handleResume}>
-              Resume Session
-            </button>
+            <div className="ft-resume-actions">
+              <button className="ft-btn ft-btn-primary" onClick={handleResume}>
+                Resume Session
+              </button>
+              <button
+                className="ft-btn ft-btn-ghost"
+                onClick={handleStartFresh}
+                disabled={abandoning}
+              >
+                {abandoning ? 'Abandoning...' : 'Start Fresh'}
+              </button>
+            </div>
           </div>
         )}
 

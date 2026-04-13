@@ -11,7 +11,7 @@ import type { ILECurrentQuestion, ILEAnswerFeedback, ILESessionResults, ILESessi
 import { DashboardLayout } from '../components/DashboardLayout';
 import './FlashTutorSessionPage.css';
 
-type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error';
+type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
 
 export function FlashTutorSessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,20 +33,41 @@ export function FlashTutorSessionPage() {
   const loadQuestion = useCallback(async () => {
     try {
       setPhase('loading');
-      const [sess, q] = await Promise.all([
-        ileApi.getSession(sessionId),
-        ileApi.getCurrentQuestion(sessionId),
-      ]);
+      const sess = await ileApi.getSession(sessionId);
       setSession(sess);
+
+      // Handle non-active statuses
+      if (sess.status === 'expired') {
+        setPhase('expired');
+        return;
+      }
+      if (sess.status === 'abandoned') {
+        setError('This session was abandoned');
+        setPhase('error');
+        return;
+      }
+      if (sess.status === 'completed') {
+        const res = await ileApi.getSessionResults(sessionId);
+        setResults(res);
+        setPhase('results');
+        return;
+      }
+
+      const q = await ileApi.getCurrentQuestion(sessionId);
       setCurrentQ(q);
       setSelectedAnswer(null);
       setFeedback(null);
       setStartTime(Date.now());
       setPhase('question');
     } catch {
-      // Session might be completed
+      // Session might be completed or expired
       try {
         const sess = await ileApi.getSession(sessionId);
+        if (sess.status === 'expired') {
+          setSession(sess);
+          setPhase('expired');
+          return;
+        }
         if (sess.status === 'completed') {
           const res = await ileApi.getSessionResults(sessionId);
           setResults(res);
@@ -165,6 +186,26 @@ export function FlashTutorSessionPage() {
           <div className="fts-loading">
             <div className="fts-spinner" />
             <p>Loading question...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (phase === 'expired') {
+    return (
+      <DashboardLayout showBackButton headerSlot={() => null}>
+        <div className="fts-page">
+          <div className="fts-expired-card">
+            <h2>Session Expired</h2>
+            <p>
+              This session on <strong>{session?.subject} — {session?.topic}</strong> has
+              expired (sessions last 24 hours). You got through{' '}
+              {session?.current_question_index ?? 0}/{session?.question_count ?? 0} questions.
+            </p>
+            <button className="fts-btn fts-btn-primary" onClick={() => navigate('/flash-tutor')}>
+              Start a New Session
+            </button>
           </div>
         </div>
       </DashboardLayout>

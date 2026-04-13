@@ -28,6 +28,26 @@
   to { transform: rotate(360deg); }
 }
 
+/* Expired */
+.fts-expired-card {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.fts-expired-card h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+
+.fts-expired-card p {
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 /* Error */
 .fts-error-card {
   text-align: center;

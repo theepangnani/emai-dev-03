@@ -24,6 +24,20 @@ SESSION_EXPIRY_HOURS = 24
 MAX_LEARNING_ATTEMPTS = 5  # Auto-reveal after this many attempts
 
 
+def _utc_now_comparable(dt: datetime | None) -> datetime:
+    """Return a UTC 'now' that is comparable with *dt*.
+
+    SQLite returns timezone-naive datetimes even for DateTime(timezone=True)
+    columns, while PostgreSQL returns timezone-aware ones.  Comparing naive
+    and aware datetimes raises TypeError in Python 3.12+, so we match the
+    awareness of the stored value.
+    """
+    if dt is not None and dt.tzinfo is not None:
+        return datetime.now(timezone.utc)
+    # Naive — return naive UTC
+    return datetime.utcnow()
+
+
 # ---------------------------------------------------------------------------
 # Session lifecycle
 # ---------------------------------------------------------------------------
@@ -61,7 +75,7 @@ async def create_session(
     )
     if active:
         # Expire if past expiry
-        now = datetime.now(timezone.utc)
+        now = _utc_now_comparable(active.expires_at)
         if active.expires_at and active.expires_at < now:
             active.status = "expired"
             db.commit()
@@ -120,7 +134,6 @@ async def create_session(
 
 def get_active_session(db: Session, student_id: int) -> ILESession | None:
     """Get the current active (in_progress) session for a student."""
-    now = datetime.now(timezone.utc)
     session = (
         db.query(ILESession)
         .filter(
@@ -129,7 +142,7 @@ def get_active_session(db: Session, student_id: int) -> ILESession | None:
         )
         .first()
     )
-    if session and session.expires_at and session.expires_at < now:
+    if session and session.expires_at and session.expires_at < _utc_now_comparable(session.expires_at):
         session.status = "expired"
         db.commit()
         return None
@@ -144,6 +157,42 @@ def get_session(db: Session, session_id: int, user_id: int) -> ILESession:
     if session.student_id != user_id and session.parent_id != user_id:
         raise PermissionError("Not authorized to access this session")
     return session
+
+
+def resume_session(
+    db: Session, session: ILESession
+) -> dict:
+    """Validate a session can be resumed and return current state.
+
+    Returns dict with session info, current question index, and previous
+    attempts for the current question.
+    """
+    # Check expiry
+    if session.expires_at and session.expires_at < _utc_now_comparable(session.expires_at):
+        session.status = "expired"
+        db.commit()
+        raise ValueError("Session has expired")
+
+    if session.status != "in_progress":
+        raise ValueError(f"Session is not in progress (status={session.status})")
+
+    # Get previous attempts for current question
+    prev_attempts = get_attempt_history(db, session.id, session.current_question_index)
+
+    logger.info(
+        "ILE session %d resumed | student=%d question=%d/%d attempts=%d",
+        session.id, session.student_id,
+        session.current_question_index, session.question_count,
+        len(prev_attempts),
+    )
+
+    return {
+        "session_id": session.id,
+        "current_question_index": session.current_question_index,
+        "question_count": session.question_count,
+        "previous_attempts": len(prev_attempts),
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+    }
 
 
 def get_current_question(session: ILESession) -> dict:
