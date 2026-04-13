@@ -402,14 +402,19 @@ def get_available_topics(
     """
     from app.models.course import Course, student_courses
     from app.models.course_content import CourseContent
+    from app.models.student import Student
 
-    # Get student's enrolled courses
-    course_ids = [
-        r[0] for r in
-        db.query(student_courses.c.course_id)
-        .filter(student_courses.c.student_id == student_id)
-        .all()
-    ]
+    # student_courses stores Student.id, not User.id — look up the Student record
+    student = db.query(Student).filter(Student.user_id == student_id).first()
+    if student:
+        course_ids = [
+            r[0] for r in
+            db.query(student_courses.c.course_id)
+            .filter(student_courses.c.student_id == student.id)
+            .all()
+        ]
+    else:
+        course_ids = []
 
     # Also get courses created by or assigned to the student
     own_courses = (
