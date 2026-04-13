@@ -15,7 +15,7 @@
   border-image-slice: 1 0 0 0;
   border-radius: var(--radius-md);
   position: relative;
-  background-image: linear-gradient(135deg, rgba(73, 184, 192, 0.03) 0%, rgba(244, 128, 31, 0.02) 100%);
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 3%, transparent) 0%, color-mix(in srgb, var(--color-accent-warm) 2%, transparent) 100%);
   overflow: hidden;
   transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
 }
@@ -120,7 +120,7 @@
 .pd-focus-tag.upcoming {
   background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(73, 184, 192, 0.15);
+  box-shadow: inset 0 0 0 1px var(--color-focus-ring);
 }
 
 .pd-focus-tag.invites {

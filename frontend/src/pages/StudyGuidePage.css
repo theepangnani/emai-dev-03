@@ -120,7 +120,7 @@
 }
 .sg-icon-btn:hover {
   border-color: var(--color-accent);
-  background: rgba(73, 184, 192, 0.08);
+  background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
 }
 .sg-icon-btn-danger:hover {
