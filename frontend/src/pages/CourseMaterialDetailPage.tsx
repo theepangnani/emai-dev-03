@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { coursesApi, courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote } from '../api/client';
+import { coursesApi, courseContentsApi, studyApi, parentApi, type CourseContentItem, type StudyGuide, type CourseContentUpdateResponse, type ResolvedStudent, type LinkedCourseChild, type BriefingNote, type Worksheet } from '../api/client';
 import { tasksApi, type TaskItem } from '../api/tasks';
 import { resourceLinksApi, type ResourceLinkGroup } from '../api/resourceLinks';
 import { useAuth } from '../context/AuthContext';
@@ -347,6 +347,7 @@ export function CourseMaterialDetailPage() {
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
   const [generatingChildTopic, setGeneratingChildTopic] = useState<string | null>(null);
   const [resolvedStudent, setResolvedStudent] = useState<ResolvedStudent | null>(null);
+  const [worksheetData, setWorksheetData] = useState<Worksheet | undefined>(undefined);
   const [guideFocusPrompt, setGuideFocusPrompt] = useState('');
   const [quizFocusPrompt, setQuizFocusPrompt] = useState('');
   const [flashcardsFocusPrompt, setFlashcardsFocusPrompt] = useState('');
@@ -416,12 +417,14 @@ export function CourseMaterialDetailPage() {
     if (!contentId) return;
     try {
       setError(null);
-      const [cc, allGuides] = await Promise.all([
+      const [cc, allGuides, worksheets] = await Promise.all([
         courseContentsApi.get(contentId),
         studyApi.listGuides({ course_content_id: contentId }),
+        studyApi.listWorksheets(contentId).catch(() => [] as Worksheet[]),
       ]);
       setContent(cc);
       setGuides(allGuides);
+      setWorksheetData(worksheets.length > 0 ? worksheets[0] : undefined);
       // Fetch linked tasks for each guide
       const taskMap: Record<number, TaskItem[]> = {};
       await Promise.all(
@@ -553,16 +556,16 @@ export function CourseMaterialDetailPage() {
   };
 
   const handleGenerate = async (
-    type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map',
+    type: 'study_guide' | 'quiz' | 'flashcards' | 'mind_map' | 'worksheet',
     difficulty?: string,
-    tabOptions?: { documentType?: string; studyGoal?: string; studyGoalText?: string },
+    tabOptions?: { documentType?: string; studyGoal?: string; studyGoalText?: string; template_key?: string; num_questions?: number },
   ) => {
     if (!content) return;
     if (atLimit) {
       setShowLimitModal(true);
       return;
     }
-    const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards', mind_map: 'Mind Map' };
+    const labels = { study_guide: 'Study Guide', quiz: 'Practice Quiz', flashcards: 'Flashcards', mind_map: 'Mind Map', worksheet: 'Worksheet' };
     const ok = await confirm({
       title: `Generate ${labels[type]}`,
       message: `Generate a ${labels[type].toLowerCase()} from "${content.title}"? This will use 1 AI credit. You have ${remaining} remaining.`,
@@ -576,11 +579,11 @@ export function CourseMaterialDetailPage() {
     if (!ok) return;
 
     setGenerating(type);
-    const tabMap: Record<string, TabKey> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards', mind_map: 'mindmap' };
+    const tabMap: Record<string, TabKey> = { study_guide: 'guide', quiz: 'quiz', flashcards: 'flashcards', mind_map: 'mindmap', worksheet: 'worksheets' };
     setActiveTab(tabMap[type] || 'guide');
     try {
-      const promptMap = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt, mind_map: mindmapFocusPrompt };
-      const fp = promptMap[type].trim() || undefined;
+      const promptMap: Record<string, string> = { study_guide: guideFocusPrompt, quiz: quizFocusPrompt, flashcards: flashcardsFocusPrompt, mind_map: mindmapFocusPrompt, worksheet: '' };
+      const fp = (promptMap[type] || '').trim() || undefined;
       // §6.106: Use tab-provided strategy context first, fall back to saved on course content
       const docType = tabOptions?.documentType || content.document_type || undefined;
       const sGoal = tabOptions?.studyGoal || content.study_goal || undefined;
@@ -637,6 +640,14 @@ export function CourseMaterialDetailPage() {
           content: content.text_content || content.description || '',
           focus_prompt: fp,
         });
+      } else if (type === 'worksheet') {
+        const ws = await studyApi.generateWorksheet({
+          content_id: contentId,
+          template_key: tabOptions?.template_key || 'worksheet_general',
+          num_questions: tabOptions?.num_questions || 10,
+          difficulty: difficulty || 'grade_level',
+        });
+        setWorksheetData(ws);
       }
       await loadData();
       refreshAIUsage();
@@ -688,7 +699,7 @@ export function CourseMaterialDetailPage() {
     }
   }, [stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleDeleteGuide = async (guide: StudyGuide) => {
+  const handleDeleteGuide = async (guide: { id: number; title: string }) => {
     const ok = await confirm({
       title: 'Archive Study Material',
       message: `Archive "${guide.title}"? You can restore it later from the archive.`,
@@ -856,10 +867,6 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  // Worksheets are conditionally visible — only when at least one exists.
-  // For now, no worksheets API exists yet, so hasWorksheets is always false.
-  const hasWorksheets = false;
-
   type TabDef = { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode; badge?: number };
 
   const docTab: TabDef = { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> };
@@ -870,7 +877,7 @@ export function CourseMaterialDetailPage() {
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
-    ...(hasWorksheets ? [{ key: 'worksheets' as TabKey, label: 'Worksheets', shortLabel: 'Sheets', hasContent: true, icon: <WorksheetsIcon /> }] : []),
+    { key: 'worksheets', label: 'Worksheets', shortLabel: 'Sheets', hasContent: !!worksheetData, icon: <WorksheetsIcon /> },
   ];
 
   // "More" dropdown tabs — Mind Map, Videos, Briefing
@@ -1178,10 +1185,13 @@ export function CourseMaterialDetailPage() {
 
           {activeTab === 'worksheets' && (
             <WorksheetsTab
+              worksheet={worksheetData}
               courseContentId={contentId}
               hasSourceContent={hasSourceContent}
               atLimit={atLimit}
               generating={generating}
+              onGenerate={(opts) => handleGenerate('worksheet', opts.difficulty, { template_key: opts.template_key, num_questions: opts.num_questions })}
+              onDelete={handleDeleteGuide}
               onViewDocument={() => setActiveTab('document')}
             />
           )}

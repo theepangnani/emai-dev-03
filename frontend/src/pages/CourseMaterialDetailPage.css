@@ -430,6 +430,20 @@
   color: var(--color-ink-muted, #5b6274);
 }
 
+.cm-worksheet-select {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a2e);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.cm-worksheet-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .cm-difficulty-toggle {
   display: inline-flex;
   border: 1px solid var(--color-border);
