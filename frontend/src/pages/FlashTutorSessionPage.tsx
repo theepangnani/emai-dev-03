@@ -9,6 +9,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ileApi } from '../api/ile';
 import type { ILECurrentQuestion, ILEAnswerFeedback, ILESessionResults, ILESession } from '../api/ile';
 import { DashboardLayout } from '../components/DashboardLayout';
+import { HintBubble } from '../components/ile/HintBubble';
+import { ExplanationBubble } from '../components/ile/ExplanationBubble';
+import { XpPopBadge } from '../components/ile/XpPopBadge';
+import { StreakCounter } from '../components/ile/StreakCounter';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -27,6 +31,7 @@ export function FlashTutorSessionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [streakBroken, setStreakBroken] = useState(false);
   const [sessionXp, setSessionXp] = useState(0);
   const [startTime, setStartTime] = useState<number>(0);
 
@@ -103,9 +108,11 @@ export function FlashTutorSessionPage() {
       setFeedback(fb);
       setSessionXp(prev => prev + fb.xp_earned);
 
+      setStreakBroken(false);
       if (fb.is_correct && fb.attempt_number === 1) {
         setStreak(prev => prev + 1);
       } else if (fb.streak_broken) {
+        setStreakBroken(true);
         setStreak(0);
       }
 
@@ -294,9 +301,7 @@ export function FlashTutorSessionPage() {
             <span className="fts-mode-tag">
               {session?.mode === 'learning' ? '📖 Learning' : '📝 Testing'}
             </span>
-            {streak > 0 && (
-              <span className="fts-streak">🔥 {streak}</span>
-            )}
+            <StreakCounter count={streak} broken={streakBroken} />
             <span className="fts-xp-counter">⭐ {sessionXp} XP</span>
             <button className="fts-abandon-btn" onClick={handleAbandon} title="Exit session">
               ✕
@@ -352,26 +357,19 @@ export function FlashTutorSessionPage() {
         {phase === 'feedback' && feedback && (
           <div className="fts-feedback">
             {feedback.hint && !feedback.question_complete && (
-              <div className="fts-hint-bubble">
-                <span className="fts-bubble-label">💡 Hint</span>
-                <p>{feedback.hint}</p>
-              </div>
+              <HintBubble hint={feedback.hint} attemptNumber={feedback.attempt_number} />
             )}
 
             {feedback.explanation && feedback.question_complete && (
-              <div className="fts-explanation-bubble">
-                <span className="fts-bubble-label">
-                  {feedback.is_correct ? '✓ Why Correct' : "📖 Let's look at this together"}
-                </span>
-                <p>{feedback.explanation}</p>
-              </div>
+              <ExplanationBubble
+                explanation={feedback.explanation}
+                isCorrect={feedback.is_correct}
+                isAutoRevealed={!feedback.is_correct}
+              />
             )}
 
             {feedback.xp_earned > 0 && (
-              <div className="fts-xp-pop">
-                +{feedback.xp_earned} XP
-                {feedback.attempt_number === 1 && ' — First try bonus!'}
-              </div>
+              <XpPopBadge xp={feedback.xp_earned} isFirstTry={feedback.attempt_number === 1} />
             )}
           </div>
         )}
