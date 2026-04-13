@@ -170,7 +170,7 @@ def gmail_callback(
     # Exchange code for tokens
     try:
         tokens = exchange_gmail_code(code=body.code, redirect_uri=body.redirect_uri)
-    except Exception:
+    except (_requests.RequestException, ValueError, KeyError):
         logger.exception("Gmail OAuth token exchange failed for user %s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
