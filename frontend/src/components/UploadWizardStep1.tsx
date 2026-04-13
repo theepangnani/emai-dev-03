@@ -141,6 +141,7 @@ function UploadWizardStep1({
           </p>
           <textarea
             className="uw-textarea uw-question-textarea"
+            aria-label="Ask a question about your child's education"
             value={studyContent}
             onChange={(e) => onStudyContentChange(e.target.value)}
             placeholder={questionPlaceholder}
