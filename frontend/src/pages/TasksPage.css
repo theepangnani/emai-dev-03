@@ -51,7 +51,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .tasks-child-selector .pd-child-tab.active .pd-grade-badge {
@@ -90,7 +90,7 @@
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 /* Calendar collapse toggle */
@@ -177,7 +177,7 @@
   text-transform: capitalize;
   background: var(--color-accent-subtle);
   color: var(--color-accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(73, 184, 192, 0.15);
+  box-shadow: inset 0 0 0 1px var(--color-focus-ring);
 }
 
 .tasks-filter-toggle {
@@ -206,7 +206,7 @@
 .tasks-filter-toggle.expanded {
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .tasks-filter-toggle-icon {
@@ -290,7 +290,7 @@
 .tasks-chip.active {
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 /* Action icon button (shared with CourseDetailPage) */
@@ -582,7 +582,7 @@
 .task-row.archived {
   opacity: 0.55;
   border-style: dashed;
-  background: var(--color-background, #fafafa);
+  background: var(--color-surface-alt);
 }
 
 .task-row.archived .task-row-title {
@@ -935,7 +935,7 @@ textarea.form-input {
 }
 
 [data-theme="dark"] .task-row.archived {
-  background: var(--color-background, var(--color-surface-alt));
+  background: var(--color-surface-alt);
 }
 
 [data-theme="dark"] .task-group-overdue {

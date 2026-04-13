@@ -38,7 +38,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .cp-child-tab-all {
@@ -50,7 +50,7 @@
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .cp-child-color-dot {
@@ -816,7 +816,7 @@
 .courses-search-input:focus {
   outline: none;
   border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-focus-ring, rgba(73, 184, 192, 0.15));
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .courses-search-input::placeholder {
