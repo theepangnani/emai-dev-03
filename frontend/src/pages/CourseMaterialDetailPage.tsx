@@ -867,8 +867,6 @@ export function CourseMaterialDetailPage() {
     </DashboardLayout>
   );
 
-  const hasWorksheets = true;
-
   type TabDef = { key: TabKey; label: string; shortLabel: string; hasContent: boolean; icon: React.ReactNode; badge?: number };
 
   const docTab: TabDef = { key: 'document', label: 'Source Document', shortLabel: 'Source', hasContent: !!(content.text_content || content.description || content.has_file), icon: <DocIcon /> };
@@ -879,7 +877,7 @@ export function CourseMaterialDetailPage() {
     { key: 'guide', label: 'Study Guide', shortLabel: 'Guide', hasContent: !!studyGuide, icon: <GuideIcon /> },
     { key: 'quiz', label: 'Quiz', shortLabel: 'Quiz', hasContent: !!quiz, icon: <QuizIcon /> },
     { key: 'flashcards', label: 'Flashcards', shortLabel: 'Cards', hasContent: !!flashcardSet, icon: <FlashcardIcon /> },
-    ...(hasWorksheets ? [{ key: 'worksheets' as TabKey, label: 'Worksheets', shortLabel: 'Sheets', hasContent: !!worksheetData, icon: <WorksheetsIcon /> }] : []),
+    { key: 'worksheets', label: 'Worksheets', shortLabel: 'Sheets', hasContent: !!worksheetData, icon: <WorksheetsIcon /> },
   ];
 
   // "More" dropdown tabs — Mind Map, Videos, Briefing
@@ -1195,8 +1193,6 @@ export function CourseMaterialDetailPage() {
               onGenerate={(opts) => handleGenerate('worksheet', opts.difficulty, { template_key: opts.template_key, num_questions: opts.num_questions })}
               onDelete={handleDeleteGuide}
               onViewDocument={() => setActiveTab('document')}
-              courseName={content?.course_name}
-              createdAt={worksheetData?.created_at}
             />
           )}
 

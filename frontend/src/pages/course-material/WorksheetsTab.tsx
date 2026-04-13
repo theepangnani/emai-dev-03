@@ -30,8 +30,6 @@ interface WorksheetsTabProps {
   onGenerate: (opts: { template_key: string; difficulty: string; num_questions: number }) => void;
   onDelete: (guide: StudyGuide) => void;
   onViewDocument: () => void;
-  courseName?: string | null;
-  createdAt?: string | null;
 }
 
 function EmptyWorksheetIcon() {
