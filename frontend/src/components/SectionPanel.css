@@ -59,7 +59,7 @@
   height: 22px;
   padding: 0 7px;
   border-radius: 11px;
-  background: var(--color-accent, #49b8c0);
+  background: var(--color-accent);
   color: #ffffff;
   font-size: 12px;
   font-weight: 600;
