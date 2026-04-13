@@ -313,6 +313,93 @@
   margin-bottom: 14px;
 }
 
+/* ===== Monitored Emails (#3178) ===== */
+
+.edw-monitored-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.edw-monitored-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 10px);
+}
+
+.edw-monitored-email {
+  font-size: 0.88rem;
+  color: var(--color-ink, #1A202C);
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edw-monitored-label {
+  font-size: 0.78rem;
+  color: var(--color-ink-muted, #6B7280);
+  background: var(--color-hover, #f3f4f6);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 6px);
+  white-space: nowrap;
+}
+
+.edw-monitored-remove {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted, #6B7280);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm, 6px);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.edw-monitored-remove:hover {
+  background: var(--color-danger-bg, #fef2f2);
+  color: var(--color-danger, #ef4444);
+}
+
+.edw-add-email-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.edw-btn-add {
+  padding: 10px 16px;
+  background: var(--color-primary, #8b5cf6);
+  color: var(--color-surface, #fff);
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-end;
+  transition: background 0.15s;
+}
+
+.edw-btn-add:hover:not(:disabled) {
+  background: var(--color-primary-hover, #7c3aed);
+}
+
+.edw-btn-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ===== Mobile ===== */
 
 @media (max-width: 480px) {
@@ -334,5 +421,10 @@
   .edw-footer {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .edw-add-email-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

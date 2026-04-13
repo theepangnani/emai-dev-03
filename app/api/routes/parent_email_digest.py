@@ -25,6 +25,7 @@ from app.models.parent_gmail_integration import (
     ParentGmailIntegration,
     ParentDigestSettings,
     DigestDeliveryLog,
+    ParentDigestMonitoredEmail,
 )
 from app.models.user import User, UserRole
 from app.schemas.parent_email_digest import (
@@ -35,6 +36,8 @@ from app.schemas.parent_email_digest import (
     DigestDeliveryLogResponse,
     WhatsAppVerifyRequest,
     WhatsAppOTPRequest,
+    MonitoredEmailCreate,
+    MonitoredEmailResponse,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -347,6 +350,93 @@ def resume_integration(
     db.commit()
     db.refresh(integration)
     return integration
+
+
+# ---------------------------------------------------------------------------
+# Monitored emails CRUD (#3178)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/integrations/{integration_id}/monitored-emails", response_model=list[MonitoredEmailResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_monitored_emails(
+    request: Request,
+    integration_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """List all monitored email addresses for an integration."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+    return integration.monitored_emails
+
+
+@router.post("/integrations/{integration_id}/monitored-emails", response_model=MonitoredEmailResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def add_monitored_email(
+    request: Request,
+    integration_id: int,
+    body: MonitoredEmailCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Add an email address to monitor."""
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    # Check for duplicate
+    existing = (
+        db.query(ParentDigestMonitoredEmail)
+        .filter(
+            ParentDigestMonitoredEmail.integration_id == integration.id,
+            ParentDigestMonitoredEmail.email_address == body.email_address,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Email address already monitored")
+
+    # Limit to 10 monitored addresses per integration
+    count = (
+        db.query(ParentDigestMonitoredEmail)
+        .filter(ParentDigestMonitoredEmail.integration_id == integration.id)
+        .count()
+    )
+    if count >= 10:
+        raise HTTPException(status_code=400, detail="Maximum of 10 monitored email addresses per integration")
+
+    monitored = ParentDigestMonitoredEmail(
+        integration_id=integration.id,
+        email_address=body.email_address,
+        label=body.label,
+    )
+    db.add(monitored)
+    db.commit()
+    db.refresh(monitored)
+    return monitored
+
+
+@router.delete("/integrations/{integration_id}/monitored-emails/{email_id}", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def remove_monitored_email(
+    request: Request,
+    integration_id: int,
+    email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Remove a monitored email address."""
+    _get_owned_integration(db, integration_id, current_user.id)
+    monitored = (
+        db.query(ParentDigestMonitoredEmail)
+        .filter(
+            ParentDigestMonitoredEmail.id == email_id,
+            ParentDigestMonitoredEmail.integration_id == integration_id,
+        )
+        .first()
+    )
+    if not monitored:
+        raise HTTPException(status_code=404, detail="Monitored email not found")
+    db.delete(monitored)
+    db.commit()
 
 
 # ---------------------------------------------------------------------------

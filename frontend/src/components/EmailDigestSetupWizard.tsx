@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings } from '../api/parentEmailDigest';
+import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings, addMonitoredEmail } from '../api/parentEmailDigest';
 import './EmailDigestSetupWizard.css';
 
 const TIMEZONES = [
@@ -56,7 +56,9 @@ export function EmailDigestSetupWizard({
   const oauthStateRef = useRef(oauthState);
 
   // Step 2: Child info
-  const [childSchoolEmail, setChildSchoolEmail] = useState('');
+  const [monitoredEmails, setMonitoredEmails] = useState<{ email: string; label: string }[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [newLabel, setNewLabel] = useState('');
   const [childFirstName, setChildFirstName] = useState(childName ?? '');
 
   // Step 3: Settings
@@ -78,7 +80,9 @@ export function EmailDigestSetupWizard({
       setConnectedEmail('');
       setIntegrationId(null);
       setOauthState('');
-      setChildSchoolEmail('');
+      setMonitoredEmails([]);
+      setNewEmail('');
+      setNewLabel('');
       setChildFirstName(childName ?? '');
       setDeliveryTime('07:00');
       setTimezone('America/Toronto');
@@ -158,27 +162,34 @@ export function EmailDigestSetupWizard({
       }
       setStep(2);
     } else if (step === 2) {
-      if (!childSchoolEmail.trim()) {
-        setError('Please enter your child\'s school email.');
+      if (monitoredEmails.length === 0) {
+        setError('Please add at least one email address to monitor.');
         return;
       }
       if (!childFirstName.trim()) {
         setError('Please enter your child\'s first name.');
         return;
       }
-      // Basic email validation
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(childSchoolEmail.trim())) {
-        setError('Please enter a valid email address.');
-        return;
-      }
-      // Save child info to the integration
+      // Save child info and monitored emails to the integration
       if (integrationId) {
         setLoading(true);
         try {
           await updateIntegration(integrationId, {
-            child_school_email: childSchoolEmail.trim(),
+            child_school_email: monitoredEmails[0].email,
             child_first_name: childFirstName.trim(),
           });
+          for (const entry of monitoredEmails) {
+            try {
+              await addMonitoredEmail(integrationId, {
+                email_address: entry.email,
+                label: entry.label || undefined,
+              });
+            } catch (err: unknown) {
+              // Skip 409 (already exists) — not an error on re-entry
+              const axiosErr = err as { response?: { status?: number } };
+              if (axiosErr.response?.status !== 409) throw err;
+            }
+          }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to save child info';
           setError(msg);
@@ -214,7 +225,7 @@ export function EmailDigestSetupWizard({
         setLoading(false);
       }
     }
-  }, [step, gmailConnected, childSchoolEmail, childFirstName, channels, integrationId, deliveryTime, timezone, digestFormat, onComplete, onClose]);
+  }, [step, gmailConnected, monitoredEmails, childFirstName, channels, integrationId, deliveryTime, timezone, digestFormat, onComplete, onClose]);
 
   const handleBack = useCallback(() => {
     setError('');
@@ -291,28 +302,74 @@ export function EmailDigestSetupWizard({
             </>
           )}
 
-          {/* Step 2: Child's School Email */}
+          {/* Step 2: Monitored Emails */}
           {step === 2 && (
             <>
-              <h3 className="edw-step-title">Child&rsquo;s School Email</h3>
+              <h3 className="edw-step-title">Emails to Monitor</h3>
               <p className="edw-step-desc">
-                Enter your child&rsquo;s school email so we know which emails to include in the digest.
+                Add email addresses you want to monitor for school communications. You can add up to 10.
               </p>
-              <div className="edw-field">
-                <label htmlFor="edw-child-email">School Email Address</label>
-                <input
-                  id="edw-child-email"
-                  type="email"
-                  placeholder="child@school.ca"
-                  value={childSchoolEmail}
-                  onChange={e => setChildSchoolEmail(e.target.value)}
-                  className={error && !childSchoolEmail.trim() ? 'edw-input-error' : ''}
-                  autoFocus
-                />
-                <div className="edw-field-hint">
-                  The email your child uses for school communications.
+              {monitoredEmails.length > 0 && (
+                <div className="edw-monitored-list">
+                  {monitoredEmails.map((entry, idx) => (
+                    <div key={idx} className="edw-monitored-item">
+                      <span className="edw-monitored-email">{entry.email}</span>
+                      {entry.label && <span className="edw-monitored-label">{entry.label}</span>}
+                      <button
+                        type="button"
+                        className="edw-monitored-remove"
+                        onClick={() => setMonitoredEmails(prev => prev.filter((_, i) => i !== idx))}
+                        aria-label={`Remove ${entry.email}`}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
+              {monitoredEmails.length < 10 && (
+                <div className="edw-add-email-row">
+                  <div className="edw-field" style={{ flex: 2 }}>
+                    <label htmlFor="edw-new-email">Email Address</label>
+                    <input
+                      id="edw-new-email"
+                      type="email"
+                      placeholder="sender@school.ca"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="edw-field" style={{ flex: 1 }}>
+                    <label htmlFor="edw-new-label">Label (optional)</label>
+                    <input
+                      id="edw-new-label"
+                      type="text"
+                      placeholder="e.g. Teacher"
+                      value={newLabel}
+                      onChange={e => setNewLabel(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="edw-btn-add"
+                    disabled={!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())}
+                    onClick={() => {
+                      const email = newEmail.trim().toLowerCase();
+                      if (monitoredEmails.some(e => e.email === email)) {
+                        setError('This email address is already in the list.');
+                        return;
+                      }
+                      setMonitoredEmails(prev => [...prev, { email, label: newLabel.trim() }]);
+                      setNewEmail('');
+                      setNewLabel('');
+                      setError('');
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
               <div className="edw-field">
                 <label htmlFor="edw-child-name">Child&rsquo;s First Name</label>
                 <input
@@ -402,8 +459,10 @@ export function EmailDigestSetupWizard({
                   <span className="edw-summary-value">{childFirstName}</span>
                 </div>
                 <div className="edw-summary-row">
-                  <span className="edw-summary-label">School Email</span>
-                  <span className="edw-summary-value">{childSchoolEmail}</span>
+                  <span className="edw-summary-label">Monitored Emails</span>
+                  <span className="edw-summary-value">
+                    {monitoredEmails.length} address{monitoredEmails.length !== 1 ? 'es' : ''}: {monitoredEmails.map(e => e.email).join(', ')}
+                  </span>
                 </div>
                 <div className="edw-summary-row">
                   <span className="edw-summary-label">Delivery Time</span>

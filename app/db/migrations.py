@@ -2314,3 +2314,45 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.info("subject_confidence migration skipped (column likely exists): %s", e)
         logger.warning("WhatsApp column migration (#2967, #3054) failed: %s", e)
+
+    # --- Multi-sender monitored emails table (#3178) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "parent_digest_monitored_emails" not in _inspector.get_table_names():
+                _is_pg = "sqlite" not in settings.database_url
+                _ts_type = "TIMESTAMPTZ DEFAULT NOW()" if _is_pg else "DATETIME DEFAULT CURRENT_TIMESTAMP"
+                conn.execute(text(f"""
+                    CREATE TABLE parent_digest_monitored_emails (
+                        id {'SERIAL' if _is_pg else 'INTEGER'} PRIMARY KEY,
+                        integration_id INTEGER NOT NULL REFERENCES parent_gmail_integrations(id) ON DELETE CASCADE,
+                        email_address VARCHAR(255) NOT NULL,
+                        label VARCHAR(100),
+                        created_at {_ts_type},
+                        UNIQUE (integration_id, email_address)
+                    )
+                """))
+                conn.commit()
+                logger.info("Created parent_digest_monitored_emails table (#3178)")
+    except Exception as e:
+        logger.debug("Monitored emails table migration skipped: %s", e)
+
+    # --- Migrate existing child_school_email to monitored_emails (#3178) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "parent_digest_monitored_emails" in _inspector.get_table_names():
+                conn.execute(text("""
+                    INSERT INTO parent_digest_monitored_emails (integration_id, email_address, label)
+                    SELECT id, child_school_email, 'School Email'
+                    FROM parent_gmail_integrations
+                    WHERE child_school_email IS NOT NULL
+                      AND child_school_email != ''
+                      AND id NOT IN (
+                        SELECT integration_id FROM parent_digest_monitored_emails
+                      )
+                """))
+                conn.commit()
+                logger.info("Migrated existing child_school_email to monitored_emails (#3178)")
+    except Exception as e:
+        logger.debug("Monitored emails data migration skipped: %s", e)

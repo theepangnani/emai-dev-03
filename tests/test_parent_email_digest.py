@@ -1,4 +1,4 @@
-"""Comprehensive tests for parent email digest endpoints (#2654, #2967)."""
+"""Comprehensive tests for parent email digest endpoints (#2654, #2967, #3178)."""
 
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
@@ -635,3 +635,173 @@ class TestResponseSchema:
         data = resp.json()
         assert "whatsapp_phone" in data
         assert "whatsapp_verified" in data
+
+    def test_integration_response_has_monitored_emails(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.get(f"{PREFIX}/integrations/{iid}", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "monitored_emails" in data
+        assert isinstance(data["monitored_emails"], list)
+
+
+# ---------------------------------------------------------------------------
+# Monitored Emails CRUD (#3178)
+# ---------------------------------------------------------------------------
+
+SECOND_PARENT_EMAIL = "digest_parent2@test.com"
+
+
+class TestAddMonitoredEmail:
+    def test_add_monitored_email(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "teacher@school.ca", "label": "Math Teacher"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["email_address"] == "teacher@school.ca"
+        assert data["label"] == "Math Teacher"
+        assert data["integration_id"] == iid
+
+    def test_add_monitored_email_no_label(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "office@school.ca"},
+            headers=headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["label"] is None
+
+
+class TestListMonitoredEmails:
+    def test_list_monitored_emails(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        # Add one first
+        client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "list_test@school.ca"},
+            headers=headers,
+        )
+        resp = client.get(f"{PREFIX}/integrations/{iid}/monitored-emails", headers=headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert isinstance(data, list)
+        assert any(e["email_address"] == "list_test@school.ca" for e in data)
+
+
+class TestRemoveMonitoredEmail:
+    def test_remove_monitored_email(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        add_resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "remove_test@school.ca"},
+            headers=headers,
+        )
+        email_id = add_resp.json()["id"]
+        resp = client.delete(
+            f"{PREFIX}/integrations/{iid}/monitored-emails/{email_id}",
+            headers=headers,
+        )
+        assert resp.status_code == 204
+
+    def test_remove_nonexistent_monitored_email(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.delete(
+            f"{PREFIX}/integrations/{iid}/monitored-emails/99999",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+
+class TestAddDuplicateMonitoredEmail:
+    def test_add_duplicate_monitored_email(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "dup_test@school.ca"},
+            headers=headers,
+        )
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "dup_test@school.ca"},
+            headers=headers,
+        )
+        assert resp.status_code == 409
+
+
+class TestMonitoredEmailLimit:
+    def test_add_monitored_email_limit(self, client, db_session, setup):
+        """Add 10 monitored emails then verify 11th is rejected."""
+        from app.models.parent_gmail_integration import ParentDigestMonitoredEmail
+
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+
+        # Clear existing monitored emails for this integration
+        db_session.query(ParentDigestMonitoredEmail).filter(
+            ParentDigestMonitoredEmail.integration_id == iid,
+        ).delete()
+        db_session.commit()
+
+        # Add 10 emails directly
+        for i in range(10):
+            me = ParentDigestMonitoredEmail(
+                integration_id=iid,
+                email_address=f"limit{i}@school.ca",
+            )
+            db_session.add(me)
+        db_session.commit()
+
+        # 11th should fail
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "limit_overflow@school.ca"},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "Maximum" in resp.json()["detail"]
+
+
+class TestMonitoredEmailWrongUser:
+    def test_monitored_email_wrong_user(self, client, db_session, setup):
+        """Verify a different parent cannot access another parent's monitored emails."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        # Create a second parent
+        parent2 = db_session.query(User).filter(User.email == SECOND_PARENT_EMAIL).first()
+        if not parent2:
+            parent2 = User(
+                email=SECOND_PARENT_EMAIL,
+                full_name="Digest Parent 2",
+                role=UserRole.PARENT,
+                hashed_password=get_password_hash(PASSWORD),
+            )
+            db_session.add(parent2)
+            db_session.commit()
+
+        headers2 = _auth(client, SECOND_PARENT_EMAIL)
+        iid = setup["integration"].id
+
+        # Try to list monitored emails of first parent's integration
+        resp = client.get(f"{PREFIX}/integrations/{iid}/monitored-emails", headers=headers2)
+        assert resp.status_code == 404
+
+        # Try to add monitored email to first parent's integration
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "hack@school.ca"},
+            headers=headers2,
+        )
+        assert resp.status_code == 404

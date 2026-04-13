@@ -9,9 +9,13 @@ import {
   updateSettings,
   getLogs,
   triggerSync,
+  listMonitoredEmails,
+  addMonitoredEmail,
+  removeMonitoredEmail,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
+  type MonitoredEmail,
 } from '../../api/parentEmailDigest';
 import './EmailDigestPage.css';
 
@@ -56,6 +60,35 @@ export function EmailDigestPage() {
         (r) => r.data,
       ),
     enabled: !!activeIntegration,
+  });
+
+  const [newMonEmail, setNewMonEmail] = useState('');
+  const [newMonLabel, setNewMonLabel] = useState('');
+
+  const { data: monitoredEmails = [] } = useQuery<MonitoredEmail[]>({
+    queryKey: ['email-digest', 'monitored-emails', activeIntegration?.id],
+    queryFn: () => listMonitoredEmails(activeIntegration!.id).then((r) => r.data),
+    enabled: !!activeIntegration,
+  });
+
+  const addMonitoredMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { email_address: string; label?: string } }) =>
+      addMonitoredEmail(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'monitored-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+      setNewMonEmail('');
+      setNewMonLabel('');
+    },
+  });
+
+  const removeMonitoredMutation = useMutation({
+    mutationFn: ({ integrationId, emailId }: { integrationId: number; emailId: number }) =>
+      removeMonitoredEmail(integrationId, emailId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'monitored-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+    },
   });
 
   const syncMutation = useMutation({
@@ -186,6 +219,64 @@ export function EmailDigestPage() {
                   <span className="ed-success-text">Sync complete!</span>
                 )}
               </div>
+            </div>
+
+            {/* Monitored Emails */}
+            <div className="ed-settings-card">
+              <h2 className="ed-section-title">Monitored Emails</h2>
+              {monitoredEmails.length > 0 ? (
+                <div className="ed-monitored-list">
+                  {monitoredEmails.map((me) => (
+                    <div key={me.id} className="ed-monitored-item">
+                      <span className="ed-monitored-email">{me.email_address}</span>
+                      {me.label && <span className="ed-monitored-label">{me.label}</span>}
+                      <button
+                        className="ed-monitored-remove"
+                        onClick={() => removeMonitoredMutation.mutate({ integrationId: activeIntegration.id, emailId: me.id })}
+                        disabled={removeMonitoredMutation.isPending}
+                        aria-label={`Remove ${me.email_address}`}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="ed-empty-history">No monitored email addresses configured.</p>
+              )}
+              {monitoredEmails.length < 10 && (
+                <div className="ed-add-email-row">
+                  <input
+                    type="email"
+                    className="ed-input"
+                    placeholder="sender@school.ca"
+                    value={newMonEmail}
+                    onChange={(e) => setNewMonEmail(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="ed-input"
+                    placeholder="Label (optional)"
+                    value={newMonLabel}
+                    onChange={(e) => setNewMonLabel(e.target.value)}
+                  />
+                  <button
+                    className="ed-primary-btn"
+                    disabled={!newMonEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newMonEmail.trim()) || addMonitoredMutation.isPending}
+                    onClick={() =>
+                      addMonitoredMutation.mutate({
+                        id: activeIntegration.id,
+                        data: { email_address: newMonEmail.trim().toLowerCase(), label: newMonLabel.trim() || undefined },
+                      })
+                    }
+                  >
+                    {addMonitoredMutation.isPending ? 'Adding...' : 'Add'}
+                  </button>
+                </div>
+              )}
+              {addMonitoredMutation.isError && (
+                <span className="ed-error-text">Failed to add email. It may already be monitored.</span>
+              )}
             </div>
 
             {/* Digest History */}
