@@ -146,6 +146,44 @@ def get_session(db: Session, session_id: int, user_id: int) -> ILESession:
     return session
 
 
+def resume_session(
+    db: Session, session: ILESession
+) -> dict:
+    """Validate a session can be resumed and return current state.
+
+    Returns dict with session info, current question index, and previous
+    attempts for the current question.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Check expiry
+    if session.expires_at and session.expires_at < now:
+        session.status = "expired"
+        db.commit()
+        raise ValueError("Session has expired")
+
+    if session.status != "in_progress":
+        raise ValueError(f"Session is not in progress (status={session.status})")
+
+    # Get previous attempts for current question
+    prev_attempts = get_attempt_history(db, session.id, session.current_question_index)
+
+    logger.info(
+        "ILE session %d resumed | student=%d question=%d/%d attempts=%d",
+        session.id, session.student_id,
+        session.current_question_index, session.question_count,
+        len(prev_attempts),
+    )
+
+    return {
+        "session_id": session.id,
+        "current_question_index": session.current_question_index,
+        "question_count": session.question_count,
+        "previous_attempts": len(prev_attempts),
+        "expires_at": session.expires_at.isoformat() if session.expires_at else None,
+    }
+
+
 def get_current_question(session: ILESession) -> dict:
     """Get the current question for a session."""
     questions = json.loads(session.questions_json)

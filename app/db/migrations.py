@@ -2356,3 +2356,20 @@ def _run_migrations_inner(engine, settings, logger):
                 logger.info("Migrated existing child_school_email to monitored_emails (#3178)")
     except Exception as e:
         logger.debug("Monitored emails data migration skipped: %s", e)
+
+    # --- Expire stale ILE sessions (>24h old, still in_progress) (#3205) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "ile_sessions" in _inspector.get_table_names():
+                _is_pg = "sqlite" not in settings.database_url
+                _now_fn = "NOW()" if _is_pg else "datetime('now')"
+                conn.execute(text(f"""
+                    UPDATE ile_sessions SET status = 'expired'
+                    WHERE status = 'in_progress'
+                    AND expires_at < {_now_fn}
+                """))
+                conn.commit()
+                logger.info("Expired stale ILE sessions (#3205)")
+    except Exception as e:
+        logger.debug("ILE session expiry cleanup skipped: %s", e)
