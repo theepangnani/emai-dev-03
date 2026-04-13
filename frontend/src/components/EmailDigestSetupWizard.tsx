@@ -179,10 +179,16 @@ export function EmailDigestSetupWizard({
             child_first_name: childFirstName.trim(),
           });
           for (const entry of monitoredEmails) {
-            await addMonitoredEmail(integrationId, {
-              email_address: entry.email,
-              label: entry.label || undefined,
-            });
+            try {
+              await addMonitoredEmail(integrationId, {
+                email_address: entry.email,
+                label: entry.label || undefined,
+              });
+            } catch (err: unknown) {
+              // Skip 409 (already exists) — not an error on re-entry
+              const axiosErr = err as { response?: { status?: number } };
+              if (axiosErr.response?.status !== 409) throw err;
+            }
           }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'Failed to save child info';
