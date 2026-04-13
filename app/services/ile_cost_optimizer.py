@@ -78,7 +78,7 @@ async def prefill_question_bank(
             difficulty=difficulty,
             count=needed,
         )
-    except ValueError as e:
+    except Exception as e:
         logger.error("Failed to generate questions for prefill: %s", e)
         return 0
 
@@ -194,12 +194,19 @@ async def prefill_active_topics(db: Session) -> dict:
     for subject, topic, grade_level in combos:
         if not grade_level:
             continue
-        added = await prefill_question_bank(
-            db, subject, topic, grade_level, count=MIN_BANK_SIZE,
-        )
-        if added > 0:
-            topics_filled += 1
-        total_added += added
+        try:
+            added = await prefill_question_bank(
+                db, subject, topic, grade_level, count=MIN_BANK_SIZE,
+            )
+            if added > 0:
+                topics_filled += 1
+            total_added += added
+        except Exception as e:
+            logger.error(
+                "Failed to prefill %s/%s grade %d: %s",
+                subject, topic, grade_level, e,
+            )
+            continue
 
     logger.info(
         "Prefill active topics: %d topics checked, %d filled, %d questions added",
