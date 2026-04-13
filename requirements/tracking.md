@@ -1,9 +1,19 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Mar 29, 2026):** ~2,604 total issues — ~2,184 closed (84%), 420 open (16%)
+**Summary (as of Apr 13, 2026):** ~3,179 total issues — ~3,149 closed, 30 open
+- 126 commits in past 3 days, 30 issues closed, 30 PRs merged
 - **Features built:** 400+ enhancements closed
 - **Bugs fixed:** 400+ bugs closed
 - **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
+
+**Apr 12-13 — Admin Feature Management, Email Digest Fixes, Upload Wizard:**
+- Admin Feature Management deployed (§6.133): DB model, seed, API, frontend page, sidebar gating (#3141-#3157)
+- Email Digest production defect fixed: Gmail callback 500 → null guard + logging + specific exceptions (#3031, #3159, #3160 via #3169)
+- Email Digest root cause fixed: missing OAuth scopes (userinfo.email, userinfo.profile) — feature never worked for any user (#3176 via #3177)
+- Upload Wizard improvements: randomized placeholders, stable React keys, aria-label accessibility (#3165, #3167, #3168, #3171, #3172 via #3169)
+- Worksheet endpoint restored after botched merge (#3173, #3174 via #3175)
+- Requirements updated: §6.127 OAuth scopes corrected, F-16 multi-sender whitelist added (#3178)
+- New suggestion: migrate to OpenID Connect scopes (#3179)
 
 **Apr 9-12 — Customer Database Epic & UTDF Deployment:**
 - CB-PCM-001 Customer Database deployed (§6.132): 8 stories, 25 endpoints, 53 tests, 4 new tables (PRs #3106-#3112, merged via #3113)
@@ -1185,6 +1195,23 @@ Current feature issues are tracked in GitHub:
 - #3126/#3135 — Trailing slash 404
 - #3136/#3137 — Transparent modal fix
 - Checkbox appearance fix, surrogate emoji fix
+
+### CB-AFM-001 — Admin Feature Management (§6.133) — DEPLOYED (2026-04-12)
+
+- [x] DB model + seed (FeatureFlag table, 8 default flags) — #3145, PR #3157
+- [x] Admin Feature Management page — #3146, PR #3157
+- [x] Sidebar nav gating by feature flags — #3147, PR #3157
+- [x] Collapsible admin nav sections — #3141, PR #3148
+- [x] PR review fixes: cache invalidation, flash-redirect, seed error handling, updated_at — #3151-#3156, PR #3157
+
+### CB-PEDI-001 — Parent Email Digest Defect Fixes — DEPLOYED (2026-04-13)
+
+**Defect:** Email Digest "Connect Your Gmail" always fails with 500/502 for all users.
+**Root cause 1:** Missing null guard on `gmail_address` → `NotNullViolation` crash. Fixed in #3031 (PR #3169).
+**Root cause 2:** OAuth scopes missing `userinfo.email` + `userinfo.profile` → Google userinfo API always rejects. Fixed in #3176 (PR #3177).
+**Additional fixes:** Non-200 userinfo logging (#3159), specific exception types (#3160). All via PR #3169.
+**Requirements updated:** §6.127 OAuth scopes corrected, F-16 multi-sender whitelist added to Phase 2 (#3178).
+**Open suggestions:** Migrate to OpenID Connect scopes (#3179).
 
 ### Phase 3+ — Open
 - Issue #506: University Pathway Alignment

@@ -540,7 +540,7 @@ Proactively guide users through their ClassBridge journey with smart, contextual
 - `app/api/routes/journey.py` — Hint API endpoints
 - `app/models/journey_hint.py` — `journey_hints` table model
 
-### 6.127 Parent Email Digest Integration (CB-PEDI-001) - PLANNED
+### 6.127 Parent Email Digest Integration (CB-PEDI-001) - M1+M2 DEPLOYED (2026-04-10)
 
 Parents connect their personal Gmail via OAuth (`gmail.readonly`, `userinfo.email`, `userinfo.profile` scopes). Their child's school email (e.g. YRDSB `@gapps.yrdsb.ca`) is forwarded to this personal Gmail. ClassBridge polls the parent's Gmail for emails from the child's school address, then uses Claude AI to summarize them into a configurable daily digest. Operates entirely within the parent's personal Gmail — no DTAP/MFIPPA approval required. Parents can configure a whitelist of sender email addresses to monitor — only emails from these addresses are read.
 
@@ -578,6 +578,11 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 - [x] Notification type + preference category (#2646) (IMPLEMENTED — PR #2780)
 - [x] Forwarding verification endpoint (#2649) (IMPLEMENTED — PR #2985)
 - [x] Backend test suite — 83 tests (#2654) (IMPLEMENTED — PR #2985)
+
+**Defect Fixes (2026-04-12/13):**
+- [x] Gmail callback 500: null guard for gmail_address (#3031) — PR #3169
+- [x] Non-200 userinfo logging (#3159) + specific exception types (#3160) — PR #3169
+- [x] Root cause: missing userinfo.email + userinfo.profile OAuth scopes (#3176) — PR #3177
 
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
@@ -963,7 +968,7 @@ Admins need to manage parent relationships outside the platform's registered use
 
 ---
 
-### 6.133 Admin Feature Management — Toggle Features On/Off (#3145, #3146, #3147)
+### 6.133 Admin Feature Management — Toggle Features On/Off (#3145, #3146, #3147) - DEPLOYED (2026-04-12)
 
 Database-backed feature management system allowing admins to enable/disable platform features on demand via a dedicated admin page. Features are OFF by default and persist across server restarts.
 
