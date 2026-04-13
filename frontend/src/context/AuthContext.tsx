@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { authApi } from '../api/client';
 
 const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -105,25 +105,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser();
   }, [token]);
 
-  const login = useCallback(async (identifier: string, password: string, botFields?: { website?: string; started_at?: number }) => {
+  const login = async (identifier: string, password: string, botFields?: { website?: string; started_at?: number }) => {
     const data = await authApi.login(identifier, password, botFields);
     localStorage.setItem('token', data.access_token);
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
     setToken(data.access_token);
-  }, []);
+    const userData = await authApi.getMe();
+    setUser(userData);
+  };
 
-  const loginWithToken = useCallback((newToken: string, refreshToken?: string) => {
+  const loginWithToken = (newToken: string, refreshToken?: string) => {
     localStorage.setItem('token', newToken);
     if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
     setToken(newToken);
-  }, []);
+  };
 
-  const register = useCallback(async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string; website?: string; started_at?: number; email_consent?: boolean }) => {
+  const register = async (data: { email?: string; username?: string; parent_email?: string; password: string; full_name: string; roles?: string[]; teacher_type?: string; google_id?: string; token?: string; website?: string; started_at?: number; email_consent?: boolean }) => {
     await authApi.register(data);
     // Login with email or username, whichever was provided
     const identifier = data.email || data.username || '';
     await login(identifier, data.password);
-  }, [login]);
+  };
 
   const logout = useCallback(() => {
     // Best-effort server-side token revocation
@@ -139,12 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutRef.current = logout;
   }, [logout]);
 
-  const switchRole = useCallback(async (role: string) => {
+  const switchRole = async (role: string) => {
     const userData = await authApi.switchRole(role);
     setUser(userData);
-  }, []);
+  };
 
-  const completeOnboarding = useCallback(async (roles: string[], teacherType?: string) => {
+  const completeOnboarding = async (roles: string[], teacherType?: string) => {
     const responseData = await authApi.completeOnboarding(roles, teacherType);
     // The onboarding endpoint now returns new JWT tokens along with user data
     if (responseData.access_token) {
@@ -154,25 +156,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setToken(responseData.access_token);
     }
-  }, []);
-
-  const resendVerification = useCallback(async () => {
-    await authApi.resendVerification();
-  }, []);
-
-  const refreshUser = useCallback(async () => {
+    // Refresh user data from the server to get the updated state
     const userData = await authApi.getMe();
     setUser(userData);
-  }, []);
+  };
 
-  const contextValue = useMemo(() => ({
-    user, token, isLoading, login, loginWithToken, register,
-    logout, switchRole, completeOnboarding, resendVerification, refreshUser
-  }), [user, token, isLoading, login, loginWithToken, register,
-       logout, switchRole, completeOnboarding, resendVerification, refreshUser]);
+  const resendVerification = async () => {
+    await authApi.resendVerification();
+  };
+
+  const refreshUser = async () => {
+    const userData = await authApi.getMe();
+    setUser(userData);
+  };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, loginWithToken, register, logout, switchRole, completeOnboarding, resendVerification, refreshUser }}>
       {children}
       {showIdleWarning && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} role="alertdialog" aria-modal="true" aria-labelledby="session-expiring-title">
