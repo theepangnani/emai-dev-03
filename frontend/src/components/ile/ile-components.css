@@ -32,13 +32,13 @@
 .ile-hint-bubble {
   padding: 14px 16px;
   border-radius: 10px;
-  background: #fffbeb;
-  border-left: 4px solid #f59e0b;
+  background: var(--color-warning-bg, #fffbeb);
+  border-left: 4px solid var(--color-warning, #f59e0b);
   animation: ile-slide-in 0.3s ease;
 }
 
 .ile-hint-label {
-  color: #d97706;
+  color: var(--color-warning-text, #d97706);
 }
 
 /* === ExplanationBubble === */
@@ -50,21 +50,21 @@
 }
 
 .ile-explanation-correct {
-  background: #f0fdfa;
-  border-left: 4px solid #14b8a6;
+  background: var(--color-success-bg, #f0fdfa);
+  border-left: 4px solid var(--color-success, #14b8a6);
 }
 
 .ile-explanation-correct .ile-explanation-label {
-  color: #0d9488;
+  color: var(--color-success, #0d9488);
 }
 
 .ile-explanation-auto-reveal {
-  background: #fffbeb;
-  border-left: 4px solid #f59e0b;
+  background: var(--color-warning-bg, #fffbeb);
+  border-left: 4px solid var(--color-warning, #f59e0b);
 }
 
 .ile-explanation-auto-reveal .ile-explanation-label {
-  color: #d97706;
+  color: var(--color-warning-text, #d97706);
 }
 
 /* === Shared bubble label === */
@@ -107,7 +107,7 @@
 
 .ile-streak {
   font-weight: 600;
-  color: #f59e0b;
+  color: var(--color-warning, #f59e0b);
 }
 
 .ile-streak-shake {

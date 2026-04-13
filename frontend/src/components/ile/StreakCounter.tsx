@@ -24,7 +24,7 @@ export function StreakCounter({ count, broken }: StreakCounterProps) {
   if (count <= 0 && !shaking) return null;
 
   return (
-    <span className={`ile-streak${shaking ? ' ile-streak-shake' : ''}`}>
+    <span className={`ile-streak${shaking ? ' ile-streak-shake' : ''}`} aria-label={`${count} correct streak`}>
       {'\uD83D\uDD25'} {count}
     </span>
   );

@@ -21,7 +21,7 @@ export function XpPopBadge({ xp, isFirstTry }: XpPopBadgeProps) {
   if (!visible) return null;
 
   return (
-    <div className="ile-xp-pop">
+    <div className="ile-xp-pop" role="status" aria-live="polite">
       +{xp} XP{isFirstTry && ' \u2014 First try bonus!'}
     </div>
   );
