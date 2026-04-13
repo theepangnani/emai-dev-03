@@ -13,6 +13,7 @@ import { HintBubble } from '../components/ile/HintBubble';
 import { ExplanationBubble } from '../components/ile/ExplanationBubble';
 import { XpPopBadge } from '../components/ile/XpPopBadge';
 import { StreakCounter } from '../components/ile/StreakCounter';
+import { FillBlankCard } from '../components/ile/FillBlankCard';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -98,13 +99,13 @@ export function FlashTutorSessionPage() {
     setSelectedAnswer(answer);
   };
 
-  const handleSubmit = async () => {
-    if (!selectedAnswer || submitting || !currentQ) return;
+  const handleSubmitAnswer = async (answerToSubmit: string) => {
+    if (!answerToSubmit || submitting || !currentQ) return;
     setSubmitting(true);
 
     try {
       const timeTaken = Date.now() - startTime;
-      const fb = await ileApi.submitAnswer(sessionId, selectedAnswer, timeTaken);
+      const fb = await ileApi.submitAnswer(sessionId, answerToSubmit, timeTaken);
       setFeedback(fb);
       setSessionXp(prev => prev + fb.xp_earned);
 
@@ -132,6 +133,11 @@ export function FlashTutorSessionPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedAnswer) return;
+    await handleSubmitAnswer(selectedAnswer);
   };
 
   const handleNext = async () => {
@@ -321,7 +327,7 @@ export function FlashTutorSessionPage() {
           )}
 
           {/* MCQ Options */}
-          {q.options && (
+          {q.format !== 'fill_blank' && q.options && (
             <div className="fts-options">
               {(Object.entries(q.options) as [string, string][]).map(([key, text]) => {
                 const isDisabled = currentQ.disabled_options.includes(key);
@@ -351,11 +357,31 @@ export function FlashTutorSessionPage() {
               })}
             </div>
           )}
+
+          {/* Fill-in-the-Blank Input */}
+          {q.format === 'fill_blank' && phase === 'question' && (
+            <FillBlankCard
+              question={q.question}
+              onSubmit={(answer) => {
+                setSelectedAnswer(answer);
+                handleSubmitAnswer(answer);
+              }}
+              disabled={submitting || phase !== 'question'}
+            />
+          )}
         </div>
 
         {/* Feedback bubbles (Learning Mode) */}
         {phase === 'feedback' && feedback && (
           <div className="fts-feedback">
+            {/* Show student's typed answer for fill_blank */}
+            {q.format === 'fill_blank' && selectedAnswer && (
+              <div className={`fts-typed-answer ${feedback.is_correct ? 'correct' : 'wrong'}`}>
+                Your answer: <strong>{selectedAnswer}</strong>
+                {feedback.is_correct ? ' ✓' : ' ✗'}
+              </div>
+            )}
+
             {feedback.hint && !feedback.question_complete && (
               <HintBubble hint={feedback.hint} attemptNumber={feedback.attempt_number} />
             )}
@@ -376,7 +402,7 @@ export function FlashTutorSessionPage() {
 
         {/* Action buttons */}
         <div className="fts-actions">
-          {phase === 'question' && (
+          {phase === 'question' && q.format !== 'fill_blank' && (
             <button
               className="fts-btn fts-btn-primary"
               onClick={handleSubmit}

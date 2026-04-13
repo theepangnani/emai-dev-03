@@ -402,7 +402,15 @@ Critical security vulnerabilities identified in the Feb 2026 risk audit and fixe
 - **Study routes**: generation endpoints (study guide, quiz, flashcards) verify assignment course access before generating content
 - Shared `can_access_course()` helper in `deps.py` checks admin/owner/public/teacher/enrolled/parent-child-enrolled
 
-#### 6.23.6 Logging & Student Password Security (#182)
+#### 6.23.6 AuthContext Memoization & OAuth Circuit Breakers (#3233)
+- All 7 exported functions in `AuthContext` wrapped with `useCallback` for stable references (`login`, `loginWithToken`, `register`, `switchRole`, `completeOnboarding`, `resendVerification`, `refreshUser`)
+- Provider `value` prop wrapped with `useMemo` to prevent unnecessary consumer re-renders
+- OAuth callback `useEffect` in `Login.tsx` guarded with `oauthProcessedRef` circuit breaker ref
+- Waitlist and Google OAuth `useEffect` hooks in `Register.tsx` guarded with separate `waitlistProcessedRef` and `googleOAuthProcessedRef` refs
+- Removed duplicate `authApi.getMe()` calls from `login` and `completeOnboarding` (token-change effect already triggers user load)
+- **Root cause:** non-memoized `loginWithToken` in `useEffect` dependency array caused infinite re-render loop during OAuth callbacks (PR #3234)
+
+#### 6.23.7 Logging & Student Password Security (#182)
 - Logging endpoint (`/api/logs/`) now requires authentication (Bearer token)
 - Added input validation: max message length (2000 chars), max batch size (50 entries), valid level enum
 - Frontend logger already sends auth token via Axios interceptor; unauthenticated errors silently skip server logging

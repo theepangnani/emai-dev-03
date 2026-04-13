@@ -3,7 +3,7 @@
 **Product Name:** ClassBridge
 **Author:** Theepan Gnanasabapathy
 **Version:** 1.1 (Based on PRD v4)
-**Last Updated:** 2026-04-08
+**Last Updated:** 2026-04-13
 
 ---
 

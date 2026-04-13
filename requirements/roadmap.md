@@ -1005,6 +1005,12 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 - [x] **DB connection pool** — Reduced pool to prevent PostgreSQL slot exhaustion (#2769) (IMPLEMENTED)
 - [x] **Child guide dedup** — Proper dedup + student visibility for parent sub-guides (#2758, #2765, PR #2764) (IMPLEMENTED)
 
+#### Auth Hardening & Login Fix — April 13, 2026
+
+- [x] **Login infinite loop fix** — Non-memoized `loginWithToken` in `useEffect` dep array caused OAuth callback re-render loop; all 7 AuthContext functions wrapped with `useCallback`, Provider value with `useMemo`, circuit breaker refs in Login.tsx and Register.tsx (#3233-#3238, PR #3234) (IMPLEMENTED)
+- [x] **Multi-sender email monitoring** — Parents can whitelist multiple teacher email addresses for digest polling (#3178, PR #3218) (IMPLEMENTED)
+- [x] **Email digest wizard fix** — Detect existing Gmail integration + hardcoded turquoise → CSS theme variables (#3219, #3220, PR #3221) (IMPLEMENTED)
+
 #### Interactive Learning Engine (CB-ILE-001) — April 13, 2026
 
 - [x] **M0: Foundation** — 5 DB tables, session orchestrator, AI question generation, Flash Tutor UI, XP/badge integration (PR #3224 + #3232) (IMPLEMENTED)

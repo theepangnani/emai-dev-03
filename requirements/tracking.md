@@ -1,10 +1,17 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 13, 2026):** ~3,179 total issues — ~3,149 closed, 30 open
-- 126 commits in past 3 days, 30 issues closed, 30 PRs merged
+**Summary (as of Apr 13, 2026):** ~3,239 total issues — ~2,758 closed, 481 open, 1,984 commits
 - **Features built:** 400+ enhancements closed
 - **Bugs fixed:** 400+ bugs closed
 - **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
+
+**Apr 13 — Login Infinite Loop Fix, CB-ILE-001 M0 Review, Multi-Sender Email:**
+- **Login infinite loop fixed:** non-memoized `loginWithToken` in `useEffect` dep array caused OAuth callback re-render loop; all 7 AuthContext functions wrapped with `useCallback`, Provider value with `useMemo`, circuit breaker refs added to Login.tsx and Register.tsx (#3233-#3238 via PR #3234)
+- **CB-ILE-001 M0 PR review fixes:** session results crash, XP double-award, N+1 queries, parent-child index, CSS theme vars, topic ref equality, content safety check, hint data stripping (#3225-#3231 via PR #3232)
+- **CB-ILE-001 M0 foundation:** Interactive Learning Engine database schema (5 tables), session service, API routes, Flash Tutor MCQ UI (#3196 via PR #3224 — open, pending merge)
+- **Multi-sender email monitoring:** parents can whitelist multiple teacher email addresses for digest polling (#3178 via PR #3218)
+- **Email digest wizard fix:** detect existing Gmail integration on wizard open + hardcoded turquoise → CSS theme variables (#3219, #3220 via PR #3221)
+- Requirements updated: CB-ILE-001 added to roadmap (#3196), §6.127 multi-sender feature added (#3178)
 
 **Apr 12-13 — Admin Feature Management, Email Digest Fixes, Upload Wizard:**
 - Admin Feature Management deployed (§6.133): DB model, seed, API, frontend page, sidebar gating (#3141-#3157)

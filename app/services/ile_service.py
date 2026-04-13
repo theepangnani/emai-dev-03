@@ -85,6 +85,11 @@ async def create_session(
                 "Complete or abandon it first."
             )
 
+    # Check format escalation
+    question_format = ile_question_service.check_format_escalation(
+        db, student_id, subject, topic,
+    )
+
     # Generate questions
     questions = await ile_question_service.get_from_bank_or_generate(
         db=db,
@@ -94,6 +99,7 @@ async def create_session(
         difficulty=difficulty,
         blooms_tier=blooms_tier,
         count=question_count,
+        question_format=question_format,
     )
 
     now = datetime.now(timezone.utc)
@@ -248,7 +254,11 @@ async def submit_answer(
 
     q = questions[idx]
     correct_answer = q["correct_answer"]
-    is_correct = answer.strip().upper() == correct_answer.strip().upper()
+
+    if q.get("format") == "fill_blank":
+        is_correct = _check_fill_blank_answer(answer, correct_answer)
+    else:
+        is_correct = answer.strip().upper() == correct_answer.strip().upper()
 
     # Get attempt count for this question
     prev_attempts = get_attempt_history(db, session.id, idx)
@@ -636,6 +646,41 @@ def _count_streak_from_attempts(
         else:
             break
     return streak
+
+
+def _check_fill_blank_answer(student_answer: str, correct_answer: str) -> bool:
+    """Check fill-in-the-blank answer with forgiving matching.
+
+    - Case-insensitive
+    - Trim whitespace
+    - Strip trailing punctuation
+    - Accept common variants (e.g. "the " prefix)
+    - Numeric equivalence (e.g. "2" == "2.0")
+    """
+    def _normalize(text: str) -> str:
+        t = text.strip().lower()
+        # Strip trailing punctuation
+        t = t.rstrip(".,;:!?")
+        # Strip leading articles
+        for prefix in ("the ", "a ", "an "):
+            if t.startswith(prefix):
+                t = t[len(prefix):]
+        return t.strip()
+
+    norm_student = _normalize(student_answer)
+    norm_correct = _normalize(correct_answer)
+
+    if norm_student == norm_correct:
+        return True
+
+    # Numeric equivalence: "2" == "2.0", "0.5" == ".5"
+    try:
+        if float(norm_student) == float(norm_correct):
+            return True
+    except (ValueError, OverflowError):
+        pass
+
+    return False
 
 
 def _session_duration_seconds(session: ILESession) -> int | None:
