@@ -118,6 +118,7 @@ class ILEAnswerFeedback(BaseModel):
     session_complete: bool
     streak_count: int = 0
     streak_broken: bool = False
+    difficulty_changed: str | None = None  # New difficulty level if adjusted
 
 
 # --- Results ---

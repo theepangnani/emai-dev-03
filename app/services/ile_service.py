@@ -13,7 +13,7 @@ from app.core.logging_config import get_logger
 from app.models.ile_session import ILESession
 from app.models.ile_question_attempt import ILEQuestionAttempt
 from app.models.user import User
-from app.services import ile_question_service
+from app.services import ile_adaptive_service, ile_question_service
 
 logger = get_logger(__name__)
 
@@ -277,6 +277,13 @@ async def submit_answer(
     )
     db.add(attempt)
 
+    # Adaptive difficulty adjustment
+    difficulty_changed = None
+    if question_complete:
+        difficulty_changed = ile_adaptive_service.adjust_within_session(
+            db, session, attempt
+        )
+
     # Advance session if question is complete
     if question_complete:
         session.current_question_index = idx + 1
@@ -306,6 +313,7 @@ async def submit_answer(
         "session_complete": session_complete,
         "streak_count": streak_count,
         "streak_broken": streak_broken,
+        "difficulty_changed": difficulty_changed,
     }
 
 
