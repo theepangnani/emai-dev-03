@@ -46,7 +46,7 @@ from app.models.study_session import StudySession
 from app.models.bug_report import BugReport
 from app.models.daily_quiz import DailyQuiz
 from app.models.journey_hint import JourneyHint
-from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog
+from app.models.parent_gmail_integration import ParentGmailIntegration, ParentDigestSettings, DigestDeliveryLog, ParentDigestMonitoredEmail
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog
 from app.models.feature_flag import FeatureFlag
 
@@ -124,6 +124,7 @@ __all__ = [
     "ParentGmailIntegration",
     "ParentDigestSettings",
     "DigestDeliveryLog",
+    "ParentDigestMonitoredEmail",
     "ParentContact",
     "ParentContactNote",
     "OutreachTemplate",
