@@ -174,7 +174,7 @@ export function FlashTutorPage() {
                   <button
                     key={`${t.subject}-${t.topic}-${i}`}
                     className={`ft-topic-card ${selectedTopic?.subject === t.subject && selectedTopic?.topic === t.topic ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
-                    onClick={() => setSelectedTopic(t)}
+                    onClick={() => { setSelectedTopic(t); setSurpriseReason(null); }}
                   >
                     <span className="ft-topic-subject">{t.subject}</span>
                     <span className="ft-topic-name">{t.topic}</span>
@@ -187,7 +187,7 @@ export function FlashTutorPage() {
             </div>
           )}
 
-          <button className="ft-toggle-custom" onClick={() => setUseCustom(!useCustom)}>
+          <button className="ft-toggle-custom" onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}>
             {useCustom ? 'Choose from my courses' : 'Enter custom topic'}
           </button>
 
