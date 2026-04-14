@@ -4,6 +4,8 @@
  * CB-ILE-001
  */
 
+import { useState, useEffect } from 'react';
+
 interface TutorAvatarProps {
   size?: number;
   mood?: 'neutral' | 'happy' | 'thinking' | 'celebrating';
@@ -11,8 +13,17 @@ interface TutorAvatarProps {
 }
 
 export function TutorAvatar({ size = 48, mood = 'neutral', className }: TutorAvatarProps) {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const eyeL = mood === 'thinking' ? { rx: 3.5, ry: 2 } : { rx: 4, ry: 4.5 };
-  const eyeR = { rx: 4, ry: 4.5 };
   const pupilOffset = mood === 'thinking' ? -1 : 0;
 
   const mouth = (() => {
@@ -55,11 +66,11 @@ export function TutorAvatar({ size = 48, mood = 'neutral', className }: TutorAva
 
       {/* Eyes — white */}
       <ellipse cx="38" cy="46" rx={eyeL.rx + 3} ry={eyeL.ry + 2} fill="var(--color-surface, #fff)" />
-      <ellipse cx="58" cy="46" rx={eyeR.rx + 3} ry={eyeR.ry + 2} fill="var(--color-surface, #fff)" />
+      <ellipse cx="58" cy="46" rx={7} ry={6.5} fill="var(--color-surface, #fff)" />
 
       {/* Pupils */}
       <ellipse cx={38 + pupilOffset} cy={46} rx={eyeL.rx} ry={eyeL.ry} fill="var(--color-accent-strong, #2d6eb5)" />
-      <ellipse cx={58} cy={46} rx={eyeR.rx} ry={eyeR.ry} fill="var(--color-accent-strong, #2d6eb5)" />
+      <ellipse cx={58} cy={46} rx={4} ry={4.5} fill="var(--color-accent-strong, #2d6eb5)" />
 
       {/* Eye highlights */}
       <circle cx={36 + pupilOffset} cy={43} r="1.5" fill="white" />
@@ -75,13 +86,13 @@ export function TutorAvatar({ size = 48, mood = 'neutral', className }: TutorAva
       {mood === 'celebrating' && (
         <>
           <circle cx="14" cy="36" r="2.5" fill="var(--color-accent-warm, #f4801f)" opacity="0.8">
-            <animate attributeName="opacity" values="0.4;1;0.4" dur="1.5s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.4;1;0.4" dur="1.5s" repeatCount={prefersReducedMotion ? "1" : "indefinite"} />
           </circle>
           <circle cx="82" cy="32" r="2" fill="var(--color-accent, #4a90d9)" opacity="0.8">
-            <animate attributeName="opacity" values="0.6;1;0.6" dur="1.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.6;1;0.6" dur="1.2s" repeatCount={prefersReducedMotion ? "1" : "indefinite"} />
           </circle>
           <circle cx="78" cy="44" r="1.5" fill="var(--color-accent-warm, #f4801f)" opacity="0.7">
-            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="1.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="1.8s" repeatCount={prefersReducedMotion ? "1" : "indefinite"} />
           </circle>
         </>
       )}

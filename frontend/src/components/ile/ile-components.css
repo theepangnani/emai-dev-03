@@ -1,36 +1,6 @@
+@import './ile-animations.css';
+
 /* ILE Reusable Components — CB-ILE-001 M1 */
-
-/* === Animations === */
-
-@keyframes ile-slide-in {
-  from { opacity: 0; transform: translateX(12px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes ile-pop-scale {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes ile-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-4px); }
-  40% { transform: translateX(4px); }
-  60% { transform: translateX(-3px); }
-  80% { transform: translateX(3px); }
-}
-
-@keyframes ile-fade-out {
-  0% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-@keyframes ile-streak-glow {
-  0%, 100% { filter: drop-shadow(0 0 4px currentColor); }
-  50% { filter: drop-shadow(0 0 12px currentColor); }
-}
 
 /* === HintBubble === */
 
@@ -126,21 +96,24 @@
   animation: ile-shake 0.6s ease;
 }
 
-/* Streak tier: warm (1-2 streak) */
+/* Streak tier: warm (1-2 streak)
+   Hardcoded warm accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-warm {
   color: var(--color-accent-warm);
   background: rgba(244, 128, 31, 0.08);
   border: 1px solid rgba(244, 128, 31, 0.2);
 }
 
-/* Streak tier: hot (3-4 streak) */
+/* Streak tier: hot (3-4 streak)
+   Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-hot {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Streak tier: blazing (5+ streak) */
+/* Streak tier: blazing (5+ streak)
+   Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-blazing {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);

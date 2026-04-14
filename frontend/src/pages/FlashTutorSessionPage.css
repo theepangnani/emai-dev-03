@@ -1,3 +1,5 @@
+@import '../components/ile/ile-animations.css';
+
 /* Flash Tutor Session — CB-ILE-001 */
 .fts-page {
   max-width: 640px;
@@ -286,7 +288,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-
 /* Action buttons */
 .fts-actions {
   margin-top: 8px;
@@ -315,7 +316,7 @@
 }
 
 .fts-btn-primary:not(:disabled):hover {
-  box-shadow: 0 6px 20px rgba(74, 144, 217, 0.3);
+  box-shadow: 0 6px 20px var(--color-accent-light);
   transform: translateY(-1px);
 }
 
