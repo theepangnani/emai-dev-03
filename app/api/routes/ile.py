@@ -13,6 +13,8 @@ from app.schemas.ile import (
     ILECurrentQuestion,
     ILEMasteryEntry,
     ILEMasteryMap,
+    ILEParentHintResponse,
+    ILEParentHintSubmit,
     ILEQuestion,
     ILEQuestionOption,
     ILESessionCreate,
@@ -211,11 +213,41 @@ async def submit_answer(
             session=session,
             answer=body.answer,
             time_taken_ms=body.time_taken_ms,
+            parent_hint_note=body.parent_hint_note,
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
 
     return ILEAnswerFeedback(**result)
+
+
+# ---------------------------------------------------------------------------
+# Parent Teaching Mode
+# ---------------------------------------------------------------------------
+
+@router.post("/sessions/{session_id}/parent-hint", response_model=ILEParentHintResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def add_parent_hint(
+    request: Request,
+    session_id: int,
+    body: ILEParentHintSubmit,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add a parent hint note for the current question (parent_teaching mode only)."""
+    try:
+        session = ile_service.get_session(db, session_id, current_user.id)
+    except ValueError:
+        raise HTTPException(404, "Session not found")
+    except PermissionError:
+        raise HTTPException(403, "Not authorized")
+
+    try:
+        result = ile_service.add_parent_hint(db, session, body.hint_note)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    return ILEParentHintResponse(**result)
 
 
 # ---------------------------------------------------------------------------

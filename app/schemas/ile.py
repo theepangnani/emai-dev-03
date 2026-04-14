@@ -103,6 +103,7 @@ class ILECurrentQuestion(BaseModel):
 class ILEAnswerSubmit(BaseModel):
     answer: str = Field(..., min_length=1, max_length=500)
     time_taken_ms: int | None = Field(default=None, ge=0)
+    parent_hint_note: str | None = Field(default=None, max_length=500)
 
 
 class ILEAnswerFeedback(BaseModel):
@@ -111,6 +112,7 @@ class ILEAnswerFeedback(BaseModel):
     xp_earned: int
     # Learning Mode fields
     hint: str | None = None
+    parent_hint_note: str | None = None  # Parent Teaching Mode: parent's personal hint
     explanation: str | None = None
     correct_answer: str | None = None  # Revealed after max attempts or correct
     # Session progress
@@ -135,6 +137,14 @@ class ILEQuestionResult(BaseModel):
     format: str
 
 
+class ILEAreaToRevisit(BaseModel):
+    index: int
+    question: str
+    correct_answer: str
+    student_answer: str | None
+    attempts: int
+
+
 class ILESessionResults(BaseModel):
     session_id: int
     mode: str
@@ -150,6 +160,7 @@ class ILESessionResults(BaseModel):
     # Adaptive feedback
     weak_areas: list[str] = []
     suggested_next_topic: str | None = None
+    areas_to_revisit: list[ILEAreaToRevisit] = []
 
 
 # --- Topics ---
@@ -196,3 +207,14 @@ class ILEMasteryMap(BaseModel):
     total_topics: int
     mastered_topics: int
     weak_topics: int
+
+
+# --- Parent Teaching Mode ---
+
+class ILEParentHintSubmit(BaseModel):
+    hint_note: str = Field(..., min_length=1, max_length=500)
+
+
+class ILEParentHintResponse(BaseModel):
+    question_index: int
+    parent_hint_note: str

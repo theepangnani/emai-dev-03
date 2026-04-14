@@ -2373,3 +2373,16 @@ def _run_migrations_inner(engine, settings, logger):
                 logger.info("Expired stale ILE sessions (#3205)")
     except Exception as e:
         logger.debug("ILE session expiry cleanup skipped: %s", e)
+
+    # --- ILE: parent_hint_note column on ile_question_attempts (#3212) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "ile_question_attempts" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("ile_question_attempts")}
+                if "parent_hint_note" not in existing_cols:
+                    conn.execute(text("ALTER TABLE ile_question_attempts ADD COLUMN parent_hint_note TEXT"))
+                    conn.commit()
+                    logger.info("Added 'parent_hint_note' column to ile_question_attempts (#3212)")
+    except Exception as e:
+        logger.debug("ILE parent_hint_note migration skipped: %s", e)
