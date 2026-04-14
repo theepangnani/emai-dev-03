@@ -59,17 +59,22 @@ export function useChatPanelInteraction(storageKey: string = DEFAULT_STORAGE_KEY
     panelStateRef.current = panelState;
   }, [panelState]);
 
-  // #3341: Reactive mobile detection
-  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  // #3341: Reactive mobile detection via matchMedia (no resize spam)
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
   useEffect(() => {
-    const onResize = () => setMobile(window.innerWidth < 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
+    const mql = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
   }, []);
 
-  // Persist state changes
+  // Persist state changes — debounced to avoid writing on every drag frame
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!maximized) saveState(storageKey, panelState);
+    if (maximized) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => saveState(storageKey, panelState), 300);
+    return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
   }, [panelState, maximized, storageKey]);
 
   // #3339 + #3340: Use stable refs for move/end handlers to avoid re-render cascades
@@ -112,15 +117,29 @@ export function useChatPanelInteraction(storageKey: string = DEFAULT_STORAGE_KEY
     }
   });
 
+  // #3349: Cleanup listeners on unmount to prevent leaks during mid-drag navigation
+  useEffect(() => {
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove.current);
+      window.removeEventListener('pointerup', handlePointerUp.current);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, []);
+
   // #3343: Use pointer events for unified mouse + touch support
   const onDragStart = useCallback((e: React.PointerEvent) => {
     if (maximized || mobile) return;
+    // #3348: Guard against duplicate attachment from rapid clicks
+    if (isDragging.current || isResizing.current) return;
     if ((e.target as HTMLElement).closest('button')) return;
-    e.preventDefault();
-    isDragging.current = true;
 
+    // #3347: Check panelRef BEFORE setting isDragging to avoid stuck state
     const panel = panelRef.current;
     if (!panel) return;
+
+    e.preventDefault();
+    isDragging.current = true;
     const rect = panel.getBoundingClientRect();
     const currentX = panelStateRef.current.x ?? rect.left;
     const currentY = panelStateRef.current.y ?? rect.top;
@@ -134,6 +153,8 @@ export function useChatPanelInteraction(storageKey: string = DEFAULT_STORAGE_KEY
 
   const onResizeStart = useCallback((e: React.PointerEvent) => {
     if (maximized || mobile) return;
+    // #3348: Guard against duplicate attachment from rapid clicks
+    if (isDragging.current || isResizing.current) return;
     e.preventDefault();
     e.stopPropagation();
     isResizing.current = true;

@@ -63,6 +63,7 @@
 /* Draggable header cursor */
 .help-chatbot-header--draggable {
   cursor: grab;
+  touch-action: none;
 }
 
 .help-chatbot-header--draggable:active {
@@ -77,6 +78,7 @@
   width: 18px;
   height: 18px;
   cursor: nesw-resize;
+  touch-action: none;
   z-index: 10;
 }
 

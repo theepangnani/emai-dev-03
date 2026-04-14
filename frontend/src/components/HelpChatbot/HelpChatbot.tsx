@@ -109,6 +109,7 @@ export function HelpChatbot() {
           <div
             className="help-chatbot-header help-chatbot-header--draggable"
             onPointerDown={onDragStart}
+            onDoubleClick={toggleMaximize}
           >
             <div className="help-chatbot-header-title">
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />

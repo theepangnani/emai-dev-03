@@ -154,6 +154,7 @@ export function SpeedDialFAB() {
           <div
             className="help-chatbot-header help-chatbot-header--draggable"
             onPointerDown={onDragStart}
+            onDoubleClick={toggleMaximize}
           >
             <div className="help-chatbot-header-top">
               <span className="help-chatbot-header-label">
