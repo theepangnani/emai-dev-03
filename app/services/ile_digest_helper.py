@@ -31,7 +31,7 @@ def get_daily_ile_summary(db: Session, student_id: int, date: datetime) -> dict:
         .filter(
             ILESession.student_id == student_id,
             ILESession.status == "completed",
-            ILESession.is_private_practice.is_(False),
+            ILESession.is_private_practice == False,  # noqa: E712
             ILESession.completed_at >= date,
             ILESession.completed_at < day_end,
         )
@@ -95,7 +95,7 @@ def get_weekly_ile_summary(
         .filter(
             ILESession.student_id == student_id,
             ILESession.status == "completed",
-            ILESession.is_private_practice.is_(False),
+            ILESession.is_private_practice == False,  # noqa: E712
             ILESession.completed_at >= start_date,
             ILESession.completed_at < end_date,
         )
