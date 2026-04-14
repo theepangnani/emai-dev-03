@@ -1,5 +1,8 @@
 /**
  * Interactive Learning Engine (Flash Tutor) API client — CB-ILE-001
+ *
+ * API calls return typed responses but validation is compile-time only.
+ * Components should null-check optional fields before accessing them.
  */
 import { api } from './client';
 
