@@ -1,14 +1,18 @@
 name: Deploy to Cloud Run
 
 on:
-  push:
-    branches: [master]
-    paths-ignore:
-      - '*.md'
-      - 'docs/**'
-      - 'requirements/**'
-      - '.gitignore'
+  schedule:
+    - cron: '0 14 * * *'  # Daily at 2 PM UTC (10 AM ET)
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Deploy profile'
+        required: true
+        default: 'deploy-only'
+        type: choice
+        options:
+          - deploy-only
+          - full
 
 concurrency:
   group: deploy
@@ -26,12 +30,6 @@ jobs:
   rate-limit:
     runs-on: ubuntu-latest
     steps:
-      - name: Debounce rapid pushes
-        if: github.event_name != 'workflow_dispatch'
-        run: |
-          echo "Debouncing commit ${{ github.sha }} — waiting 60s..."
-          sleep 60
-
       - name: Check daily run count
         if: github.event_name != 'workflow_dispatch'
         env:
@@ -45,49 +43,21 @@ jobs:
             exit 1
           fi
 
-  detect-changes:
-    needs: [rate-limit]
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      infra: ${{ steps.filter.outputs.infra }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
-        id: filter
-        with:
-          filters: |
-            backend:
-              - 'app/**'
-              - 'tests/**'
-              - 'requirements.txt'
-              - 'main.py'
-              - 'alembic/**'
-              - 'scripts/**'
-            frontend:
-              - 'frontend/**'
-            infra:
-              - 'Dockerfile'
-              - '.github/**'
-
   test:
-    needs: [rate-limit, detect-changes]
-    if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
+    needs: [rate-limit]
+    if: inputs.profile == 'full'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python 3.13
-        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.infra == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
           cache: pip
 
       - name: Set up Node.js 20
-        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -95,35 +65,28 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Python dependencies
-        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.infra == 'true'
         run: pip install -r requirements.txt
 
       - name: Run backend tests
-        if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.infra == 'true'
         run: pytest tests/ --tb=short -q -n auto --dist loadfile
 
       - name: Install frontend dependencies
-        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
         run: npm ci
         working-directory: frontend
 
       - name: Lint frontend
-        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
         run: npm run lint
         working-directory: frontend
 
       - name: Run frontend tests
-        if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.infra == 'true'
         run: npm run test
         working-directory: frontend
 
   deploy:
-    needs: [rate-limit, detect-changes, test]
-    # Run deploy when: rate-limit passed, detect-changes succeeded, and test either passed or was skipped (no relevant changes)
+    needs: [rate-limit, test]
     if: >-
       always() &&
       needs.rate-limit.result == 'success' &&
-      needs.detect-changes.result == 'success' &&
       (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
