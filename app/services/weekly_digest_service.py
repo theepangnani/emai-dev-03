@@ -25,6 +25,7 @@ from app.schemas.weekly_digest import (
     WeeklyDigestResponse,
 )
 from app.services.email_service import send_email, wrap_branded_email
+from app.services.ile_digest_helper import get_weekly_ile_summary
 from app.services.translation_service import TranslationService
 
 logger = logging.getLogger(__name__)
@@ -287,6 +288,15 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
         )
         study_time_data = {uid: int(total) // 60 for uid, total in st_rows}
 
+    # 10. ILE (Flash Tutor) summaries per child (#3214)
+    # ILE tables use users.id as student_id; ChildDigest uses students.id
+    # Key by student.id for render lookup, query with user.id
+    ile_data: dict[int, dict] = {}
+    for student, user in child_rows:
+        ile_summary = get_weekly_ile_summary(db, user.id, week_start, week_end)
+        if ile_summary["session_count"] > 0:
+            ile_data[student.id] = ile_summary
+
     # ── Build per-child digests ──
 
     child_digests: list[ChildDigest] = []
@@ -369,6 +379,12 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
             parts.append(f"{child_streak}-day streak")
         if child_study_mins > 0:
             parts.append(f"{child_study_mins} min studied")
+        child_ile = ile_data.get(student.id)
+        if child_ile and child_ile["session_count"] > 0:
+            parts.append(
+                f'{child_ile["session_count"]} Flash Tutor session'
+                f'{"s" if child_ile["session_count"] != 1 else ""}'
+            )
         highlight = ", ".join(parts) if parts else "No activity this week"
 
         # Conversation starter based on most recent study guide
@@ -419,8 +435,63 @@ def generate_weekly_digest(db: Session, parent_user_id: int) -> WeeklyDigestResp
     )
 
 
+def _render_ile_weekly_html(ile_summary: dict) -> str:
+    """Render the ILE weekly summary as an HTML section."""
+    if ile_summary["session_count"] == 0:
+        return ""
+
+    topics_str = ", ".join(ile_summary["topics"])
+    score_str = (
+        f" (avg {ile_summary['avg_score_pct']}%)"
+        if ile_summary["avg_score_pct"] is not None
+        else ""
+    )
+
+    lines = [
+        f'<div style="margin:4px 0;">'
+        f'{ile_summary["session_count"]} session'
+        f'{"s" if ile_summary["session_count"] != 1 else ""}'
+        f'{score_str}</div>',
+        f'<div style="margin:4px 0;font-size:13px;color:#6b7280;">'
+        f'Topics: {topics_str}</div>',
+    ]
+
+    if ile_summary["new_topics"]:
+        lines.append(
+            f'<div style="margin:4px 0;font-size:13px;color:#059669;">'
+            f'New topics explored: {", ".join(ile_summary["new_topics"])}</div>'
+        )
+    if ile_summary["mastery_improved"]:
+        lines.append(
+            f'<div style="margin:4px 0;font-size:13px;color:#059669;">'
+            f'Mastery improved: {", ".join(ile_summary["mastery_improved"])}</div>'
+        )
+    if ile_summary["aha_moments"]:
+        bulb = "&#128161;"  # lightbulb emoji
+        lines.append(
+            f'<div style="margin:4px 0;font-size:13px;color:#7c3aed;">'
+            f'{bulb} Aha Moments: {", ".join(ile_summary["aha_moments"])}</div>'
+        )
+    if ile_summary["weak_areas"]:
+        lines.append(
+            f'<div style="margin:4px 0;font-size:13px;color:#d97706;">'
+            f'Needs practice: {", ".join(ile_summary["weak_areas"])}</div>'
+        )
+
+    return (
+        f'<div style="margin-top:12px;padding:10px 14px;background:#f5f3ff;'
+        f'border-radius:8px;border-left:3px solid #7c3aed;">'
+        f'<strong style="color:#7c3aed;font-size:13px;">Flash Tutor Practice</strong>'
+        f'<div style="margin-top:6px;color:#4b5563;font-size:13px;line-height:1.6;">'
+        f'{"".join(lines)}'
+        f'</div></div>'
+    )
+
+
 def render_digest_email_html(
-    digest: WeeklyDigestResponse, unsubscribe_url: str | None = None
+    digest: WeeklyDigestResponse,
+    unsubscribe_url: str | None = None,
+    ile_data: dict[int, dict] | None = None,
 ) -> str:
     """Render the weekly digest as branded HTML email."""
 
@@ -493,6 +564,7 @@ def render_digest_email_html(
           {overdue_html}
           {encouragement_html}
           {f'<div style="margin-top:12px;padding:10px 14px;background:#fef3c7;border-radius:8px;color:#92400e;font-size:13px;">{child.conversation_starter}</div>' if child.conversation_starter else ""}
+          {_render_ile_weekly_html(ile_data.get(child.student_id, {"session_count": 0})) if ile_data else ""}
         </div>
         """
 
@@ -563,12 +635,35 @@ async def send_weekly_digest_email(db: Session, parent_user_id: int) -> bool:
 
     digest = generate_weekly_digest(db, parent_user_id)
 
+    # Collect ILE summaries for all children
+    # ILE tables use users.id as student_id; ChildDigest uses students.id
+    now = datetime.now(timezone.utc)
+    week_end = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+    week_start = week_end - timedelta(days=7)
+    ile_data: dict[int, dict] = {}
+    if digest.children:
+        from app.models.student import Student
+        student_ids = [c.student_id for c in digest.children]
+        user_map = dict(
+            db.query(Student.id, Student.user_id)
+            .filter(Student.id.in_(student_ids))
+            .all()
+        )
+        for child in digest.children:
+            user_id = user_map.get(child.student_id)
+            if user_id:
+                ile_summary = get_weekly_ile_summary(db, user_id, week_start, week_end)
+                if ile_summary["session_count"] > 0:
+                    ile_data[child.student_id] = ile_summary
+
     lang = getattr(parent, "preferred_language", "en") or "en"
     if lang != "en":
         digest = _translate_digest(digest, lang)
 
     unsub_url = get_unsubscribe_url(parent_user_id)
-    html = render_digest_email_html(digest, unsubscribe_url=unsub_url)
+    html = render_digest_email_html(
+        digest, unsubscribe_url=unsub_url, ile_data=ile_data
+    )
     subject = f"Weekly Progress Pulse - {digest.week_start} to {digest.week_end}"
 
     if lang != "en":

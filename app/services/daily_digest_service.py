@@ -1,6 +1,7 @@
 """Service that builds and sends the Daily Morning Email Digest for parents."""
 
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -8,13 +9,51 @@ from app.models.user import User
 from app.schemas.briefing import DailyBriefingResponse
 from app.services.briefing_service import get_daily_briefing
 from app.services.email_service import send_email, wrap_branded_email
+from app.services.ile_digest_helper import get_daily_ile_summary
 from app.services.translation_service import TranslationService
 
 logger = logging.getLogger(__name__)
 
 
+def _render_ile_daily_html(ile_summary: dict) -> str:
+    """Render the ILE daily summary as an HTML section."""
+    if ile_summary["session_count"] == 0:
+        return ""
+
+    topics_str = ", ".join(ile_summary["topics"])
+    score_str = f" &mdash; {ile_summary['score_pct']}% correct" if ile_summary["score_pct"] is not None else ""
+
+    items_html = (
+        f'<div style="margin:4px 0;color:#4b5563;">'
+        f'{ile_summary["session_count"]} session{"s" if ile_summary["session_count"] != 1 else ""}{score_str}'
+        f'</div>'
+        f'<div style="margin:4px 0;color:#6b7280;font-size:13px;">'
+        f'Topics: {topics_str}'
+        f'</div>'
+    )
+
+    weak_html = ""
+    if ile_summary["weak_areas"]:
+        weak_list = ", ".join(ile_summary["weak_areas"])
+        weak_html = (
+            f'<div style="margin-top:6px;color:#d97706;font-size:13px;">'
+            f'Needs practice: {weak_list}'
+            f'</div>'
+        )
+
+    return (
+        f'<div style="margin-top:12px;">'
+        f'<strong style="color:#7c3aed;">Flash Tutor Practice:</strong>'
+        f'{items_html}'
+        f'{weak_html}'
+        f'</div>'
+    )
+
+
 def _render_digest_email_html(
-    briefing: DailyBriefingResponse, unsubscribe_url: str | None = None
+    briefing: DailyBriefingResponse,
+    unsubscribe_url: str | None = None,
+    ile_summaries: dict[int, dict] | None = None,
 ) -> str:
     """Render the daily briefing data as branded HTML email."""
 
@@ -90,6 +129,7 @@ def _render_digest_email_html(
           {due_today_html}
           {upcoming_html}
           {f'<div style="margin-top:8px;color:#6b7280;font-size:13px;">{child.recent_study_count} study guide{"s" if child.recent_study_count != 1 else ""} created this week</div>' if child.recent_study_count > 0 else ""}
+          {_render_ile_daily_html(ile_summaries.get(child.student_id, {"session_count": 0})) if ile_summaries else ""}
         </div>
         """
 
@@ -131,12 +171,49 @@ def generate_daily_digest(db: Session, parent_user_id: int) -> DailyBriefingResp
     return get_daily_briefing(db, parent_user_id)
 
 
-def has_content(briefing: DailyBriefingResponse) -> bool:
+def _get_ile_summaries_for_children(
+    db: Session, briefing: DailyBriefingResponse
+) -> dict[int, dict]:
+    """Fetch ILE daily summaries for all children in the briefing.
+
+    ILE tables use users.id as student_id; ChildBriefing uses students.id.
+    We map students.id -> users.id for the ILE query.
+    """
+    if not briefing.children:
+        return {}
+
+    from app.models.student import Student
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
+
+    student_ids = [c.student_id for c in briefing.children]
+    user_map = dict(
+        db.query(Student.id, Student.user_id)
+        .filter(Student.id.in_(student_ids))
+        .all()
+    )
+
+    summaries: dict[int, dict] = {}
+    for child in briefing.children:
+        user_id = user_map.get(child.student_id)
+        if user_id:
+            summary = get_daily_ile_summary(db, user_id, today_start)
+            if summary["session_count"] > 0:
+                summaries[child.student_id] = summary
+    return summaries
+
+
+def has_content(
+    briefing: DailyBriefingResponse,
+    ile_summaries: dict[int, dict] | None = None,
+) -> bool:
     """Check if the briefing has anything worth reporting."""
     return (
         briefing.total_overdue > 0
         or briefing.total_due_today > 0
         or briefing.total_upcoming > 0
+        or bool(ile_summaries)
     )
 
 
@@ -177,9 +254,10 @@ async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool 
     from app.core.security import get_unsubscribe_url
 
     briefing = generate_daily_digest(db, parent_user_id)
+    ile_summaries = _get_ile_summaries_for_children(db, briefing)
 
     # Skip if nothing to report (unless forced, e.g. test send)
-    if not force and not has_content(briefing):
+    if not force and not has_content(briefing, ile_summaries):
         return False
 
     lang = getattr(parent, "preferred_language", "en") or "en"
@@ -187,7 +265,9 @@ async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool 
         briefing = _translate_briefing(briefing, lang)
 
     unsub_url = get_unsubscribe_url(parent_user_id)
-    html = _render_digest_email_html(briefing, unsubscribe_url=unsub_url)
+    html = _render_digest_email_html(
+        briefing, unsubscribe_url=unsub_url, ile_summaries=ile_summaries
+    )
     subject = f"Daily Digest - {briefing.date}"
 
     if lang != "en":
