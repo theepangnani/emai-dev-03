@@ -4,6 +4,8 @@
  * CB-ILE-001
  */
 
+import { useState, useEffect } from 'react';
+
 interface TutorAvatarProps {
   size?: number;
   mood?: 'neutral' | 'happy' | 'thinking' | 'celebrating';
@@ -11,7 +13,16 @@ interface TutorAvatarProps {
 }
 
 export function TutorAvatar({ size = 48, mood = 'neutral', className }: TutorAvatarProps) {
-  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const eyeL = mood === 'thinking' ? { rx: 3.5, ry: 2 } : { rx: 4, ry: 4.5 };
   const pupilOffset = mood === 'thinking' ? -1 : 0;
 
