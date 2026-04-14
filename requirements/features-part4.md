@@ -1246,6 +1246,15 @@ Expand the FAQ knowledge base to provide comprehensive coverage for all platform
 - [x] CSS for maximized state, drag cursor, resize handle
 - [x] Mobile: disable drag/resize, keep fullscreen behavior
 - [x] Viewport bounds clamping for drag
+- [x] Pointer events for unified mouse + touch support (#3343)
+- [x] On-demand listener lifecycle — attach on drag start, detach on end (#3339)
+- [x] Stable ref-based handlers to avoid re-render cascades (#3340)
+- [x] Reactive mobile detection via matchMedia (#3341)
+- [x] Debounced localStorage persistence with flush on unmount (#3350)
+- [x] Double-click header to maximize (#3344)
+- [x] `user-select: none` + `touch-action: none` on drag header (#3351)
+- [x] Duplicate listener guard on rapid clicks (#3348)
+- [x] Unmount cleanup for leaked listeners (#3349)
 
 ---
 
