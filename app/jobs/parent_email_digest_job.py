@@ -74,7 +74,7 @@ async def send_digest_for_integration(db, integration, *, skip_dedup: bool = Fal
         )
         db.add(log_entry)
         db.commit()
-        return {"status": "failed", "email_count": 0, "message": f"Failed to fetch emails: {e}"}
+        return {"status": "failed", "email_count": 0, "message": "Failed to fetch emails. Please try again or reconnect Gmail."}
 
     if not emails and not settings.notify_on_empty:
         return {"status": "skipped", "email_count": 0, "message": "No new emails"}
@@ -111,7 +111,7 @@ async def send_digest_for_integration(db, integration, *, skip_dedup: bool = Fal
         )
         db.add(log_entry)
         db.commit()
-        return {"status": "failed", "email_count": len(emails) if emails else 0, "message": f"AI digest generation failed: {e}"}
+        return {"status": "failed", "email_count": len(emails) if emails else 0, "message": "Failed to generate digest summary. Please try again."}
 
     channels = [c.strip() for c in settings.delivery_channels.split(",") if c.strip()]
     notification_channels = []
