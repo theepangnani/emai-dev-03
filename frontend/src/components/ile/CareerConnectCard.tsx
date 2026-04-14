@@ -3,17 +3,47 @@
  *
  * Dismissable card shown on session results page that connects
  * the session topic to a real-world career.
+ *
+ * Fully self-contained: any API or rendering failure returns null
+ * so the parent results page is never affected.
  */
-import { useState } from 'react';
+import { Component, useState } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ileApi } from '../../api/ile';
+
+/* ---------- local error boundary ---------- */
+
+interface BoundaryProps {
+  children: ReactNode;
+}
+
+class CareerConnectBoundary extends Component<BoundaryProps, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  componentDidCatch(_error: Error, _info: ErrorInfo): void {
+    // Swallow — the card is non-critical
+  }
+
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
+/* ---------- inner card ---------- */
 
 interface CareerConnectCardProps {
   sessionId: number;
   topic: string;
 }
 
-export function CareerConnectCard({ sessionId, topic }: CareerConnectCardProps) {
+function CareerConnectCardInner({ sessionId, topic }: CareerConnectCardProps) {
   const [dismissed, setDismissed] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
@@ -24,6 +54,9 @@ export function CareerConnectCard({ sessionId, topic }: CareerConnectCardProps) 
   });
 
   if (dismissed || isError || (!isLoading && !data)) return null;
+
+  // Guard against unexpected data shape
+  if (!isLoading && data && (!data.career || !data.connection)) return null;
 
   return (
     <div className="fts-career-connect">
@@ -46,5 +79,15 @@ export function CareerConnectCard({ sessionId, topic }: CareerConnectCardProps) 
         </>
       ) : null}
     </div>
+  );
+}
+
+/* ---------- public export ---------- */
+
+export function CareerConnectCard(props: CareerConnectCardProps) {
+  return (
+    <CareerConnectBoundary>
+      <CareerConnectCardInner {...props} />
+    </CareerConnectBoundary>
   );
 }
