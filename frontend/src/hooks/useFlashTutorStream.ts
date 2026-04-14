@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { parseSSEBuffer } from '../utils/sseParser';
 import type { ILESessionCreate } from '../api/ile';
 
@@ -21,6 +21,10 @@ export function useFlashTutorStream() {
     error: null,
   });
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const startStream = useCallback(async (params: ILESessionCreate) => {
     abortRef.current?.abort();
