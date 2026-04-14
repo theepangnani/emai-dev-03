@@ -114,6 +114,12 @@ class GmailCallbackResponse(BaseModel):
     integration_id: int | None = None
 
 
+class SendDigestResponse(BaseModel):
+    status: str
+    email_count: int
+    message: str
+
+
 # ---------------------------------------------------------------------------
 # OAuth endpoints
 # ---------------------------------------------------------------------------
@@ -568,14 +574,14 @@ def get_delivery_log(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/integrations/{integration_id}/send-digest")
+@router.post("/integrations/{integration_id}/send-digest", response_model=SendDigestResponse)
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def send_digest_now(
     request: Request,
     integration_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
-) -> dict:
+) -> SendDigestResponse:
     integration = _get_owned_integration(db, integration_id, current_user.id)
     if not integration.is_active:
         raise HTTPException(
