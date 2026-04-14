@@ -77,6 +77,14 @@ export function useChatPanelInteraction(storageKey: string = DEFAULT_STORAGE_KEY
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current); };
   }, [panelState, maximized, storageKey]);
 
+  // #3350: Flush final state synchronously on unmount so last position isn't lost
+  useEffect(() => {
+    return () => {
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveState(storageKey, panelStateRef.current);
+    };
+  }, [storageKey]);
+
   // #3339 + #3340: Use stable refs for move/end handlers to avoid re-render cascades
   // Handlers are stored in refs so global listeners don't need to be re-attached
   const handlePointerMove = useRef((e: PointerEvent) => {
