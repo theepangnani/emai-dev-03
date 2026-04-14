@@ -230,8 +230,10 @@ export const ileApi = {
     api.get<ILESessionResults>(`/api/ile/sessions/${sessionId}/results`).then(r => r.data),
 
   // Topics
-  getTopics: () =>
-    api.get<{ topics: ILETopic[] }>('/api/ile/topics').then(r => r.data.topics),
+  getTopics: (studentId?: number) =>
+    api.get<{ topics: ILETopic[] }>('/api/ile/topics', {
+      params: studentId ? { student_id: studentId } : {},
+    }).then(r => r.data.topics),
 
   // Mastery
   getMasteryMap: () =>
