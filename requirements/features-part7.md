@@ -996,3 +996,75 @@ Report Cards, Analytics, and School Board Connectivity are not ready for all use
 6. **FeatureGate component** — Wraps routes; redirects to `/dashboard` if feature disabled
 7. **Sidebar gating** — `DashboardLayout.tsx` conditionally shows nav items based on `useFeatureToggles()` hook
 8. **Existing flags** (`google_classroom`, `waitlist_enabled`) remain in `config.py` — not migrated
+
+---
+
+### 6.134 Interactive Learning Engine — Flash Tutor (CB-ILE-001) - M0 IMPLEMENTED (2026-04-13)
+
+AI-powered micro-learning engine replacing and extending the current quiz module. Features two quiz modes (Learning + Testing), adaptive difficulty, parent co-learning, and deep gamification integration. Sessions are 3-7 questions targeting 5-8 minutes.
+
+**PRD:** CB-ILE-001 v1.3
+**Epic:** #3196
+**Feature Branch:** `feat/cb-ile-001-m0-foundation` (PR #3224 → master, awaiting approval)
+**Review Fixes:** PR #3232 (merged)
+
+#### Design Pillars (priority order)
+1. **Microlearning Structure** — 3-7 questions, 5-8 minutes, one topic per session
+2. **Interactivity** — Format selection based on history (MCQ → Fill-in-the-Blank)
+3. **Instant Feedback** — Never just a correctness label; minimum one sentence explanation
+4. **Adaptive Learning** — Per-question, per-topic, per-student difficulty adjustment (SM-2)
+5. **Progress Tracking** — Mastery map, streak integration, parent visibility
+
+#### Quiz Modes
+
+**Learning Mode:**
+- Wrong answer → AI hint (escalating specificity) → retry unlimited
+- Correct answer → "Why Correct" explanation (2-3 sentences, grade level)
+- Auto-reveal after 5 attempts: "Let's look at this together"
+- XP tiered by attempt: 1st=30, 2nd=20, 3rd=10, 4+=0
+- Streak increments on first-attempt correct only
+
+**Testing Mode:**
+- Standard assessment — no hints, no explanations, no retries
+- Flat 10 XP per correct answer
+- Results screen at end with score percentage
+
+#### M0 Implementation (COMPLETED)
+
+**Database (5 new tables):**
+- [x] `ile_sessions` — Session tracking (mode, subject, topic, difficulty, status, questions_json)
+- [x] `ile_question_attempts` — Per-question attempt tracking (answer, correctness, hints, XP)
+- [x] `ile_topic_mastery` — SM-2 spaced repetition + weak area detection
+- [x] `ile_question_bank` — Pre-generated question cache for cost optimization
+- [x] `ile_student_calibration` — Per-student difficulty calibration
+
+**Backend (4 new files):**
+- [x] `app/services/ile_service.py` — Session orchestrator (create, answer, complete, abandon, resume)
+- [x] `app/services/ile_question_service.py` — AI question generation with content safety check
+- [x] `app/api/routes/ile.py` — 10 API endpoints under `/api/ile/`
+- [x] `app/schemas/ile.py` — Pydantic schemas for all ILE types
+
+**Frontend (6 new files):**
+- [x] `frontend/src/api/ile.ts` — TypeScript API client
+- [x] `frontend/src/pages/FlashTutorPage.tsx` — Session launcher (topic/mode/config selection)
+- [x] `frontend/src/pages/FlashTutorSessionPage.tsx` — Active session UI with hint/explanation bubbles
+- [x] CSS with responsive design, theme variables, animations (slide-in, XP pop)
+- [x] Routes: `/flash-tutor`, `/flash-tutor/session/:id`
+- [x] Nav entry in DashboardLayout sidebar
+
+**XP/Gamification Integration:**
+- [x] 4 new XP action types: `ile_session_complete`, `ile_first_attempt_correct`, `ile_testing_correct`, `ile_parent_teaching`
+- [x] 1 new badge: `ile_first_session` (Flash Learner)
+- [x] Streak integration via existing `streak_service`
+
+#### Remaining Milestones
+
+**M1 — Learning Mode + Adaptive:** #3203, #3204, #3205
+**M2 — Topic Mastery + Cost Optimization:** #3206-#3211
+**M3 — Parent Teaching + Polish:** #3212-#3215
+**M4 — Hardening + Analytics:** #3216-#3217
+
+#### Cost Model
+- Baseline per-session: ~$0.013 USD
+- With question bank + hint caching (M2): ~$0.004-0.006 USD (50-65% reduction)
+- At 1,000 DAU: ~$200-300/month (optimized)

@@ -61,6 +61,31 @@ BADGE_DEFINITIONS: list[dict] = [
         "badge_description": "Score higher 3 times",
         "icon": "\U0001f4c8",
     },
+    # Interactive Learning Engine (CB-ILE-001)
+    {
+        "badge_id": "ile_first_session",
+        "badge_name": "Flash Learner",
+        "badge_description": "Complete first Flash Tutor session",
+        "icon": "\u26a1",
+    },
+    {
+        "badge_id": "ile_streak_5",
+        "badge_name": "On Fire",
+        "badge_description": "5+ consecutive first-attempt correct in one session",
+        "icon": "\U0001f525",
+    },
+    {
+        "badge_id": "ile_mastery_topic",
+        "badge_name": "Topic Master",
+        "badge_description": "Achieve mastery on any topic",
+        "icon": "\U0001f3af",
+    },
+    {
+        "badge_id": "ile_parent_teaching",
+        "badge_name": "Team Player",
+        "badge_description": "Complete 3+ parent teaching sessions",
+        "icon": "\U0001f91d",
+    },
 ]
 
 
@@ -87,6 +112,85 @@ def _get_current_streak(db: Session, student_id: int) -> int:
     if not summary:
         return 0
     return summary.current_streak or 0
+
+
+def _has_ile_streak_5(db: Session, student_id: int) -> bool:
+    """Check if student has a streak of 5+ first-attempt correct in any ILE session.
+
+    Uses a single joined query to avoid N+1 (#3252).
+    """
+    from app.models.ile_session import ILESession
+    from app.models.ile_question_attempt import ILEQuestionAttempt
+
+    # Single query: load all attempts for all completed sessions
+    rows = (
+        db.query(ILEQuestionAttempt.session_id, ILEQuestionAttempt.question_index,
+                 ILEQuestionAttempt.attempt_number, ILEQuestionAttempt.is_correct,
+                 ILESession.question_count)
+        .join(ILESession, ILEQuestionAttempt.session_id == ILESession.id)
+        .filter(
+            ILESession.student_id == student_id,
+            ILESession.status == "completed",
+        )
+        .order_by(ILEQuestionAttempt.session_id, ILEQuestionAttempt.question_index,
+                  ILEQuestionAttempt.attempt_number)
+        .all()
+    )
+    if not rows:
+        return False
+
+    # Group by session, then by question_index
+    sessions: dict[int, dict] = {}
+    session_qcount: dict[int, int] = {}
+    for sid, qidx, anum, is_correct, qcount in rows:
+        sessions.setdefault(sid, {}).setdefault(qidx, []).append((anum, is_correct))
+        session_qcount[sid] = qcount
+
+    for sid, by_q in sessions.items():
+        streak = 0
+        max_streak = 0
+        for idx in range(session_qcount.get(sid, 0)):
+            q_attempts = by_q.get(idx, [])
+            if len(q_attempts) == 1 and q_attempts[0][1]:  # (attempt_number, is_correct)
+                streak += 1
+                max_streak = max(max_streak, streak)
+            else:
+                streak = 0
+        if max_streak >= 5:
+            return True
+    return False
+
+
+def _has_ile_mastery_topic(db: Session, student_id: int) -> bool:
+    """Check if student has mastered any topic (avg_attempts < 1.3 with 3+ sessions)."""
+    from app.models.ile_topic_mastery import ILETopicMastery
+
+    result = (
+        db.query(ILETopicMastery)
+        .filter(
+            ILETopicMastery.student_id == student_id,
+            ILETopicMastery.avg_attempts_per_question < 1.3,
+            ILETopicMastery.total_sessions >= 3,
+        )
+        .first()
+    )
+    return result is not None
+
+
+def _has_ile_parent_teaching(db: Session, student_id: int) -> bool:
+    """Check if student has completed 3+ parent teaching sessions."""
+    from app.models.ile_session import ILESession
+
+    count = (
+        db.query(func.count(ILESession.id))
+        .filter(
+            ILESession.student_id == student_id,
+            ILESession.mode == "parent_teaching",
+            ILESession.status == "completed",
+        )
+        .scalar()
+    )
+    return (count or 0) >= 3
 
 
 def _has_past_exam_guide(db: Session, student_id: int) -> bool:
@@ -140,6 +244,23 @@ _BADGE_CHECKERS: dict[str, dict] = {
     "quiz_improver": {
         "check": lambda db, sid: _count_actions(db, sid, ["quiz_improvement"]) >= 3,
         "actions": {"quiz_improvement"},
+    },
+    # Interactive Learning Engine (CB-ILE-001)
+    "ile_first_session": {
+        "check": lambda db, sid: _count_actions(db, sid, ["ile_session_complete"]) >= 1,
+        "actions": {"ile_session_complete"},
+    },
+    "ile_streak_5": {
+        "check": lambda db, sid: _has_ile_streak_5(db, sid),
+        "actions": {"ile_session_complete"},
+    },
+    "ile_mastery_topic": {
+        "check": lambda db, sid: _has_ile_mastery_topic(db, sid),
+        "actions": {"ile_session_complete"},
+    },
+    "ile_parent_teaching": {
+        "check": lambda db, sid: _has_ile_parent_teaching(db, sid),
+        "actions": {"ile_session_complete"},
     },
 }
 

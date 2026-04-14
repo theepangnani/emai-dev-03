@@ -31,6 +31,11 @@ XP_ACTIONS: dict[str, dict] = {
     "weekly_review": {"xp": 25, "daily_cap": 25},
     "quiz_complete": {"xp": 15, "daily_cap": 30},
     "quiz_improvement": {"xp": 10, "daily_cap": 10},
+    # Interactive Learning Engine (CB-ILE-001)
+    "ile_session_complete": {"xp": 15, "daily_cap": 45},
+    "ile_first_attempt_correct": {"xp": 5, "daily_cap": 50},
+    "ile_testing_correct": {"xp": 10, "daily_cap": 50},
+    "ile_parent_teaching": {"xp": 10, "daily_cap": 30},
 }
 
 LEVELS: list[dict] = [

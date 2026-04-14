@@ -47,6 +47,8 @@ const Dashboard = lazyRetry(() => import('./pages/Dashboard').then((m) => ({ def
 const StudyGuidePage = lazyRetry(() => import('./pages/StudyGuidePage').then((m) => ({ default: m.StudyGuidePage })));
 const QuizPage = lazyRetry(() => import('./pages/QuizPage').then((m) => ({ default: m.QuizPage })));
 const FlashcardsPage = lazyRetry(() => import('./pages/FlashcardsPage').then((m) => ({ default: m.FlashcardsPage })));
+const FlashTutorPage = lazyRetry(() => import('./pages/FlashTutorPage').then((m) => ({ default: m.FlashTutorPage })));
+const FlashTutorSessionPage = lazyRetry(() => import('./pages/FlashTutorSessionPage').then((m) => ({ default: m.FlashTutorSessionPage })));
 const MessagesPage = lazyRetry(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const TeacherCommsPage = lazyRetry(() => import('./pages/TeacherCommsPage').then((m) => ({ default: m.TeacherCommsPage })));
 const CoursesPage = lazyRetry(() => import('./pages/CoursesPage').then((m) => ({ default: m.CoursesPage })));
@@ -254,6 +256,22 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <FlashcardsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/flash-tutor"
+                element={
+                  <ProtectedRoute>
+                    <FlashTutorPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/flash-tutor/session/:id"
+                element={
+                  <ProtectedRoute>
+                    <FlashTutorSessionPage />
                   </ProtectedRoute>
                 }
               />

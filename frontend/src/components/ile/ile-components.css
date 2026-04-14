@@ -1,0 +1,115 @@
+/* ILE Reusable Components — CB-ILE-001 M1 */
+
+/* === Animations === */
+
+@keyframes ile-slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes ile-pop-scale {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes ile-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes ile-fade-out {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* === HintBubble === */
+
+.ile-hint-bubble {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--color-warning-bg, #fffbeb);
+  border-left: 4px solid var(--color-warning, #f59e0b);
+  animation: ile-slide-in 0.3s ease;
+}
+
+.ile-hint-label {
+  color: var(--color-warning-text, #d97706);
+}
+
+/* === ExplanationBubble === */
+
+.ile-explanation-bubble {
+  padding: 14px 16px;
+  border-radius: 10px;
+  animation: ile-slide-in 0.3s ease;
+}
+
+.ile-explanation-correct {
+  background: var(--color-success-bg, #f0fdfa);
+  border-left: 4px solid var(--color-success, #14b8a6);
+}
+
+.ile-explanation-correct .ile-explanation-label {
+  color: var(--color-success, #0d9488);
+}
+
+.ile-explanation-auto-reveal {
+  background: var(--color-warning-bg, #fffbeb);
+  border-left: 4px solid var(--color-warning, #f59e0b);
+}
+
+.ile-explanation-auto-reveal .ile-explanation-label {
+  color: var(--color-warning-text, #d97706);
+}
+
+/* === Shared bubble label === */
+
+.ile-bubble-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.ile-hint-bubble p,
+.ile-explanation-bubble p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* === XpPopBadge === */
+
+.ile-xp-pop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--accent-primary, #6366f1);
+  color: white;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  align-self: flex-start;
+  animation: ile-pop-scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+             ile-fade-out 2s ease forwards;
+}
+
+/* === StreakCounter === */
+
+.ile-streak {
+  font-weight: 600;
+  color: var(--color-warning, #f59e0b);
+}
+
+.ile-streak-shake {
+  animation: ile-shake 0.6s ease;
+}

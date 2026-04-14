@@ -1018,5 +1018,7 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 - [ ] **M2: Topic Mastery + Cost Optimization** — Weak area detection, Surprise Me, Fill-in-the-Blank, question bank pre-gen, SM-2 spaced repetition (#3206-#3211)
 - [ ] **M3: Parent Teaching + Polish** — Parent Teaching Mode, Private Practice, Career Connect, Email Digest integration (#3212-#3215)
 - [ ] **M4: Hardening + Analytics** — Cost logging, anti-gaming, admin analytics, quiz migration (#3216-#3217)
+
+
 ---
 

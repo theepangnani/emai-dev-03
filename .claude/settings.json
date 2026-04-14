@@ -6,7 +6,8 @@
       "Read(//dev/emai/emai-dev-03/frontend/src/pages/**)",
       "Read(//c/dev/emai/emai-dev-03/frontend/src/pages/**)",
       "Read(//dev/emai/emai-dev-03/tests/**)",
-      "Read(//c/dev/emai/emai-dev-03/tests/**)"
+      "Read(//c/dev/emai/emai-dev-03/tests/**)",
+      "WebFetch(domain:www.loom.com)"
     ]
   }
 }
