@@ -4,7 +4,7 @@ ILE Session Orchestrator — CB-ILE-001 (#3198).
 Manages the lifecycle of Flash Tutor sessions: create, answer, complete, abandon, resume.
 """
 import json
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func as sa_func
@@ -67,6 +67,15 @@ async def create_session(
     Enforces max 1 active session per student.
     Generates questions via AI (bank-first).
     """
+    # Validate enum-like parameters before any DB work
+    VALID_DIFFICULTIES = {"easy", "medium", "challenging"}
+    VALID_BLOOMS = {"recall", "understand", "apply"}
+
+    if difficulty not in VALID_DIFFICULTIES:
+        raise ValueError(f"Invalid difficulty: {difficulty}. Must be one of {VALID_DIFFICULTIES}")
+    if blooms_tier not in VALID_BLOOMS:
+        raise ValueError(f"Invalid blooms_tier: {blooms_tier}. Must be one of {VALID_BLOOMS}")
+
     # Check for existing active session
     active = (
         db.query(ILESession)
@@ -396,7 +405,10 @@ async def submit_answer(
     # Check if session is complete
     session_complete = question_complete and (idx + 1 >= session.question_count)
 
-    # Track streak
+    # Track streak — only in learning/parent_teaching modes.
+    # Streak increments only on first-attempt correct (attempt_number == 1).
+    # Multi-attempt correct answers do not increment the streak.
+    # Any wrong answer sets streak_broken=True so the frontend can show feedback.
     streak_count = 0
     streak_broken = False
     if session.mode in ("learning", "parent_teaching"):
@@ -883,6 +895,15 @@ def _calculate_xp(mode: str, is_correct: bool, attempt_number: int) -> int:
 def _count_streak(db: Session, session_id: int, current_index: int) -> int:
     """Count consecutive first-attempt correct answers up to current_index.
 
+    Streak rules:
+    - A streak is a run of consecutive questions answered correctly on the
+      first attempt (attempt_number == 1 and is_correct == True).
+    - A question answered correctly on a later attempt (multi-attempt correct)
+      does NOT count toward the streak and breaks it.
+    - A wrong answer on any attempt resets the streak to 0.
+    - Counting walks backward from current_index toward question 0; the
+      streak ends at the first question that doesn't meet the criteria.
+
     Used during submit_answer where we don't have pre-fetched attempts for
     the full session yet (the current attempt hasn't been committed).
     """
@@ -903,7 +924,13 @@ def _count_streak(db: Session, session_id: int, current_index: int) -> int:
 def _count_streak_from_attempts(
     attempts_by_q: dict[int, list], current_index: int
 ) -> int:
-    """Count consecutive first-attempt correct answers from pre-fetched attempts."""
+    """Count consecutive first-attempt correct answers from pre-fetched attempts.
+
+    Walks backward from *current_index* to 0.  A question contributes to the
+    streak only if it has exactly one attempt and that attempt is correct
+    (i.e., first-attempt correct).  Any other outcome (wrong, or correct on a
+    retry) breaks the streak immediately.
+    """
     streak = 0
     for idx in range(current_index, -1, -1):
         attempts = attempts_by_q.get(idx, [])
@@ -972,9 +999,9 @@ def _session_duration_seconds(session: ILESession) -> int | None:
 # Applied and removed when submit_answer creates the attempt record.
 _pending_parent_hints: dict[tuple[int, int], str] = {}
 
-# In-memory cache keyed by session ID to avoid re-generating (bounded)
+# In-memory cache keyed by session ID to avoid re-generating (bounded LRU)
 _CAREER_CACHE_MAX = 500
-_career_connect_cache: dict[int, dict] = {}
+_career_connect_cache: OrderedDict[int, dict] = OrderedDict()
 
 
 async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict:
@@ -983,8 +1010,9 @@ async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict
     Returns { career: str, connection: str }.
     Caches results in memory to avoid re-generation.
     """
-    # Check cache first
+    # Check cache first (move to end on access for LRU ordering)
     if session_id in _career_connect_cache:
+        _career_connect_cache.move_to_end(session_id)
         return _career_connect_cache[session_id]
 
     session = get_session(db, session_id, user_id)
@@ -1032,11 +1060,11 @@ async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict
         connection = f"Many careers use {topic} skills from {subject} in their daily work."
 
     data = {"career": career, "connection": connection}
-    # Evict oldest entries if cache is full
-    if len(_career_connect_cache) >= _CAREER_CACHE_MAX:
-        oldest_key = next(iter(_career_connect_cache))
-        del _career_connect_cache[oldest_key]
+    # LRU eviction: move accessed/new entries to end, evict from front
     _career_connect_cache[session_id] = data
+    _career_connect_cache.move_to_end(session_id)
+    if len(_career_connect_cache) > _CAREER_CACHE_MAX:
+        _career_connect_cache.popitem(last=False)
     return data
 
 

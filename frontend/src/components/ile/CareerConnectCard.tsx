@@ -55,8 +55,8 @@ function CareerConnectCardInner({ sessionId, topic }: CareerConnectCardProps) {
 
   if (dismissed || isError || (!isLoading && !data)) return null;
 
-  // Guard against unexpected data shape
-  if (!isLoading && data && (!data.career || !data.connection)) return null;
+  // Guard against null, undefined, empty, or whitespace-only career/connection
+  if (!isLoading && data && (!data.career?.trim() || !data.connection?.trim())) return null;
 
   return (
     <div className="fts-career-connect">
