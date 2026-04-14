@@ -835,7 +835,8 @@ def _session_duration_seconds(session: ILESession) -> int | None:
 # Career Connect
 # ---------------------------------------------------------------------------
 
-# In-memory cache keyed by session ID to avoid re-generating
+# In-memory cache keyed by session ID to avoid re-generating (bounded)
+_CAREER_CACHE_MAX = 500
 _career_connect_cache: dict[int, dict] = {}
 
 
@@ -880,7 +881,7 @@ async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict
         # Parse JSON from response
         import re as _re
         # Extract JSON object from response (may be wrapped in markdown)
-        match = _re.search(r'\{[^}]+\}', content)
+        match = _re.search(r'\{[^}]*"career"[^}]*\}', content)
         if match:
             result = json.loads(match.group())
             career = result.get("career", "")
@@ -894,5 +895,9 @@ async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict
         connection = f"Many careers use {topic} skills from {subject} in their daily work."
 
     data = {"career": career, "connection": connection}
+    # Evict oldest entries if cache is full
+    if len(_career_connect_cache) >= _CAREER_CACHE_MAX:
+        oldest_key = next(iter(_career_connect_cache))
+        del _career_connect_cache[oldest_key]
     _career_connect_cache[session_id] = data
     return data
