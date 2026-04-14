@@ -20,6 +20,7 @@ import './FlashTutorPage.css';
 
 type Mode = 'learning' | 'testing' | 'parent_teaching';
 type Difficulty = 'easy' | 'medium' | 'challenging';
+const EMPTY_OVERDUE_MAP = new Map<number, number>();
 
 /** Format remaining time as a human-readable string (e.g. "12h left", "45m left"). */
 function formatTimeRemaining(expiresAt: string | null | undefined): string | null {
@@ -334,7 +335,7 @@ export function FlashTutorPage() {
               children={children}
               selectedChild={selectedChildId}
               onSelectChild={setSelectedChildId}
-              childOverdueCounts={new Map()}
+              childOverdueCounts={EMPTY_OVERDUE_MAP}
             />
           </div>
         )}
