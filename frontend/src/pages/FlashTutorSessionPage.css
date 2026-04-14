@@ -315,7 +315,7 @@
 }
 
 .fts-btn-primary:not(:disabled):hover {
-  box-shadow: 0 6px 20px rgba(74, 144, 217, 0.3);
+  box-shadow: 0 6px 20px var(--color-accent-light);
   transform: translateY(-1px);
 }
 

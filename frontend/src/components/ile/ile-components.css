@@ -126,21 +126,24 @@
   animation: ile-shake 0.6s ease;
 }
 
-/* Streak tier: warm (1-2 streak) */
+/* Streak tier: warm (1-2 streak)
+   Hardcoded warm accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-warm {
   color: var(--color-accent-warm);
   background: rgba(244, 128, 31, 0.08);
   border: 1px solid rgba(244, 128, 31, 0.2);
 }
 
-/* Streak tier: hot (3-4 streak) */
+/* Streak tier: hot (3-4 streak)
+   Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-hot {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Streak tier: blazing (5+ streak) */
+/* Streak tier: blazing (5+ streak)
+   Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-blazing {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);

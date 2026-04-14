@@ -58,7 +58,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-accent-warm);
-  background: rgba(244, 128, 31, 0.08);
+  background: rgba(244, 128, 31, 0.08); /* Warm accent tint — matches --color-accent-warm */
   padding: 4px 10px;
   border-radius: 12px;
 }
@@ -209,6 +209,7 @@
   margin: 0;
 }
 
+/* Warm accent rgba — matches --color-accent-warm; no CSS variable for tint/border */
 .ft-btn-surprise {
   background: rgba(244, 128, 31, 0.08);
   color: var(--color-accent-warm);
@@ -432,7 +433,7 @@
 }
 
 .ft-btn-start:not(:disabled):hover {
-  box-shadow: 0 6px 20px rgba(74, 144, 217, 0.3);
+  box-shadow: 0 6px 20px var(--color-accent-light);
   transform: translateY(-1px);
 }
 
