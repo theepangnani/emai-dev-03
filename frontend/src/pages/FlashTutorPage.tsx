@@ -63,10 +63,11 @@ export function FlashTutorPage() {
     [activeSession?.expires_at],
   );
 
-  // Fetch mastery map for Memory Glow (#3210)
+  // Fetch mastery map for Memory Glow (#3210) — non-blocking, OK to fail
   const { data: masteryMap } = useQuery({
     queryKey: ['ile-mastery'],
     queryFn: () => ileApi.getMasteryMap(),
+    retry: false,
   });
 
   const handleStartFresh = async () => {
@@ -193,7 +194,7 @@ export function FlashTutorPage() {
         )}
 
         {/* Mastery — Memory Glow (#3210) */}
-        {masteryMap && masteryMap.entries.length > 0 && (
+        {masteryMap && masteryMap.entries && masteryMap.entries.length > 0 && (
           <div className="ft-section">
             <h2>Your Topics</h2>
             <div className="ft-mastery-grid">
