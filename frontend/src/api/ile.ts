@@ -180,7 +180,7 @@ export interface ILESessionCreate {
 export const ileApi = {
   // Sessions
   createSession: (data: ILESessionCreate) =>
-    api.post<ILESession>('/ile/sessions', data).then(r => r.data),
+    api.post<ILESession>('/api/ile/sessions', data).then(r => r.data),
 
   createSessionFromStudyGuide: (params: {
     study_guide_id?: number;
@@ -189,55 +189,55 @@ export const ileApi = {
     question_count?: number;
     difficulty?: string;
   }) =>
-    api.post<ILESession>('/ile/sessions/from-study-guide', null, { params }).then(r => r.data),
+    api.post<ILESession>('/api/ile/sessions/from-study-guide', null, { params }).then(r => r.data),
 
   getActiveSession: () =>
-    api.get<ILESession | null>('/ile/sessions/active').then(r => r.data),
+    api.get<ILESession | null>('/api/ile/sessions/active').then(r => r.data),
 
   getSession: (id: number) =>
-    api.get<ILESession>(`/ile/sessions/${id}`).then(r => r.data),
+    api.get<ILESession>(`/api/ile/sessions/${id}`).then(r => r.data),
 
   getSessionHistory: (limit = 20) =>
-    api.get<ILESessionSummary[]>('/ile/sessions', { params: { limit } }).then(r => r.data),
+    api.get<ILESessionSummary[]>('/api/ile/sessions', { params: { limit } }).then(r => r.data),
 
   // Questions
   getCurrentQuestion: (sessionId: number) =>
-    api.get<ILECurrentQuestion>(`/ile/sessions/${sessionId}/question`).then(r => r.data),
+    api.get<ILECurrentQuestion>(`/api/ile/sessions/${sessionId}/question`).then(r => r.data),
 
   submitAnswer: (sessionId: number, answer: string, timeTakenMs?: number, parentHintNote?: string) =>
-    api.post<ILEAnswerFeedback>(`/ile/sessions/${sessionId}/answer`, {
+    api.post<ILEAnswerFeedback>(`/api/ile/sessions/${sessionId}/answer`, {
       answer,
       time_taken_ms: timeTakenMs,
       parent_hint_note: parentHintNote || undefined,
     }).then(r => r.data),
 
   addParentHint: (sessionId: number, hintNote: string) =>
-    api.post<{ question_index: number; parent_hint_note: string }>(`/ile/sessions/${sessionId}/parent-hint`, {
+    api.post<{ question_index: number; parent_hint_note: string }>(`/api/ile/sessions/${sessionId}/parent-hint`, {
       hint_note: hintNote,
     }).then(r => r.data),
 
   // Session lifecycle
   completeSession: (sessionId: number) =>
-    api.post<ILESessionResults>(`/ile/sessions/${sessionId}/complete`).then(r => r.data),
+    api.post<ILESessionResults>(`/api/ile/sessions/${sessionId}/complete`).then(r => r.data),
 
   abandonSession: (sessionId: number) =>
-    api.post(`/ile/sessions/${sessionId}/abandon`).then(r => r.data),
+    api.post(`/api/ile/sessions/${sessionId}/abandon`).then(r => r.data),
 
   getSessionResults: (sessionId: number) =>
-    api.get<ILESessionResults>(`/ile/sessions/${sessionId}/results`).then(r => r.data),
+    api.get<ILESessionResults>(`/api/ile/sessions/${sessionId}/results`).then(r => r.data),
 
   // Topics
   getTopics: () =>
-    api.get<{ topics: ILETopic[] }>('/ile/topics').then(r => r.data.topics),
+    api.get<{ topics: ILETopic[] }>('/api/ile/topics').then(r => r.data.topics),
 
   // Mastery
   getMasteryMap: () =>
-    api.get<ILEMasteryMap>('/ile/mastery').then(r => r.data),
+    api.get<ILEMasteryMap>('/api/ile/mastery').then(r => r.data),
 
   getSurpriseMe: () =>
-    api.get<{ topic: ILETopic; reason: string }>('/ile/topics/surprise-me').then(r => r.data),
+    api.get<{ topic: ILETopic; reason: string }>('/api/ile/topics/surprise-me').then(r => r.data),
 
   // Career Connect
   getCareerConnect: (sessionId: number) =>
-    api.get<ILECareerConnect>(`/ile/sessions/${sessionId}/career-connect`).then(r => r.data),
+    api.get<ILECareerConnect>(`/api/ile/sessions/${sessionId}/career-connect`).then(r => r.data),
 };
