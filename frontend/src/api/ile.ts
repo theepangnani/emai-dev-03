@@ -121,6 +121,7 @@ export interface ILESessionResults {
   weak_areas: string[];
   suggested_next_topic: string | null;
   areas_to_revisit: ILEAreaToRevisit[];
+  aha_detected: boolean;
 }
 
 export interface ILETopic {

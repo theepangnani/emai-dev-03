@@ -22,6 +22,8 @@ class NotificationType(str, enum.Enum):
     STUDY_GUIDE_SHARED = "study_guide_shared"
     SURVEY_COMPLETED = "survey_completed"
     PARENT_EMAIL_DIGEST = "parent_email_digest"
+    ILE_AHA_MOMENT = "ile_aha_moment"
+    ILE_KNOWLEDGE_DECAY = "ile_knowledge_decay"
 
 
 class Notification(Base):

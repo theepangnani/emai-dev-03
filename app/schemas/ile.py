@@ -161,6 +161,7 @@ class ILESessionResults(BaseModel):
     weak_areas: list[str] = []
     suggested_next_topic: str | None = None
     areas_to_revisit: list[ILEAreaToRevisit] = []
+    aha_detected: bool = False
 
 
 # --- Career Connect ---

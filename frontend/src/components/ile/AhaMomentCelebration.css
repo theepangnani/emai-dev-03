@@ -1,0 +1,99 @@
+/* AhaMomentCelebration — CSS-only confetti animation — CB-ILE-001 M3 (#3215) */
+
+.aha-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  animation: aha-fade-in 0.3s ease-out;
+  pointer-events: none;
+}
+
+@keyframes aha-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Confetti container */
+.aha-confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Individual confetti piece */
+.aha-confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  animation: aha-confetti-fall linear forwards;
+  opacity: 0.9;
+}
+
+.aha-confetti-0 { background: #f94144; border-radius: 50%; width: 8px; height: 8px; }
+.aha-confetti-1 { background: #f3722c; border-radius: 2px; width: 12px; height: 6px; }
+.aha-confetti-2 { background: #f9c74f; border-radius: 50%; width: 10px; height: 10px; }
+.aha-confetti-3 { background: #90be6d; border-radius: 2px; width: 6px; height: 12px; }
+.aha-confetti-4 { background: #43aa8b; border-radius: 50%; width: 9px; height: 9px; }
+.aha-confetti-5 { background: #577590; border-radius: 2px; width: 10px; height: 5px; }
+
+@keyframes aha-confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Central content */
+.aha-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  animation: aha-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes aha-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.aha-icon {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+}
+
+.aha-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 0.5rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.aha-message {
+  font-size: 1.2rem;
+  color: #e8e8ff;
+  margin: 0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.aha-message strong {
+  color: #fff;
+}
