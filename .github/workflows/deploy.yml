@@ -49,7 +49,7 @@ jobs:
 
   test:
     needs: [rate-limit]
-    if: inputs.profile == 'full'
+    if: inputs.profile == 'full' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
