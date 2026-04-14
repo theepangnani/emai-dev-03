@@ -9,15 +9,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
 import type { ILETopic, ILEMasteryEntry } from '../api/ile';
+import { parentApi } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
+import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { MasteryNode } from '../components/ile/MasteryNode';
 import { TutorAvatar } from '../components/ile/TutorAvatar';
 import './FlashTutorPage.css';
 
 type Mode = 'learning' | 'testing' | 'parent_teaching';
 type Difficulty = 'easy' | 'medium' | 'challenging';
+const EMPTY_OVERDUE_MAP = new Map<number, number>();
 
 /** Format remaining time as a human-readable string (e.g. "12h left", "45m left"). */
 function formatTimeRemaining(expiresAt: string | null | undefined): string | null {
@@ -59,11 +62,21 @@ export function FlashTutorPage() {
   const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
   const [topicSearch, setTopicSearch] = useState('');
   const [showAllTopics, setShowAllTopics] = useState(false);
+  const [selectedChildId, setSelectedChildId] = useState<number | null>(
+    queryChildId ? parseInt(queryChildId) : null
+  );
 
   // Fetch available topics
   const { data: topics = [], isLoading: topicsLoading } = useQuery({
-    queryKey: ['ile-topics'],
-    queryFn: () => ileApi.getTopics(),
+    queryKey: ['ile-topics', selectedChildId],
+    queryFn: () => ileApi.getTopics(selectedChildId ?? undefined),
+  });
+
+  // Fetch children list (parents only) for child selector
+  const { data: children = [] } = useQuery({
+    queryKey: ['parent-children'],
+    queryFn: () => parentApi.getChildren(),
+    enabled: user?.role === 'parent',
   });
 
   // Check for active session
@@ -313,6 +326,19 @@ export function FlashTutorPage() {
             )}
           </div>
         </div>
+
+        {/* Child selector for parents with multiple children */}
+        {user?.role === 'parent' && children.length >= 2 && (
+          <div className="ft-section">
+            <h2>Select Child</h2>
+            <ChildSelectorTabs
+              children={children}
+              selectedChild={selectedChildId}
+              onSelectChild={setSelectedChildId}
+              childOverdueCounts={EMPTY_OVERDUE_MAP}
+            />
+          </div>
+        )}
 
         {/* Topic selection */}
         <div className="ft-section">

@@ -450,16 +450,44 @@ async def get_session_results(
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def get_topics(
     request: Request,
+    student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List available topics from student's courses."""
-    cache_key = f"topics:{current_user.id}"
+    """List available topics from student's courses.
+
+    Parents can pass ``student_id`` to view a child's topics.
+    """
+    target_id = current_user.id
+
+    if student_id and student_id != current_user.id:
+        # Parent viewing child's topics — verify relationship
+        if not current_user.has_role(UserRole.PARENT):
+            raise HTTPException(403, "Only parents can view another student's topics")
+        child_student_ids = [
+            r[0] for r in
+            db.query(parent_students.c.student_id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        child = (
+            db.query(Student)
+            .filter(
+                Student.user_id == student_id,
+                Student.id.in_(child_student_ids),
+            )
+            .first()
+        )
+        if not child:
+            raise HTTPException(403, "Child not linked to this parent")
+        target_id = student_id
+
+    cache_key = f"topics:{target_id}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
 
-    topics_data = ile_service.get_available_topics(db, current_user.id)
+    topics_data = ile_service.get_available_topics(db, target_id)
     topics = [ILETopic(**t) for t in topics_data]
     result = ILETopicList(topics=topics)
     _cache_set(cache_key, result)
