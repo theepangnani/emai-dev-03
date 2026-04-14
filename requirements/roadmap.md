@@ -1011,13 +1011,13 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 - [x] **Multi-sender email monitoring** — Parents can whitelist multiple teacher email addresses for digest polling (#3178, PR #3218) (IMPLEMENTED)
 - [x] **Email digest wizard fix** — Detect existing Gmail integration + hardcoded turquoise → CSS theme variables (#3219, #3220, PR #3221) (IMPLEMENTED)
 
-#### Interactive Learning Engine (CB-ILE-001) — April 13, 2026
+#### Interactive Learning Engine (CB-ILE-001) — April 13-14, 2026 — ALL MILESTONES COMPLETE
 
-- [x] **M0: Foundation** — 5 DB tables, session orchestrator, AI question generation, Flash Tutor UI, XP/badge integration (PR #3224 + #3232) (IMPLEMENTED)
-- [ ] **M1: Learning Mode + Adaptive** — Hints, explanations, retry loop, within-session difficulty adjustment, session persistence (#3203-#3205)
-- [ ] **M2: Topic Mastery + Cost Optimization** — Weak area detection, Surprise Me, Fill-in-the-Blank, question bank pre-gen, SM-2 spaced repetition (#3206-#3211)
-- [ ] **M3: Parent Teaching + Polish** — Parent Teaching Mode, Private Practice, Career Connect, Email Digest integration (#3212-#3215)
-- [ ] **M4: Hardening + Analytics** — Cost logging, anti-gaming, admin analytics, quiz migration (#3216-#3217)
+- [x] **M0: Foundation** — 5 DB tables, session orchestrator, AI question generation, Flash Tutor UI, XP/badge integration (PR #3224) (IMPLEMENTED Apr 13)
+- [x] **M1: Learning Mode + Adaptive** — Component extraction, within-session adaptive difficulty, session persistence + resume (PRs #3243, #3246, #3248) (IMPLEMENTED Apr 14)
+- [x] **M2: Topic Mastery + Cost Optimization** — Mastery tracking, Surprise Me, Fill-in-the-Blank, question bank pre-gen, SM-2 Memory Glow, 4 badges + calibration (PRs #3245, #3250, #3252-#3255) (IMPLEMENTED Apr 14)
+- [x] **M3: Parent Teaching + Polish** — Parent Teaching Mode, Private Practice, Career Connect, ILE in email digest, Aha Moments + Knowledge Decay (PRs #3273, #3276, #3277, #3279) (IMPLEMENTED Apr 14)
+- [x] **M4: Hardening + Analytics** — Cost logging, anti-gaming, admin analytics, response caching, quiz migration, study guide integration, 12 ILE tests (PRs #3274, #3275, #3278) (IMPLEMENTED Apr 14)
 
 
 ---

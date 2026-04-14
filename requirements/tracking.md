@@ -1,9 +1,19 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 13, 2026):** ~3,239 total issues — ~2,758 closed, 481 open, 1,984 commits
-- **Features built:** 400+ enhancements closed
-- **Bugs fixed:** 400+ bugs closed
-- **Other closed:** 1,384 (pilot prep, docs, testing, infra, misc)
+**Summary (as of Apr 14, 2026):** ~3,290 total issues — ~2,810 closed, ~480 open, 2,038 commits
+- **Features built:** 420+ enhancements closed
+- **Bugs fixed:** 410+ bugs closed
+- **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
+
+**Apr 14 — CB-ILE-001 M1-M4 Complete, Flash Tutor Fully Deployed:**
+- **CB-ILE-001 M1 (Learning Mode + Adaptive):** Component extraction (HintBubble, ExplanationBubble, XpPopBadge, StreakCounter), within-session adaptive difficulty engine, session persistence + resume within 24h (#3203-#3205, PRs #3243, #3246, #3248)
+- **CB-ILE-001 M2 (Topic Mastery + Cost Optimization):** Topic mastery tracking + weak areas, Surprise Me weighted selection, Fill-in-the-Blank with de-escalation, question bank pre-generation + hint caching, SM-2 spaced repetition + Memory Glow UI, 4 new ILE badges + student calibration (#3206-#3211, PRs #3245, #3250, #3252-#3255)
+- **CB-ILE-001 M3 (Parent Teaching + Polish):** Parent Teaching Mode with personal hints + areas to revisit, Private Practice (hidden scores) + Career Connect, ILE data in daily + weekly parent email digest, Aha Moment detection (CSS confetti celebration) + Knowledge Decay notifications (#3212-#3215, #3272, PRs #3273, #3275-#3277, #3279)
+- **CB-ILE-001 M4 (Hardening + Analytics):** Per-session cost logging, anti-gaming (10/day limit + rapid completion detection), admin analytics endpoint, response caching (60s TTL), quiz migration banner, 12 ILE tests, Flash Tutor from study guides (#3216-#3217, #3272, PRs #3274, #3275, #3278)
+- **Post-deploy fixes:** Sidebar nav for student+parent, /api prefix on all ILE endpoints, parent hint storage, mastery rollback, cost Decimal, fill-blank de-escalation, CareerConnectCard error boundary (#3280-#3286, PR #3288)
+- **Code review stats:** 25+ bugs found and fixed across 16 PRs, 10 enhancement issues filed (#3262-#3271)
+- **Parallel agents used:** ~45 worktree agents across implementation, review, and integration phases
+- CB-ILE-001 epic #3196: ALL milestones complete (M0-M4), 23 feature issues closed, deployed to production
 
 **Apr 13 — Login Infinite Loop Fix, CB-ILE-001 M0 Review, Multi-Sender Email:**
 - **Login infinite loop fixed:** non-memoized `loginWithToken` in `useEffect` dep array caused OAuth callback re-render loop; all 7 AuthContext functions wrapped with `useCallback`, Provider value with `useMemo`, circuit breaker refs added to Login.tsx and Register.tsx (#3233-#3238 via PR #3234)
