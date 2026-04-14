@@ -337,6 +337,37 @@ def check_format_escalation(db: Session, student_id: int, subject: str, topic: s
         .first()
     )
     if mastery and mastery.mcq_correct_streak >= 2:
+        # Check if student is struggling with fill_blank — de-escalate if needed
+        from app.models.ile_session import ILESession
+
+        recent_fill_blank = (
+            db.query(ILESession)
+            .filter(
+                ILESession.student_id == student_id,
+                ILESession.subject == subject,
+                ILESession.topic == topic,
+                ILESession.status == "completed",
+            )
+            .order_by(ILESession.completed_at.desc())
+            .limit(2)
+            .all()
+        )
+
+        # If last 2 sessions scored < 50%, de-escalate to MCQ
+        poor_sessions = [
+            s for s in recent_fill_blank
+            if s.score is not None
+            and s.total_correct is not None
+            and s.question_count > 0
+            and (s.total_correct / s.question_count * 100) < 50
+        ]
+        if len(poor_sessions) >= 2:
+            logger.info(
+                "Format de-escalation: fill_blank->mcq for student=%d topic=%s/%s",
+                student_id, subject, topic,
+            )
+            return "mcq"
+
         logger.info(
             "Format escalation: mcq->fill_blank for student=%d topic=%s/%s (streak=%d)",
             student_id, subject, topic, mastery.mcq_correct_streak,

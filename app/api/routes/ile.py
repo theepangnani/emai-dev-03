@@ -356,6 +356,8 @@ async def add_parent_hint(
     try:
         result = ile_service.add_parent_hint(db, session, body.hint_note)
     except ValueError as e:
+        if "Parent Teaching Mode" in str(e) or "parent_teaching" in str(e):
+            raise HTTPException(403, str(e))
         raise HTTPException(400, str(e))
 
     return ILEParentHintResponse(**result)
