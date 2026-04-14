@@ -40,8 +40,8 @@ export function ParentTeachingControls({
   // Reset when hint is cleared (new question)
   useEffect(() => {
     if (!currentHint && submitted) {
-      setSubmitted(false);
-      setHintText('');
+      setSubmitted(false); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on question change
+      setHintText(''); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [currentHint, submitted]);
 
