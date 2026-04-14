@@ -370,6 +370,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
+        { label: 'Flash Tutor', path: '/flash-tutor' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -385,6 +386,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
+        { label: 'Flash Tutor', path: '/flash-tutor' },
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
