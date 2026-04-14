@@ -358,7 +358,7 @@ export function FlashTutorPage() {
                     </button>
                   ))
                 ) : (
-                  <p className="ft-empty">No course topics found. You can enter a custom topic below.</p>
+                  <p className="ft-empty">{topicSearch ? 'No topics match your search.' : 'No course topics found. You can enter a custom topic below.'}</p>
                 )}
               </div>
               {totalFilteredCount > 5 && (
