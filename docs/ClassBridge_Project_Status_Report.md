@@ -160,7 +160,10 @@ Full codebase review resolving 22 issues:
 - Hardcoded colors → CSS variables, spacing tokens, border-radius standardization
 - Font type scale (rem)
 
-### 5.10 September 2026 Retention Bundle — All 5 Batches Complete (March 12-22)
+### 5.10 Interactive Learning Engine — Flash Tutor (CB-ILE-001, deployed April 14)
+AI-powered micro-learning engine with three modes (Learning, Testing, Parent Teaching), MCQ and Fill-in-the-Blank question formats, adaptive difficulty (easy/medium/challenging), SM-2 spaced repetition, and student calibration after 3 sessions. Gamification includes tiered XP (30/20/10/0), 4 ILE badges, streak integration, and Aha Moment confetti. Parent features: Parent Teaching Mode, private practice, Career Connect, Knowledge Decay notifications, ILE data in email digest. Question bank pre-generation + hint caching achieves 50-65% AI cost reduction. Anti-gaming: 10 sessions/day limit, rapid completion detection. Architecture: 7 backend services, 16 API endpoints, 10 frontend components, 5 DB tables, 12 tests.
+
+### 5.11 September 2026 Retention Bundle — All 5 Batches Complete (March 12-22)
 Entire retention bundle delivered 5 months ahead of schedule:
 - **Batch 0:** Schema foundation — is_master migration, source_type column, holiday_dates table (#2025, #2010, #2024)
 - **Batch 1:** XP core engine — XP model, earning service, streak engine, API routes (#2000-#2003)
@@ -168,7 +171,7 @@ Entire retention bundle delivered 5 months ahead of schedule:
 - **Batch 3:** Badges & brownie points — badge trigger service, brownie points, anti-gaming rules (#2004, #2005, #2009)
 - **Batch 4:** Assessment countdown, On Track signal, parent study request, multilingual summaries, Pomodoro, study timeline, end-of-term report card (#2011-#2021)
 
-### 5.11 Study Guide Strategy Pattern (March 12-14, §6.106)
+### 5.12 Study Guide Strategy Pattern (March 12-14, §6.106)
 - Document type auto-detection classifier service
 - Study guide prompt strategy service (exam_prep, homework, lecture_notes, etc.)
 - Ontario curriculum mapping service
@@ -176,54 +179,54 @@ Entire retention bundle delivered 5 months ahead of schedule:
 - DocumentTypeSelector and StudyGoalSelector components
 - Frontend and backend tests
 
-### 5.12 Material Hierarchy & Multi-Document Management (March 10-15, §6.98-§6.100)
+### 5.13 Material Hierarchy & Multi-Document Management (March 10-15, §6.98-§6.100)
 - Material hierarchy fields on CourseContent (parent/child relationships)
 - Linked materials panel, text selection context menu
 - Multi-document management — add files, reorder, delete sub-materials (#993)
 - Sub-study guide generation from text selection (#1594)
 - Study guide tree API and breadcrumb navigation
 
-### 5.13 Performance Optimization (March 9, §6.104)
+### 5.14 Performance Optimization (March 9, §6.104)
 - Comprehensive performance optimization across 14 issues (#1954-#1967)
 
-### 5.14 Digital Wallet & Credit System (March 10-12, §6.60)
+### 5.15 Digital Wallet & Credit System (March 10-12, §6.60)
 - Wallet models, schemas, service layer, API routes with Stripe checkout
 - CreditTopUpModal with Stripe Elements
 - Monthly credit refresh job, credit bridge into AI usage
 - WalletPage, PackageSelector, TransactionHistory components
 
-### 5.15 Chatbot Enhancements (March 9-22)
+### 5.16 Chatbot Enhancements (March 9-22)
 - Hybrid keyword + embedding intent classifier (#1711)
 - Global search integration into help chatbot (#1630)
 - Chatbot batch 4: streaming SSE, result limits, chat commands
 - Study Q&A chatbot — context-aware Q&A on study guide pages (§6.114)
 - Chatbot search parity: assignments, children entities
 
-### 5.16 School Report Card System (March 23-26, §6.121)
+### 5.17 School Report Card System (March 23-26, §6.121)
 - Complete system: upload, OCR extraction, AI analysis, routing, components, tests
 - Career path analysis, report date extraction, concurrent loading states
 
-### 5.17 Document Privacy & IP Protection (March 23, §6.119)
+### 5.18 Document Privacy & IP Protection (March 23, §6.119)
 - Trust-circle access control for materials
 - Material access audit logging
 - Frontend privacy indicators and access log tab
 
-### 5.18 Course Material Metadata & Popovers (March 25, §6.123)
+### 5.19 Course Material Metadata & Popovers (March 25, §6.123)
 - Clickable metadata popovers in all course material tabs
 
-### 5.19 Pre-Launch Survey System (March 11-15, §6.102)
+### 5.20 Pre-Launch Survey System (March 11-15, §6.102)
 - Survey models, public API, admin analytics with Recharts
 - Role-specific question sets, emoji likert scale
 - Bot protection on all public forms
 - Admin notification on survey completion
 
-### 5.20 Streaming Study Guide Generation (March 9-10, §6.115)
+### 5.21 Streaming Study Guide Generation (March 9-10, §6.115)
 - SSE streaming endpoint for study guide generation
 - Anthropic streaming API integration
 - useStudyGuideStream hook and SSE parser
 - StreamingMarkdown renderer component
 
-### 5.21 Other Notable Features (March 9-28)
+### 5.22 Other Notable Features (March 9-28)
 - User journey guide + proactive journey hints (§6.125, §6.126)
 - Video links enhancement — AI suggestions, YouTube live search (§6.57.2, §6.57.3)
 - Bug report with screenshot + GitHub issue creation
@@ -245,6 +248,7 @@ Entire retention bundle delivered 5 months ahead of schedule:
 
 | Feature | Epic/Issue | Status | Target |
 |---------|-----------|--------|--------|
+| ~~Interactive Learning Engine (Flash Tutor)~~ | CB-ILE-001 | **Complete** | **April 14, 2026** |
 | Production Bugs (credit leakage, 422, logging) | #2921-#2935 | **In Progress** | **Immediate** |
 | Parent Email Digest M2 (Core Engine) | #2648-#2653 | Planned | May 2026 |
 | Gmail OAuth Verification (CASA Tier 2) | #2800 | Planned | Jul-Sep 2026 |
@@ -322,6 +326,7 @@ Entire retention bundle delivered 5 months ahead of schedule:
 
 | Milestone | Target Date | Status |
 |-----------|------------|--------|
+| Interactive Learning Engine (Flash Tutor) | April 14, 2026 | **Complete** |
 | Full Launch | April 14, 2026 | On Track |
 | Mobile Responsive Completion (high-priority pages) | April 2026 | In Progress |
 | VASP/DTAP Phase 1 (MFA, data residency) | Q2 2026 | Planned |

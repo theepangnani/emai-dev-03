@@ -253,6 +253,46 @@ Document type classification and study goal selection to produce persona-based, 
 
 **Components:** `DocumentTypeSelector`, `StudyGoalSelector` (wired into `UploadWizardStep2`)
 
+### 3.10 Flash Tutor / Interactive Learning Engine (CB-ILE-001)
+**Status**: IMPLEMENTED | **Deployed**: April 14, 2026
+
+AI-powered micro-learning engine providing adaptive practice sessions across three modes.
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| Learning Mode | Hints, explanations, retry with tiered XP (30/20/10/0) | Implemented |
+| Testing Mode | Flat assessment, no hints, timed | Implemented |
+| Parent Teaching Mode | Personal hints, areas to revisit with child | Implemented |
+| MCQ Questions | 4-option multiple choice | Implemented |
+| Fill-in-the-Blank | Format escalation after 2 correct MCQ sessions | Implemented |
+| Adaptive difficulty | Easy/medium/challenging within-session progression | Implemented |
+| SM-2 spaced repetition | Optimized review scheduling based on performance | Implemented |
+| Student calibration | Automatic after 3 completed sessions | Implemented |
+| ILE Badges | Flash Learner, On Fire, Topic Master, Team Player | Implemented |
+| Aha Moment celebration | Confetti animation on breakthroughs | Implemented |
+| Career Connect | AI-generated career connections to topics | Implemented |
+| Private practice | Hidden scores for low-pressure practice | Implemented |
+| Knowledge Decay alerts | Parent notifications when topics need review | Implemented |
+| Question bank caching | Pre-generation + hint caching (50-65% AI cost reduction) | Implemented |
+| Anti-gaming | 10 sessions/day, rapid completion detection (<30s), 0 XP flags | Implemented |
+
+**User Stories:**
+- As a student, I want to practice topics in Learning Mode so I can get hints and explanations when I'm stuck
+- As a student, I want to test myself in Testing Mode so I can assess my knowledge without assistance
+- As a parent, I want to use Parent Teaching Mode so I can guide my child through difficult topics
+- As a parent, I want private practice mode so my child can practice without score pressure
+- As a parent, I want Knowledge Decay notifications so I know when my child should revisit a topic
+
+**Acceptance Criteria:**
+- Learning Mode provides progressive hints, explanations, and allows retry with decreasing XP per attempt
+- Testing Mode presents questions without hints and records flat assessment scores
+- Parent Teaching Mode shows parent-facing hints and identifies areas to revisit
+- MCQ sessions escalate to Fill-in-the-Blank after 2 consecutive correct sessions
+- SM-2 algorithm schedules review sessions based on individual performance
+- Anti-gaming rules prevent XP farming (10 sessions/day, rapid completion flagging)
+
+**Architecture:** 7 backend services, 16 API endpoints, 10 frontend components, 5 DB tables, 12 tests
+
 ---
 
 ## 4. Course & Content Management
@@ -1214,6 +1254,9 @@ Hybrid keyword + embedding intent classifier, global search integration, streami
 - GCS file storage migration complete (columns dropped)
 - Mobile responsiveness for 55+ CSS files
 - Simplified upload & progressive generation Phase 1-2 (§6.28.7)
+
+### 28.18 Interactive Learning Engine — Flash Tutor (CB-ILE-001, April 14, 2026) — IMPLEMENTED
+AI-powered micro-learning engine with three modes: Learning (hints, explanations, tiered XP), Testing (flat assessment), and Parent Teaching (guided practice with areas to revisit). MCQ and Fill-in-the-Blank question formats with adaptive difficulty (easy/medium/challenging). SM-2 spaced repetition, student calibration after 3 sessions, 4 ILE badges, Aha Moment confetti. Parent features include private practice, Career Connect, Knowledge Decay notifications, and ILE data in email digest. Question bank pre-generation with hint caching (50-65% AI cost reduction). Anti-gaming: 10 sessions/day, rapid completion detection. 7 services, 16 endpoints, 10 components, 5 tables, 12 tests.
 
 ## 29. Future Phases
 
