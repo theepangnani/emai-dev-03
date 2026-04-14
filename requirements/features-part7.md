@@ -1124,6 +1124,20 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - With question bank + hint caching (M2): ~$0.004-0.006 USD (50-65% reduction)
 - At 1,000 DAU: ~$200-300/month (optimized)
 
+#### UX Enhancements (April 14, 2026)
+
+- [x] Custom topic button with avatar — styled dashed-border card with TutorAvatar thinking mood (#3303, PR #3315)
+- [x] Show 5 recent topics with search — limit to 5 (weak areas first), search input, "Show all/less" toggle (#3304, PR #3315)
+- [x] Parent child filter — ChildSelectorTabs for parents with 2+ children, backend `student_id` param on GET /topics (#3305, PR #3317)
+- [ ] Streaming question generation — SSE endpoint for progressive question delivery with TutorAvatar thinking animation (#3306)
+
+#### UI Redesign (April 14, 2026)
+
+- [x] Theme alignment — replaced all non-existent CSS variables with ClassBridge design system (#3289, PR #3291)
+- [x] Visual enhancements — hero card with gradient border, TutorAvatar owl mascot, elevated cards with hover lift, gradient buttons, animated score circle, streak tiers (#3289, PR #3291)
+- [x] Shared keyframe extraction — ile-animations.css as single source of truth (#3299)
+- [x] Accessibility — reactive prefers-reduced-motion for SVG animations (#3298)
+
 #### Open Enhancement Issues
 - #3262-#3271: 10 code quality suggestions (LRU cache, dead code, edge cases)
 - #3272: Study guide integration (IMPLEMENTED)
