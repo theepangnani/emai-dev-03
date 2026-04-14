@@ -263,10 +263,13 @@ def get_from_bank(
     difficulty: str = "medium",
     count: int = 5,
     exclude_ids: list[int] | None = None,
+    question_format: str = "mcq",
 ) -> list[dict]:
     """Retrieve pre-generated questions from the bank.
 
     Returns list of question dicts (may be fewer than count).
+    Filters by question_format at the DB level so the composite index
+    (subject, topic, grade_level, difficulty, question_format) is used.
     """
     now = datetime.now(timezone.utc)
     query = (
@@ -276,6 +279,7 @@ def get_from_bank(
             ILEQuestionBank.topic == topic,
             ILEQuestionBank.grade_level == grade_level,
             ILEQuestionBank.difficulty == difficulty,
+            ILEQuestionBank.question_format == question_format,
             ILEQuestionBank.flagged == False,  # noqa: E712
             (ILEQuestionBank.expires_at > now) | (ILEQuestionBank.expires_at.is_(None)),
         )
@@ -341,10 +345,10 @@ async def get_from_bank_or_generate(
     question_format: str = "mcq",
 ) -> list[dict]:
     """Try bank first, fall back to on-demand generation."""
-    bank_questions = get_from_bank(db, subject, topic, grade_level, difficulty, count)
-
-    # Filter bank questions to matching format
-    bank_questions = [q for q in bank_questions if q.get("format", "mcq") == question_format]
+    bank_questions = get_from_bank(
+        db, subject, topic, grade_level, difficulty, count,
+        question_format=question_format,
+    )
 
     if len(bank_questions) >= count:
         logger.info("Served %d questions from bank for %s/%s", count, subject, topic)
