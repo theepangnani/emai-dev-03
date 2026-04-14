@@ -568,6 +568,38 @@ def get_delivery_log(
 # ---------------------------------------------------------------------------
 
 
+@router.post("/integrations/{integration_id}/send-digest")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def send_digest_now(
+    request: Request,
+    integration_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+) -> dict:
+    integration = _get_owned_integration(db, integration_id, current_user.id)
+    if not integration.is_active:
+        raise HTTPException(
+            status_code=400,
+            detail="Integration is not active — please reconnect Gmail",
+        )
+
+    digest_settings = (
+        db.query(ParentDigestSettings)
+        .filter(ParentDigestSettings.integration_id == integration_id)
+        .first()
+    )
+    if not digest_settings:
+        raise HTTPException(status_code=404, detail="Digest settings not found")
+
+    # Ensure digest_settings is loaded on the integration object
+    integration.digest_settings = digest_settings
+
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    result = await send_digest_for_integration(db, integration, skip_dedup=True)
+    return result
+
+
 @router.post("/integrations/{integration_id}/sync")
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def trigger_manual_sync(
