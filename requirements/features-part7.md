@@ -999,14 +999,14 @@ Report Cards, Analytics, and School Board Connectivity are not ready for all use
 
 ---
 
-### 6.134 Interactive Learning Engine — Flash Tutor (CB-ILE-001) - M0 IMPLEMENTED (2026-04-13)
+### 6.134 Interactive Learning Engine — Flash Tutor (CB-ILE-001) - ALL MILESTONES IMPLEMENTED (2026-04-14)
 
-AI-powered micro-learning engine replacing and extending the current quiz module. Features two quiz modes (Learning + Testing), adaptive difficulty, parent co-learning, and deep gamification integration. Sessions are 3-7 questions targeting 5-8 minutes.
+AI-powered micro-learning engine replacing and extending the current quiz module. Features three quiz modes (Learning + Testing + Parent Teaching), adaptive difficulty, fill-in-the-blank format escalation, SM-2 spaced repetition, parent co-learning with personal hints, career connections, and deep gamification integration. Sessions are 3-7 questions targeting 5-8 minutes.
 
 **PRD:** CB-ILE-001 v1.3
 **Epic:** #3196
-**Feature Branch:** `feat/cb-ile-001-m0-foundation` (PR #3224 → master, awaiting approval)
-**Review Fixes:** PR #3232 (merged)
+**Status:** All 5 milestones (M0-M4) implemented and deployed to production
+**Deployed:** April 14, 2026
 
 #### Design Pillars (priority order)
 1. **Microlearning Structure** — 3-7 questions, 5-8 minutes, one topic per session
@@ -1057,14 +1057,67 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - [x] 1 new badge: `ile_first_session` (Flash Learner)
 - [x] Streak integration via existing `streak_service`
 
-#### Remaining Milestones
+#### M1 Implementation (COMPLETED — April 14, 2026)
 
-**M1 — Learning Mode + Adaptive:** #3203, #3204, #3205
-**M2 — Topic Mastery + Cost Optimization:** #3206-#3211
-**M3 — Parent Teaching + Polish:** #3212-#3215
-**M4 — Hardening + Analytics:** #3216-#3217
+- [x] Learning Mode component extraction — HintBubble, ExplanationBubble, XpPopBadge, StreakCounter (#3203, PR #3248)
+- [x] Within-session adaptive difficulty engine — 2 consecutive first-attempt correct → increase, 2 multi-attempt → decrease (#3204, PR #3243)
+- [x] Session persistence + resume within 24h — startup expiry cleanup, resume banner with time remaining, Start Fresh option (#3205, PR #3246)
+
+#### M2 Implementation (COMPLETED — April 14, 2026)
+
+- [x] Topic mastery tracking + weak area detection — rolling avg attempts, auto-flag weak areas (#3206, PR #3245)
+- [x] Surprise Me — weighted topic selection (3x weak, 2x overdue, 1x normal) (#3207, PR #3254)
+- [x] Fill-in-the-Blank format + escalation — MCQ → fill_blank after 2 correct sessions, with de-escalation (#3208, PR #3253)
+- [x] Question bank pre-generation + hint caching — batch prefill, auto-save on-demand, admin endpoints (#3209, PR #3250)
+- [x] SM-2 spaced repetition + Memory Glow UI — easiness factor, review intervals, glow visualization (#3210, PR #3255)
+- [x] 4 new ILE badges + student calibration — On Fire, Topic Master, Team Player + auto-difficulty after 3 sessions (#3211, PR #3252)
+
+#### M3 Implementation (COMPLETED — April 14, 2026)
+
+- [x] Parent Teaching Mode full flow — personal hints, areas to revisit, dashboard entry point (#3212, PR #3276)
+- [x] Private Practice + Career Connect — hidden scores toggle, AI career connections post-session (#3213, PR #3277)
+- [x] ILE data in Parent Email Digest — daily + weekly digest sections with ILE activity (#3214, PR #3273)
+- [x] Aha Moment detection + Knowledge Decay — breakthrough celebration (CSS confetti), decay notifications (#3215, PR #3279)
+
+#### M4 Implementation (COMPLETED — April 14, 2026)
+
+- [x] Cost logging, anti-gaming, admin analytics — per-session cost, 10/day limit, rapid completion flagging, admin analytics endpoint (#3216, PR #3278)
+- [x] Performance optimization + quiz migration — response caching (60s TTL), bank format filter, Flash Tutor banner on quiz page, 12 ILE tests (#3217, PR #3274)
+- [x] Flash Tutor from study guides — context-grounded question generation, "Practice" button on study guide page (#3272, PR #3275)
+
+#### Post-Implementation Fixes (April 14, 2026)
+
+- [x] Sidebar navigation — added Flash Tutor to student + parent nav sections (#3286, PR #3288)
+- [x] API prefix — added missing `/api` prefix to all 15 ILE frontend endpoints (#3286, PR #3288)
+- [x] Parent hint storage — hints no longer dropped before first attempt (#3280)
+- [x] Mastery rollback — aha detection no longer rolls back committed mastery data (#3281)
+- [x] Cost estimation — handles Decimal return from `_calc_cost` (#3282)
+- [x] Fill-blank de-escalation — reverts to MCQ after 2 poor fill-blank sessions (#3284)
+- [x] CareerConnectCard error boundary — API failure no longer crashes results page (#3285)
+
+#### Architecture Summary
+
+**Backend (7 services, 16 API endpoints):**
+- `ile_service.py` (960+ lines) — session orchestrator with calibration, format escalation, rate limiting
+- `ile_question_service.py` — AI MCQ + fill-blank generation, bank lookup, format escalation
+- `ile_mastery_service.py` — mastery tracking, SM-2, glow intensity, aha detection
+- `ile_adaptive_service.py` — within-session difficulty adjustment
+- `ile_cost_optimizer.py` — bank pre-generation, hint caching, cleanup, stats
+- `ile_surprise_service.py` — weighted topic selection
+- `ile_digest_helper.py` — daily + weekly digest data helpers
+
+**Frontend (10 components):**
+- FlashTutorPage.tsx — launcher with resume, Surprise Me, mastery nodes, private practice
+- FlashTutorSessionPage.tsx — active session with MCQ, fill-blank, parent controls, career connect, aha celebration
+- HintBubble, ExplanationBubble, XpPopBadge, StreakCounter, FillBlankCard, MasteryNode, ParentTeachingControls, CareerConnectCard, AhaMomentCelebration
+
+**Database (5 tables):** ile_sessions, ile_question_attempts, ile_topic_mastery, ile_question_bank, ile_student_calibration
 
 #### Cost Model
 - Baseline per-session: ~$0.013 USD
 - With question bank + hint caching (M2): ~$0.004-0.006 USD (50-65% reduction)
 - At 1,000 DAU: ~$200-300/month (optimized)
+
+#### Open Enhancement Issues
+- #3262-#3271: 10 code quality suggestions (LRU cache, dead code, edge cases)
+- #3272: Study guide integration (IMPLEMENTED)
