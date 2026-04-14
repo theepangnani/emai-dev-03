@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
 import type { ILETopic, ILEMasteryEntry } from '../api/ile';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { MasteryNode } from '../components/ile/MasteryNode';
@@ -31,6 +32,7 @@ function formatTimeRemaining(expiresAt: string | null | undefined): string | nul
 export function FlashTutorPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Form state
   const [mode, setMode] = useState<Mode>('learning');
@@ -43,6 +45,7 @@ export function FlashTutorPage() {
   const [creating, setCreating] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPrivatePractice, setIsPrivatePractice] = useState(false);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
   const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
 
@@ -103,6 +106,7 @@ export function FlashTutorPage() {
         topic,
         question_count: questionCount,
         difficulty,
+        is_private_practice: isPrivatePractice,
         course_id: selectedTopic?.course_id ?? undefined,
       });
       navigate(`/flash-tutor/session/${session.id}`);
@@ -331,6 +335,20 @@ export function FlashTutorPage() {
               ))}
             </div>
           </div>
+          {user?.role === 'student' && (
+            <div className="ft-config-row">
+              <label htmlFor="ft-private-practice">Private Practice</label>
+              <label className="ft-checkbox-label">
+                <input
+                  id="ft-private-practice"
+                  type="checkbox"
+                  checked={isPrivatePractice}
+                  onChange={e => setIsPrivatePractice(e.target.checked)}
+                />
+                <span>Scores hidden from parents/teachers</span>
+              </label>
+            </div>
+          )}
         </div>
 
         {error && <div className="ft-error">{error}</div>}

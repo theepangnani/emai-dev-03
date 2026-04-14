@@ -143,6 +143,11 @@ export interface ILEMasteryMap {
   weak_topics: number;
 }
 
+export interface ILECareerConnect {
+  career: string;
+  connection: string;
+}
+
 export interface ILESessionCreate {
   mode: 'learning' | 'testing' | 'parent_teaching';
   subject: string;
@@ -205,4 +210,8 @@ export const ileApi = {
 
   getSurpriseMe: () =>
     api.get<{ topic: ILETopic; reason: string }>('/ile/topics/surprise-me').then(r => r.data),
+
+  // Career Connect
+  getCareerConnect: (sessionId: number) =>
+    api.get<ILECareerConnect>(`/ile/sessions/${sessionId}/career-connect`).then(r => r.data),
 };

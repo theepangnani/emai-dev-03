@@ -14,6 +14,7 @@ import { ExplanationBubble } from '../components/ile/ExplanationBubble';
 import { XpPopBadge } from '../components/ile/XpPopBadge';
 import { StreakCounter } from '../components/ile/StreakCounter';
 import { FillBlankCard } from '../components/ile/FillBlankCard';
+import { CareerConnectCard } from '../components/ile/CareerConnectCard';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -257,6 +258,8 @@ export function FlashTutorSessionPage() {
               </div>
               <div className="fts-xp-earned">+{results.total_xp} XP</div>
             </div>
+
+            <CareerConnectCard sessionId={results.session_id} topic={results.topic} />
 
             <div className="fts-results-breakdown">
               <h2>Question Breakdown</h2>

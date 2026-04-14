@@ -445,3 +445,53 @@
     padding: 10px 12px;
   }
 }
+
+/* Career Connect Card — M3 */
+.fts-career-connect {
+  position: relative;
+  background: var(--surface-secondary, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  padding: 16px 36px 16px 16px;
+  margin-bottom: 16px;
+}
+
+.fts-career-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--text-tertiary, #94a3b8);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.fts-career-dismiss:hover {
+  color: var(--text-primary);
+}
+
+.fts-career-loading {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+.fts-career-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-primary, #6366f1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 4px;
+}
+
+.fts-career-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  margin: 0;
+  line-height: 1.5;
+}

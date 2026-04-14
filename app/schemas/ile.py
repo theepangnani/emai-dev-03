@@ -152,6 +152,13 @@ class ILESessionResults(BaseModel):
     suggested_next_topic: str | None = None
 
 
+# --- Career Connect ---
+
+class ILECareerConnect(BaseModel):
+    career: str
+    connection: str
+
+
 # --- Topics ---
 
 class ILETopic(BaseModel):
