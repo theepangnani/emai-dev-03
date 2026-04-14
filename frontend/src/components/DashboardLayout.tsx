@@ -226,6 +226,11 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="18" x2="11" y2="18"/>
     </svg>
   ),
+  'Flash Tutor': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
   Features: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
