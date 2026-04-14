@@ -11,6 +11,7 @@ import { ileApi } from '../api/ile';
 import type { ILETopic, ILEMasteryEntry } from '../api/ile';
 import { parentApi } from '../api/parent';
 import { useAuth } from '../context/AuthContext';
+import { useFlashTutorStream } from '../hooks/useFlashTutorStream';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
@@ -40,6 +41,7 @@ export function FlashTutorPage() {
   const { user } = useAuth();
   const contentIdParam = searchParams.get('content_id');
   const autoStartRef = useRef(false);
+  const stream = useFlashTutorStream();
 
   // Parent Teaching Mode query params (#3212)
   const queryMode = searchParams.get('mode');
@@ -145,6 +147,14 @@ export function FlashTutorPage() {
       .finally(() => setCreating(false));
   }, [contentIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Navigate when streaming session creation completes
+  useEffect(() => {
+    if (stream.status === 'done' && stream.sessionId) {
+      navigate(`/flash-tutor/session/${stream.sessionId}`);
+      stream.reset();
+    }
+  }, [stream.status, stream.sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleStartFresh = async () => {
     if (!activeSession || abandoning) return;
     setAbandoning(true);
@@ -159,7 +169,7 @@ export function FlashTutorPage() {
     }
   };
 
-  const handleStart = async () => {
+  const handleStart = () => {
     const subject = useCustom ? customSubject : selectedTopic?.subject;
     const topic = useCustom ? customTopic : selectedTopic?.topic;
 
@@ -168,28 +178,18 @@ export function FlashTutorPage() {
       return;
     }
 
-    setCreating(true);
     setError(null);
-
-    try {
-      const session = await ileApi.createSession({
-        mode,
-        subject,
-        topic,
-        question_count: questionCount,
-        difficulty,
-        is_private_practice: isPrivatePractice,
-        course_id: selectedTopic?.course_id ?? undefined,
-        timer_enabled: mode === 'parent_teaching' ? false : undefined,
-        child_student_id: mode === 'parent_teaching' && queryChildId ? parseInt(queryChildId) : undefined,
-      });
-      navigate(`/flash-tutor/session/${session.id}`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create session';
-      setError(msg);
-    } finally {
-      setCreating(false);
-    }
+    stream.startStream({
+      mode,
+      subject,
+      topic,
+      question_count: questionCount,
+      difficulty,
+      is_private_practice: isPrivatePractice,
+      course_id: selectedTopic?.course_id ?? undefined,
+      timer_enabled: mode === 'parent_teaching' ? false : undefined,
+      child_student_id: mode === 'parent_teaching' && queryChildId ? parseInt(queryChildId) : undefined,
+    });
   };
 
   const handleSurpriseMe = async () => {
@@ -482,15 +482,28 @@ export function FlashTutorPage() {
           )}
         </div>
 
+        {stream.status === 'error' && <div className="ft-error">{stream.error}</div>}
         {error && <div className="ft-error">{error}</div>}
 
-        <button
-          className="ft-btn ft-btn-start"
-          onClick={handleStart}
-          disabled={creating || (!selectedTopic && !useCustom) || (useCustom && (!customSubject || !customTopic))}
-        >
-          {creating ? 'Generating questions...' : 'Start Session'}
-        </button>
+        {stream.status === 'streaming' ? (
+          <div className="ft-generating">
+            <TutorAvatar size={48} mood="thinking" />
+            <div className="ft-generating-text">
+              <span className="ft-generating-title">Generating questions...</span>
+              <span className="ft-generating-progress">
+                Question {stream.questionsReady} of {stream.totalQuestions || '...'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="ft-btn ft-btn-start"
+            onClick={handleStart}
+            disabled={stream.status === 'connecting' || creating || (!selectedTopic && !useCustom) || (useCustom && (!customSubject || !customTopic))}
+          >
+            {stream.status === 'connecting' ? 'Connecting...' : creating ? 'Generating questions...' : 'Start Session'}
+          </button>
+        )}
       </div>
     </DashboardLayout>
   );

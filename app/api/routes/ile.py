@@ -1,10 +1,14 @@
 """Interactive Learning Engine (Flash Tutor) API routes — CB-ILE-001."""
+import asyncio
+import json
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from starlette.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role
+from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.user import User, UserRole
@@ -32,12 +36,16 @@ from app.schemas.ile import (
     ILETopicList,
     ILETopTopic,
 )
+from app.models.ile_session import ILESession
 from app.models.ile_topic_mastery import ILETopicMastery
 from app.services import ile_service
 from app.services import ile_mastery_service
+from app.services import ile_question_service
 from app.services.ile_mastery_service import compute_glow_intensity
 from app.services import ile_cost_optimizer
 from app.services import ile_surprise_service
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
 
@@ -92,10 +100,19 @@ def _cache_invalidate_user(user_id: int) -> None:
 async def create_session(
     request: Request,
     body: ILESessionCreate,
+    stream: bool = Query(False, description="Return SSE stream with progress events"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new Flash Tutor session."""
+    """Create a new Flash Tutor session.
+
+    When ``stream=true``, returns an SSE ``text/event-stream`` with events:
+
+    * ``start`` — ``{session_id, question_count}``
+    * ``question`` — ``{index, total}`` (emitted per question)
+    * ``done`` — ``{session_id}``
+    * ``error`` — ``{message}`` (on failure)
+    """
     student_id = current_user.id
     parent_id = None
 
@@ -125,28 +142,189 @@ async def create_session(
         student_id = body.child_student_id
         parent_id = current_user.id
 
-    try:
-        session = await ile_service.create_session(
-            db=db,
-            student_id=student_id,
-            mode=body.mode,
-            subject=body.subject,
-            topic=body.topic,
-            question_count=body.question_count,
-            difficulty=body.difficulty,
-            blooms_tier=body.blooms_tier,
-            grade_level=body.grade_level,
-            timer_enabled=body.timer_enabled,
-            timer_seconds=body.timer_seconds,
-            is_private_practice=body.is_private_practice,
-            course_id=body.course_id,
-            course_content_id=body.course_content_id,
-            parent_id=parent_id,
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    # --- Non-streaming path (default) — unchanged behaviour ----------------
+    if not stream:
+        try:
+            session = await ile_service.create_session(
+                db=db,
+                student_id=student_id,
+                mode=body.mode,
+                subject=body.subject,
+                topic=body.topic,
+                question_count=body.question_count,
+                difficulty=body.difficulty,
+                blooms_tier=body.blooms_tier,
+                grade_level=body.grade_level,
+                timer_enabled=body.timer_enabled,
+                timer_seconds=body.timer_seconds,
+                is_private_practice=body.is_private_practice,
+                course_id=body.course_id,
+                course_content_id=body.course_content_id,
+                parent_id=parent_id,
+            )
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
-    return session
+        return session
+
+    # --- Streaming path (stream=true) — SSE progress events ----------------
+    from datetime import datetime, timedelta, timezone
+    from app.services.ile_service import (
+        MAX_SESSIONS_PER_DAY, SESSION_EXPIRY_HOURS,
+        _utc_now_comparable,
+    )
+    from app.services.ile_adaptive_service import get_recommended_difficulty
+    from app.services.ile_service import _fetch_context_text
+    from sqlalchemy import func as sa_func
+
+    # --- Inline validation (mirrors ile_service.create_session) ---
+
+    VALID_DIFFICULTIES = {"easy", "medium", "challenging"}
+    VALID_BLOOMS = {"recall", "understand", "apply"}
+
+    difficulty = body.difficulty or "medium"
+    blooms_tier = body.blooms_tier or "recall"
+
+    if difficulty not in VALID_DIFFICULTIES:
+        raise HTTPException(400, f"Invalid difficulty: {difficulty}. Must be one of {VALID_DIFFICULTIES}")
+    if blooms_tier not in VALID_BLOOMS:
+        raise HTTPException(400, f"Invalid blooms_tier: {blooms_tier}. Must be one of {VALID_BLOOMS}")
+
+    # Check for existing active session
+    active = (
+        db.query(ILESession)
+        .filter(ILESession.student_id == student_id, ILESession.status == "in_progress")
+        .first()
+    )
+    if active:
+        now_cmp = _utc_now_comparable(active.expires_at)
+        if active.expires_at and active.expires_at < now_cmp:
+            active.status = "expired"
+            db.commit()
+        else:
+            raise HTTPException(
+                400,
+                f"Active session {active.id} already exists. Complete or abandon it first.",
+            )
+
+    # Daily limit
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    sessions_today = (
+        db.query(sa_func.count(ILESession.id))
+        .filter(ILESession.student_id == student_id, ILESession.created_at >= today_start)
+        .scalar()
+    )
+    if sessions_today >= MAX_SESSIONS_PER_DAY:
+        raise HTTPException(
+            400,
+            f"Daily session limit reached ({MAX_SESSIONS_PER_DAY} sessions per day). Please try again tomorrow.",
+        )
+
+    # Calibrated difficulty
+    effective_difficulty = difficulty
+    if effective_difficulty == "medium":
+        try:
+            recommended = get_recommended_difficulty(db, student_id, body.subject, body.topic)
+            if recommended:
+                effective_difficulty = recommended
+        except Exception:
+            pass
+
+    # Format escalation
+    question_format = ile_question_service.check_format_escalation(
+        db, student_id, body.subject, body.topic,
+    )
+
+    # Context text
+    context_text = None
+    if body.course_content_id:
+        context_text = _fetch_context_text(db, body.course_content_id)
+
+    question_count = body.question_count or 5
+    grade_level = body.grade_level or 8
+
+    # Create session record with empty questions (in_progress)
+    now = datetime.now(timezone.utc)
+    session = ILESession(
+        student_id=student_id,
+        parent_id=parent_id,
+        mode=body.mode,
+        subject=body.subject,
+        topic=body.topic,
+        grade_level=body.grade_level,
+        question_count=question_count,
+        difficulty=effective_difficulty,
+        blooms_tier=blooms_tier,
+        timer_enabled=body.timer_enabled,
+        timer_seconds=body.timer_seconds,
+        is_private_practice=body.is_private_practice,
+        status="in_progress",
+        current_question_index=0,
+        questions_json="[]",
+        course_id=body.course_id,
+        course_content_id=body.course_content_id,
+        started_at=now,
+        expires_at=now + timedelta(hours=SESSION_EXPIRY_HOURS),
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    session_id = session.id
+
+    # Capture generation params before closing DB
+    gen_params = {
+        "subject": body.subject,
+        "topic": body.topic,
+        "difficulty": effective_difficulty,
+        "question_count": question_count,
+        "grade_level": grade_level,
+        "format_type": question_format,
+        "blooms_tier": blooms_tier,
+        "context_text": context_text,
+    }
+
+    db.close()
+
+    async def event_stream():
+        yield f"event: start\ndata: {json.dumps({'session_id': session_id, 'question_count': gen_params['question_count']})}\n\n"
+
+        try:
+            from app.db.database import SessionLocal
+            gen_db = SessionLocal()
+            try:
+                questions = await ile_question_service.get_from_bank_or_generate(
+                    db=gen_db,
+                    subject=gen_params["subject"],
+                    topic=gen_params["topic"],
+                    grade_level=gen_params["grade_level"],
+                    difficulty=gen_params["difficulty"],
+                    blooms_tier=gen_params["blooms_tier"],
+                    count=gen_params["question_count"],
+                    question_format=gen_params["format_type"],
+                    context_text=gen_params.get("context_text"),
+                )
+
+                for i, _q in enumerate(questions):
+                    yield f"event: question\ndata: {json.dumps({'index': i, 'total': len(questions)})}\n\n"
+
+                # Save questions to session
+                sess = gen_db.query(ILESession).get(session_id)
+                if sess:
+                    sess.questions_json = json.dumps([
+                        {k: v for k, v in q.items() if not k.startswith("_")}
+                        for q in questions
+                    ])
+                    sess.question_count = len(questions)
+                    gen_db.commit()
+
+                yield f"event: done\ndata: {json.dumps({'session_id': session_id})}\n\n"
+            finally:
+                gen_db.close()
+        except Exception as e:
+            logger.error("Streaming question generation failed: %s: %s", type(e).__name__, e)
+            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/sessions/from-study-guide", response_model=ILESessionResponse, status_code=status.HTTP_201_CREATED)
