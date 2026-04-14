@@ -4,8 +4,8 @@
  * Entry point for the Interactive Learning Engine.
  * Students/parents select subject, topic, mode, and configuration.
  */
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
 import type { ILETopic, ILEMasteryEntry } from '../api/ile';
@@ -31,6 +31,9 @@ function formatTimeRemaining(expiresAt: string | null | undefined): string | nul
 export function FlashTutorPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const contentIdParam = searchParams.get('content_id');
+  const autoStartRef = useRef(false);
 
   // Form state
   const [mode, setMode] = useState<Mode>('learning');
@@ -69,6 +72,24 @@ export function FlashTutorPage() {
     queryFn: () => ileApi.getMasteryMap(),
     retry: false,
   });
+
+  // Auto-start session when content_id query param is provided (#3272)
+  useEffect(() => {
+    if (!contentIdParam || autoStartRef.current || activeSession) return;
+    autoStartRef.current = true;
+    setCreating(true);
+    setError(null);
+    ileApi.createSessionFromStudyGuide({
+      course_content_id: parseInt(contentIdParam, 10),
+      mode: 'learning',
+    })
+      .then(session => navigate(`/flash-tutor/session/${session.id}`, { replace: true }))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Failed to create session from content';
+        setError(msg);
+      })
+      .finally(() => setCreating(false));
+  }, [contentIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStartFresh = async () => {
     if (!activeSession || abandoning) return;

@@ -103,6 +103,11 @@ async def create_session(
         db, student_id, subject, topic,
     )
 
+    # Fetch study guide / course content text for context-grounded generation
+    context_text = None
+    if course_content_id:
+        context_text = _fetch_context_text(db, course_content_id)
+
     # Generate questions
     questions = await ile_question_service.get_from_bank_or_generate(
         db=db,
@@ -113,6 +118,7 @@ async def create_session(
         blooms_tier=blooms_tier,
         count=question_count,
         question_format=question_format,
+        context_text=context_text,
     )
 
     now = datetime.now(timezone.utc)
@@ -818,4 +824,30 @@ def _session_duration_seconds(session: ILESession) -> int | None:
     if session.started_at and session.completed_at:
         delta = session.completed_at - session.started_at
         return int(delta.total_seconds())
+    return None
+
+
+def _fetch_context_text(db: Session, course_content_id: int) -> str | None:
+    """Fetch text content from a course content or its study guide.
+
+    Tries course_content.text_content first, falls back to the latest
+    study guide for that content. Truncates to 2000 chars.
+    """
+    from app.models.course_content import CourseContent
+    from app.models.study_guide import StudyGuide
+
+    cc = db.query(CourseContent).filter(CourseContent.id == course_content_id).first()
+    if cc and cc.text_content:
+        return cc.text_content[:2000]
+
+    # Fallback: latest study guide linked to this content
+    sg = (
+        db.query(StudyGuide)
+        .filter(StudyGuide.course_content_id == course_content_id)
+        .order_by(StudyGuide.created_at.desc())
+        .first()
+    )
+    if sg and sg.content:
+        return sg.content[:2000]
+
     return None

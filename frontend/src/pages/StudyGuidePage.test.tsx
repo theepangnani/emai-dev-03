@@ -47,6 +47,12 @@ vi.mock('../components/CourseAssignSelect', () => ({
   CourseAssignSelect: () => <div data-testid="course-assign-select" />,
 }))
 
+vi.mock('../api/ile', () => ({
+  ileApi: {
+    createSessionFromStudyGuide: vi.fn().mockResolvedValue({ id: 100 }),
+  },
+}))
+
 vi.mock('../components/CreateTaskModal', () => ({
   CreateTaskModal: ({ open }: { open: boolean }) =>
     open ? <div data-testid="create-task-modal">Task Modal</div> : null,
