@@ -36,6 +36,15 @@ export function QuizPage() {
   const toggleNotes = useCallback(() => setNotesOpen(v => !v), []);
   useRegisterNotesFAB(guide?.course_content_id ? { courseContentId: guide.course_content_id, isOpen: notesOpen, onToggle: toggleNotes } : null);
 
+  // Flash Tutor migration banner (#3217)
+  const [flashBannerDismissed, setFlashBannerDismissed] = useState(() =>
+    localStorage.getItem('flash_tutor_banner_dismissed') === 'true'
+  );
+  const dismissFlashBanner = useCallback(() => {
+    setFlashBannerDismissed(true);
+    localStorage.setItem('flash_tutor_banner_dismissed', 'true');
+  }, []);
+
   useEffect(() => {
     const fetchQuiz = async () => {
       if (!id) return;
@@ -217,6 +226,13 @@ export function QuizPage() {
           ))}
         </div>
       </div>
+
+      {!flashBannerDismissed && (
+        <div className="flash-tutor-banner">
+          <span>Try <Link to="/flash-tutor"><strong>Flash Tutor</strong></Link> — adaptive AI tutoring with hints and explanations</span>
+          <button className="flash-tutor-banner-dismiss" onClick={dismissFlashBanner} aria-label="Dismiss">&times;</button>
+        </div>
+      )}
 
       {!isQuizComplete ? (
         <div className="quiz-content">

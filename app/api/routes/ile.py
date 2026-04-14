@@ -1,4 +1,6 @@
 """Interactive Learning Engine (Flash Tutor) API routes — CB-ILE-001."""
+import time
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
@@ -38,6 +40,47 @@ from app.services import ile_cost_optimizer
 from app.services import ile_surprise_service
 
 router = APIRouter(prefix="/ile", tags=["Interactive Learning Engine"])
+
+# ---------------------------------------------------------------------------
+# Simple in-memory TTL cache for mastery/topic data (#3217)
+# ---------------------------------------------------------------------------
+
+_CACHE_TTL = 60  # seconds
+_cache: dict[str, tuple[float, object]] = {}
+
+
+def _cache_get(key: str) -> object | None:
+    """Return cached value if still fresh, else None."""
+    entry = _cache.get(key)
+    if entry and time.monotonic() - entry[0] < _CACHE_TTL:
+        return entry[1]
+    return None
+
+
+_CACHE_MAX_SIZE = 1000
+
+
+def _cache_set(key: str, value: object) -> None:
+    # Lazy eviction: purge expired entries when cache grows too large
+    if len(_cache) >= _CACHE_MAX_SIZE:
+        now = time.monotonic()
+        expired = [k for k, (t, _) in _cache.items() if now - t >= _CACHE_TTL]
+        for k in expired:
+            del _cache[k]
+        # If still too large, drop oldest entries
+        if len(_cache) >= _CACHE_MAX_SIZE:
+            oldest = sorted(_cache, key=lambda k: _cache[k][0])[:len(_cache) // 2]
+            for k in oldest:
+                del _cache[k]
+    _cache[key] = (time.monotonic(), value)
+
+
+def _cache_invalidate_user(user_id: int) -> None:
+    """Invalidate all cache entries for a specific user."""
+    prefix = f"mastery:{user_id}:"
+    keys = [k for k in _cache if k.startswith(prefix) or k == f"topics:{user_id}"]
+    for k in keys:
+        _cache.pop(k, None)
 
 
 # ---------------------------------------------------------------------------
@@ -343,6 +386,9 @@ async def complete_session(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+    # Invalidate mastery/topic cache after session completion (#3217)
+    _cache_invalidate_user(current_user.id)
+
     return ILESessionResults(**results)
 
 
@@ -406,9 +452,16 @@ async def get_topics(
     current_user: User = Depends(get_current_user),
 ):
     """List available topics from student's courses."""
+    cache_key = f"topics:{current_user.id}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     topics_data = ile_service.get_available_topics(db, current_user.id)
     topics = [ILETopic(**t) for t in topics_data]
-    return ILETopicList(topics=topics)
+    result = ILETopicList(topics=topics)
+    _cache_set(cache_key, result)
+    return result
 
 
 @router.get("/topics/surprise-me", response_model=ILESurpriseMe)
@@ -441,6 +494,11 @@ async def get_mastery_map(
     current_user: User = Depends(get_current_user),
 ):
     """Get the student's mastery map with glow intensities."""
+    cache_key = f"mastery:{current_user.id}:map"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     entries = (
         db.query(ILETopicMastery)
         .filter(ILETopicMastery.student_id == current_user.id)
@@ -470,13 +528,15 @@ async def get_mastery_map(
         elif (e.last_score_pct or 0) >= 80:
             mastered_count += 1
 
-    return ILEMasteryMap(
+    result = ILEMasteryMap(
         student_id=current_user.id,
         entries=mastery_entries,
         total_topics=len(entries),
         mastered_topics=mastered_count,
         weak_topics=weak_count,
     )
+    _cache_set(cache_key, result)
+    return result
 
 
 @router.get("/mastery/weak-areas", response_model=list[ILEMasteryEntry])

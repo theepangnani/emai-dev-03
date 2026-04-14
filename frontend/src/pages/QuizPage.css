@@ -472,6 +472,42 @@
   }
 }
 
+/* ── Flash Tutor Banner (#3217) ──────────── */
+
+.flash-tutor-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 1rem;
+  background: var(--color-accent-light, #e8f5f6);
+  border: 1px solid var(--color-accent, #2a9fa8);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+}
+
+.flash-tutor-banner a {
+  color: var(--color-accent-strong, #1b7a82);
+  text-decoration: underline;
+}
+
+.flash-tutor-banner-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.flash-tutor-banner-dismiss:hover {
+  color: var(--color-ink);
+}
+
 /* ── Dark Mode ───────────────────────────── */
 
 [data-theme="dark"] .option:hover:not(:disabled) {
