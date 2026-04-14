@@ -45,6 +45,8 @@ class ILESession(Base):
     course_content_id = Column(
         Integer, ForeignKey("course_contents.id", ondelete="SET NULL"), nullable=True
     )
+    ai_cost_estimate = Column(Float, nullable=True)
+    flagged_reason = Column(String(200), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

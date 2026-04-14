@@ -2357,6 +2357,22 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("Monitored emails data migration skipped: %s", e)
 
+    # --- ILE Sessions: ai_cost_estimate and flagged_reason columns (#3216) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "ile_sessions" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("ile_sessions")}
+                if "ai_cost_estimate" not in existing_cols:
+                    conn.execute(text("ALTER TABLE ile_sessions ADD COLUMN ai_cost_estimate DOUBLE PRECISION"))
+                    logger.info("Added 'ai_cost_estimate' column to ile_sessions (#3216)")
+                if "flagged_reason" not in existing_cols:
+                    conn.execute(text("ALTER TABLE ile_sessions ADD COLUMN flagged_reason VARCHAR(200)"))
+                    logger.info("Added 'flagged_reason' column to ile_sessions (#3216)")
+                conn.commit()
+    except Exception as e:
+        logger.debug("ILE cost/flagging migration skipped: %s", e)
+
     # --- Expire stale ILE sessions (>24h old, still in_progress) (#3205) ---
     try:
         with engine.connect() as conn:
