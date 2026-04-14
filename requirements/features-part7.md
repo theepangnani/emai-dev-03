@@ -1129,7 +1129,7 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - [x] Custom topic button with avatar — styled dashed-border card with TutorAvatar thinking mood (#3303, PR #3315)
 - [x] Show 5 recent topics with search — limit to 5 (weak areas first), search input, "Show all/less" toggle (#3304, PR #3315)
 - [x] Parent child filter — ChildSelectorTabs for parents with 2+ children, backend `student_id` param on GET /topics (#3305, PR #3317)
-- [ ] Streaming question generation — SSE endpoint for progressive question delivery with TutorAvatar thinking animation (#3306)
+- [x] Streaming question generation — SSE endpoint POST /sessions?stream=true, useFlashTutorStream hook, TutorAvatar progress UI (#3306, PR #3321) — SSE endpoint for progressive question delivery with TutorAvatar thinking animation (#3306)
 
 #### UI Redesign (April 14, 2026)
 
