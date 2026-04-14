@@ -51,6 +51,7 @@ export function FlashTutorPage() {
   const [creating, setCreating] = useState(false);
   const [abandoning, setAbandoning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPrivatePractice, setIsPrivatePractice] = useState(false);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
   const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
 
@@ -111,6 +112,7 @@ export function FlashTutorPage() {
         topic,
         question_count: questionCount,
         difficulty,
+        is_private_practice: isPrivatePractice,
         course_id: selectedTopic?.course_id ?? undefined,
         timer_enabled: mode === 'parent_teaching' ? false : undefined,
         child_student_id: mode === 'parent_teaching' && queryChildId ? parseInt(queryChildId) : undefined,
@@ -351,6 +353,20 @@ export function FlashTutorPage() {
               ))}
             </div>
           </div>
+          {user?.role === 'student' && (
+            <div className="ft-config-row">
+              <label htmlFor="ft-private-practice">Private Practice</label>
+              <label className="ft-checkbox-label">
+                <input
+                  id="ft-private-practice"
+                  type="checkbox"
+                  checked={isPrivatePractice}
+                  onChange={e => setIsPrivatePractice(e.target.checked)}
+                />
+                <span>Scores hidden from parents/teachers</span>
+              </label>
+            </div>
+          )}
         </div>
 
         {error && <div className="ft-error">{error}</div>}

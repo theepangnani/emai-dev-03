@@ -10,6 +10,7 @@ from app.models.student import Student, parent_students
 from app.schemas.ile import (
     ILEAnswerFeedback,
     ILEAnswerSubmit,
+    ILECareerConnect,
     ILECurrentQuestion,
     ILEMasteryEntry,
     ILEMasteryMap,
@@ -444,11 +445,44 @@ async def get_weak_areas(
 async def get_session_history(
     request: Request,
     limit: int = 20,
+    student_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get recent session history."""
-    sessions = ile_service.get_session_history(db, current_user.id, limit)
+    """Get recent session history.
+
+    Parents can pass ``student_id`` to view a child's sessions; private
+    practice sessions are automatically excluded from parent views.
+    """
+    target_id = current_user.id
+    exclude_private = False
+
+    if student_id and student_id != current_user.id:
+        # Parent viewing child's sessions — verify relationship
+        if not current_user.has_role(UserRole.PARENT):
+            raise HTTPException(403, "Only parents can view another student's sessions")
+        child_student_ids = [
+            r[0] for r in
+            db.query(parent_students.c.student_id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        child = (
+            db.query(Student)
+            .filter(
+                Student.user_id == student_id,
+                Student.id.in_(child_student_ids),
+            )
+            .first()
+        )
+        if not child:
+            raise HTTPException(403, "Child not linked to this parent")
+        target_id = student_id
+        exclude_private = True
+
+    sessions = ile_service.get_session_history(
+        db, target_id, limit, exclude_private=exclude_private,
+    )
     return [
         ILESessionSummary(
             id=s.id,
@@ -465,6 +499,28 @@ async def get_session_history(
         )
         for s in sessions
     ]
+
+
+# ---------------------------------------------------------------------------
+# Career Connect
+# ---------------------------------------------------------------------------
+
+@router.get("/sessions/{session_id}/career-connect", response_model=ILECareerConnect)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def get_career_connect(
+    request: Request,
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a career connection for a completed session."""
+    try:
+        result = await ile_service.get_career_connect(db, session_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError:
+        raise HTTPException(403, "Not authorized")
+    return ILECareerConnect(**result)
 
 
 # ---------------------------------------------------------------------------

@@ -163,6 +163,13 @@ class ILESessionResults(BaseModel):
     areas_to_revisit: list[ILEAreaToRevisit] = []
 
 
+# --- Career Connect ---
+
+class ILECareerConnect(BaseModel):
+    career: str
+    connection: str
+
+
 # --- Topics ---
 
 class ILETopic(BaseModel):

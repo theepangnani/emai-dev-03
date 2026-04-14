@@ -609,12 +609,22 @@ def abandon_session(db: Session, session: ILESession) -> None:
 
 
 def get_session_history(
-    db: Session, student_id: int, limit: int = 20
+    db: Session, student_id: int, limit: int = 20,
+    exclude_private: bool = False,
 ) -> list[ILESession]:
-    """Get recent sessions for a student."""
-    return (
+    """Get recent sessions for a student.
+
+    When *exclude_private* is True, sessions with is_private_practice=True
+    are filtered out (used for parent/teacher views).
+    """
+    query = (
         db.query(ILESession)
         .filter(ILESession.student_id == student_id)
+    )
+    if exclude_private:
+        query = query.filter(ILESession.is_private_practice == False)  # noqa: E712
+    return (
+        query
         .order_by(ILESession.created_at.desc())
         .limit(limit)
         .all()
@@ -868,3 +878,75 @@ def _session_duration_seconds(session: ILESession) -> int | None:
         delta = session.completed_at - session.started_at
         return int(delta.total_seconds())
     return None
+
+
+# ---------------------------------------------------------------------------
+# Career Connect
+# ---------------------------------------------------------------------------
+
+# In-memory cache keyed by session ID to avoid re-generating (bounded)
+_CAREER_CACHE_MAX = 500
+_career_connect_cache: dict[int, dict] = {}
+
+
+async def get_career_connect(db: Session, session_id: int, user_id: int) -> dict:
+    """Generate a career connection for a completed session.
+
+    Returns { career: str, connection: str }.
+    Caches results in memory to avoid re-generation.
+    """
+    # Check cache first
+    if session_id in _career_connect_cache:
+        return _career_connect_cache[session_id]
+
+    session = get_session(db, session_id, user_id)
+    if session.status not in ("completed", "abandoned"):
+        raise ValueError("Session is not completed")
+
+    topic = session.topic
+    subject = session.subject
+    grade = session.grade_level or 8
+
+    from app.services.ai_service import generate_content
+
+    prompt = (
+        f"Connect the topic '{topic}' (subject: {subject}) to a real career. "
+        f"The student is in grade {grade}. "
+        "Respond in exactly this JSON format: "
+        '{"career": "<career name>", "connection": "<1-2 sentence explanation>"}\n'
+        "Example: "
+        '{"career": "Data Scientist", "connection": "Data scientists use statistics '
+        'every day to find patterns in large datasets and make predictions."}\n'
+        "Keep it grade-appropriate, inspiring, and concise."
+    )
+
+    try:
+        content, _model = await generate_content(
+            prompt=prompt,
+            system_prompt="You are a career counselor for students. Respond only with valid JSON.",
+            max_tokens=200,
+            temperature=0.8,
+        )
+        # Parse JSON from response
+        import re as _re
+        # Extract JSON object from response (may be wrapped in markdown)
+        match = _re.search(r'\{[^}]*"career"[^}]*\}', content)
+        if match:
+            result = json.loads(match.group())
+            career = result.get("career", "")
+            connection = result.get("connection", "")
+        else:
+            raise ValueError("No JSON found in AI response")
+    except Exception:
+        logger.warning("Career connect generation failed for session %d", session_id)
+        # Fallback
+        career = "Professional"
+        connection = f"Many careers use {topic} skills from {subject} in their daily work."
+
+    data = {"career": career, "connection": connection}
+    # Evict oldest entries if cache is full
+    if len(_career_connect_cache) >= _CAREER_CACHE_MAX:
+        oldest_key = next(iter(_career_connect_cache))
+        del _career_connect_cache[oldest_key]
+    _career_connect_cache[session_id] = data
+    return data

@@ -351,6 +351,23 @@
   margin-bottom: 12px;
 }
 
+/* Private practice checkbox */
+.ft-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ft-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary, #6366f1);
+  cursor: pointer;
+}
+
 /* Mastery grid (#3210) */
 .ft-mastery-grid {
   display: grid;
