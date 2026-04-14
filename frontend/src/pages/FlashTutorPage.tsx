@@ -321,8 +321,19 @@ export function FlashTutorPage() {
             </div>
           )}
 
-          <button className="ft-toggle-custom" onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}>
-            {useCustom ? 'Choose from my courses' : 'Enter custom topic'}
+          <button
+            className={`ft-custom-topic-btn ${useCustom ? 'active' : ''}`}
+            onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}
+          >
+            <TutorAvatar size={40} mood="thinking" />
+            <div className="ft-custom-topic-btn-text">
+              <span className="ft-custom-topic-btn-title">
+                {useCustom ? 'Choose from My Courses' : 'Create Your Own Topic'}
+              </span>
+              <span className="ft-custom-topic-btn-desc">
+                {useCustom ? 'Select from enrolled course topics' : 'Enter any subject and topic'}
+              </span>
+            </div>
           </button>
 
           {useCustom && (

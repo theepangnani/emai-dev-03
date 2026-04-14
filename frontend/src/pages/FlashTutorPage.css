@@ -316,15 +316,51 @@
   align-self: flex-start;
 }
 
-.ft-toggle-custom {
-  background: none;
-  border: none;
-  color: var(--color-accent-strong);
-  font-size: 0.8rem;
-  font-weight: 500;
+.ft-custom-topic-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 20px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
   cursor: pointer;
-  padding: 4px 0;
-  text-decoration: underline;
+  transition: all 0.2s ease;
+  text-align: left;
+  box-shadow: var(--shadow-xs);
+}
+
+.ft-custom-topic-btn:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.ft-custom-topic-btn.active {
+  border-color: var(--color-accent);
+  border-style: solid;
+  background: var(--color-accent-light);
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
+}
+
+.ft-custom-topic-btn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ft-custom-topic-btn-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+}
+
+.ft-custom-topic-btn-desc {
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
 }
 
 .ft-custom-inputs {
