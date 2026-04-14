@@ -486,9 +486,12 @@ async def complete_session(db: Session, session: ILESession) -> dict:
     session.completed_at = datetime.now(timezone.utc)
 
     # Rapid completion detection — flag sessions under 30 seconds (#3216)
+    # COMMENTED OUT: flagged_reason column not yet in production DB (#3300)
+    flagged = False
     duration = _session_duration_seconds(session)
     if duration is not None and duration < RAPID_COMPLETION_SECONDS:
-        session.flagged_reason = f"Rapid completion ({duration}s < {RAPID_COMPLETION_SECONDS}s)"
+        # session.flagged_reason = f"Rapid completion ({duration}s < {RAPID_COMPLETION_SECONDS}s)"
+        flagged = True
         total_xp = 0  # Don't award XP for suspicious sessions
         logger.warning(
             "ILE session %d flagged: rapid completion (%ds) | student=%d",
@@ -497,16 +500,16 @@ async def complete_session(db: Session, session: ILESession) -> dict:
 
     session.xp_awarded = total_xp
 
-    # Estimate AI cost for this session (#3216)
-    try:
-        session.ai_cost_estimate = _estimate_session_cost(all_attempts, questions)
-    except Exception:
-        logger.debug("Failed to estimate cost for session %d", session.id)
+    # COMMENTED OUT: ai_cost_estimate column not yet in production DB (#3300)
+    # try:
+    #     session.ai_cost_estimate = _estimate_session_cost(all_attempts, questions)
+    # except Exception:
+    #     logger.debug("Failed to estimate cost for session %d", session.id)
 
     db.commit()
 
     # Award XP once at status transition (#3227) — skip for flagged sessions
-    if not session.flagged_reason:
+    if not flagged:
         try:
             from app.services.xp_service import award_xp
             award_xp(db, session.student_id, "ile_session_complete", context_id=f"ile_session_{session.id}")

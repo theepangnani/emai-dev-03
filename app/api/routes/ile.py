@@ -791,16 +791,17 @@ async def admin_analytics(
     )
     average_score = round(float(avg_score_row), 2) if avg_score_row is not None else None
 
-    # Average cost per session
-    avg_cost_row = (
-        db.query(sa_func.avg(ILESession.ai_cost_estimate))
-        .filter(
-            ILESession.created_at >= thirty_days_ago,
-            ILESession.ai_cost_estimate.isnot(None),
-        )
-        .scalar()
-    )
-    average_cost = round(float(avg_cost_row), 6) if avg_cost_row is not None else None
+    # COMMENTED OUT: ai_cost_estimate column not yet in production DB (#3300)
+    # avg_cost_row = (
+    #     db.query(sa_func.avg(ILESession.ai_cost_estimate))
+    #     .filter(
+    #         ILESession.created_at >= thirty_days_ago,
+    #         ILESession.ai_cost_estimate.isnot(None),
+    #     )
+    #     .scalar()
+    # )
+    # average_cost = round(float(avg_cost_row), 6) if avg_cost_row is not None else None
+    average_cost = None
 
     # Mode split
     mode_rows = (
@@ -822,15 +823,16 @@ async def admin_analytics(
     )
     top_topics = [ILETopTopic(topic=row[0], count=row[1]) for row in topic_rows]
 
-    # Flagged sessions count
-    flagged_sessions = (
-        db.query(sa_func.count(ILESession.id))
-        .filter(
-            ILESession.created_at >= thirty_days_ago,
-            ILESession.flagged_reason.isnot(None),
-        )
-        .scalar() or 0
-    )
+    # COMMENTED OUT: flagged_reason column not yet in production DB (#3300)
+    # flagged_sessions = (
+    #     db.query(sa_func.count(ILESession.id))
+    #     .filter(
+    #         ILESession.created_at >= thirty_days_ago,
+    #         ILESession.flagged_reason.isnot(None),
+    #     )
+    #     .scalar() or 0
+    # )
+    flagged_sessions = 0
 
     return ILEAdminAnalytics(
         sessions_per_day=sessions_per_day,
