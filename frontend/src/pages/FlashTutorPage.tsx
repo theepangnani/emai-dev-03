@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { MasteryNode } from '../components/ile/MasteryNode';
+import { TutorAvatar } from '../components/ile/TutorAvatar';
 import './FlashTutorPage.css';
 
 type Mode = 'learning' | 'testing' | 'parent_teaching';
@@ -193,8 +194,12 @@ export function FlashTutorPage() {
         ]} />
 
         <div className="ft-header">
-          <h1>Flash Tutor</h1>
-          <p className="ft-subtitle">Quick AI-powered practice sessions — 5 to 8 minutes</p>
+          <TutorAvatar size={56} mood="neutral" />
+          <div className="ft-header-text">
+            <h1>Flash Tutor</h1>
+            <p className="ft-subtitle">Quick AI-powered practice sessions</p>
+            <span className="ft-time-badge">5-8 min sessions</span>
+          </div>
         </div>
 
         {/* Resume banner */}
