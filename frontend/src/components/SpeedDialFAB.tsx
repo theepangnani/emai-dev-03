@@ -4,6 +4,7 @@ import { useFABContext } from '../context/FABContext';
 import { useHelpChat } from './HelpChatbot/useHelpChat';
 import { ChatMessage } from './HelpChatbot/ChatMessage';
 import { SuggestionChips } from './HelpChatbot/SuggestionChips';
+import { useChatPanelInteraction } from '../hooks/useChatPanelInteraction';
 import './HelpChatbot/HelpChatbot.css';
 import './SpeedDialFAB.css';
 
@@ -31,6 +32,7 @@ export function SpeedDialFAB() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart, resetPosition } = useChatPanelInteraction();
 
   // Auto-scroll chat messages
   useEffect(() => {
@@ -144,8 +146,15 @@ export function SpeedDialFAB() {
     <div className="speed-dial" ref={containerRef}>
       {/* Chat panel (always available) */}
       {chatOpen && (
-        <div className="help-chatbot-panel">
-          <div className="help-chatbot-header">
+        <div
+          className={`help-chatbot-panel${maximized ? ' help-chatbot-panel--maximized' : ''}`}
+          ref={panelRef}
+          style={panelStyle}
+        >
+          <div
+            className="help-chatbot-header help-chatbot-header--draggable"
+            onMouseDown={onDragStart}
+          >
             <div className="help-chatbot-header-top">
               <span className="help-chatbot-header-label">
                 {isStudyMode ? 'Study Q&A' : 'ClassBridge Help'}
@@ -163,7 +172,19 @@ export function SpeedDialFAB() {
                 )}
                 <button
                   className="help-chatbot-close"
-                  onClick={() => setChatOpen(false)}
+                  onClick={toggleMaximize}
+                  aria-label={maximized ? 'Restore chat window' : 'Maximize chat window'}
+                  title={maximized ? 'Restore' : 'Maximize'}
+                >
+                  {maximized ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="14" height="14" rx="1" /><path d="M9 3h6M3 9v6" /></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>
+                  )}
+                </button>
+                <button
+                  className="help-chatbot-close"
+                  onClick={() => { setChatOpen(false); resetPosition(); }}
                   aria-label="Close help chat"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -254,6 +275,13 @@ export function SpeedDialFAB() {
               </svg>
             </button>
           </div>
+          {!maximized && (
+            <div
+              className="help-chatbot-resize-handle"
+              onMouseDown={onResizeStart}
+              aria-hidden="true"
+            />
+          )}
         </div>
       )}
 

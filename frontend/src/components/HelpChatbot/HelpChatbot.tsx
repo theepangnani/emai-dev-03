@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useHelpChat } from './useHelpChat';
 import { ChatMessage } from './ChatMessage';
 import { SuggestionChips } from './SuggestionChips';
+import { useChatPanelInteraction } from '../../hooks/useChatPanelInteraction';
 import './HelpChatbot.css';
 
 const STORAGE_KEY = 'classbridge-help-open';
@@ -26,6 +27,7 @@ export function HelpChatbot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart, resetPosition } = useChatPanelInteraction();
 
   // Persist open/closed state
   useEffect(() => {
@@ -99,29 +101,50 @@ export function HelpChatbot() {
 
       {/* Chat panel */}
       {isOpen && (
-        <div className="help-chatbot-panel">
-          <div className="help-chatbot-header">
+        <div
+          className={`help-chatbot-panel${maximized ? ' help-chatbot-panel--maximized' : ''}`}
+          ref={panelRef}
+          style={panelStyle}
+        >
+          <div
+            className="help-chatbot-header help-chatbot-header--draggable"
+            onMouseDown={onDragStart}
+          >
             <div className="help-chatbot-header-title">
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
               <h3>ClassBridge Help</h3>
             </div>
-            {messages.length > 0 && (
+            <div className="help-chatbot-header-actions">
+              {messages.length > 0 && (
+                <button
+                  className="help-chatbot-clear"
+                  onClick={clearMessages}
+                  aria-label="Clear chat history"
+                  title="Clear chat"
+                >
+                  Clear
+                </button>
+              )}
               <button
-                className="help-chatbot-clear"
-                onClick={clearMessages}
-                aria-label="Clear chat history"
-                title="Clear chat"
+                className="help-chatbot-close"
+                onClick={toggleMaximize}
+                aria-label={maximized ? 'Restore chat window' : 'Maximize chat window'}
+                title={maximized ? 'Restore' : 'Maximize'}
               >
-                Clear
+                {maximized ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="14" height="14" rx="1" /><path d="M9 3h6M3 9v6" /></svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>
+                )}
               </button>
-            )}
-            <button
-              className="help-chatbot-close"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close help chat"
-            >
-              &times;
-            </button>
+              <button
+                className="help-chatbot-close"
+                onClick={() => { setIsOpen(false); resetPosition(); }}
+                aria-label="Close help chat"
+              >
+                &times;
+              </button>
+            </div>
           </div>
 
           <div className="help-chatbot-messages">
@@ -196,6 +219,13 @@ export function HelpChatbot() {
               Send
             </button>
           </div>
+          {!maximized && (
+            <div
+              className="help-chatbot-resize-handle"
+              onMouseDown={onResizeStart}
+              aria-hidden="true"
+            />
+          )}
         </div>
       )}
     </>
