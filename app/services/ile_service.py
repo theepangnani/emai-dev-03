@@ -383,7 +383,8 @@ async def submit_answer(
         is_correct=is_correct,
         attempt_number=attempt_number,
         hint_shown=hint,
-        parent_hint_note=parent_hint_note if session.mode == "parent_teaching" else None,
+        # COMMENTED OUT: parent_hint_note column not yet in production DB (#3300)
+        # parent_hint_note=parent_hint_note if session.mode == "parent_teaching" else None,
         explanation_shown=explanation,
         time_taken_ms=time_taken_ms,
         xp_earned=xp,
@@ -681,7 +682,9 @@ def add_parent_hint(
     )
 
     if latest_attempt:
-        latest_attempt.parent_hint_note = hint_note
+        # COMMENTED OUT: parent_hint_note column not yet in production DB (#3300)
+        # latest_attempt.parent_hint_note = hint_note
+        pass
     else:
         # No attempt yet — store hint in pending dict; submit_answer will apply it
         _pending_parent_hints[(session.id, idx)] = hint_note
