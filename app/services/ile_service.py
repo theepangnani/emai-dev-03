@@ -450,9 +450,36 @@ async def complete_session(db: Session, session: ILESession) -> dict:
         pass  # XP is never blocking
 
     # Update topic mastery after session completion (#3206)
+    aha_detected = False
     try:
-        from app.services.ile_mastery_service import update_mastery_after_session
-        update_mastery_after_session(db, session, question_results)
+        from app.services.ile_mastery_service import (
+            update_mastery_after_session, get_mastery_snapshot, check_aha_moment,
+        )
+        mastery_before = get_mastery_snapshot(db, session.student_id, session.subject, session.topic)
+        mastery_after = update_mastery_after_session(db, session, question_results)
+        aha_detected = check_aha_moment(mastery_before, mastery_after)
+
+        if aha_detected:
+            try:
+                from app.models.notification import NotificationType
+                from app.services.notification_service import notify_parents_of_student
+                student_user = db.query(User).filter(User.id == session.student_id).first()
+                if student_user:
+                    notify_parents_of_student(
+                        db=db,
+                        student_user=student_user,
+                        title=f"{student_user.first_name or 'Your child'} had a breakthrough in {session.topic} today!",
+                        content=(
+                            f"{student_user.first_name or 'Your child'} was struggling with "
+                            f"{session.topic} ({session.subject}) but just had a breakthrough moment. "
+                            f"Their accuracy improved significantly!"
+                        ),
+                        notification_type=NotificationType.ILE_AHA_MOMENT,
+                        link="/flash-tutor",
+                    )
+                    db.commit()
+            except Exception:
+                logger.warning("Failed to send aha moment notification for session %d", session.id)
     except Exception:
         db.rollback()
         logger.warning("Failed to update mastery for session %d", session.id, exc_info=True)
@@ -472,7 +499,7 @@ async def complete_session(db: Session, session: ILESession) -> dict:
         session.id, session.student_id, total_correct, len(questions), total_xp,
     )
 
-    return _build_results_dict(session, questions, question_results, total_correct, total_xp, attempts_by_q)
+    return _build_results_dict(session, questions, question_results, total_correct, total_xp, attempts_by_q, aha_detected)
 
 
 def get_session_results_from_attempts(db: Session, session: ILESession) -> dict:
@@ -525,6 +552,7 @@ def _build_results_dict(
     total_correct: int,
     total_xp: int,
     attempts_by_q: dict[int, list],
+    aha_detected: bool = False,
 ) -> dict:
     """Build the session results dictionary."""
     percentage = (total_correct / len(questions) * 100) if questions else 0
@@ -546,6 +574,7 @@ def _build_results_dict(
         "time_taken_seconds": _session_duration_seconds(session),
         "weak_areas": [],
         "suggested_next_topic": None,
+        "aha_detected": aha_detected,
     }
 
 

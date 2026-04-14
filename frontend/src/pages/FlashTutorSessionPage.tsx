@@ -14,6 +14,7 @@ import { ExplanationBubble } from '../components/ile/ExplanationBubble';
 import { XpPopBadge } from '../components/ile/XpPopBadge';
 import { StreakCounter } from '../components/ile/StreakCounter';
 import { FillBlankCard } from '../components/ile/FillBlankCard';
+import { AhaMomentCelebration } from '../components/ile/AhaMomentCelebration';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -244,6 +245,9 @@ export function FlashTutorSessionPage() {
     return (
       <DashboardLayout showBackButton headerSlot={() => null}>
         <div className="fts-page">
+          {results.aha_detected && (
+            <AhaMomentCelebration topic={results.topic} />
+          )}
           <div className="fts-results">
             <div className="fts-results-header">
               <h1>Session Complete!</h1>

@@ -236,6 +236,168 @@ def get_student_mastery(db: Session, student_id: int) -> list[ILETopicMastery]:
     )
 
 
+def check_aha_moment(mastery_before: dict, mastery_after: ILETopicMastery) -> bool:
+    """Detect breakthrough: topic was weak (avg > 2.0), now improved (avg < 1.5).
+
+    Args:
+        mastery_before: dict with avg_attempts_per_question and is_weak_area
+            captured before update_mastery_after_session.
+        mastery_after: The mastery record after updating.
+
+    Returns:
+        True if the student had a breakthrough moment.
+    """
+    was_weak = (
+        mastery_before.get("is_weak_area", False)
+        or mastery_before.get("avg_attempts_per_question", 0) > WEAK_AREA_THRESHOLD
+    )
+    now_improved = mastery_after.avg_attempts_per_question < 1.5
+
+    if was_weak and now_improved:
+        logger.info(
+            "Aha moment detected | student=%d subject=%s topic=%s "
+            "avg_before=%.2f avg_after=%.2f",
+            mastery_after.student_id,
+            mastery_after.subject,
+            mastery_after.topic,
+            mastery_before.get("avg_attempts_per_question", 0),
+            mastery_after.avg_attempts_per_question,
+        )
+        return True
+    return False
+
+
+def get_mastery_snapshot(db: Session, student_id: int, subject: str, topic: str) -> dict:
+    """Capture a snapshot of current mastery state before an update.
+
+    Returns dict with avg_attempts_per_question and is_weak_area,
+    or defaults if no mastery record exists yet.
+    """
+    mastery = (
+        db.query(ILETopicMastery)
+        .filter(
+            ILETopicMastery.student_id == student_id,
+            ILETopicMastery.subject == subject,
+            ILETopicMastery.topic == topic,
+        )
+        .first()
+    )
+    if mastery:
+        return {
+            "avg_attempts_per_question": mastery.avg_attempts_per_question,
+            "is_weak_area": mastery.is_weak_area,
+        }
+    return {
+        "avg_attempts_per_question": 0.0,
+        "is_weak_area": False,
+    }
+
+
+def get_decaying_topics(db: Session, student_id: int) -> list[dict]:
+    """Get topics past next_review_at, grouped by urgency.
+
+    Returns list of dicts with topic info and decay_level:
+    - "amber": 2-6 days overdue
+    - "urgent": 7+ days overdue
+    """
+    now = datetime.now(timezone.utc)
+    amber_threshold = now - timedelta(days=2)
+
+    overdue = (
+        db.query(ILETopicMastery)
+        .filter(
+            ILETopicMastery.student_id == student_id,
+            ILETopicMastery.next_review_at != None,  # noqa: E711
+            ILETopicMastery.next_review_at < amber_threshold,
+        )
+        .order_by(ILETopicMastery.next_review_at.asc())
+        .all()
+    )
+
+    results = []
+    urgent_threshold = now - timedelta(days=7)
+    for m in overdue:
+        review_at = m.next_review_at
+        if review_at.tzinfo is None:
+            review_at = review_at.replace(tzinfo=timezone.utc)
+        decay_level = "urgent" if review_at < urgent_threshold else "amber"
+        results.append({
+            "subject": m.subject,
+            "topic": m.topic,
+            "next_review_at": m.next_review_at,
+            "decay_level": decay_level,
+            "days_overdue": (now - review_at).days,
+        })
+    return results
+
+
+def send_decay_notifications(db: Session) -> int:
+    """Check all students for decaying topics and send notifications.
+
+    Returns the number of notifications sent.
+    """
+    from app.models.user import User
+    from app.models.notification import NotificationType
+    from app.services.notification_service import send_multi_channel_notification
+
+    now = datetime.now(timezone.utc)
+    amber_threshold = now - timedelta(days=2)
+
+    # Get all overdue mastery records
+    overdue_records = (
+        db.query(ILETopicMastery)
+        .filter(
+            ILETopicMastery.next_review_at != None,  # noqa: E711
+            ILETopicMastery.next_review_at < amber_threshold,
+        )
+        .all()
+    )
+
+    sent = 0
+    for m in overdue_records:
+        review_at = m.next_review_at
+        if review_at.tzinfo is None:
+            review_at = review_at.replace(tzinfo=timezone.utc)
+
+        days_overdue = (now - review_at).days
+        if days_overdue >= 7:
+            title = f"Your {m.subject} skills are fading!"
+            content = f"It's been {days_overdue} days since you reviewed {m.topic}. 5 min to refresh!"
+        else:
+            title = f"Time to review {m.topic}"
+            content = f"Your {m.topic} ({m.subject}) knowledge needs a quick refresh. 5 min is all it takes!"
+
+        student_user = db.query(User).filter(User.id == m.student_id).first()
+        if not student_user:
+            continue
+
+        try:
+            notif = send_multi_channel_notification(
+                db=db,
+                recipient=student_user,
+                sender=None,
+                title=title,
+                content=content,
+                notification_type=NotificationType.ILE_KNOWLEDGE_DECAY,
+                link="/flash-tutor",
+                channels=["app_notification"],
+                source_type="ile_decay",
+                source_id=m.id,
+            )
+            if notif:
+                sent += 1
+        except Exception:
+            logger.warning(
+                "Failed to send decay notification for student=%d topic=%s",
+                m.student_id, m.topic,
+            )
+
+    if sent:
+        db.commit()
+    logger.info("Knowledge decay check complete: %d notifications sent", sent)
+    return sent
+
+
 def get_weak_areas(db: Session, student_id: int) -> list[ILETopicMastery]:
     """Get topics flagged as weak areas."""
     return (

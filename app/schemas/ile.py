@@ -150,6 +150,7 @@ class ILESessionResults(BaseModel):
     # Adaptive feedback
     weak_areas: list[str] = []
     suggested_next_topic: str | None = None
+    aha_detected: bool = False
 
 
 # --- Topics ---

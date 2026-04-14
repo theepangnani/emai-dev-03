@@ -436,6 +436,22 @@ async def get_session_history(
 
 
 # ---------------------------------------------------------------------------
+# Knowledge Decay
+# ---------------------------------------------------------------------------
+
+@router.get("/mastery/decaying")
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_decaying_topics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get topics past their review date for the current student."""
+    from app.services.ile_mastery_service import get_decaying_topics as _get_decaying
+    return _get_decaying(db, current_user.id)
+
+
+# ---------------------------------------------------------------------------
 # Admin — Question Bank Management
 # ---------------------------------------------------------------------------
 
@@ -479,3 +495,16 @@ async def admin_bank_stats(
 ):
     """Return question bank statistics (admin only)."""
     return ile_cost_optimizer.get_bank_stats(db)
+
+
+@router.post("/admin/decay-notifications")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def admin_send_decay_notifications(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Trigger knowledge decay notifications for all students (admin only)."""
+    from app.services.ile_mastery_service import send_decay_notifications
+    sent = send_decay_notifications(db)
+    return {"notifications_sent": sent}

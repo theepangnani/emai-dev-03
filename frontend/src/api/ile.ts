@@ -111,6 +111,7 @@ export interface ILESessionResults {
   time_taken_seconds: number | null;
   weak_areas: string[];
   suggested_next_topic: string | null;
+  aha_detected: boolean;
 }
 
 export interface ILETopic {
