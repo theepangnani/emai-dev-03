@@ -84,28 +84,40 @@ async def prefill_question_bank(
 
     expires_at = now + timedelta(days=BANK_TTL_DAYS)
     added = 0
+    failed_count = 0
+    hints_generated = 0
 
     for q in questions:
-        # Pre-compute hint tree
-        hint_tree = await _generate_hint_tree(q, grade_level)
+        try:
+            # Pre-compute hint tree
+            hint_tree = await _generate_hint_tree(q, grade_level)
 
-        bank_item = ILEQuestionBank(
-            subject=subject,
-            topic=topic,
-            grade_level=grade_level,
-            difficulty=q.get("difficulty", difficulty),
-            blooms_tier=q.get("blooms_tier", "recall"),
-            question_format="mcq",
-            question_json=json.dumps(q),
-            explanation_text=q.get("explanation"),
-            hint_tree_json=json.dumps(hint_tree) if hint_tree else None,
-            expires_at=expires_at,
-        )
-        db.add(bank_item)
-        added += 1
+            bank_item = ILEQuestionBank(
+                subject=subject,
+                topic=topic,
+                grade_level=grade_level,
+                difficulty=q.get("difficulty", difficulty),
+                blooms_tier=q.get("blooms_tier", "recall"),
+                question_format="mcq",
+                question_json=json.dumps(q),
+                explanation_text=q.get("explanation"),
+                hint_tree_json=json.dumps(hint_tree) if hint_tree else None,
+                expires_at=expires_at,
+            )
+            db.add(bank_item)
+            added += 1
+            if hint_tree:
+                hints_generated += 1
+        except Exception as e:
+            logger.warning("Failed to add question to bank: %s", e)
+            failed_count += 1
+            continue
 
     db.commit()
-    logger.info("Prefilled %d questions for %s/%s grade %d", added, subject, topic, grade_level)
+    logger.info(
+        "Prefilled %d/%d questions (%d with hints) for %s/%s grade %d",
+        added, len(questions), hints_generated, subject, topic, grade_level,
+    )
     return added
 
 
