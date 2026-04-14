@@ -171,10 +171,8 @@ async def create_session(
     from datetime import datetime, timedelta, timezone
     from app.services.ile_service import (
         MAX_SESSIONS_PER_DAY, SESSION_EXPIRY_HOURS,
-        _utc_now_comparable,
+        _utc_now_comparable, get_recommended_difficulty, _fetch_context_text,
     )
-    from app.services.ile_adaptive_service import get_recommended_difficulty
-    from app.services.ile_service import _fetch_context_text
     from sqlalchemy import func as sa_func
 
     # --- Inline validation (mirrors ile_service.create_session) ---
