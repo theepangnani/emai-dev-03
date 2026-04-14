@@ -353,6 +353,12 @@ def send_decay_notifications(db: Session) -> int:
         .all()
     )
 
+    # Batch-fetch all student users to avoid N+1 queries
+    student_ids = {m.student_id for m in overdue_records}
+    users_map = {
+        u.id: u for u in db.query(User).filter(User.id.in_(student_ids)).all()
+    } if student_ids else {}
+
     sent = 0
     for m in overdue_records:
         review_at = m.next_review_at
@@ -367,7 +373,7 @@ def send_decay_notifications(db: Session) -> int:
             title = f"Time to review {m.topic}"
             content = f"Your {m.topic} ({m.subject}) knowledge needs a quick refresh. 5 min is all it takes!"
 
-        student_user = db.query(User).filter(User.id == m.student_id).first()
+        student_user = users_map.get(m.student_id)
         if not student_user:
             continue
 
@@ -387,6 +393,7 @@ def send_decay_notifications(db: Session) -> int:
             if notif:
                 sent += 1
         except Exception:
+            db.rollback()
             logger.warning(
                 "Failed to send decay notification for student=%d topic=%s",
                 m.student_id, m.topic,

@@ -479,6 +479,7 @@ async def complete_session(db: Session, session: ILESession) -> dict:
                     )
                     db.commit()
             except Exception:
+                db.rollback()
                 logger.warning("Failed to send aha moment notification for session %d", session.id)
     except Exception:
         db.rollback()
