@@ -5,6 +5,7 @@ import type { StudyGuide, ResolvedStudent } from '../api/client';
 import StudyGuideSuggestionChips, { ASK_BOT_LABEL, FULL_GUIDE_LABEL } from '../components/StudyGuideSuggestionChips';
 import type { SuggestionTopic } from '../components/StudyGuideSuggestionChips';
 import { useAuth } from '../context/AuthContext';
+import { ileApi } from '../api/ile';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { CreateTaskModal } from '../components/CreateTaskModal';
 import { MaterialContextMenu } from '../components/MaterialContextMenu';
@@ -81,6 +82,7 @@ export function StudyGuidePage() {
   const [childGuides, setChildGuides] = useState<StudyGuide[]>([]);
   const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [flashTutorLoading, setFlashTutorLoading] = useState(false);
   const stream = useStudyGuideStream();
   const { selection, clearSelection } = useTextSelection(contentRef);
   const handleHighlightClick = useCallback((text: string) => {
@@ -231,6 +233,24 @@ export function StudyGuidePage() {
     } catch (err) {
       setError('Failed to regenerate');
       setFaqCode(extractFaqCode(err));
+    }
+  };
+
+  const handleFlashTutor = async () => {
+    if (!guide || flashTutorLoading) return;
+    setFlashTutorLoading(true);
+    setError(null);
+    try {
+      const session = await ileApi.createSessionFromStudyGuide({
+        study_guide_id: guide.id,
+        course_content_id: guide.course_content_id ?? undefined,
+      });
+      navigate(`/flash-tutor/session/${session.id}`);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(msg || 'Failed to start Flash Tutor session');
+    } finally {
+      setFlashTutorLoading(false);
     }
   };
 
@@ -434,6 +454,15 @@ export function StudyGuidePage() {
             </button>
           )}
           <div className="sg-icon-actions">
+            <button
+              className="sg-flash-tutor-btn"
+              title="Practice with Flash Tutor"
+              aria-label="Practice with Flash Tutor"
+              onClick={handleFlashTutor}
+              disabled={flashTutorLoading}
+            >
+              {flashTutorLoading ? 'Starting...' : 'Practice'}
+            </button>
             {/* Notes FAB at bottom-right replaces inline toggle */}
             <button className="sg-icon-btn" title="Regenerate" aria-label="Regenerate study guide" onClick={handleRegenerate}>&#8635;</button>
             <button className="sg-icon-btn" title="Print" aria-label="Print study guide" onClick={() => window.print()}>&#128424;</button>

@@ -181,6 +181,15 @@ export const ileApi = {
   createSession: (data: ILESessionCreate) =>
     api.post<ILESession>('/ile/sessions', data).then(r => r.data),
 
+  createSessionFromStudyGuide: (params: {
+    study_guide_id?: number;
+    course_content_id?: number;
+    mode?: string;
+    question_count?: number;
+    difficulty?: string;
+  }) =>
+    api.post<ILESession>('/ile/sessions/from-study-guide', null, { params }).then(r => r.data),
+
   getActiveSession: () =>
     api.get<ILESession | null>('/ile/sessions/active').then(r => r.data),
 

@@ -124,11 +124,14 @@ async def generate_questions(
     blooms_tier: str = "recall",
     count: int = 5,
     question_format: str = "mcq",
+    context_text: str | None = None,
 ) -> list[dict]:
     """Generate quiz questions via AI.
 
     Returns a list of question dicts with keys:
     question, options, correct_answer, explanation, difficulty, blooms_tier
+
+    If context_text is provided, questions are grounded in that study material.
     """
     if question_format == "fill_blank":
         prompt = _FILL_BLANK_PROMPT.format(
@@ -150,6 +153,14 @@ async def generate_questions(
             blooms_tier=blooms_tier,
         )
         system_prompt = _MCQ_SYSTEM
+
+    # Ground questions in study material when context is provided
+    if context_text:
+        truncated = context_text[:2000]
+        prompt = (
+            f"Generate questions based on the following study material:\n\n"
+            f"---\n{truncated}\n---\n\n{prompt}"
+        )
 
     content, _ = await generate_content(
         prompt=prompt,
@@ -339,8 +350,25 @@ async def get_from_bank_or_generate(
     blooms_tier: str = "recall",
     count: int = 5,
     question_format: str = "mcq",
+    context_text: str | None = None,
 ) -> list[dict]:
-    """Try bank first, fall back to on-demand generation."""
+    """Try bank first, fall back to on-demand generation.
+
+    When context_text is provided, skip the bank and always generate fresh
+    questions grounded in the study material.
+    """
+    # Context-grounded questions bypass the bank — they are specific to the material
+    if context_text:
+        logger.info(
+            "Context-grounded generation for %s/%s (context_len=%d)",
+            subject, topic, len(context_text),
+        )
+        return await generate_questions(
+            subject, topic, grade_level, difficulty, blooms_tier, count,
+            question_format=question_format,
+            context_text=context_text,
+        )
+
     bank_questions = get_from_bank(db, subject, topic, grade_level, difficulty, count)
 
     # Filter bank questions to matching format

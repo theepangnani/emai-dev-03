@@ -102,6 +102,69 @@ async def create_session(
     return session
 
 
+@router.post("/sessions/from-study-guide", response_model=ILESessionResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def create_session_from_study_guide(
+    request: Request,
+    study_guide_id: int | None = None,
+    course_content_id: int | None = None,
+    mode: str = "learning",
+    question_count: int = 5,
+    difficulty: str = "medium",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a Flash Tutor session grounded in a study guide or course content."""
+    from app.models.study_guide import StudyGuide as StudyGuideModel
+    from app.models.course_content import CourseContent
+
+    if not study_guide_id and not course_content_id:
+        raise HTTPException(400, "Provide study_guide_id or course_content_id")
+
+    subject = ""
+    topic = ""
+
+    if study_guide_id:
+        sg = db.query(StudyGuideModel).filter(StudyGuideModel.id == study_guide_id).first()
+        if not sg:
+            raise HTTPException(404, "Study guide not found")
+        # Verify ownership: user must own the guide or have it shared with them
+        if sg.user_id != current_user.id and sg.shared_with_user_id != current_user.id:
+            raise HTTPException(403, "Not authorized to use this study guide")
+        course_content_id = sg.course_content_id or course_content_id
+        # Derive subject/topic from the study guide
+        if sg.course_id:
+            from app.models.course import Course
+            course = db.query(Course).filter(Course.id == sg.course_id).first()
+            subject = course.name if course else sg.title
+        else:
+            subject = sg.title
+        topic = sg.title
+
+    if course_content_id and not subject:
+        cc = db.query(CourseContent).filter(CourseContent.id == course_content_id).first()
+        if not cc:
+            raise HTTPException(404, "Course content not found")
+        subject = cc.course_name or cc.title
+        topic = cc.title
+
+    try:
+        session = await ile_service.create_session(
+            db=db,
+            student_id=current_user.id,
+            mode=mode,
+            subject=subject,
+            topic=topic,
+            question_count=question_count,
+            difficulty=difficulty,
+            course_content_id=course_content_id,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    return session
+
+
 @router.get("/sessions/active", response_model=ILESessionResponse | None)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def get_active_session(
