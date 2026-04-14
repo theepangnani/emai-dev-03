@@ -357,6 +357,11 @@ async def submit_answer(
                         logger.warning("Failed to generate hint for session %d", session.id)
                         hint = "Think about this concept more carefully and try again."
 
+    # Apply any pending parent hint stored before the first attempt (#3280)
+    pending_key = (session.id, idx)
+    if not parent_hint_note and pending_key in _pending_parent_hints:
+        parent_hint_note = _pending_parent_hints.pop(pending_key)
+
     # Record attempt
     attempt = ILEQuestionAttempt(
         session_id=session.id,
@@ -526,10 +531,9 @@ async def complete_session(db: Session, session: ILESession) -> dict:
                     )
                     db.commit()
             except Exception:
-                db.rollback()
                 logger.warning("Failed to send aha moment notification for session %d", session.id)
     except Exception:
-        db.rollback()
+        # Don't rollback — mastery already committed internally, aha detection is read-only
         logger.warning("Failed to update mastery for session %d", session.id, exc_info=True)
 
     percentage = (total_correct / len(questions) * 100) if questions else 0
@@ -664,9 +668,8 @@ def add_parent_hint(
     if latest_attempt:
         latest_attempt.parent_hint_note = hint_note
     else:
-        # No attempt yet — store hint for next answer submission via session metadata
-        # We'll return it in the response so the frontend can show it
-        pass
+        # No attempt yet — store hint in pending dict; submit_answer will apply it
+        _pending_parent_hints[(session.id, idx)] = hint_note
 
     db.commit()
     return {"question_index": idx, "parent_hint_note": hint_note}
@@ -965,6 +968,10 @@ def _session_duration_seconds(session: ILESession) -> int | None:
 # Career Connect
 # ---------------------------------------------------------------------------
 
+# Pending parent hints: keyed by (session_id, question_index) → hint_note
+# Applied and removed when submit_answer creates the attempt record.
+_pending_parent_hints: dict[tuple[int, int], str] = {}
+
 # In-memory cache keyed by session ID to avoid re-generating (bounded)
 _CAREER_CACHE_MAX = 500
 _career_connect_cache: dict[int, dict] = {}
@@ -1079,14 +1086,14 @@ def _estimate_session_cost(
     cost = 0.0
 
     # Question generation cost (one call per session)
-    cost += _calc_cost(model, 500, 2000)
+    cost += float(_calc_cost(model, 500, 2000))
 
     # Hint costs (one per wrong attempt in learning/parent_teaching mode)
     hints_generated = sum(1 for a in all_attempts if a.hint_shown)
-    cost += hints_generated * _calc_cost(model, 300, 200)
+    cost += hints_generated * float(_calc_cost(model, 300, 200))
 
     # Explanation costs (one per correct answer or auto-reveal)
     explanations_generated = sum(1 for a in all_attempts if a.explanation_shown)
-    cost += explanations_generated * _calc_cost(model, 200, 300)
+    cost += explanations_generated * float(_calc_cost(model, 200, 300))
 
     return round(cost, 6)
