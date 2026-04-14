@@ -14,6 +14,7 @@ import { ExplanationBubble } from '../components/ile/ExplanationBubble';
 import { XpPopBadge } from '../components/ile/XpPopBadge';
 import { StreakCounter } from '../components/ile/StreakCounter';
 import { FillBlankCard } from '../components/ile/FillBlankCard';
+import { ParentTeachingControls } from '../components/ile/ParentTeachingControls';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -35,6 +36,7 @@ export function FlashTutorSessionPage() {
   const [streakBroken, setStreakBroken] = useState(false);
   const [sessionXp, setSessionXp] = useState(0);
   const [startTime, setStartTime] = useState<number>(0);
+  const [parentHintNote, setParentHintNote] = useState<string | null>(null);
 
   const loadQuestion = useCallback(async () => {
     try {
@@ -63,6 +65,7 @@ export function FlashTutorSessionPage() {
       setCurrentQ(q);
       setSelectedAnswer(null);
       setFeedback(null);
+      setParentHintNote(null);
       setStartTime(Date.now());
       setPhase('question');
     } catch {
@@ -105,7 +108,7 @@ export function FlashTutorSessionPage() {
 
     try {
       const timeTaken = Date.now() - startTime;
-      const fb = await ileApi.submitAnswer(sessionId, answerToSubmit, timeTaken);
+      const fb = await ileApi.submitAnswer(sessionId, answerToSubmit, timeTaken, parentHintNote || undefined);
       setFeedback(fb);
       setSessionXp(prev => prev + fb.xp_earned);
 
@@ -252,7 +255,7 @@ export function FlashTutorSessionPage() {
                 <span className="fts-score-fraction">{results.score}/{results.total_questions}</span>
               </div>
               <div className="fts-results-meta">
-                <span className="fts-tag">{results.mode === 'learning' ? '📖 Learning' : '📝 Testing'}</span>
+                <span className="fts-tag">{results.mode === 'parent_teaching' ? '👨‍🏫 Teach' : results.mode === 'learning' ? '📖 Learning' : '📝 Testing'}</span>
                 <span className="fts-tag">{results.subject} — {results.topic}</span>
               </div>
               <div className="fts-xp-earned">+{results.total_xp} XP</div>
@@ -271,6 +274,23 @@ export function FlashTutorSessionPage() {
                 </div>
               ))}
             </div>
+
+            {/* Areas to Revisit — Parent Teaching Mode (#3212) */}
+            {results.areas_to_revisit && results.areas_to_revisit.length > 0 && (
+              <div className="ile-areas-revisit">
+                <h3>Areas to Revisit</h3>
+                {results.areas_to_revisit.map(area => (
+                  <div key={area.index} className="ile-areas-revisit-item">
+                    <span className="ile-areas-revisit-q">{area.question}</span>
+                    <span className="ile-areas-revisit-answer">
+                      Correct: {area.correct_answer}
+                      {area.student_answer && ` | Answered: ${area.student_answer}`}
+                      {area.attempts > 1 && ` | ${area.attempts} attempts`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="fts-results-actions">
               <button className="fts-btn fts-btn-primary" onClick={() => navigate('/flash-tutor')}>
@@ -305,7 +325,7 @@ export function FlashTutorSessionPage() {
               {currentQ.question_index + 1} / {currentQ.total_questions}
             </span>
             <span className="fts-mode-tag">
-              {session?.mode === 'learning' ? '📖 Learning' : '📝 Testing'}
+              {session?.mode === 'parent_teaching' ? '👨‍🏫 Teach' : session?.mode === 'learning' ? '📖 Learning' : '📝 Testing'}
             </span>
             <StreakCounter count={streak} broken={streakBroken} />
             <span className="fts-xp-counter">⭐ {sessionXp} XP</span>
@@ -319,6 +339,12 @@ export function FlashTutorSessionPage() {
         <div className="fts-question-card">
           <div className="fts-difficulty-tag">{q.difficulty}</div>
           <p className="fts-question-text">{q.question}</p>
+
+          {currentQ.attempt_number > 1 && session?.mode === 'parent_teaching' && (
+            <div className="fts-attempt-label">
+              Attempt {currentQ.attempt_number} — try again
+            </div>
+          )}
 
           {currentQ.attempt_number > 1 && session?.mode === 'learning' && (
             <div className="fts-attempt-label">
@@ -371,6 +397,16 @@ export function FlashTutorSessionPage() {
           )}
         </div>
 
+        {/* Parent Teaching Controls (#3212) */}
+        {session?.mode === 'parent_teaching' && phase === 'question' && (
+          <ParentTeachingControls
+            childName="your child"
+            onSubmitHint={(hint) => setParentHintNote(hint)}
+            currentHint={parentHintNote}
+            disabled={submitting}
+          />
+        )}
+
         {/* Feedback bubbles (Learning Mode) */}
         {phase === 'feedback' && feedback && (
           <div className="fts-feedback">
@@ -379,6 +415,14 @@ export function FlashTutorSessionPage() {
               <div className={`fts-typed-answer ${feedback.is_correct ? 'correct' : 'wrong'}`}>
                 Your answer: <strong>{selectedAnswer}</strong>
                 {feedback.is_correct ? ' ✓' : ' ✗'}
+              </div>
+            )}
+
+            {/* Parent hint shown before AI hint */}
+            {feedback.parent_hint_note && !feedback.question_complete && (
+              <div className="ile-parent-hint-display" role="status" aria-label="Parent hint">
+                <span className="ile-bubble-label ile-parent-hint-label">Parent's Hint</span>
+                <p>{feedback.parent_hint_note}</p>
               </div>
             )}
 

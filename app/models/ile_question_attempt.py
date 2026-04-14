@@ -25,6 +25,7 @@ class ILEQuestionAttempt(Base):
     is_correct = Column(Boolean, nullable=False)
     attempt_number = Column(Integer, nullable=False, default=1)
     hint_shown = Column(Text, nullable=True)
+    parent_hint_note = Column(Text, nullable=True)  # Parent Teaching Mode: parent's personal hint
     explanation_shown = Column(Text, nullable=True)
     time_taken_ms = Column(Integer, nullable=True)
     xp_earned = Column(Integer, nullable=False, default=0)

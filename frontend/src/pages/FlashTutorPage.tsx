@@ -5,16 +5,17 @@
  * Students/parents select subject, topic, mode, and configuration.
  */
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ileApi } from '../api/ile';
 import type { ILETopic, ILEMasteryEntry } from '../api/ile';
+import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { MasteryNode } from '../components/ile/MasteryNode';
 import './FlashTutorPage.css';
 
-type Mode = 'learning' | 'testing';
+type Mode = 'learning' | 'testing' | 'parent_teaching';
 type Difficulty = 'easy' | 'medium' | 'challenging';
 
 /** Format remaining time as a human-readable string (e.g. "12h left", "45m left"). */
@@ -31,9 +32,16 @@ function formatTimeRemaining(expiresAt: string | null | undefined): string | nul
 export function FlashTutorPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+
+  // Parent Teaching Mode query params (#3212)
+  const queryMode = searchParams.get('mode');
+  const queryChildId = searchParams.get('child_id');
+  const isParentTeaching = queryMode === 'parent_teaching' && user?.role === 'parent';
 
   // Form state
-  const [mode, setMode] = useState<Mode>('learning');
+  const [mode, setMode] = useState<Mode>(isParentTeaching ? 'parent_teaching' : 'learning');
   const [selectedTopic, setSelectedTopic] = useState<ILETopic | null>(null);
   const [customSubject, setCustomSubject] = useState('');
   const [customTopic, setCustomTopic] = useState('');
@@ -104,6 +112,8 @@ export function FlashTutorPage() {
         question_count: questionCount,
         difficulty,
         course_id: selectedTopic?.course_id ?? undefined,
+        timer_enabled: mode === 'parent_teaching' ? false : undefined,
+        child_student_id: mode === 'parent_teaching' && queryChildId ? parseInt(queryChildId) : undefined,
       });
       navigate(`/flash-tutor/session/${session.id}`);
     } catch (err: unknown) {
@@ -232,6 +242,16 @@ export function FlashTutorPage() {
               <span className="ft-mode-title">Testing</span>
               <span className="ft-mode-desc">No hints, timed</span>
             </button>
+            {user?.role === 'parent' && (
+              <button
+                className={`ft-mode-btn ${mode === 'parent_teaching' ? 'active' : ''}`}
+                onClick={() => setMode('parent_teaching')}
+              >
+                <span className="ft-mode-icon">👨‍🏫</span>
+                <span className="ft-mode-title">Teach</span>
+                <span className="ft-mode-desc">Guide your child</span>
+              </button>
+            )}
           </div>
         </div>
 

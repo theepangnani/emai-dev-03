@@ -252,6 +252,7 @@ async def submit_answer(
     session: ILESession,
     answer: str,
     time_taken_ms: int | None = None,
+    parent_hint_note: str | None = None,
 ) -> dict:
     """Submit an answer for the current question.
 
@@ -343,6 +344,7 @@ async def submit_answer(
         is_correct=is_correct,
         attempt_number=attempt_number,
         hint_shown=hint,
+        parent_hint_note=parent_hint_note if session.mode == "parent_teaching" else None,
         explanation_shown=explanation,
         time_taken_ms=time_taken_ms,
         xp_earned=xp,
@@ -380,6 +382,7 @@ async def submit_answer(
         "attempt_number": attempt_number,
         "xp_earned": xp,
         "hint": hint,
+        "parent_hint_note": parent_hint_note if session.mode == "parent_teaching" else None,
         "explanation": explanation,
         "correct_answer": correct_answer if (question_complete or auto_revealed) else None,
         "question_complete": question_complete,
@@ -532,6 +535,19 @@ def _build_results_dict(
     # Compute streak from pre-fetched attempts
     streak = _count_streak_from_attempts(attempts_by_q, len(questions) - 1)
 
+    # Areas to revisit — questions answered incorrectly (for parent_teaching summary)
+    areas_to_revisit = [
+        {
+            "index": qr["index"],
+            "question": qr["question"],
+            "correct_answer": qr["correct_answer"],
+            "student_answer": qr["student_answer"],
+            "attempts": qr["attempts"],
+        }
+        for qr in question_results
+        if not qr["is_correct"]
+    ]
+
     return {
         "session_id": session.id,
         "mode": session.mode,
@@ -546,7 +562,40 @@ def _build_results_dict(
         "time_taken_seconds": _session_duration_seconds(session),
         "weak_areas": [],
         "suggested_next_topic": None,
+        "areas_to_revisit": areas_to_revisit,
     }
+
+
+def add_parent_hint(
+    db: Session, session: ILESession, hint_note: str
+) -> dict:
+    """Add a parent hint note for the current question (parent_teaching mode only)."""
+    if session.mode != "parent_teaching":
+        raise ValueError("Parent hints are only available in Parent Teaching Mode")
+    if session.status != "in_progress":
+        raise ValueError("Session is not in progress")
+
+    idx = session.current_question_index
+    # Store as the most recent attempt's parent_hint_note, or create a placeholder
+    latest_attempt = (
+        db.query(ILEQuestionAttempt)
+        .filter(
+            ILEQuestionAttempt.session_id == session.id,
+            ILEQuestionAttempt.question_index == idx,
+        )
+        .order_by(ILEQuestionAttempt.attempt_number.desc())
+        .first()
+    )
+
+    if latest_attempt:
+        latest_attempt.parent_hint_note = hint_note
+    else:
+        # No attempt yet — store hint for next answer submission via session metadata
+        # We'll return it in the response so the frontend can show it
+        pass
+
+    db.commit()
+    return {"question_index": idx, "parent_hint_note": hint_note}
 
 
 def abandon_session(db: Session, session: ILESession) -> None:

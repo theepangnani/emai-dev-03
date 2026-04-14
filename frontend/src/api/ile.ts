@@ -77,6 +77,7 @@ export interface ILEAnswerFeedback {
   attempt_number: number;
   xp_earned: number;
   hint: string | null;
+  parent_hint_note: string | null;
   explanation: string | null;
   correct_answer: string | null;
   question_complete: boolean;
@@ -97,6 +98,14 @@ export interface ILEQuestionResult {
   format: string;
 }
 
+export interface ILEAreaToRevisit {
+  index: number;
+  question: string;
+  correct_answer: string;
+  student_answer: string | null;
+  attempts: number;
+}
+
 export interface ILESessionResults {
   session_id: number;
   mode: string;
@@ -111,6 +120,7 @@ export interface ILESessionResults {
   time_taken_seconds: number | null;
   weak_areas: string[];
   suggested_next_topic: string | null;
+  areas_to_revisit: ILEAreaToRevisit[];
 }
 
 export interface ILETopic {
@@ -179,10 +189,16 @@ export const ileApi = {
   getCurrentQuestion: (sessionId: number) =>
     api.get<ILECurrentQuestion>(`/ile/sessions/${sessionId}/question`).then(r => r.data),
 
-  submitAnswer: (sessionId: number, answer: string, timeTakenMs?: number) =>
+  submitAnswer: (sessionId: number, answer: string, timeTakenMs?: number, parentHintNote?: string) =>
     api.post<ILEAnswerFeedback>(`/ile/sessions/${sessionId}/answer`, {
       answer,
       time_taken_ms: timeTakenMs,
+      parent_hint_note: parentHintNote || undefined,
+    }).then(r => r.data),
+
+  addParentHint: (sessionId: number, hintNote: string) =>
+    api.post<{ question_index: number; parent_hint_note: string }>(`/ile/sessions/${sessionId}/parent-hint`, {
+      hint_note: hintNote,
     }).then(r => r.data),
 
   // Session lifecycle
