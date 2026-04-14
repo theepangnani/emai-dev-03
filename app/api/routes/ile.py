@@ -8,11 +8,14 @@ from app.db.database import get_db
 from app.models.user import User, UserRole
 from app.models.student import Student, parent_students
 from app.schemas.ile import (
+    ILEAdminAnalytics,
     ILEAnswerFeedback,
     ILEAnswerSubmit,
     ILECurrentQuestion,
+    ILEDailySessionCount,
     ILEMasteryEntry,
     ILEMasteryMap,
+    ILEModeSplit,
     ILEQuestion,
     ILEQuestionOption,
     ILESessionCreate,
@@ -22,6 +25,7 @@ from app.schemas.ile import (
     ILESurpriseMe,
     ILETopic,
     ILETopicList,
+    ILETopTopic,
 )
 from app.models.ile_topic_mastery import ILETopicMastery
 from app.services import ile_service
@@ -479,3 +483,121 @@ async def admin_bank_stats(
 ):
     """Return question bank statistics (admin only)."""
     return ile_cost_optimizer.get_bank_stats(db)
+
+
+@router.get("/admin/analytics", response_model=ILEAdminAnalytics)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def admin_analytics(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Return ILE analytics dashboard data (admin only) (#3216)."""
+    from sqlalchemy import func as sa_func, cast, Date
+    from app.models.ile_session import ILESession
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+
+    # Sessions per day (last 30 days)
+    is_sqlite = "sqlite" in str(db.bind.url) if db.bind else False
+    if is_sqlite:
+        date_expr = sa_func.date(ILESession.created_at)
+    else:
+        date_expr = cast(ILESession.created_at, Date)
+
+    daily_rows = (
+        db.query(date_expr.label("day"), sa_func.count(ILESession.id))
+        .filter(ILESession.created_at >= thirty_days_ago)
+        .group_by("day")
+        .order_by(date_expr)
+        .all()
+    )
+    sessions_per_day = [
+        ILEDailySessionCount(date=str(row[0]), count=row[1])
+        for row in daily_rows
+    ]
+
+    # Total and completed sessions
+    total_sessions = (
+        db.query(sa_func.count(ILESession.id))
+        .filter(ILESession.created_at >= thirty_days_ago)
+        .scalar() or 0
+    )
+    completed_sessions = (
+        db.query(sa_func.count(ILESession.id))
+        .filter(
+            ILESession.created_at >= thirty_days_ago,
+            ILESession.status == "completed",
+        )
+        .scalar() or 0
+    )
+    completion_rate = round(
+        (completed_sessions / total_sessions * 100) if total_sessions > 0 else 0, 1
+    )
+
+    # Average score (completed sessions only)
+    avg_score_row = (
+        db.query(sa_func.avg(ILESession.score))
+        .filter(
+            ILESession.created_at >= thirty_days_ago,
+            ILESession.status == "completed",
+            ILESession.score.isnot(None),
+        )
+        .scalar()
+    )
+    average_score = round(float(avg_score_row), 2) if avg_score_row is not None else None
+
+    # Average cost per session
+    avg_cost_row = (
+        db.query(sa_func.avg(ILESession.ai_cost_estimate))
+        .filter(
+            ILESession.created_at >= thirty_days_ago,
+            ILESession.ai_cost_estimate.isnot(None),
+        )
+        .scalar()
+    )
+    average_cost = round(float(avg_cost_row), 6) if avg_cost_row is not None else None
+
+    # Mode split
+    mode_rows = (
+        db.query(ILESession.mode, sa_func.count(ILESession.id))
+        .filter(ILESession.created_at >= thirty_days_ago)
+        .group_by(ILESession.mode)
+        .all()
+    )
+    mode_split = [ILEModeSplit(mode=row[0], count=row[1]) for row in mode_rows]
+
+    # Top topics by session count
+    topic_rows = (
+        db.query(ILESession.topic, sa_func.count(ILESession.id))
+        .filter(ILESession.created_at >= thirty_days_ago)
+        .group_by(ILESession.topic)
+        .order_by(sa_func.count(ILESession.id).desc())
+        .limit(10)
+        .all()
+    )
+    top_topics = [ILETopTopic(topic=row[0], count=row[1]) for row in topic_rows]
+
+    # Flagged sessions count
+    flagged_sessions = (
+        db.query(sa_func.count(ILESession.id))
+        .filter(
+            ILESession.created_at >= thirty_days_ago,
+            ILESession.flagged_reason.isnot(None),
+        )
+        .scalar() or 0
+    )
+
+    return ILEAdminAnalytics(
+        sessions_per_day=sessions_per_day,
+        total_sessions=total_sessions,
+        completed_sessions=completed_sessions,
+        completion_rate=completion_rate,
+        average_score=average_score,
+        average_cost_per_session=average_cost,
+        mode_split=mode_split,
+        top_topics=top_topics,
+        flagged_sessions=flagged_sessions,
+    )

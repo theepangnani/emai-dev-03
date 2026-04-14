@@ -7,6 +7,7 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
@@ -22,6 +23,8 @@ LEARNING_XP_TIERS = {1: 30, 2: 20, 3: 10}  # 4+ = 0
 TESTING_XP_PER_CORRECT = 10
 SESSION_EXPIRY_HOURS = 24
 MAX_LEARNING_ATTEMPTS = 5  # Auto-reveal after this many attempts
+MAX_SESSIONS_PER_DAY = 10  # Anti-gaming: rate limit
+RAPID_COMPLETION_SECONDS = 30  # Anti-gaming: flag suspicious sessions
 
 
 def _utc_now_comparable(dt: datetime | None) -> datetime:
@@ -84,6 +87,22 @@ async def create_session(
                 f"Active session {active.id} already exists. "
                 "Complete or abandon it first."
             )
+
+    # Anti-gaming: max 10 sessions per student per day (#3216)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    sessions_today = (
+        db.query(sa_func.count(ILESession.id))
+        .filter(
+            ILESession.student_id == student_id,
+            ILESession.created_at >= today_start,
+        )
+        .scalar()
+    )
+    if sessions_today >= MAX_SESSIONS_PER_DAY:
+        raise ValueError(
+            f"Daily session limit reached ({MAX_SESSIONS_PER_DAY} sessions per day). "
+            "Please try again tomorrow."
+        )
 
     # Use calibration-recommended difficulty if caller used default (#3211)
     if difficulty == "medium":
@@ -438,16 +457,35 @@ async def complete_session(db: Session, session: ILESession) -> dict:
     session.status = "completed"
     session.score = total_correct
     session.total_correct = total_correct
-    session.xp_awarded = total_xp
     session.completed_at = datetime.now(timezone.utc)
+
+    # Rapid completion detection — flag sessions under 30 seconds (#3216)
+    duration = _session_duration_seconds(session)
+    if duration is not None and duration < RAPID_COMPLETION_SECONDS:
+        session.flagged_reason = f"Rapid completion ({duration}s < {RAPID_COMPLETION_SECONDS}s)"
+        total_xp = 0  # Don't award XP for suspicious sessions
+        logger.warning(
+            "ILE session %d flagged: rapid completion (%ds) | student=%d",
+            session.id, duration, session.student_id,
+        )
+
+    session.xp_awarded = total_xp
+
+    # Estimate AI cost for this session (#3216)
+    try:
+        session.ai_cost_estimate = _estimate_session_cost(all_attempts, questions)
+    except Exception:
+        logger.debug("Failed to estimate cost for session %d", session.id)
+
     db.commit()
 
-    # Award XP once at status transition (#3227)
-    try:
-        from app.services.xp_service import award_xp
-        award_xp(db, session.student_id, "ile_session_complete", context_id=f"ile_session_{session.id}")
-    except Exception:
-        pass  # XP is never blocking
+    # Award XP once at status transition (#3227) — skip for flagged sessions
+    if not session.flagged_reason:
+        try:
+            from app.services.xp_service import award_xp
+            award_xp(db, session.student_id, "ile_session_complete", context_id=f"ile_session_{session.id}")
+        except Exception:
+            pass  # XP is never blocking
 
     # Update topic mastery after session completion (#3206)
     try:
@@ -819,3 +857,36 @@ def _session_duration_seconds(session: ILESession) -> int | None:
         delta = session.completed_at - session.started_at
         return int(delta.total_seconds())
     return None
+
+
+def _estimate_session_cost(
+    all_attempts: list,
+    questions: list[dict],
+) -> float:
+    """Estimate AI cost in USD for a session.
+
+    Heuristic based on typical token usage per AI call:
+    - Question generation: ~2000 tokens out
+    - Hint generation: ~200 tokens out
+    - Explanation generation: ~300 tokens out
+
+    Uses the model pricing from ai_service.
+    """
+    from app.services.ai_service import _calc_cost
+    from app.core.config import settings
+
+    model = settings.claude_model
+    cost = 0.0
+
+    # Question generation cost (one call per session)
+    cost += _calc_cost(model, 500, 2000)
+
+    # Hint costs (one per wrong attempt in learning/parent_teaching mode)
+    hints_generated = sum(1 for a in all_attempts if a.hint_shown)
+    cost += hints_generated * _calc_cost(model, 300, 200)
+
+    # Explanation costs (one per correct answer or auto-reveal)
+    explanations_generated = sum(1 for a in all_attempts if a.explanation_shown)
+    cost += explanations_generated * _calc_cost(model, 200, 300)
+
+    return round(cost, 6)

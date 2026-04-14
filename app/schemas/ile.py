@@ -196,3 +196,32 @@ class ILEMasteryMap(BaseModel):
     total_topics: int
     mastered_topics: int
     weak_topics: int
+
+
+# --- Admin Analytics (#3216) ---
+
+class ILEDailySessionCount(BaseModel):
+    date: str
+    count: int
+
+
+class ILEModeSplit(BaseModel):
+    mode: str
+    count: int
+
+
+class ILETopTopic(BaseModel):
+    topic: str
+    count: int
+
+
+class ILEAdminAnalytics(BaseModel):
+    sessions_per_day: list[ILEDailySessionCount]
+    total_sessions: int
+    completed_sessions: int
+    completion_rate: float
+    average_score: float | None
+    average_cost_per_session: float | None
+    mode_split: list[ILEModeSplit]
+    top_topics: list[ILETopTopic]
+    flagged_sessions: int
