@@ -5,7 +5,7 @@
  * - Text input for adding a personal hint before AI hint
  * - Flag question button for later review
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './ile-components.css';
 
 interface ParentTeachingControlsProps {
@@ -38,10 +38,12 @@ export function ParentTeachingControls({
   };
 
   // Reset when hint is cleared (new question)
-  if (!currentHint && submitted) {
-    setSubmitted(false);
-    setHintText('');
-  }
+  useEffect(() => {
+    if (!currentHint && submitted) {
+      setSubmitted(false);
+      setHintText('');
+    }
+  }, [currentHint, submitted]);
 
   return (
     <div className="ile-parent-controls">
