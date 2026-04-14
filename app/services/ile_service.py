@@ -949,7 +949,14 @@ def _check_fill_blank_answer(student_answer: str, correct_answer: str) -> bool:
 def _session_duration_seconds(session: ILESession) -> int | None:
     """Calculate session duration in seconds."""
     if session.started_at and session.completed_at:
-        delta = session.completed_at - session.started_at
+        started = session.started_at
+        completed = session.completed_at
+        # Normalize timezone awareness (SQLite returns naive, PG returns aware)
+        if started.tzinfo is None and completed.tzinfo is not None:
+            started = started.replace(tzinfo=timezone.utc)
+        elif started.tzinfo is not None and completed.tzinfo is None:
+            completed = completed.replace(tzinfo=timezone.utc)
+        delta = completed - started
         return int(delta.total_seconds())
     return None
 
