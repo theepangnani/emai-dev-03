@@ -222,7 +222,10 @@ export function EmailDigestPage() {
                 </button>
                 <button
                   className="ed-primary-btn"
-                  onClick={() => sendDigestMutation.mutate(activeIntegration.id)}
+                  onClick={() => {
+                    sendDigestMutation.reset();
+                    sendDigestMutation.mutate(activeIntegration.id);
+                  }}
                   disabled={sendDigestMutation.isPending}
                 >
                   {sendDigestMutation.isPending ? 'Sending...' : 'Send Digest Now'}
