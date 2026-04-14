@@ -140,9 +140,8 @@ export function FlashTutorPage() {
       mode: 'learning',
     })
       .then(session => navigate(`/flash-tutor/session/${session.id}`, { replace: true }))
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Failed to create session from content';
-        setError(msg);
+      .catch((err: any) => {
+        setError(err.response?.data?.detail || 'Failed to create session from content');
       })
       .finally(() => setCreating(false));
   }, [contentIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -162,8 +161,8 @@ export function FlashTutorPage() {
     try {
       await ileApi.abandonSession(activeSession.id);
       queryClient.invalidateQueries({ queryKey: ['ile-active-session'] });
-    } catch {
-      setError('Failed to abandon session');
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to abandon session');
     } finally {
       setAbandoning(false);
     }
@@ -201,9 +200,8 @@ export function FlashTutorPage() {
       setSelectedTopic(result.topic);
       setUseCustom(false);
       setSurpriseReason(result.reason);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to get surprise topic';
-      setError(msg);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to get surprise topic');
     } finally {
       setSurpriseLoading(false);
     }
