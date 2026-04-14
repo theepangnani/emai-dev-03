@@ -21,7 +21,7 @@
 .help-article-header:hover { background: var(--color-surface-alt); }
 .help-article-info { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .help-article-title { font-size: 15px; font-weight: 600; color: var(--color-ink); margin: 0; font-family: var(--font-display); }
-.help-article-category { font-size: 11px; font-weight: 600; color: var(--color-accent); background: var(--color-accent-light, rgba(73, 184, 192, 0.1)); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.help-article-category { font-size: 11px; font-weight: 600; color: var(--color-accent); background: var(--color-accent-light); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
 .help-article-content { padding: 0 20px 20px; border-top: 1px solid var(--color-border); }
 .help-article-content h2 { font-size: 17px; margin: 16px 0 8px; color: var(--color-ink); }
 .help-article-content h3 { font-size: 15px; margin: 14px 0 6px; color: var(--color-ink); }
@@ -112,7 +112,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--color-accent);
-  background: var(--color-accent-light, rgba(73, 184, 192, 0.1));
+  background: var(--color-accent-light);
   padding: 3px 10px;
   border-radius: 12px;
   white-space: nowrap;

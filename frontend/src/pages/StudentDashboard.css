@@ -447,7 +447,7 @@
   border-left: 3px solid var(--color-accent);
 }
 .sd-action-card.course::after {
-  background: linear-gradient(135deg, rgba(73, 184, 192, 0.04), transparent 60%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 4%, transparent), transparent 60%);
 }
 .sd-action-card.course .sd-action-icon-wrap {
   background: var(--color-accent-subtle);

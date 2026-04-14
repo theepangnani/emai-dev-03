@@ -991,7 +991,7 @@ Report Cards, Analytics, and School Board Connectivity are not ready for all use
 1. **Database model** — `feature_flags` table: `id`, `key` (unique), `name`, `description`, `enabled` (default false), `created_at`, `updated_at`
 2. **Seed service** — Seeds 3 features on startup if table empty
 3. **Admin API** — `GET /api/admin/features` (list), `PATCH /api/admin/features/{key}` (toggle)
-4. **Public API** — `GET /api/features` (authenticated, returns merged config + DB flags as `{key: bool}`)
+4. **Public API** — `GET /api/features` (no auth required; returns config-based flags for all callers, plus DB-backed flags for authenticated users, as `{key: bool}`)
 5. **Admin page** — `/admin/features` with toggle switches, descriptions, last-updated timestamps
 6. **FeatureGate component** — Wraps routes; redirects to `/dashboard` if feature disabled
 7. **Sidebar gating** — `DashboardLayout.tsx` conditionally shows nav items based on `useFeatureToggles()` hook

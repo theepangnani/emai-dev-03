@@ -39,6 +39,7 @@ def _is_token_blacklisted(db: Session, jti: str) -> bool:
     return result
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def get_current_user(
@@ -79,6 +80,20 @@ def get_current_user(
     request.state.user_id = user.id
 
     return user
+
+
+def get_current_user_optional(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Return the current user if a valid token is present, otherwise None."""
+    if not token:
+        return None
+    try:
+        return get_current_user(request=request, token=token, db=db)
+    except HTTPException:
+        return None
 
 
 def require_role(*roles: UserRole):

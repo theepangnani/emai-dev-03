@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings, addMonitoredEmail } from '../api/parentEmailDigest';
+import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings, addMonitoredEmail, listIntegrations } from '../api/parentEmailDigest';
 import './EmailDigestSetupWizard.css';
 
 const TIMEZONES = [
@@ -70,25 +70,53 @@ export function EmailDigestSetupWizard({
   // Focus trap ref
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Reset on open/close
+  // Reset on open/close — check for existing integration
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setError('');
-      setLoading(false);
-      setGmailConnected(false);
-      setConnectedEmail('');
-      setIntegrationId(null);
-      setOauthState('');
-      setMonitoredEmails([]);
-      setNewEmail('');
-      setNewLabel('');
-      setChildFirstName(childName ?? '');
-      setDeliveryTime('07:00');
-      setTimezone('America/Toronto');
-      setDigestFormat('full');
-      setChannels(['in_app', 'email']);
-    }
+    if (!open) return;
+    let cancelled = false;
+
+    setError('');
+    setGmailConnected(false);
+    setConnectedEmail('');
+    setIntegrationId(null);
+    setOauthState('');
+    setMonitoredEmails([]);
+    setNewEmail('');
+    setNewLabel('');
+    setChildFirstName(childName ?? '');
+    setDeliveryTime('07:00');
+    setTimezone('America/Toronto');
+    setDigestFormat('full');
+    setChannels(['in_app', 'email']);
+
+    // Check if the parent already has an integration
+    setLoading(true);
+    setStep(1);
+    listIntegrations()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data.length > 0) {
+          const integration = data[0];
+          setGmailConnected(true);
+          setConnectedEmail(integration.gmail_address);
+          setIntegrationId(integration.id);
+          if (integration.child_school_email) {
+            setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
+          }
+          if (integration.child_first_name) {
+            setChildFirstName(integration.child_first_name);
+          }
+          setStep(2);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to Step 1 on error
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [open, childName]);
 
   // Close on Escape

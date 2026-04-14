@@ -34,7 +34,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .pd-child-tab.active .pd-grade-badge {
@@ -92,7 +92,7 @@
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: white;
-  box-shadow: 0 2px 8px rgba(73, 184, 192, 0.3);
+  box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 /* Scroll wrapper */
@@ -117,13 +117,13 @@
 
 .pd-child-selector-wrapper::before {
   left: 0;
-  background: linear-gradient(to right, var(--color-background, #fff) 0%, transparent 100%);
+  background: linear-gradient(to right, var(--color-surface) 0%, transparent 100%);
   border-radius: 8px 0 0 8px;
 }
 
 .pd-child-selector-wrapper::after {
   right: 0;
-  background: linear-gradient(to left, var(--color-background, #fff) 0%, transparent 100%);
+  background: linear-gradient(to left, var(--color-surface) 0%, transparent 100%);
   border-radius: 0 8px 8px 0;
 }
 
@@ -190,11 +190,11 @@
 
 /* ── Dark mode ── */
 [data-theme="dark"] .pd-child-selector-wrapper::before {
-  background: linear-gradient(to right, var(--color-background, var(--color-surface)) 0%, transparent 100%);
+  background: linear-gradient(to right, var(--color-surface) 0%, transparent 100%);
 }
 
 [data-theme="dark"] .pd-child-selector-wrapper::after {
-  background: linear-gradient(to left, var(--color-background, var(--color-surface)) 0%, transparent 100%);
+  background: linear-gradient(to left, var(--color-surface) 0%, transparent 100%);
 }
 
 
