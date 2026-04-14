@@ -100,7 +100,12 @@ export function EmailDigestSetupWizard({
           setGmailConnected(true);
           setConnectedEmail(integration.gmail_address);
           setIntegrationId(integration.id);
-          if (integration.child_school_email) {
+          if (integration.monitored_emails && integration.monitored_emails.length > 0) {
+            setMonitoredEmails(integration.monitored_emails.map(me => ({
+              email: me.email_address,
+              label: me.label || '',
+            })));
+          } else if (integration.child_school_email) {
             setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
           }
           if (integration.child_first_name) {
@@ -339,14 +344,14 @@ export function EmailDigestSetupWizard({
               </p>
               {monitoredEmails.length > 0 && (
                 <div className="edw-monitored-list">
-                  {monitoredEmails.map((entry, idx) => (
-                    <div key={idx} className="edw-monitored-item">
+                  {monitoredEmails.map((entry) => (
+                    <div key={entry.email} className="edw-monitored-item">
                       <span className="edw-monitored-email">{entry.email}</span>
                       {entry.label && <span className="edw-monitored-label">{entry.label}</span>}
                       <button
                         type="button"
                         className="edw-monitored-remove"
-                        onClick={() => setMonitoredEmails(prev => prev.filter((_, i) => i !== idx))}
+                        onClick={() => setMonitoredEmails(prev => prev.filter(e => e.email !== entry.email))}
                         aria-label={`Remove ${entry.email}`}
                       >
                         &times;
