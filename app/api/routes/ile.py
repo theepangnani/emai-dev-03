@@ -173,7 +173,7 @@ async def create_session(
         MAX_SESSIONS_PER_DAY, SESSION_EXPIRY_HOURS,
         _utc_now_comparable,
     )
-    from app.services.ile_adaptive_service import get_recommended_difficulty
+    from app.services.ile_service import get_recommended_difficulty
     from app.services.ile_service import _fetch_context_text
     from sqlalchemy import func as sa_func
 
