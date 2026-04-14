@@ -57,6 +57,8 @@ export function FlashTutorPage() {
   const [isPrivatePractice, setIsPrivatePractice] = useState(false);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
   const [surpriseReason, setSurpriseReason] = useState<string | null>(null);
+  const [topicSearch, setTopicSearch] = useState('');
+  const [showAllTopics, setShowAllTopics] = useState(false);
 
   // Fetch available topics
   const { data: topics = [], isLoading: topicsLoading } = useQuery({
@@ -81,6 +83,36 @@ export function FlashTutorPage() {
     queryFn: () => ileApi.getMasteryMap(),
     retry: false,
   });
+
+  const displayedTopics = useMemo(() => {
+    let filtered = topics;
+    if (topicSearch.trim()) {
+      const q = topicSearch.toLowerCase();
+      filtered = topics.filter(t =>
+        t.topic.toLowerCase().includes(q) ||
+        t.subject.toLowerCase().includes(q) ||
+        (t.course_name && t.course_name.toLowerCase().includes(q))
+      );
+    }
+    // Sort: weak areas first, then alphabetical
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.is_weak_area !== b.is_weak_area) return a.is_weak_area ? -1 : 1;
+      return a.topic.localeCompare(b.topic);
+    });
+    return showAllTopics ? sorted : sorted.slice(0, 5);
+  }, [topics, topicSearch, showAllTopics]);
+
+  const totalFilteredCount = useMemo(() => {
+    if (!topicSearch.trim()) return topics.length;
+    const q = topicSearch.toLowerCase();
+    return topics.filter(t =>
+      t.topic.toLowerCase().includes(q) ||
+      t.subject.toLowerCase().includes(q) ||
+      (t.course_name && t.course_name.toLowerCase().includes(q))
+    ).length;
+  }, [topics, topicSearch]);
+
+  useEffect(() => { setShowAllTopics(false); }, [topicSearch]);
 
   // Auto-start session when content_id query param is provided (#3272)
   useEffect(() => {
@@ -300,29 +332,59 @@ export function FlashTutorPage() {
           )}
 
           {!useCustom && (
-            <div className="ft-topics-grid">
-              {topicsLoading ? (
-                <div className="ft-loading">Loading topics...</div>
-              ) : topics.length > 0 ? (
-                topics.map((t, i) => (
-                  <button
-                    key={`${t.subject}-${t.topic}-${i}`}
-                    className={`ft-topic-card ${selectedTopic?.subject === t.subject && selectedTopic?.topic === t.topic ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
-                    onClick={() => { setSelectedTopic(t); setSurpriseReason(null); }}
-                  >
-                    <span className="ft-topic-subject">{t.subject}</span>
-                    <span className="ft-topic-name">{t.topic}</span>
-                    {t.is_weak_area && <span className="ft-weak-badge">Needs review</span>}
-                  </button>
-                ))
-              ) : (
-                <p className="ft-empty">No course topics found. You can enter a custom topic below.</p>
+            <>
+              {topics.length > 5 && (
+                <input
+                  type="text"
+                  className="ft-input ft-topic-search"
+                  placeholder="Search topics..."
+                  value={topicSearch}
+                  onChange={e => setTopicSearch(e.target.value)}
+                />
               )}
-            </div>
+              <div className="ft-topics-grid">
+                {topicsLoading ? (
+                  <div className="ft-loading">Loading topics...</div>
+                ) : displayedTopics.length > 0 ? (
+                  displayedTopics.map((t, i) => (
+                    <button
+                      key={`${t.subject}-${t.topic}-${i}`}
+                      className={`ft-topic-card ${selectedTopic?.subject === t.subject && selectedTopic?.topic === t.topic ? 'selected' : ''} ${t.is_weak_area ? 'weak' : ''}`}
+                      onClick={() => { setSelectedTopic(t); setSurpriseReason(null); }}
+                    >
+                      <span className="ft-topic-subject">{t.subject}</span>
+                      <span className="ft-topic-name">{t.topic}</span>
+                      {t.is_weak_area && <span className="ft-weak-badge">Needs review</span>}
+                    </button>
+                  ))
+                ) : (
+                  <p className="ft-empty">{topicSearch ? 'No topics match your search.' : 'No course topics found. You can enter a custom topic below.'}</p>
+                )}
+              </div>
+              {totalFilteredCount > 5 && (
+                <button
+                  className="ft-show-all-btn"
+                  onClick={() => setShowAllTopics(!showAllTopics)}
+                >
+                  {showAllTopics ? 'Show less' : `Show all ${totalFilteredCount} topics`}
+                </button>
+              )}
+            </>
           )}
 
-          <button className="ft-toggle-custom" onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}>
-            {useCustom ? 'Choose from my courses' : 'Enter custom topic'}
+          <button
+            className={`ft-custom-topic-btn ${useCustom ? 'active' : ''}`}
+            onClick={() => { setUseCustom(!useCustom); setSurpriseReason(null); }}
+          >
+            <TutorAvatar size={40} mood="thinking" />
+            <div className="ft-custom-topic-btn-text">
+              <span className="ft-custom-topic-btn-title">
+                {useCustom ? 'Choose from My Courses' : 'Create Your Own Topic'}
+              </span>
+              <span className="ft-custom-topic-btn-desc">
+                {useCustom ? 'Select from enrolled course topics' : 'Enter any subject and topic'}
+              </span>
+            </div>
           </button>
 
           {useCustom && (
