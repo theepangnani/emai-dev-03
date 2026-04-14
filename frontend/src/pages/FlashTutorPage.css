@@ -541,6 +541,43 @@
   margin-bottom: 8px;
 }
 
+/* Streaming generation progress */
+.ft-generating {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  animation: fts-slide-in 0.3s ease;
+}
+
+.ft-generating-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ft-generating-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-ink);
+}
+
+.ft-generating-progress {
+  font-size: 0.85rem;
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+@keyframes fts-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Mobile */
 @media (max-width: 600px) {
   .flash-tutor-page {
