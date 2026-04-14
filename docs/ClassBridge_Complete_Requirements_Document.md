@@ -290,6 +290,19 @@ frontend/src/
 - Child selector for parent role with course filtering
 - Drag-and-drop file upload with progress indicators
 
+### 7.12 Interactive Learning Engine — Flash Tutor (CB-ILE-001, IMPLEMENTED)
+
+AI-powered micro-learning engine that reinforces knowledge through adaptive practice sessions. Deployed April 14, 2026.
+
+- **Three Modes:** Learning (hints, explanations, retry with tiered XP), Testing (flat assessment, no hints), Parent Teaching (personal hints, areas to revisit with child)
+- **Question Formats:** MCQ (4 options) and Fill-in-the-Blank (format escalation after 2 correct MCQ sessions)
+- **Adaptive Learning:** Within-session difficulty progression (easy/medium/challenging), SM-2 spaced repetition scheduling, student calibration after 3 sessions
+- **Gamification:** XP tiered by attempt (30/20/10/0 points), 4 ILE-specific badges (Flash Learner, On Fire, Topic Master, Team Player), streak integration, Aha Moment celebration with confetti animation
+- **Parent Features:** Parent Teaching Mode for guided practice, private practice (hidden scores), Career Connect (AI career connections to topics), ILE data in daily/weekly email digest, Knowledge Decay notifications
+- **Anti-Gaming:** 10 sessions/day limit, rapid completion detection (<30s), flagged sessions receive 0 XP
+- **Cost Optimization:** Question bank pre-generation + hint caching (50-65% AI cost reduction), admin bank management
+- **Architecture:** 7 backend services, 16 API endpoints, 10 frontend components, 5 DB tables, 12 tests
+
 ---
 
 ## 8. Role Workflows
