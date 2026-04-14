@@ -103,6 +103,11 @@ export const triggerSync = (integrationId: number) =>
 export const verifyForwarding = (integrationId: number) =>
   api.post(`/api/parent/email-digest/integrations/${integrationId}/verify-forwarding`);
 
+export const sendDigestNow = (integrationId: number) =>
+  api.post<{ status: string; email_count: number; message: string }>(
+    `/api/parent/email-digest/integrations/${integrationId}/send-digest`
+  );
+
 // Monitored emails (#3178)
 export const listMonitoredEmails = (integrationId: number) =>
   api.get<MonitoredEmail[]>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`);
