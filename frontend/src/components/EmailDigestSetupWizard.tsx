@@ -100,7 +100,12 @@ export function EmailDigestSetupWizard({
           setGmailConnected(true);
           setConnectedEmail(integration.gmail_address);
           setIntegrationId(integration.id);
-          if (integration.child_school_email) {
+          if (integration.monitored_emails && integration.monitored_emails.length > 0) {
+            setMonitoredEmails(integration.monitored_emails.map(me => ({
+              email: me.email_address,
+              label: me.label || '',
+            })));
+          } else if (integration.child_school_email) {
             setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
           }
           if (integration.child_first_name) {
