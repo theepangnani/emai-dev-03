@@ -35,6 +35,10 @@
   min-width: 0;
 }
 
+.ft-header > svg {
+  flex-shrink: 0;
+}
+
 .ft-header h1 {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
