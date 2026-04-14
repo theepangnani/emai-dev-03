@@ -15,6 +15,7 @@ export function StreakCounter({ count, broken }: StreakCounterProps) {
 
   useEffect(() => {
     if (broken) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: triggers shake animation
       setShaking(true);
       const timer = setTimeout(() => setShaking(false), 600);
       return () => clearTimeout(timer);
