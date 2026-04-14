@@ -87,6 +87,7 @@ async def _mock_generate(
     blooms_tier="recall",
     count=5,
     question_format="mcq",
+    context_text=None,
 ):
     """Mock for ile_question_service.get_from_bank_or_generate."""
     return FAKE_QUESTIONS[:count]
