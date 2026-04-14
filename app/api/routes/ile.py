@@ -50,7 +50,21 @@ def _cache_get(key: str) -> object | None:
     return None
 
 
+_CACHE_MAX_SIZE = 1000
+
+
 def _cache_set(key: str, value: object) -> None:
+    # Lazy eviction: purge expired entries when cache grows too large
+    if len(_cache) >= _CACHE_MAX_SIZE:
+        now = time.monotonic()
+        expired = [k for k, (t, _) in _cache.items() if now - t >= _CACHE_TTL]
+        for k in expired:
+            del _cache[k]
+        # If still too large, drop oldest entries
+        if len(_cache) >= _CACHE_MAX_SIZE:
+            oldest = sorted(_cache, key=lambda k: _cache[k][0])[:len(_cache) // 2]
+            for k in oldest:
+                del _cache[k]
     _cache[key] = (time.monotonic(), value)
 
 
