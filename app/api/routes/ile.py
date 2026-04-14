@@ -125,6 +125,9 @@ async def create_session_from_study_guide(
         sg = db.query(StudyGuideModel).filter(StudyGuideModel.id == study_guide_id).first()
         if not sg:
             raise HTTPException(404, "Study guide not found")
+        # Verify ownership: user must own the guide or have it shared with them
+        if sg.user_id != current_user.id and sg.shared_with_user_id != current_user.id:
+            raise HTTPException(403, "Not authorized to use this study guide")
         course_content_id = sg.course_content_id or course_content_id
         # Derive subject/topic from the study guide
         if sg.course_id:
