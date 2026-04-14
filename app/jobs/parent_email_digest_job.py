@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from app.db.database import SessionLocal
 from app.models.parent_gmail_integration import (
@@ -19,6 +19,154 @@ from app.models.notification import NotificationType
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+
+async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False) -> dict:
+    now = datetime.now(timezone.utc)
+
+    if not skip_dedup:
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        existing_log = (
+            db.query(DigestDeliveryLog)
+            .filter(
+                DigestDeliveryLog.integration_id == integration.id,
+                DigestDeliveryLog.delivered_at >= today_start,
+                DigestDeliveryLog.status == "delivered",
+            )
+            .first()
+        )
+        if existing_log:
+            return {"status": "skipped", "email_count": 0, "message": "Already delivered today"}
+
+    settings = integration.digest_settings
+    if not settings:
+        return {"status": "skipped", "email_count": 0, "message": "No digest settings configured"}
+
+    # Fetch child emails
+    try:
+        from app.services.parent_gmail_service import fetch_child_emails
+
+        emails = await fetch_child_emails(db, integration)
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:
+            integration.is_active = False
+            db.commit()
+            logger.warning(
+                "Deactivated integration %d (parent %d): token refresh failed | error=%s",
+                integration.id,
+                integration.parent_id,
+                e,
+            )
+        else:
+            logger.error(
+                "Failed to fetch emails for integration %d | error=%s",
+                integration.id,
+                e,
+            )
+        log_entry = DigestDeliveryLog(
+            parent_id=integration.parent_id,
+            integration_id=integration.id,
+            email_count=0,
+            digest_content=None,
+            status="failed",
+            channels_used=settings.delivery_channels,
+        )
+        db.add(log_entry)
+        db.commit()
+        return {"status": "failed", "email_count": 0, "message": "Failed to fetch emails. Please try again or reconnect Gmail."}
+
+    if not emails and not settings.notify_on_empty:
+        return {"status": "skipped", "email_count": 0, "message": "No new emails"}
+
+    child_name = integration.child_first_name or "your child"
+    parent = integration.parent
+    parent_name = parent.first_name if parent and parent.first_name else "Parent"
+
+    try:
+        from app.services.parent_digest_ai_service import (
+            generate_parent_digest,
+        )
+
+        digest_content = await generate_parent_digest(
+            emails,
+            child_name,
+            parent_name,
+            settings.digest_format,
+        )
+    except Exception as e:
+        logger.error(
+            "AI digest generation failed for integration %d | error=%s",
+            integration.id,
+            e,
+            exc_info=True,
+        )
+        log_entry = DigestDeliveryLog(
+            parent_id=integration.parent_id,
+            integration_id=integration.id,
+            email_count=len(emails) if emails else 0,
+            digest_content=None,
+            status="failed",
+            channels_used=settings.delivery_channels,
+        )
+        db.add(log_entry)
+        db.commit()
+        return {"status": "failed", "email_count": len(emails) if emails else 0, "message": "Failed to generate digest summary. Please try again."}
+
+    channels = [c.strip() for c in settings.delivery_channels.split(",") if c.strip()]
+    notification_channels = []
+    if "in_app" in channels:
+        notification_channels.append("app_notification")
+    if "email" in channels:
+        notification_channels.append("email")
+
+    if parent:
+        from app.services.notification_service import (
+            send_multi_channel_notification,
+        )
+
+        send_multi_channel_notification(
+            db=db,
+            recipient=parent,
+            sender=None,
+            title=f"Email Digest for {child_name}",
+            content=digest_content or "No new emails today.",
+            notification_type=NotificationType.PARENT_EMAIL_DIGEST,
+            link="/email-digest",
+            channels=notification_channels,
+        )
+
+    # WhatsApp delivery (#2987)
+    if "whatsapp" in channels:
+        if integration.whatsapp_verified and integration.whatsapp_phone:
+            try:
+                from app.services.whatsapp_service import send_whatsapp_message
+                if settings.digest_format != "brief":
+                    from app.services.parent_digest_ai_service import generate_parent_digest as gen_brief
+                    whatsapp_content = await gen_brief(emails, child_name, parent_name, "brief")
+                else:
+                    whatsapp_content = digest_content
+                plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
+                send_whatsapp_message(integration.whatsapp_phone, plain_text)
+            except Exception as e:
+                logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
+
+    email_count = len(emails) if emails else 0
+    log_entry = DigestDeliveryLog(
+        parent_id=integration.parent_id,
+        integration_id=integration.id,
+        email_count=email_count,
+        digest_content=digest_content,
+        digest_length_chars=len(digest_content) if digest_content else 0,
+        channels_used=settings.delivery_channels,
+        status="delivered",
+    )
+    db.add(log_entry)
+
+    integration.last_synced_at = now
+    db.commit()
+
+    return {"status": "delivered", "email_count": email_count, "message": f"Digest delivered with {email_count} emails"}
 
 
 async def process_parent_email_digests():
@@ -54,166 +202,13 @@ async def process_parent_email_digests():
 
         for integration in integrations:
             try:
-                # Check if already delivered today
-                # Note: delivered_at from SQLite may be naive (no tzinfo).
-                # SQLAlchemy handles the comparison in the SQL query correctly.
-                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-                existing_log = (
-                    db.query(DigestDeliveryLog)
-                    .filter(
-                        DigestDeliveryLog.integration_id == integration.id,
-                        DigestDeliveryLog.delivered_at >= today_start,
-                        DigestDeliveryLog.status == "delivered",
-                    )
-                    .first()
-                )
-                if existing_log:
+                result = await send_digest_for_integration(db, integration)
+                if result["status"] == "delivered":
+                    sent += 1
+                elif result["status"] == "skipped":
                     skipped += 1
-                    continue
-
-                settings = integration.digest_settings
-                if not settings:
-                    skipped += 1
-                    continue
-
-                # Fetch child emails
-                try:
-                    from app.services.parent_gmail_service import fetch_child_emails
-
-                    emails = await fetch_child_emails(db, integration)
-                except Exception as e:
-                    error_msg = str(e).lower()
-                    if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:
-                        # Token refresh failure — deactivate integration
-                        integration.is_active = False
-                        db.commit()
-                        logger.warning(
-                            "Deactivated integration %d (parent %d): token refresh failed | error=%s",
-                            integration.id,
-                            integration.parent_id,
-                            e,
-                        )
-                    else:
-                        logger.error(
-                            "Failed to fetch emails for integration %d | error=%s",
-                            integration.id,
-                            e,
-                        )
-                    # Log failure
-                    log_entry = DigestDeliveryLog(
-                        parent_id=integration.parent_id,
-                        integration_id=integration.id,
-                        email_count=0,
-                        digest_content=None,
-                        status="failed",
-                        channels_used=settings.delivery_channels,
-                    )
-                    db.add(log_entry)
-                    db.commit()
+                else:
                     failed += 1
-                    continue
-
-                # If no emails and notify_on_empty is False, skip
-                if not emails and not settings.notify_on_empty:
-                    skipped += 1
-                    continue
-
-                # Generate digest via AI
-                child_name = integration.child_first_name or "your child"
-                parent = integration.parent
-                parent_name = parent.first_name if parent and parent.first_name else "Parent"
-
-                try:
-                    from app.services.parent_digest_ai_service import (
-                        generate_parent_digest,
-                    )
-
-                    digest_content = await generate_parent_digest(
-                        emails,
-                        child_name,
-                        parent_name,
-                        settings.digest_format,
-                    )
-                except Exception as e:
-                    logger.error(
-                        "AI digest generation failed for integration %d | error=%s",
-                        integration.id,
-                        e,
-                        exc_info=True,
-                    )
-                    log_entry = DigestDeliveryLog(
-                        parent_id=integration.parent_id,
-                        integration_id=integration.id,
-                        email_count=len(emails) if emails else 0,
-                        digest_content=None,
-                        status="failed",
-                        channels_used=settings.delivery_channels,
-                    )
-                    db.add(log_entry)
-                    db.commit()
-                    failed += 1
-                    continue
-
-                # Deliver notification
-                channels = [c.strip() for c in settings.delivery_channels.split(",") if c.strip()]
-                notification_channels = []
-                if "in_app" in channels:
-                    notification_channels.append("app_notification")
-                if "email" in channels:
-                    notification_channels.append("email")
-
-                if parent:
-                    from app.services.notification_service import (
-                        send_multi_channel_notification,
-                    )
-
-                    send_multi_channel_notification(
-                        db=db,
-                        recipient=parent,
-                        sender=None,
-                        title=f"Email Digest for {child_name}",
-                        content=digest_content or "No new emails today.",
-                        notification_type=NotificationType.PARENT_EMAIL_DIGEST,
-                        link="/email-digest",
-                        channels=notification_channels,
-                    )
-
-                # WhatsApp delivery (#2987)
-                if "whatsapp" in channels:
-                    if integration.whatsapp_verified and integration.whatsapp_phone:
-                        try:
-                            from app.services.whatsapp_service import send_whatsapp_message
-                            # Use "brief" format for WhatsApp (1600 char limit)
-                            if settings.digest_format != "brief":
-                                from app.services.parent_digest_ai_service import generate_parent_digest as gen_brief
-                                whatsapp_content = await gen_brief(emails, child_name, parent_name, "brief")
-                            else:
-                                whatsapp_content = digest_content
-                            # Strip HTML for WhatsApp plain text
-                            plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
-                            send_whatsapp_message(integration.whatsapp_phone, plain_text)
-                        except Exception as e:
-                            logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
-
-                # Log successful delivery
-                email_count = len(emails) if emails else 0
-                log_entry = DigestDeliveryLog(
-                    parent_id=integration.parent_id,
-                    integration_id=integration.id,
-                    email_count=email_count,
-                    digest_content=digest_content,
-                    digest_length_chars=len(digest_content) if digest_content else 0,
-                    channels_used=settings.delivery_channels,
-                    status="delivered",
-                )
-                db.add(log_entry)
-
-                # Update last synced timestamp
-                integration.last_synced_at = now
-                db.commit()
-
-                sent += 1
-
             except Exception as e:
                 logger.error(
                     "Parent email digest failed for integration %d | error=%s",

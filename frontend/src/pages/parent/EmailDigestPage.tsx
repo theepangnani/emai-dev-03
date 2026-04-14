@@ -9,6 +9,7 @@ import {
   updateSettings,
   getLogs,
   triggerSync,
+  sendDigestNow,
   listMonitoredEmails,
   addMonitoredEmail,
   removeMonitoredEmail,
@@ -93,6 +94,13 @@ export function EmailDigestPage() {
 
   const syncMutation = useMutation({
     mutationFn: (id: number) => triggerSync(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+    },
+  });
+
+  const sendDigestMutation = useMutation({
+    mutationFn: (id: number) => sendDigestNow(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-digest'] });
     },
@@ -212,11 +220,27 @@ export function EmailDigestPage() {
                 >
                   {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
                 </button>
+                <button
+                  className="ed-primary-btn"
+                  onClick={() => {
+                    sendDigestMutation.reset();
+                    sendDigestMutation.mutate(activeIntegration.id);
+                  }}
+                  disabled={sendDigestMutation.isPending}
+                >
+                  {sendDigestMutation.isPending ? 'Sending...' : 'Send Digest Now'}
+                </button>
                 {syncMutation.isError && (
                   <span className="ed-error-text">Sync failed. Please try again.</span>
                 )}
                 {syncMutation.isSuccess && (
                   <span className="ed-success-text">Sync complete!</span>
+                )}
+                {sendDigestMutation.isError && (
+                  <span className="ed-error-text">Failed to send digest. Please try again.</span>
+                )}
+                {sendDigestMutation.isSuccess && (
+                  <span className="ed-success-text">{sendDigestMutation.data?.data?.message ?? 'Digest sent!'}</span>
                 )}
               </div>
             </div>

@@ -584,6 +584,12 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
 - [x] Non-200 userinfo logging (#3159) + specific exception types (#3160) — PR #3169
 - [x] Root cause: missing userinfo.email + userinfo.profile OAuth scopes (#3176) — PR #3177
 
+**On-Demand Digest (M3, #3307):**
+- [ ] F-17: On-demand digest — parents can trigger immediate digest delivery from the Email Digest page via a "Send Digest Now" button (#3307)
+  - Uses the same pipeline as scheduled digest: fetch emails → AI summarize → render template → deliver via configured channels
+  - Bypasses the "already delivered today" deduplication check (parent may want a fresh digest after new emails arrive)
+  - Rate-limited to 10 requests per minute per parent to prevent abuse
+
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)
