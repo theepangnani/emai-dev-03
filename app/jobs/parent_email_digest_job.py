@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import datetime, timezone, timedelta
 
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from app.db.database import SessionLocal
 from app.models.parent_gmail_integration import (
@@ -21,7 +21,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-async def send_digest_for_integration(db, integration, *, skip_dedup: bool = False):
+async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False) -> dict:
     now = datetime.now(timezone.utc)
 
     if not skip_dedup:
