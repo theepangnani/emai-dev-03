@@ -247,6 +247,32 @@
 }
 
 /* Topics grid */
+.ft-topic-search {
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.ft-show-all-btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent-strong);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.ft-show-all-btn:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
 .ft-topics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
