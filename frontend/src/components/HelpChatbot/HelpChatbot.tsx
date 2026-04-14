@@ -27,7 +27,7 @@ export function HelpChatbot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
-  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart, resetPosition } = useChatPanelInteraction();
+  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart } = useChatPanelInteraction('classbridge-help-panel-state');
 
   // Persist open/closed state
   useEffect(() => {
@@ -108,7 +108,7 @@ export function HelpChatbot() {
         >
           <div
             className="help-chatbot-header help-chatbot-header--draggable"
-            onMouseDown={onDragStart}
+            onPointerDown={onDragStart}
           >
             <div className="help-chatbot-header-title">
               <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
@@ -139,7 +139,7 @@ export function HelpChatbot() {
               </button>
               <button
                 className="help-chatbot-close"
-                onClick={() => { setIsOpen(false); resetPosition(); }}
+                onClick={() => setIsOpen(false)}
                 aria-label="Close help chat"
               >
                 &times;
@@ -222,7 +222,7 @@ export function HelpChatbot() {
           {!maximized && (
             <div
               className="help-chatbot-resize-handle"
-              onMouseDown={onResizeStart}
+              onPointerDown={onResizeStart}
               aria-hidden="true"
             />
           )}

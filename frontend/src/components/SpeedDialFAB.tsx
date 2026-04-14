@@ -32,7 +32,7 @@ export function SpeedDialFAB() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
-  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart, resetPosition } = useChatPanelInteraction();
+  const { panelRef, panelStyle, maximized, toggleMaximize, onDragStart, onResizeStart } = useChatPanelInteraction('classbridge-speeddial-panel-state');
 
   // Auto-scroll chat messages
   useEffect(() => {
@@ -153,7 +153,7 @@ export function SpeedDialFAB() {
         >
           <div
             className="help-chatbot-header help-chatbot-header--draggable"
-            onMouseDown={onDragStart}
+            onPointerDown={onDragStart}
           >
             <div className="help-chatbot-header-top">
               <span className="help-chatbot-header-label">
@@ -184,7 +184,7 @@ export function SpeedDialFAB() {
                 </button>
                 <button
                   className="help-chatbot-close"
-                  onClick={() => { setChatOpen(false); resetPosition(); }}
+                  onClick={() => setChatOpen(false)}
                   aria-label="Close help chat"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
@@ -278,7 +278,7 @@ export function SpeedDialFAB() {
           {!maximized && (
             <div
               className="help-chatbot-resize-handle"
-              onMouseDown={onResizeStart}
+              onPointerDown={onResizeStart}
               aria-hidden="true"
             />
           )}
