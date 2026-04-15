@@ -113,11 +113,32 @@
   border-radius: 2px;
 }
 
+.section-panel__view-all {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.section-panel__view-all:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
 /* ── Responsive ─────────────────────────── */
 
 /* ── Dark mode ── */
 [data-theme="dark"] .section-panel__count {
   color: var(--color-surface);
+}
+[data-theme="dark"] .section-panel__view-all {
+  color: #34d399;
+}
+[data-theme="dark"] .section-panel__view-all:hover {
+  background: rgba(52, 211, 153, 0.12);
 }
 
 @media (max-width: 767px) {
