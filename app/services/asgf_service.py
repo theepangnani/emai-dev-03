@@ -28,8 +28,8 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
         return IntentClassifyResponse()
 
     try:
-        client = openai.OpenAI(api_key=settings.openai_api_key, timeout=5.0)
-        response = client.chat.completions.create(
+        client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=5.0)
+        response = await client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
