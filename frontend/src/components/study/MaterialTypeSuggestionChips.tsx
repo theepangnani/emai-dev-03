@@ -35,6 +35,7 @@ const PAST_EXAM_CHIPS: ChipAction[] = [
   { label: 'Create Study Guide', action: 'study_guide', creditCost: 1, variant: 'secondary' },
   { label: 'Create Flashcards', action: 'flashcards', creditCost: 1, variant: 'secondary' },
   { label: 'Weak Area Analysis', action: 'weak_area', creditCost: 2, variant: 'secondary' },
+  { label: 'Solve with Explanations', action: 'solve_problems', creditCost: 1, variant: 'secondary' },
 ];
 
 const STUDENT_TEST_CHIPS: ChipAction[] = [
@@ -42,6 +43,7 @@ const STUDENT_TEST_CHIPS: ChipAction[] = [
   { label: 'Weak Area Analysis', action: 'weak_area', creditCost: 2, variant: 'secondary' },
   { label: 'Create Study Guide', action: 'study_guide', creditCost: 1, variant: 'secondary' },
   { label: 'Create Flashcards', action: 'flashcards', creditCost: 1, variant: 'secondary' },
+  { label: 'Solve with Explanations', action: 'solve_problems', creditCost: 1, variant: 'secondary' },
 ];
 
 const WORKSHEET_CHIPS: ChipAction[] = [
@@ -61,6 +63,7 @@ const CUSTOM_CHIPS: ChipAction[] = [
   { label: 'Create Study Guide', action: 'study_guide', creditCost: 1, variant: 'primary' },
   { label: 'Create Quiz', action: 'quiz', creditCost: 1, variant: 'secondary' },
   { label: 'Create Flashcards', action: 'flashcards', creditCost: 1, variant: 'secondary' },
+  { label: 'Solve with Explanations', action: 'solve_problems', creditCost: 1, variant: 'secondary' },
 ];
 
 const CHIP_SETS: Record<string, ChipAction[]> = {

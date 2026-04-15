@@ -76,6 +76,38 @@ describe('getChips', () => {
   });
 });
 
+describe('Solve with Explanations chip', () => {
+  const defaultProps = {
+    onChipClick: vi.fn(),
+    generatingAction: null as string | null,
+    disabled: false,
+    remainingCredits: 10 as number | null,
+    atLimit: false,
+  };
+
+  it('appears in past_exam chip set', () => {
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="past_exam" />);
+    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+  });
+
+  it('appears in student_test chip set', () => {
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="student_test" />);
+    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+  });
+
+  it('appears in custom chip set', () => {
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="custom" />);
+    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+  });
+
+  it('calls onChipClick with solve_problems action', () => {
+    const onClick = vi.fn();
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="past_exam" onChipClick={onClick} />);
+    fireEvent.click(screen.getByText('Solve with Explanations'));
+    expect(onClick).toHaveBeenCalledWith('solve_problems', undefined);
+  });
+});
+
 describe('getHeader', () => {
   it('returns specific header for worksheet', () => {
     expect(getHeader('worksheet')).toContain('worksheet');

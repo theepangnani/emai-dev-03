@@ -296,7 +296,7 @@ export function StudyGuideTab({
     onGenerate({
       documentType: documentType || autoDetectedType || undefined,
       studyGoal: studyGoal || undefined,
-      studyGoalText: templateKey || studyGoalText.trim() || undefined,
+      studyGoalText: action === 'solve_problems' ? 'problem_solver' : (templateKey || studyGoalText.trim() || undefined),
     });
   };
 
