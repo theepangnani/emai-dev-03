@@ -202,11 +202,20 @@ export function TasksPage() {
           itemType: 'assignment' as const,
         }))
     );
+    // Dedup: skip tasks that duplicate an overview assignment on the same date (#3379)
+    const overviewKeys = new Set(
+      assignments.map(a => `${a.dueDate.toDateString()}|${a.title.toLowerCase().trim()}`)
+    );
     const filteredCalendarTasks = filterAssignee === 'all'
       ? tasks
       : tasks.filter(t => t.assigned_to_user_id === filterAssignee);
     const taskItems: CalendarAssignment[] = filteredCalendarTasks
       .filter(t => t.due_date)
+      .filter(t => {
+        const taskDate = new Date(t.due_date!).toDateString();
+        const cleanTitle = t.title.replace(/^Review:\s*/i, '').toLowerCase().trim();
+        return !overviewKeys.has(`${taskDate}|${cleanTitle}`);
+      })
       .map(t => ({
         id: t.id + 1_000_000,
         taskId: t.id,
