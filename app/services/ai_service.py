@@ -553,13 +553,17 @@ async def generate_study_guide(
     """
     logger.info(f"Generating study guide | title={assignment_title} | course={course_name}")
 
-    if document_type or study_goal:
+    # Template keys passed via study_goal_text — internal selectors, not user focus text
+    _is_template_key = study_goal_text in ('problem_solver',)
+
+    if document_type or study_goal or _is_template_key:
         from app.services.study_guide_strategy import StudyGuideStrategyService
         strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
         strategy_template = StudyGuideStrategyService.get_prompt_template(
             document_type=document_type,
             study_goal=study_goal,
-            focus_area=study_goal_text if not focus_prompt else None,
+            focus_area=study_goal_text if (not _is_template_key and not focus_prompt) else None,
+            template_key=study_goal_text if _is_template_key else None,
         )
         prompt, _ = _build_study_guide_prompt(
             assignment_title=assignment_title,
@@ -622,13 +626,17 @@ async def generate_study_guide_stream(
     )
 
     # Build prompts — use strategy service if document_type/study_goal provided
-    if document_type or study_goal:
+    # Template keys passed via study_goal_text — internal selectors, not user focus text
+    _is_template_key = study_goal_text in ('problem_solver',)
+
+    if document_type or study_goal or _is_template_key:
         from app.services.study_guide_strategy import StudyGuideStrategyService
         strategy_system_prompt = StudyGuideStrategyService.get_system_prompt(document_type)
         strategy_template = StudyGuideStrategyService.get_prompt_template(
             document_type=document_type,
             study_goal=study_goal,
-            focus_area=study_goal_text if not focus_prompt else None,
+            focus_area=study_goal_text if (not _is_template_key and not focus_prompt) else None,
+            template_key=study_goal_text if _is_template_key else None,
         )
         prompt, _ = _build_study_guide_prompt(
             assignment_title=assignment_title,

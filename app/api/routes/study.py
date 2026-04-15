@@ -77,6 +77,18 @@ INSUFFICIENT_TEXT_MSG = (
 # Lower minimum for parent open-ended questions (#2861)
 MIN_QUESTION_CHARS = 10
 
+# Template keys passed via study_goal_text — internal selectors, not user text.
+# These must NOT be persisted to course_content.study_goal_text.
+_TEMPLATE_GOAL_KEYS = frozenset({'problem_solver'})
+
+# Guide type display labels for child guide title generation (#3371)
+GUIDE_TYPE_LABELS = {
+    "study_guide": "Study Guide",
+    "quiz": "Quiz",
+    "flashcards": "Flashcards",
+    "problem_solver": "Problem Solver",
+}
+
 
 def _cleanup_empty_guide(guide_id: int, logger) -> None:
     """Delete a study guide record if it has no content (stream failure cleanup)."""
@@ -830,7 +842,7 @@ async def generate_study_guide_endpoint(
                     cc.document_type = body.document_type
                 if body.study_goal:
                     cc.study_goal = body.study_goal
-                if body.study_goal_text:
+                if body.study_goal_text and body.study_goal_text not in _TEMPLATE_GOAL_KEYS:
                     cc.study_goal_text = body.study_goal_text
                 db.commit()
         except Exception as e:
@@ -2025,13 +2037,6 @@ async def generate_child_guide(
     topic_preview = body.topic[:100]
     parent_content_truncated = parent_guide.content[:8000]
 
-    GUIDE_TYPE_LABELS = {
-        "study_guide": "Study Guide",
-        "quiz": "Quiz",
-        "flashcards": "Flashcards",
-        "problem_solver": "Problem Solver",
-    }
-
     # Deduplicate: check for existing sub-guide with same parent + topic
     title = f"{GUIDE_TYPE_LABELS.get(body.guide_type, 'Study Guide')}: {topic_preview}"
     existing_child = db.query(StudyGuide).filter(
@@ -2260,13 +2265,7 @@ async def generate_child_guide_stream(
     topic_preview = body.topic[:100]
     parent_content_truncated = parent_guide.content[:8000]
 
-    GUIDE_TYPE_LABELS_LOCAL = {
-        "study_guide": "Study Guide",
-        "quiz": "Quiz",
-        "flashcards": "Flashcards",
-        "problem_solver": "Problem Solver",
-    }
-    title = f"{GUIDE_TYPE_LABELS_LOCAL.get(body.guide_type, 'Study Guide')}: {topic_preview}"
+    title = f"{GUIDE_TYPE_LABELS.get(body.guide_type, 'Study Guide')}: {topic_preview}"
 
     # Dedup check — return existing as plain JSON (not SSE)
     existing_child = db.query(StudyGuide).filter(
@@ -3374,7 +3373,7 @@ async def generate_study_guide_stream_endpoint(
                                     cc_obj.document_type = doc_type
                                 if study_goal_val:
                                     cc_obj.study_goal = study_goal_val
-                                if study_goal_text_val:
+                                if study_goal_text_val and study_goal_text_val not in _TEMPLATE_GOAL_KEYS:
                                     cc_obj.study_goal_text = study_goal_text_val
                                 save_db.commit()
                         except Exception as e:
