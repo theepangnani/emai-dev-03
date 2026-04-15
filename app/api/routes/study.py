@@ -2062,10 +2062,10 @@ async def generate_child_guide(
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
 
-    # problem_solver: inject the problem_solver template as the custom prompt
+    # problem_solver: inject the problem_solver template via service method
     if body.guide_type == "problem_solver" and not effective_custom_prompt:
-        from app.services.study_guide_strategy import TEMPLATE_PROMPTS
-        effective_custom_prompt = TEMPLATE_PROMPTS["problem_solver"]
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
 
     if body.guide_type in ("study_guide", "problem_solver"):
         try:
@@ -2284,10 +2284,10 @@ async def generate_child_guide_stream(
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
 
-    # problem_solver: inject the problem_solver template as the custom prompt
+    # problem_solver: inject the problem_solver template via service method
     if body.guide_type == "problem_solver" and not effective_custom_prompt:
-        from app.services.study_guide_strategy import TEMPLATE_PROMPTS
-        effective_custom_prompt = TEMPLATE_PROMPTS["problem_solver"]
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
 
     study_service = StudyService(db)
     content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
