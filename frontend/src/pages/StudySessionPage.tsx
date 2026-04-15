@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { coursesApi } from '../api/courses';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PomodoroTimer } from '../components/PomodoroTimer';
 import './StudySessionPage.css';
@@ -38,12 +39,12 @@ export function StudySessionPage() {
   const loadData = useCallback(async () => {
     try {
       setLoadError(false);
-      const [coursesResp, sessionsResp, statsResp] = await Promise.all([
-        api.get('/api/courses/'),
+      const [coursesData, sessionsResp, statsResp] = await Promise.all([
+        coursesApi.list(),
         api.get('/api/study-sessions', { params: { limit: 10 } }),
         api.get('/api/study-sessions/stats'),
       ]);
-      setCourses(coursesResp.data);
+      setCourses(coursesData);
       setSessions(sessionsResp.data.items || []);
       setStats(statsResp.data);
     } catch {
