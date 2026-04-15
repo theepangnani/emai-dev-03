@@ -646,7 +646,7 @@ def _is_valid_image(image_bytes: bytes) -> bool:
         img.load()  # force decode
         gray = img.convert("L")
         # Check entropy — all-black images have near-zero entropy
-        if gray.entropy() < 0.1:
+        if gray.entropy() < 0.01:
             return False
         return True
     except Exception:
@@ -695,12 +695,17 @@ def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
     # Validate extracted images — discard corrupt or all-black ones
     if images:
         valid_images = [img for img in images if _is_valid_image(img["image_bytes"])]
-        if valid_images:
-            images = valid_images
+        invalid_count = len(images) - len(valid_images)
+        if invalid_count > 0:
+            # Some images were invalid — also render pages to capture vector graphics
+            logger.info("%d of %d PyPDF2-extracted images are invalid/black, supplementing with PyMuPDF", invalid_count, len(images))
+            rendered = _render_pdf_pages_as_images(file_content)
+            if valid_images:
+                images = valid_images + rendered
+            else:
+                images = rendered
         else:
-            # All PyPDF2 images are invalid/black — fall back to page rendering
-            logger.info("All %d PyPDF2-extracted images are invalid/black, falling back to PyMuPDF", len(images))
-            images = []
+            images = valid_images
 
     # Fallback: if PyPDF2 found no valid raster images, render pages as images
     # using PyMuPDF to capture vector graphics (diagrams, math figures, etc.)
