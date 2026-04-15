@@ -572,7 +572,8 @@ async def upload_course_content_file(
         images = extract_images_from_file(file_content, filename)
         for img_data in images:
             if settings.use_gcs:
-                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.jpg"
+                _img_ext = "png" if img_data['media_type'] == "image/png" else "jpg"
+                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.{_img_ext}"
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,
@@ -875,7 +876,8 @@ async def upload_multi_files(
         for idx, img_data in enumerate(all_images):
             img_data['position_index'] = idx
             if settings.use_gcs:
-                _img_gcs_path = f"content-images/{content.id}/{idx}.jpg"
+                _img_ext = "png" if img_data['media_type'] == "image/png" else "jpg"
+                _img_gcs_path = f"content-images/{content.id}/{idx}.{_img_ext}"
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,
@@ -1601,7 +1603,8 @@ async def add_files_to_material(
             img_idx = existing_image_count + idx
             img_data['position_index'] = img_idx
             if settings.use_gcs:
-                _img_gcs_path = f"content-images/{master.id}/{img_idx}.jpg"
+                _img_ext = "png" if img_data['media_type'] == "image/png" else "jpg"
+                _img_gcs_path = f"content-images/{master.id}/{img_idx}.{_img_ext}"
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=master.id,
@@ -1696,7 +1699,8 @@ async def replace_course_content_file(
         images = extract_images_from_file(file_content, filename)
         for img_data in images:
             if settings.use_gcs:
-                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.jpg"
+                _img_ext = "png" if img_data['media_type'] == "image/png" else "jpg"
+                _img_gcs_path = f"content-images/{content.id}/{img_data['position_index']}.{_img_ext}"
                 gcs_service.upload_file(_img_gcs_path, img_data['image_data'], img_data['media_type'])
                 content_image = ContentImage(
                     course_content_id=content.id,

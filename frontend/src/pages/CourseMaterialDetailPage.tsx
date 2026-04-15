@@ -486,17 +486,28 @@ export function CourseMaterialDetailPage() {
     }
   }, [searchParams]);
 
-  // Pre-populate focus prompts from saved history on first load
+  // Pre-populate focus prompts from saved history (#1001, #3374)
+  const focusInitRef = useRef(false);
   useEffect(() => {
     if (guides.length === 0) return;
     const sg = findRootGuide('study_guide');
     const qz = findRootGuide('quiz');
     const fc = findRootGuide('flashcards');
     const mm = findRootGuide('mind_map');
-    if (sg?.focus_prompt) setGuideFocusPrompt(prev => prev || sg.focus_prompt!);
-    if (qz?.focus_prompt) setQuizFocusPrompt(prev => prev || qz.focus_prompt!);
-    if (fc?.focus_prompt) setFlashcardsFocusPrompt(prev => prev || fc.focus_prompt!);
-    if (mm?.focus_prompt) setMindmapFocusPrompt(prev => prev || mm.focus_prompt!);
+    if (!focusInitRef.current) {
+      // First load: always set from saved guide
+      if (sg?.focus_prompt) setGuideFocusPrompt(sg.focus_prompt);
+      if (qz?.focus_prompt) setQuizFocusPrompt(qz.focus_prompt);
+      if (fc?.focus_prompt) setFlashcardsFocusPrompt(fc.focus_prompt);
+      if (mm?.focus_prompt) setMindmapFocusPrompt(mm.focus_prompt);
+      focusInitRef.current = true;
+    } else {
+      // Subsequent updates: only set if currently empty
+      if (sg?.focus_prompt) setGuideFocusPrompt(prev => prev || sg.focus_prompt!);
+      if (qz?.focus_prompt) setQuizFocusPrompt(prev => prev || qz.focus_prompt!);
+      if (fc?.focus_prompt) setFlashcardsFocusPrompt(prev => prev || fc.focus_prompt!);
+      if (mm?.focus_prompt) setMindmapFocusPrompt(prev => prev || mm.focus_prompt!);
+    }
   }, [guides]);
 
   useEffect(() => {
@@ -675,6 +686,10 @@ export function CourseMaterialDetailPage() {
   useEffect(() => {
     if (stream.status === 'done') {
       refreshAIUsage();
+      // Pre-populate focus prompt from the just-completed guide (#3374)
+      if (stream.guide?.focus_prompt) {
+        setGuideFocusPrompt(stream.guide.focus_prompt);
+      }
       // Main guide stream completed
       loadData();
       setGenerating(null);

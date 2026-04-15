@@ -396,7 +396,7 @@ export function StudyGuideTab({
               generatingTopic={childGuideGenerating}
             />
           )}
-          {!isStreaming && studyGuide.is_truncated && (
+          {!isStreaming && (
             <div className="cm-truncated-banner">
               {continuing ? (
                 <>
