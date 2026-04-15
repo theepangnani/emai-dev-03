@@ -635,12 +635,31 @@ def _extract_images_from_pptx(file_content: bytes) -> list[dict]:
     return images
 
 
+def _is_valid_image(image_bytes: bytes) -> bool:
+    """Check if image bytes represent a valid, non-black image.
+
+    Returns False for images that PIL cannot decode or that are
+    effectively all-black (entropy < 0.1 on grayscale conversion).
+    """
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img.load()  # force decode
+        gray = img.convert("L")
+        # Check entropy — all-black images have near-zero entropy
+        if gray.entropy() < 0.01:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
     """Extract images from a PDF file with page context.
 
-    First tries PyPDF2 to extract embedded raster images. If none found,
-    falls back to PyMuPDF (fitz) to render each page as a PNG, capturing
-    vector graphics (diagrams, charts, math figures) that PyPDF2 cannot extract.
+    First tries PyPDF2 to extract embedded raster images. If none found
+    or all extracted images are invalid/black, falls back to PyMuPDF (fitz)
+    to render each page as a PNG, capturing vector graphics (diagrams,
+    charts, math figures) that PyPDF2 cannot extract.
     """
     images: list[dict] = []
     try:
@@ -673,7 +692,22 @@ def _extract_images_from_pdf(file_content: bytes) -> list[dict]:
     except Exception as e:
         logger.debug(f"Failed to extract images from PDF: {e}")
 
-    # Fallback: if PyPDF2 found no raster images, render pages as images
+    # Validate extracted images — discard corrupt or all-black ones
+    if images:
+        valid_images = [img for img in images if _is_valid_image(img["image_bytes"])]
+        invalid_count = len(images) - len(valid_images)
+        if invalid_count > 0:
+            # Some images were invalid — also render pages to capture vector graphics
+            logger.info("%d of %d PyPDF2-extracted images are invalid/black, supplementing with PyMuPDF", invalid_count, len(images))
+            rendered = _render_pdf_pages_as_images(file_content)
+            if valid_images:
+                images = valid_images + rendered
+            else:
+                images = rendered
+        else:
+            images = valid_images
+
+    # Fallback: if PyPDF2 found no valid raster images, render pages as images
     # using PyMuPDF to capture vector graphics (diagrams, math figures, etc.)
     if not images:
         images = _render_pdf_pages_as_images(file_content)

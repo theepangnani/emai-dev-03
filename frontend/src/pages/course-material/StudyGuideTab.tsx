@@ -396,7 +396,7 @@ export function StudyGuideTab({
               generatingTopic={childGuideGenerating}
             />
           )}
-          {!isStreaming && studyGuide.is_truncated && (
+          {!isStreaming && (
             <div className="cm-truncated-banner">
               {continuing ? (
                 <>
@@ -415,7 +415,7 @@ export function StudyGuideTab({
               ) : (
                 <>
                   <button className="cm-action-btn" onClick={handleContinue} disabled={atLimit}>
-                    {'\u2728'} Continue generating
+                    {'\u2728'} {studyGuide.is_truncated ? 'Continue generating' : 'Expand this guide'}
                   </button>
                   {continueError && (
                     <p style={{ color: 'var(--color-error, #d32f2f)', fontSize: '0.85rem', margin: '0.5rem 0 0' }}>{continueError}</p>
