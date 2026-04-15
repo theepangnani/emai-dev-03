@@ -49,6 +49,7 @@ const WORKSHEET_CHIPS: ChipAction[] = [
   { label: 'Generate Answer Key', action: 'answer_key', creditCost: 0, variant: 'secondary' },
   { label: 'Create Quiz', action: 'quiz', creditCost: 1, variant: 'secondary' },
   { label: 'Create Flashcards', action: 'flashcards', creditCost: 1, variant: 'secondary' },
+  { label: 'Solve with Explanations', action: 'solve_problems', creditCost: 1, variant: 'secondary' },
 ];
 
 const PROJECT_BRIEF_CHIPS: ChipAction[] = [

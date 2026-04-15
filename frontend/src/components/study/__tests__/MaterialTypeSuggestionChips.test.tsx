@@ -76,6 +76,23 @@ describe('getChips', () => {
   });
 });
 
+describe('Solve with Explanations chip', () => {
+  const defaultProps = {
+    documentType: 'worksheet',
+    detectedSubject: 'math' as string | null,
+    onChipClick: vi.fn(),
+    generatingAction: null as string | null,
+    disabled: false,
+    remainingCredits: 10 as number | null,
+    atLimit: false,
+  };
+
+  it('appears in worksheet chip set', () => {
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="worksheet" />);
+    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+  });
+});
+
 describe('getHeader', () => {
   it('returns specific header for worksheet', () => {
     expect(getHeader('worksheet')).toContain('worksheet');
