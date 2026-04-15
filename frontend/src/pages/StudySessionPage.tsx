@@ -39,7 +39,7 @@ export function StudySessionPage() {
     try {
       setLoadError(false);
       const [coursesResp, sessionsResp, statsResp] = await Promise.all([
-        api.get('/api/courses'),
+        api.get('/api/courses/'),
         api.get('/api/study-sessions', { params: { limit: 10 } }),
         api.get('/api/study-sessions/stats'),
       ]);
