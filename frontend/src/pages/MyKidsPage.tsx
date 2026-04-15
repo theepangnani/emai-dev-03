@@ -940,15 +940,21 @@ export function MyKidsPage() {
           </div>
 
           <div className="dashboard-redesign">
-          {/* ── Best Study Times ──────────────────── */}
-          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
-
           {/* ── Class Materials ───────────────────── */}
-          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)}>
+          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)} headerRight={
+            materials.length > 0 ? (
+              <button
+                className="section-panel__view-all"
+                onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
+              >
+                View All
+              </button>
+            ) : undefined
+          }>
               <div className="mykids-list">
                 {materials.length === 0 ? (
                   <p className="dash-empty-hint">No class materials yet.</p>
-                ) : materials.map(m => (
+                ) : materials.slice(0, 5).map(m => (
                   <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-list-body">
                       <span className="mykids-list-title">{m.title}</span>
@@ -966,6 +972,9 @@ export function MyKidsPage() {
                 ))}
               </div>
           </SectionPanel>
+
+          {/* ── Best Study Times ──────────────────── */}
+          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
 
           {/* ── Courses ───────────────────────────── */}
           <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>
