@@ -134,6 +134,12 @@
 [data-theme="dark"] .section-panel__count {
   color: var(--color-surface);
 }
+[data-theme="dark"] .section-panel__view-all {
+  color: #34d399;
+}
+[data-theme="dark"] .section-panel__view-all:hover {
+  background: rgba(52, 211, 153, 0.12);
+}
 
 @media (max-width: 767px) {
   .section-panel {
