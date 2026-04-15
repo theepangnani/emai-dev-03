@@ -1167,3 +1167,28 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - [x] Rewrite no-child view with `dashboard-redesign` grid layout (#3361)
 - [x] Render per-child StudyTimeSuggestions in no-child view (#3361)
 - [x] Convert Unassigned sections to SectionPanel components (#3361)
+
+---
+
+### 6.136 Problem Solver / Solve with Explanations (#2697)
+
+**Purpose:** Provide step-by-step worked solutions for uploaded exam and test documents, helping students understand how to solve each problem rather than just seeing the answer.
+
+**Trigger:** For documents classified as `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `worksheet`, or `custom`, show a **"Solve with Explanations"** AI chip on the course material detail page.
+
+**Behavior:**
+- [x] Clicking the chip generates a study guide variant with `guide_type: problem_solver`
+- [x] Generated content renders in the existing Study Guide tab (no new tab required)
+- [x] Credit cost: 1 AI credit (same as a standard study guide)
+- [x] Available to all roles: parent, student, teacher
+
+**Generated Content Requirements:**
+- [x] Step-by-step worked solutions for each problem in the document
+- [x] Clear explanation of **why** each step is taken (not just how)
+- [x] Common mistakes to avoid for each problem
+- [x] Key formula and concept references
+- [x] LaTeX math notation (`$...$`) for mathematical expressions
+
+**AI Chip Visibility Rules:**
+- [x] Show "Solve with Explanations" chip for document types: `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `worksheet`, `custom`
+- [x] Hide the chip for other document types (e.g., `lecture_notes`, `textbook_chapter`, `syllabus`)

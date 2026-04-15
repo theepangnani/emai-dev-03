@@ -247,7 +247,7 @@ class StudyGuideUpdate(BaseModel):
 class GenerateChildRequest(BaseModel):
     """Request to generate a child sub-guide from selected text."""
     topic: str = Field(min_length=3, max_length=5000)  # The selected text
-    guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, answer_key
+    guide_type: str = Field(default="study_guide", max_length=50)  # study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, answer_key, problem_solver
     custom_prompt: str | None = Field(default=None, max_length=2000)  # Optional focus (e.g., "make it harder")
     # §6.106: Strategy context inherited from parent
     document_type: str | None = Field(default=None, max_length=30)
@@ -258,8 +258,8 @@ class GenerateChildRequest(BaseModel):
     @field_validator('guide_type')
     @classmethod
     def validate_guide_type(cls, v: str) -> str:
-        if v not in ('study_guide', 'quiz', 'flashcards', 'worksheet', 'weak_area_analysis', 'high_level_summary', 'answer_key'):
-            raise ValueError('guide_type must be study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, or answer_key')
+        if v not in ('study_guide', 'quiz', 'flashcards', 'worksheet', 'weak_area_analysis', 'high_level_summary', 'answer_key', 'problem_solver'):
+            raise ValueError('guide_type must be study_guide, quiz, flashcards, worksheet, weak_area_analysis, high_level_summary, answer_key, or problem_solver')
         return v
 
     @field_validator('topic', 'custom_prompt', mode='before')

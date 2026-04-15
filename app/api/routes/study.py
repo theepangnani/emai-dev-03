@@ -77,6 +77,18 @@ INSUFFICIENT_TEXT_MSG = (
 # Lower minimum for parent open-ended questions (#2861)
 MIN_QUESTION_CHARS = 10
 
+# Template keys passed via study_goal_text — internal selectors, not user text.
+# These must NOT be persisted to course_content.study_goal_text.
+_TEMPLATE_GOAL_KEYS = frozenset({'problem_solver'})
+
+# Guide type display labels for child guide title generation (#3371)
+GUIDE_TYPE_LABELS = {
+    "study_guide": "Study Guide",
+    "quiz": "Quiz",
+    "flashcards": "Flashcards",
+    "problem_solver": "Problem Solver",
+}
+
 
 def _cleanup_empty_guide(guide_id: int, logger) -> None:
     """Delete a study guide record if it has no content (stream failure cleanup)."""
@@ -830,7 +842,7 @@ async def generate_study_guide_endpoint(
                     cc.document_type = body.document_type
                 if body.study_goal:
                     cc.study_goal = body.study_goal
-                if body.study_goal_text:
+                if body.study_goal_text and body.study_goal_text not in _TEMPLATE_GOAL_KEYS:
                     cc.study_goal_text = body.study_goal_text
                 db.commit()
         except Exception as e:
@@ -2019,14 +2031,8 @@ async def generate_child_guide(
     topic_preview = body.topic[:100]
     parent_content_truncated = parent_guide.content[:8000]
 
-    GUIDE_TYPE_LABELS = {
-        "study_guide": "Study Guide",
-        "quiz": "Quiz",
-        "flashcards": "Flashcards",
-    }
-
     # Deduplicate: check for existing sub-guide with same parent + topic
-    title = f"{GUIDE_TYPE_LABELS[body.guide_type]}: {topic_preview}"
+    title = f"{GUIDE_TYPE_LABELS.get(body.guide_type, 'Study Guide')}: {topic_preview}"
     existing_child = db.query(StudyGuide).filter(
         StudyGuide.user_id == current_user.id,
         StudyGuide.parent_guide_id == guide_id,
@@ -2050,7 +2056,12 @@ async def generate_child_guide(
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
 
-    if body.guide_type == "study_guide":
+    # problem_solver: inject the problem_solver template via service method
+    if body.guide_type == "problem_solver" and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
+
+    if body.guide_type in ("study_guide", "problem_solver"):
         try:
             raw_content, is_truncated = await generate_study_guide(
                 assignment_title=f"Sub-guide: {topic_preview}",
@@ -2219,8 +2230,8 @@ async def generate_child_guide_stream(
     if not has_access:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
-    # Only study_guide type supports streaming; others fall back to non-streaming
-    if body.guide_type != "study_guide":
+    # Only study_guide and problem_solver types support streaming; others fall back to non-streaming
+    if body.guide_type not in ("study_guide", "problem_solver"):
         return await generate_child_guide(request, guide_id, body, db, current_user)
 
     # Inherit document_type/study_goal from parent's course content
@@ -2248,12 +2259,7 @@ async def generate_child_guide_stream(
     topic_preview = body.topic[:100]
     parent_content_truncated = parent_guide.content[:8000]
 
-    GUIDE_TYPE_LABELS_LOCAL = {
-        "study_guide": "Study Guide",
-        "quiz": "Quiz",
-        "flashcards": "Flashcards",
-    }
-    title = f"{GUIDE_TYPE_LABELS_LOCAL[body.guide_type]}: {topic_preview}"
+    title = f"{GUIDE_TYPE_LABELS.get(body.guide_type, 'Study Guide')}: {topic_preview}"
 
     # Dedup check — return existing as plain JSON (not SSE)
     existing_child = db.query(StudyGuide).filter(
@@ -2271,6 +2277,11 @@ async def generate_child_guide_stream(
     if body.document_type and not effective_custom_prompt:
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
+    # problem_solver: inject the problem_solver template via service method
+    if body.guide_type == "problem_solver" and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
 
     study_service = StudyService(db)
     content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
@@ -3356,7 +3367,7 @@ async def generate_study_guide_stream_endpoint(
                                     cc_obj.document_type = doc_type
                                 if study_goal_val:
                                     cc_obj.study_goal = study_goal_val
-                                if study_goal_text_val:
+                                if study_goal_text_val and study_goal_text_val not in _TEMPLATE_GOAL_KEYS:
                                     cc_obj.study_goal_text = study_goal_text_val
                                 save_db.commit()
                         except Exception as e:
