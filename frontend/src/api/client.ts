@@ -255,4 +255,4 @@ export type { DigestSettings, DailyDigestPreview, DigestSendResponse } from './d
 export { dailyQuizApi } from './dailyQuiz';
 export type { DailyQuizQuestion, DailyQuizResponse, DailyQuizSubmitResponse } from './dailyQuiz';
 export { asgfApi } from './asgf';
-export type { IntentClassifyResponse } from './asgf';
+export type { IntentClassifyResponse, FileUploadResponse, MultiFileUploadResponse } from './asgf';
