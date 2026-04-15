@@ -5,6 +5,7 @@ Provides multi-file upload for personalized study sessions.
 
 from __future__ import annotations
 
+import asyncio
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -71,6 +72,11 @@ async def upload_asgf_documents(
     total_bytes = 0
     for f in files:
         _validate_extension(f.filename or "")
+        if f.size and f.size > MAX_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File '{f.filename}' exceeds size limit.",
+            )
         try:
             content = await f.read()
         except Exception as exc:
@@ -89,13 +95,13 @@ async def upload_asgf_documents(
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
         # Persist to uploads dir (reuse existing storage service)
-        stored_name = save_file(content, filename)
+        stored_name = await asyncio.to_thread(save_file, content, filename)
         file_id = uuid4().hex
 
         # Extract text preview (best-effort)
         text_preview = ""
         try:
-            extracted = process_file(content, filename)
+            extracted = await asyncio.to_thread(process_file, content, filename)
             text_preview = (extracted[:TEXT_PREVIEW_LENGTH] + "...") if len(extracted) > TEXT_PREVIEW_LENGTH else extracted
         except FileProcessingError:
             text_preview = "(text extraction unavailable)"
