@@ -877,9 +877,6 @@ async def continue_study_guide(
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
-    if not guide.is_truncated:
-        raise HTTPException(status_code=400, detail="Study guide is not truncated")
-
     check_ai_usage(current_user, db)
 
     system_prompt = """You are an expert educational tutor. Continue the study guide from where it left off.
@@ -887,7 +884,7 @@ Do not repeat content already covered. Pick up exactly where the previous conten
 Use simple language, practical examples, and clean Markdown formatting.
 For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations."""
 
-    prompt = f"""The following study guide was cut off due to length limits. Continue it from where it left off. Do not repeat any content already covered.
+    prompt = f"""The following study guide may be complete or cut off. Continue it from where it left off, adding more detail, examples, or sections. Do not repeat any content already covered.
 
 **Previous content:**
 {guide.content}
@@ -930,9 +927,6 @@ async def continue_study_guide_stream(
     if not guide:
         raise HTTPException(status_code=404, detail="Study guide not found")
 
-    if not guide.is_truncated:
-        raise HTTPException(status_code=400, detail="Study guide is not truncated")
-
     check_ai_usage(current_user, db)
 
     system_prompt = """You are an expert educational tutor. Continue the study guide from where it left off.
@@ -940,7 +934,7 @@ Do not repeat content already covered. Pick up exactly where the previous conten
 Use simple language, practical examples, and clean Markdown formatting.
 For math, use LaTeX notation with $...$ for inline math and $$...$$ for display equations."""
 
-    prompt = f"""The following study guide was cut off due to length limits. Continue it from where it left off. Do not repeat any content already covered.
+    prompt = f"""The following study guide may be complete or cut off. Continue it from where it left off, adding more detail, examples, or sections. Do not repeat any content already covered.
 
 **Previous content:**
 {guide.content}
