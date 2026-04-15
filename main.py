@@ -32,6 +32,7 @@ from app.api.routes import parent_email_digest
 from app.api.routes import admin_contacts
 from app.api.routes import features as features_route
 from app.api.routes import ile
+from app.api.routes import asgf
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -333,6 +334,7 @@ from app.api.routes import admin_outreach
 app.include_router(admin_outreach.router, prefix="/api")
 app.include_router(features_route.router, prefix="/api")
 app.include_router(ile.router, prefix="/api")
+app.include_router(asgf.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
