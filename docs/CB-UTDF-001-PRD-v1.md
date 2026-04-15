@@ -728,49 +728,110 @@ AND no credit is consumed (classification is free)
 
 ---
 
-## 19. Architecture Review
+## 19. Architecture Review — UX Simplicity for Novice Parents (2026-04-10)
 
-Architecture review issues G1–G12 (#3019–#3030) track cross-cutting fixes identified during PRD finalization. These are tracked separately from the 13 feature stories (S1–S15) above.
+**Review focus:** Ensure the design works for non-tech-savvy parents who don't know (or care about) "document types," "study goals," or "template keys."
 
-| Issue | Title | GitHub |
-|-------|-------|--------|
-| G1 | Template key collision guard | #3019 |
-| G2 | Classification retry / timeout handling | #3020 |
-| G3 | Chip set extensibility (plugin model) | #3021 |
-| G4 | Override audit trail | #3022 |
-| G5 | Credit cost configuration (not hard-coded) | #3023 |
-| G6 | Worksheet PDF export | #3024 |
-| G7 | Rate-limit on classification endpoint | #3025 |
-| G8 | Mobile scope reduction (WebView for actions) | #3026 |
-| G9 | Accessibility — screen reader for ClassificationBar | #3027 |
-| G10 | Confidence threshold configurability | #3028 |
-| G11 | Telemetry — classification accuracy tracking | #3029 |
-| G12 | Documentation — UTDF developer guide | #3030 |
+**GitHub Issues:** #3019–#3030 (gotchas), review comments on #2948–#2961
 
----
+### 19.1 UX Recommendations (R1–R8)
 
-## 20. Deployment Report (2026-04-11)
+#### R1. Auto-Detect and Go — Kill "Configure Then Generate" (CRITICAL)
 
-### Deployment Timeline
-- **2026-04-10 21:08** — PR #3068 merged to master (17 parallel streams)
-- **2026-04-10 21:18** — First deploy: tests passed but production 500 errors on all course_contents queries
-- **Root cause:** PostgreSQL ALTER TABLE migrations blocked by `pg_advisory_lock(1)` held by previous Cloud Run instance
-- **2026-04-11 01:00–04:00** — Multiple hotfix attempts: deferred columns, synchronous migrations, advisory lock fix
-- **2026-04-11 ~17:30** — Final resolution: columns manually added via Cloud SQL Studio + code redeployed with columns enabled
-- **2026-04-11 17:40** — PR #3085 merged (Gmail callback, classifier prompt, pagination, PDF export, guide cleanup, digest format)
+**Problem:** The current empty state shows DocumentTypeSelector (8 chips) + StudyGoalSelector (7-option dropdown) + Generate button. UTDF adds ClassificationBar (4 badges) + MaterialTypeSuggestionChips (6 chips) = ~22 interactive elements before the parent acts.
 
-### Lessons Learned
-1. **pg_advisory_lock blocks forever** — replaced with pg_try_advisory_lock (3 retries, 5s wait)
-2. **SQLAlchemy deferred() doesn't prevent INSERT crashes** — only affects SELECT queries
-3. **Pydantic from_attributes triggers deferred loads** — response schema fields must match actual DB columns
-4. **Cloud Run keeps old instances alive** — must use `gcloud run services update-traffic --to-latest` after deploy
-5. **Module-level logger output may not reach Cloud Run logs** — use print(flush=True) for startup debugging
-6. **Admin migration endpoint added** — POST /api/admin/run-migrations for future column additions
+**Decision:** When confidence ≥ 0.80, skip the empty state entirely:
+```
+Upload → "Analyzing your document..." (1-2s skeleton) → Chips appear immediately
+```
+No DocumentTypeSelector. No StudyGoalSelector. No Generate button. The **chips ARE the actions**. Old selectors appear only as fallback when confidence < 0.80.
 
-### Issues Created During Deployment
-- #3070–#3075: PR review findings (all fixed)
-- #3077–#3078: Enhancement suggestions (pagination, PDF export — fixed in #3085)
-- #3079: Advisory lock root cause (fixed)
-- #3080: Re-enable columns (fixed)
-- #3081–#3082: Documentation (added to CLAUDE.md)
-- #3083: Gmail callback (fixed in #3085)
+**Affected file:** `frontend/src/pages/course-material/StudyGuideTab.tsx` (lines 398-443)
+
+#### R2. ClassificationBar → Human Sentence
+
+**Replaces §6 Step 3.** Instead of:
+```
+📄 [Past Exam]  📚 [Math]  👤 [Thanushan – Grade 10]  👨‍🏫 [Mr. Smith]  [Edit ✎]
+```
+Show:
+> **"This looks like a Math Past Exam for Thanushan."** [Not right?]
+
+- Teacher badge removed entirely — auto-assign silently from course record
+- Low confidence: "This might be a Science worksheet — [confirm or change]"
+
+#### R3. Chip Visual Hierarchy — Primary CTA + Secondary
+
+**Extends §5.1.** For each chip set:
+- **1 primary** (filled, larger) — most-recommended action for this document type
+- **3-4 secondary** (outline, smaller) — alternatives
+- **1 subtle** (text link) — "Full Study Guide" or "Ask Bot"
+
+Add plain-English header: *"Your child had a math exam. Here's how we can help:"*
+
+#### R4. Inline Child Pills, Not Blocking Modal
+
+**Replaces §4.3 disambiguation modal** for most cases:
+- Inline pill selector at top of chip area: "Which child is this for? [Thanushan] [Kavitha]"
+- Remember last child per course — 4th upload to same course auto-assigns
+- Full modal only for genuine grade conflicts (detected grade contradicts all children)
+
+#### R5. Simplified Override — Binary Correction
+
+**Replaces §6 Step 6 (full override panel).** Instead of 4 dropdowns (11 types × 8 subjects × children × teachers):
+- "Not right?" → "Is this a test/exam?" → Yes/No
+- If No → 4-option picker: **Test, Homework, Class Notes, Other**
+- Subject override only if document is in a generic/unassigned course
+- Teacher override removed from parent-facing UI (backend-only)
+
+#### R6. Tab Consolidation (9 → 5+More)
+
+**Extends §10 Modified Components.**
+- **Keep visible:** Original Document, Study Guide, Quiz, Flashcards, Worksheets (only after generation)
+- **Collapse into "More":** Mind Map, Videos, Briefing
+- **Move to settings gear:** Access Log
+
+#### R7. Worksheets Inline, Not Separate Page
+
+**Modifies §10 WorksheetViewer.** Render inline in same content area as study guides. "Full Page" and "Print" links for dedicated view. Parent's mental model: everything about this material is on one page.
+
+#### R8. Credit Cost Visibility on Chips
+
+**Extends §5.2.** Badge premium chips: `[Weak Area Analysis · 2 credits]`. Show remaining credits near chip area.
+
+### 19.2 Technical Gotchas (G1–G12)
+
+| # | Issue | Severity | Fix | GitHub |
+|---|-------|----------|-----|--------|
+| G1 | Classification window 800 chars too short for subject detection | High | Increase to 2000 chars in `document_classifier.py` | #3019 |
+| G2 | `check_ai_usage()` has no cost parameter | **Critical** | Add `cost` param, check `remaining >= cost` | #3020 |
+| G3 | Answer key storage contradictory (column vs separate record) | **Critical** | Use column on same row; API returns worksheet ID | #3021 |
+| G4 | Multi-subject documents get single `detected_subject` | Medium | Classify sub-materials independently; add `'mixed'` value | #3022 |
+| G5 | Permanent dual chip code paths for legacy materials | Medium | Lazy-classify on first view instead | #3023 |
+| G6 | `teacher_notes` maps to two chip sets | High | Merge into one chip set for `teacher_notes` | #3024 |
+| G7 | Template resolver ignores `study_goal` | Medium | Layer GOAL_MODIFIERS on top of template key | #3025 |
+| G8 | Mobile S14 scope underestimated | Medium | Scope to chips + WebView; native viewers Phase 3 | #3026 |
+| G9 | No loading skeleton between classification and chips | High | "Analyzing..." skeleton replaces old empty state | #3027 |
+| G10 | Worksheet print CSS needed Day 1 | High | Add `@media print` rules in Phase 2 | #3028 |
+| G11 | No `ai_engine` column for mixed-engine tracking | Medium | Add column to `study_guides`; validate engine per guide_type | #3029 |
+| G12 | Silent classification failure with no user feedback | Medium | 1 retry + explicit error message + manual fallback | #3030 |
+
+### 19.3 Updated S2 Migration Scope
+
+Per G11, add to S2 migration:
+```sql
+ALTER TABLE study_guides ADD COLUMN ai_engine VARCHAR(20);
+```
+
+### 19.4 Updated §8.1 Column Additions
+
+Per §17 decision + G3 resolution, `answer_key_markdown` is stored as a column on the study_guide worksheet row (not a separate record). The API returns the worksheet ID, and the answer key is fetched as a field.
+
+### 19.5 Implementation Priority
+
+| Priority | Items |
+|----------|-------|
+| **Critical** | R1 (auto-detect UX), G2 (credit check), G3 (answer key storage) |
+| **High** | R2 (human sentence), R3 (chip hierarchy), G1 (classification window), G6 (teacher_notes), G9 (loading skeleton) |
+| **Medium** | R4 (inline pills), R5 (simple override), R6 (tab consolidation), G7 (study_goal), G10 (print CSS) |
+| **Low** | R7 (inline worksheets), R8 (credit cost display), G4, G5, G8, G11, G12 |
