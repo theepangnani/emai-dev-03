@@ -36,21 +36,20 @@ export function StudySessionPage() {
   const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async () => {
-    try {
-      setLoadError(false);
-      const [coursesResp, sessionsResp, statsResp] = await Promise.all([
-        api.get('/api/courses'),
-        api.get('/api/study-sessions', { params: { limit: 10 } }),
-        api.get('/api/study-sessions/stats'),
-      ]);
-      setCourses(coursesResp.data);
-      setSessions(sessionsResp.data.items || []);
-      setStats(statsResp.data);
-    } catch {
+    setLoadError(false);
+    const [coursesResult, sessionsResult, statsResult] = await Promise.allSettled([
+      api.get('/api/courses'),
+      api.get('/api/study-sessions', { params: { limit: 10 } }),
+      api.get('/api/study-sessions/stats'),
+    ]);
+    if (coursesResult.status === 'fulfilled') setCourses(coursesResult.value.data);
+    if (sessionsResult.status === 'fulfilled') setSessions(sessionsResult.value.data.items || []);
+    if (statsResult.status === 'fulfilled') setStats(statsResult.value.data);
+    // Show error only if ALL requests failed
+    if ([coursesResult, sessionsResult, statsResult].every(r => r.status === 'rejected')) {
       setLoadError(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
