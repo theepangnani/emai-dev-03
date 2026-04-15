@@ -1141,3 +1141,28 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 #### Open Enhancement Issues
 - #3262-#3271: 10 code quality suggestions (LRU cache, dead code, edge cases)
 - #3272: Study guide integration (IMPLEMENTED)
+
+---
+
+### 6.135 Problem Solver / Solve with Explanations (#2697)
+
+**Purpose:** Provide step-by-step worked solutions for uploaded exam and test documents, helping students understand how to solve each problem rather than just seeing the answer.
+
+**Trigger:** For documents classified as `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, or `custom`, show a **"Solve with Explanations"** AI chip on the course material detail page.
+
+**Behavior:**
+- [ ] Clicking the chip generates a study guide variant with `guide_type: problem_solver`
+- [ ] Generated content renders in the existing Study Guide tab (no new tab required)
+- [ ] Credit cost: 1 AI credit (same as a standard study guide)
+- [ ] Available to all roles: parent, student, teacher
+
+**Generated Content Requirements:**
+- [ ] Step-by-step worked solutions for each problem in the document
+- [ ] Clear explanation of **why** each step is taken (not just how)
+- [ ] Common mistakes to avoid for each problem
+- [ ] Key formula and concept references
+- [ ] LaTeX math notation (`$...$`) for mathematical expressions
+
+**AI Chip Visibility Rules:**
+- [ ] Show "Solve with Explanations" chip only for document types: `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `custom`
+- [ ] Hide the chip for other document types (e.g., `lecture_notes`, `textbook_chapter`, `syllabus`)
