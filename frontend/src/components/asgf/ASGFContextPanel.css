@@ -1,0 +1,163 @@
+/* ASGFContextPanel — study context selection */
+
+.asgf-ctx-panel {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.75rem;
+  background: var(--color-surface, #fff);
+  margin-bottom: 1rem;
+}
+
+.asgf-ctx-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text, #1e293b);
+  transition: color 0.15s;
+}
+
+.asgf-ctx-toggle:hover {
+  color: var(--color-accent-strong, #2a9fa8);
+}
+
+.asgf-ctx-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s;
+  color: var(--color-text-muted, #64748b);
+}
+
+.asgf-ctx-chevron--open {
+  transform: rotate(90deg);
+}
+
+.asgf-ctx-title {
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font-display, inherit);
+}
+
+.asgf-ctx-ready-badge {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-success-bg, #dcfce7);
+  color: var(--color-success, #16a34a);
+}
+
+.asgf-ctx-body {
+  padding: 0 1rem 1rem;
+}
+
+.asgf-ctx-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .asgf-ctx-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.asgf-ctx-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.asgf-ctx-field label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #64748b);
+}
+
+.asgf-ctx-field input,
+.asgf-ctx-field select {
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1e293b);
+  transition: border-color 0.15s;
+}
+
+.asgf-ctx-field input:focus,
+.asgf-ctx-field select:focus {
+  outline: none;
+  border-color: var(--color-accent-strong, #2a9fa8);
+  box-shadow: 0 0 0 2px var(--color-accent-ring, rgba(42, 159, 168, 0.15));
+}
+
+.asgf-ctx-field input[readonly] {
+  background: var(--color-surface-dim, #f8fafc);
+  cursor: default;
+}
+
+/* Dashed border for low-confidence fields */
+.asgf-ctx-field--low input,
+.asgf-ctx-field--low select {
+  border-style: dashed;
+  border-color: var(--color-warning, #f59e0b);
+}
+
+.asgf-ctx-date-override {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.asgf-ctx-confirm {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--color-accent-strong, #2a9fa8);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.asgf-ctx-confirm:hover:not(:disabled) {
+  background: var(--color-accent-hover, #238b93);
+}
+
+.asgf-ctx-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark mode */
+[data-theme="dark"] .asgf-ctx-panel {
+  border-color: var(--color-border, #334155);
+  background: var(--color-surface, #1e293b);
+}
+
+[data-theme="dark"] .asgf-ctx-toggle {
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .asgf-ctx-field input,
+[data-theme="dark"] .asgf-ctx-field select {
+  background: var(--color-surface, #1e293b);
+  border-color: var(--color-border, #334155);
+  color: var(--color-text, var(--color-ink));
+}
+
+[data-theme="dark"] .asgf-ctx-field input[readonly] {
+  background: var(--color-surface-dim, #0f172a);
+}
+
+[data-theme="dark"] .asgf-ctx-ready-badge {
+  background: rgba(22, 163, 74, 0.15);
+}

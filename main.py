@@ -333,6 +333,8 @@ from app.api.routes import admin_outreach
 app.include_router(admin_outreach.router, prefix="/api")
 app.include_router(features_route.router, prefix="/api")
 app.include_router(ile.router, prefix="/api")
+from app.api.routes import asgf
+app.include_router(asgf.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
