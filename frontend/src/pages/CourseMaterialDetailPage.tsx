@@ -489,6 +489,9 @@ export function CourseMaterialDetailPage() {
   // Pre-populate focus prompts from saved history (#1001, #3374)
   const focusInitRef = useRef(false);
   useEffect(() => {
+    focusInitRef.current = false;
+  }, [contentId]);
+  useEffect(() => {
     if (guides.length === 0) return;
     const sg = findRootGuide('study_guide');
     const qz = findRootGuide('quiz');
