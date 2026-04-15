@@ -1220,5 +1220,41 @@ Expand the FAQ knowledge base to provide comprehensive coverage for all platform
 - [ ] Add TOPIC_KEYWORDS to intent classifier for bare topic routing (#1778)
 - [ ] Add "What can this chatbot do?" suggestion chip (#1778)
 
+#### 6.59.17 Chat Panel Window Interaction — Drag, Resize, Maximize (#3334)
+
+**Status:** IMPLEMENTED | **Added:** 2026-04-14 | **Issue:** #3334
+
+**Classification:** Requirement Gap — the chat panel previously had fixed dimensions (400×520px) and a fixed position with no user control over window placement, size, or fullscreen mode.
+
+**Changes:**
+- **Dragging:** Users can grab the chat panel header to reposition it anywhere on screen. The panel stays within viewport bounds.
+- **Resizing:** A bottom-left corner handle allows resizing with minimum constraints (320×380px). Panel grows leftward and downward.
+- **Maximize:** A maximize/restore button in the header toggles between normal size and fullscreen mode.
+- **Persistence:** Panel size and position are persisted to localStorage across sessions.
+- **Mobile:** Drag and resize are disabled on viewports < 768px (panel is already fullscreen).
+
+**Files Changed:**
+- `frontend/src/hooks/useChatPanelInteraction.ts` — reusable hook for drag/resize/maximize state
+- `frontend/src/components/SpeedDialFAB.tsx` — integrated hook into Study Q&A / Help panel
+- `frontend/src/components/HelpChatbot/HelpChatbot.tsx` — integrated hook into standalone Help panel
+- `frontend/src/components/HelpChatbot/HelpChatbot.css` — maximized class, draggable cursor, resize handle styles
+
+**Sub-tasks:**
+- [x] Create `useChatPanelInteraction` hook (drag, resize, maximize, localStorage persistence)
+- [x] Integrate into SpeedDialFAB (Study Q&A + Help modes)
+- [x] Integrate into standalone HelpChatbot
+- [x] CSS for maximized state, drag cursor, resize handle
+- [x] Mobile: disable drag/resize, keep fullscreen behavior
+- [x] Viewport bounds clamping for drag
+- [x] Pointer events for unified mouse + touch support (#3343)
+- [x] On-demand listener lifecycle — attach on drag start, detach on end (#3339)
+- [x] Stable ref-based handlers to avoid re-render cascades (#3340)
+- [x] Reactive mobile detection via matchMedia (#3341)
+- [x] Debounced localStorage persistence with flush on unmount (#3350)
+- [x] Double-click header to maximize (#3344)
+- [x] `user-select: none` + `touch-action: none` on drag header (#3351)
+- [x] Duplicate listener guard on rapid clicks (#3348)
+- [x] Unmount cleanup for leaked listeners (#3349)
+
 ---
 

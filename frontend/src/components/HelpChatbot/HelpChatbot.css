@@ -48,6 +48,58 @@
   animation: helpChatSlideUp 0.2s ease-out;
 }
 
+/* Maximized state */
+.help-chatbot-panel--maximized {
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0;
+  z-index: 9999;
+}
+
+/* Draggable header cursor */
+.help-chatbot-header--draggable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.help-chatbot-header--draggable:active {
+  cursor: grabbing;
+}
+
+/* Resize handle — bottom-left corner */
+.help-chatbot-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nesw-resize;
+  touch-action: none;
+  z-index: 10;
+}
+
+.help-chatbot-resize-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 10px;
+  height: 10px;
+  border-left: 2px solid var(--color-ink-muted, #94a3b8);
+  border-bottom: 2px solid var(--color-ink-muted, #94a3b8);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.help-chatbot-resize-handle:hover::before {
+  opacity: 1;
+}
+
 @keyframes helpChatSlideUp {
   from {
     opacity: 0;
@@ -544,14 +596,22 @@
   }
 
   .help-chatbot-panel {
-    top: 0;
-    bottom: 0;
-    right: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    height: 100dvh !important;
     border-radius: 0;
+  }
+
+  .help-chatbot-header--draggable {
+    cursor: default;
+  }
+
+  .help-chatbot-resize-handle {
+    display: none;
   }
 
   .help-chatbot-input {
