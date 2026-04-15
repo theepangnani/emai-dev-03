@@ -2056,6 +2056,10 @@ async def generate_child_guide(
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
 
+    if body.guide_type == "problem_solver" and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
+
     if body.guide_type == "study_guide":
         try:
             raw_content, is_truncated = await generate_study_guide(
@@ -2277,6 +2281,10 @@ async def generate_child_guide_stream(
     if body.document_type and not effective_custom_prompt:
         from app.services.study_guide_strategy import StudyGuideStrategyService
         effective_custom_prompt = StudyGuideStrategyService.get_system_prompt(body.document_type)
+
+    if body.guide_type == "problem_solver" and not effective_custom_prompt:
+        from app.services.study_guide_strategy import StudyGuideStrategyService
+        effective_custom_prompt = StudyGuideStrategyService.get_prompt_template(template_key="problem_solver")
 
     study_service = StudyService(db)
     content_hash = study_service.compute_content_hash(title, body.guide_type, parent_guide.course_content_id)
