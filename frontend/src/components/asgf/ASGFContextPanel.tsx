@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import './ASGFContextPanel.css';
 
 /** Context fields confirmed by the user. */
@@ -56,33 +56,46 @@ export function ASGFContextPanel({
   const [testDate, setTestDate] = useState<string>('');
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
 
-  // Auto-populate child fields when a child is selected
+  // Derived: currently selected child record
   const selectedChild = useMemo(
     () => childrenList?.find((c) => c.id === selectedChildId),
     [childrenList, selectedChildId],
   );
 
-  useEffect(() => {
-    if (selectedChild) {
-      if (selectedChild.grade) setGradeLevel(selectedChild.grade);
-      setBoard(selectedChild.board || 'Ontario');
-    }
-  }, [selectedChild]);
-
   // Auto-select the first (only) child
-  useEffect(() => {
-    if (userRole === 'parent' && childrenList?.length === 1 && !selectedChildId) {
-      setSelectedChildId(childrenList[0].id);
-    }
-  }, [userRole, childrenList, selectedChildId]);
+  const autoChildId =
+    userRole === 'parent' && childrenList?.length === 1 && !selectedChildId
+      ? childrenList[0].id
+      : null;
+  if (autoChildId && selectedChildId !== autoChildId) {
+    setSelectedChildId(autoChildId);
+  }
 
-  // When a task is selected, populate its due date
-  useEffect(() => {
-    if (selectedTaskId && upcomingTasks) {
-      const task = upcomingTasks.find((t) => t.id === selectedTaskId);
-      if (task?.due_date) setTestDate(task.due_date);
-    }
-  }, [selectedTaskId, upcomingTasks]);
+  // Handlers that populate derived fields on selection change
+  const handleChildChange = useCallback(
+    (id: string) => {
+      setSelectedChildId(id);
+      const child = childrenList?.find((c) => c.id === id);
+      if (child) {
+        if (child.grade) setGradeLevel(child.grade);
+        setBoard(child.board || 'Ontario');
+      }
+    },
+    [childrenList],
+  );
+
+  const handleTaskChange = useCallback(
+    (taskId: string) => {
+      setSelectedTaskId(taskId);
+      if (taskId && upcomingTasks) {
+        const task = upcomingTasks.find((t) => t.id === taskId);
+        if (task?.due_date) setTestDate(task.due_date);
+      } else {
+        setTestDate('');
+      }
+    },
+    [upcomingTasks],
+  );
 
   const selectedCourse = useMemo(
     () => courses?.find((c) => c.id === selectedCourseId),
@@ -160,7 +173,7 @@ export function ASGFContextPanel({
               <select
                 id="asgf-child"
                 value={selectedChildId}
-                onChange={(e) => setSelectedChildId(e.target.value)}
+                onChange={(e) => handleChildChange(e.target.value)}
               >
                 <option value="">-- Select child --</option>
                 {childrenList?.map((c) => (
@@ -236,10 +249,7 @@ export function ASGFContextPanel({
               <select
                 id="asgf-date"
                 value={selectedTaskId}
-                onChange={(e) => {
-                  setSelectedTaskId(e.target.value);
-                  if (!e.target.value) setTestDate('');
-                }}
+                onChange={(e) => handleTaskChange(e.target.value)}
               >
                 <option value="">-- Select task or enter date --</option>
                 {upcomingTasks.map((t) => (

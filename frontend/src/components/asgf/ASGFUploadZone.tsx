@@ -5,12 +5,6 @@ import './ASGFUploadZone.css';
 const MAX_FILES = 5;
 const MAX_TOTAL_BYTES = 25 * 1024 * 1024; // 25 MB
 const ACCEPTED_EXTENSIONS = '.pdf,.docx,.jpg,.jpeg,.png';
-const ACCEPTED_MIME_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'image/jpeg',
-  'image/png',
-];
 
 interface UploadedFile {
   file: File;
