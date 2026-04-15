@@ -147,6 +147,24 @@ Write all instructions in French.""",
 - Use simple, clear language a parent or student can scan quickly
 - Do NOT include detailed explanations, formulas, or worked examples
 - Keep the entire response under 200 words""",
+
+    "problem_solver": """Based on this content, solve each problem step-by-step with full explanations:
+
+1. **Identify the problem type** and state which concept/formula applies
+2. **Show all work** for every step — do not skip intermediate steps
+   - For math problems, use LaTeX notation: $...$ inline, $$...$$ for display equations
+   - For science problems, include units and dimensional analysis at every step
+3. **Explain WHY** each step is taken, not just what is done
+4. **Highlight common mistakes** students make on this type of problem (use a "⚠️ Common Mistake" callout)
+5. **Provide key formula/concept references** at the start of each solution
+
+Format each solution clearly with Markdown:
+- Use `### Problem N` headings
+- Use numbered steps within each solution
+- Bold key results and final answers
+- End each problem with a brief **Takeaway** summarizing the core concept tested
+
+If the content contains conceptual questions (not calculation-based), explain the reasoning process and how to arrive at the correct answer logically.""",
 }
 
 
@@ -167,6 +185,9 @@ def resolve_template_key(
     """
     if requested_output == "high_level_summary":
         return "high_level_summary"
+
+    if requested_output == "problem_solver":
+        return "problem_solver"
 
     if requested_output == "worksheet":
         if detected_subject == "math":
