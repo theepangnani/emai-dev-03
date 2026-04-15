@@ -1,0 +1,91 @@
+.asgf-question-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.asgf-question-input__textarea-wrapper {
+  position: relative;
+}
+
+.asgf-question-input__textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #1f2937);
+}
+
+.asgf-question-input__textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.asgf-question-input__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 1.5rem;
+}
+
+.asgf-question-input__char-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  margin-left: auto;
+}
+
+.asgf-question-input__char-count--warn {
+  color: var(--warning-color, #f59e0b);
+}
+
+.asgf-question-input__char-count--over {
+  color: var(--danger-color, #ef4444);
+  font-weight: 600;
+}
+
+.asgf-question-input__category {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6b7280);
+  min-height: 1.5rem;
+}
+
+.asgf-question-input__category-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  background: var(--primary-light, rgba(59, 130, 246, 0.08));
+  border-radius: 999px;
+  font-weight: 500;
+  color: var(--primary-color, #3b82f6);
+}
+
+.asgf-question-input__spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-color, #d1d5db);
+  border-top-color: var(--primary-color, #3b82f6);
+  border-radius: 50%;
+  animation: asgf-spin 0.6s linear infinite;
+}
+
+@keyframes asgf-spin {
+  to { transform: rotate(360deg); }
+}
+
+.asgf-question-input__low-confidence {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #6b7280);
+  font-style: italic;
+}
