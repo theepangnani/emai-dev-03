@@ -7,7 +7,7 @@ import json
 from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func as sa_func
+from sqlalchemy import func as sa_func, or_
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
@@ -757,16 +757,22 @@ def get_available_topics(
         .filter(
             (Course.id.in_(course_ids)) | (Course.created_by_user_id == student_id)
         )
+        .filter(or_(CourseContent.archived_at.is_(None), CourseContent.id.is_(None)))
         .all()
     )
 
     topics = []
+    seen_topics: set[str] = set()
     seen_courses_without_content: set[int] = set()
     for course, cc in rows:
         if cc is not None:
+            topic_title = cc.title or f"Material {cc.id}"
+            if topic_title in seen_topics:
+                continue
+            seen_topics.add(topic_title)
             topics.append({
                 "subject": course.name,
-                "topic": cc.title or f"Material {cc.id}",
+                "topic": topic_title,
                 "course_id": course.id,
                 "course_name": course.name,
             })

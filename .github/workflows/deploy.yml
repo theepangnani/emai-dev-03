@@ -1,6 +1,11 @@
 name: Deploy to Cloud Run
 
 on:
+  # Deployment triggers:
+  # - Scheduled: daily at 2 PM UTC (10 AM ET) — runs full test suite before deploying
+  # - Manual: workflow_dispatch with profile selection (deploy-only or full)
+  # Note: Push to master does NOT trigger deployment. Merge PRs, then either
+  # wait for the daily schedule or manually dispatch from Actions tab.
   schedule:
     - cron: '0 14 * * *'  # Daily at 2 PM UTC (10 AM ET)
   workflow_dispatch:
@@ -36,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check daily run count
+        if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -49,7 +55,7 @@ jobs:
 
   test:
     needs: [rate-limit]
-    if: inputs.profile == 'full'
+    if: inputs.profile == 'full' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
