@@ -505,11 +505,19 @@ def auto_create_tasks_from_dates(
             continue
 
         # Determine who the task should be assigned to
-        # If parent creating for a child, assign to first linked child
         assigned_to = None
         if user.role == UserRole.PARENT:
             child_ids = get_linked_children_user_ids(db, user.id)
-            if child_ids:
+            if child_ids and course_id:
+                # Find which child is enrolled in the source course
+                enrolled_child = db.query(Student.user_id).join(
+                    student_courses, Student.id == student_courses.c.student_id
+                ).filter(
+                    student_courses.c.course_id == course_id,
+                    Student.user_id.in_(child_ids),
+                ).first()
+                assigned_to = enrolled_child[0] if enrolled_child else child_ids[0]
+            elif child_ids:
                 assigned_to = child_ids[0]
 
         # Resolve legacy student_id from assigned user (required by prod DB schema)
