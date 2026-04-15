@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { coursesApi } from '../api/courses';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PomodoroTimer } from '../components/PomodoroTimer';
 import './StudySessionPage.css';
@@ -36,21 +37,19 @@ export function StudySessionPage() {
   const [loadError, setLoadError] = useState(false);
 
   const loadData = useCallback(async () => {
-    try {
-      setLoadError(false);
-      const [coursesResp, sessionsResp, statsResp] = await Promise.all([
-        api.get('/api/courses'),
-        api.get('/api/study-sessions', { params: { limit: 10 } }),
-        api.get('/api/study-sessions/stats'),
-      ]);
-      setCourses(coursesResp.data);
-      setSessions(sessionsResp.data.items || []);
-      setStats(statsResp.data);
-    } catch {
+    setLoadError(false);
+    const [coursesResult, sessionsResult, statsResult] = await Promise.allSettled([
+      coursesApi.list(),
+      api.get('/api/study-sessions', { params: { limit: 10 } }),
+      api.get('/api/study-sessions/stats'),
+    ]);
+    if (coursesResult.status === 'fulfilled') setCourses(coursesResult.value);
+    if (sessionsResult.status === 'fulfilled') setSessions(sessionsResult.value.data.items || []);
+    if (statsResult.status === 'fulfilled') setStats(statsResult.value.data);
+    if ([coursesResult, sessionsResult, statsResult].every(r => r.status === 'rejected')) {
       setLoadError(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {

@@ -4246,6 +4246,8 @@ Effort-based signal comparing study activity vs upcoming assessments. Displayed 
 - Min. 20 continuous minutes for XP credit (15 XP, daily cap 30 XP)
 - AI recap: "You studied quadratic equations for 25 minutes. Here are 3 things to remember."
 - Weekly session total visible on parent dashboard
+- Page must use centralized API clients (e.g., `coursesApi`) — not raw `api.get()` calls
+- Data loading must degrade gracefully: use `Promise.allSettled` so optional field failures (e.g., course list) don't block session history and stats display
 
 ### 6.114 Study Guide Contextual Q&A (Phase 2) - IMPLEMENTED
 
