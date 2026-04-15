@@ -44,7 +44,7 @@ export function StudyTimeSuggestions({ studentId }: Props) {
       const v = localStorage.getItem('study-suggestions-collapsed');
       return v !== null ? v === '1' : true;
     } catch {
-      return false;
+      return true;
     }
   });
 
