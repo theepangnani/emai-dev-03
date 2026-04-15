@@ -59,6 +59,12 @@ export function MyKidsPage() {
   const urlStudentId = searchParams.get('student_id');
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
+  const recentMaterials = useMemo(() =>
+    [...materials]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5),
+    [materials]
+  );
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [linkedTeachers, setLinkedTeachers] = useState<LinkedTeacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -832,7 +838,7 @@ export function MyKidsPage() {
                 <div className="mykids-list">
                   {materials.length === 0 ? (
                     <p className="dash-empty-hint">No class materials yet.</p>
-                  ) : materials.slice(0, 5).map(m => (
+                  ) : recentMaterials.map(m => (
                     <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                       <div className="mykids-list-body">
                         <span className="mykids-list-title">{m.title}</span>
@@ -975,7 +981,7 @@ export function MyKidsPage() {
               <div className="mykids-list">
                 {materials.length === 0 ? (
                   <p className="dash-empty-hint">No class materials yet.</p>
-                ) : materials.slice(0, 5).map(m => (
+                ) : recentMaterials.map(m => (
                   <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-list-body">
                       <span className="mykids-list-title">{m.title}</span>
