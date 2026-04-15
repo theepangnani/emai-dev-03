@@ -37,11 +37,15 @@ interface Props {
 }
 
 export function StudyTimeSuggestions({ studentId }: Props) {
+  const storageKey = studentId
+    ? `study-suggestions-collapsed-${studentId}`
+    : 'study-suggestions-collapsed';
+
   const [data, setData] = useState<StudySuggestionsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(() => {
     try {
-      const v = localStorage.getItem('study-suggestions-collapsed');
+      const v = localStorage.getItem(storageKey);
       return v !== null ? v === '1' : true;
     } catch {
       return true;
@@ -71,7 +75,7 @@ export function StudyTimeSuggestions({ studentId }: Props) {
   const toggleCollapsed = () => {
     setCollapsed(prev => {
       const next = !prev;
-      try { localStorage.setItem('study-suggestions-collapsed', next ? '1' : '0'); } catch { /* ignore */ }
+      try { localStorage.setItem(storageKey, next ? '1' : '0'); } catch { /* ignore */ }
       return next;
     });
   };
