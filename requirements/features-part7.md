@@ -1142,13 +1142,39 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - #3262-#3271: 10 code quality suggestions (LRU cache, dead code, edge cases)
 - #3272: Study guide integration (IMPLEMENTED)
 
+### 6.135 My Kids Page — Panel UX Improvements (#3360, #3361) - IMPLEMENTED
+
+**Purpose:** Improve the My Kids page panel layout, collapsibility, and data display for better parent usability.
+
+**Requirements:**
+1. **Class Materials before Best Study Times** — swap panel order so Class Materials appears first in the dashboard grid
+2. **Limit Class Materials to 5 most recent** — show only the 5 most recently created materials (sorted by `created_at` descending), with a "View All" button navigating to `/course-materials`
+3. **Both panels collapsed by default** — Class Materials and Best Study Times panels start collapsed on first visit (no localStorage state)
+4. **No-child view: aggregated Class Materials** — when no child filter is selected ("All"), show the 5 most recent class materials across ALL children (not just unassigned ones)
+5. **No-child view: per-child Study Times** — render a StudyTimeSuggestions component for each child when no child filter is selected
+6. **No-child view: two-column layout** — use the `dashboard-redesign` grid (matching the child-selected view) instead of single-column layout
+7. **Consistent panel component** — Unassigned Classes and Unassigned Materials sections converted from raw `dash-section` divs to `SectionPanel` components for UI consistency
+
+**Key PRs:** #3362
+
+**Sub-tasks:**
+- [x] Swap Class Materials above Best Study Times in child-selected view (#3360)
+- [x] Add `useMemo` recency sort + slice(0, 5) for materials (#3364)
+- [x] Add "View All" button via `headerRight` prop on SectionPanel (#3360)
+- [x] Add `.section-panel__view-all` CSS styles (#3360)
+- [x] Default StudyTimeSuggestions collapsed state to `true` including catch fallback (#3360, #3363)
+- [x] Load all non-archived materials when no child selected (#3361)
+- [x] Rewrite no-child view with `dashboard-redesign` grid layout (#3361)
+- [x] Render per-child StudyTimeSuggestions in no-child view (#3361)
+- [x] Convert Unassigned sections to SectionPanel components (#3361)
+
 ---
 
-### 6.135 Problem Solver / Solve with Explanations (#2697)
+### 6.136 Problem Solver / Solve with Explanations (#2697)
 
 **Purpose:** Provide step-by-step worked solutions for uploaded exam and test documents, helping students understand how to solve each problem rather than just seeing the answer.
 
-**Trigger:** For documents classified as `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, or `custom`, show a **"Solve with Explanations"** AI chip on the course material detail page.
+**Trigger:** For documents classified as `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `worksheet`, or `custom`, show a **"Solve with Explanations"** AI chip on the course material detail page.
 
 **Behavior:**
 - [x] Clicking the chip generates a study guide variant with `guide_type: problem_solver`
@@ -1164,5 +1190,5 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 - [x] LaTeX math notation (`$...$`) for mathematical expressions
 
 **AI Chip Visibility Rules:**
-- [x] Show "Solve with Explanations" chip only for document types: `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `custom`
+- [x] Show "Solve with Explanations" chip for document types: `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `worksheet`, `custom`
 - [x] Hide the chip for other document types (e.g., `lecture_notes`, `textbook_chapter`, `syllabus`)

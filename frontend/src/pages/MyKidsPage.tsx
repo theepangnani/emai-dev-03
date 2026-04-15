@@ -59,6 +59,12 @@ export function MyKidsPage() {
   const urlStudentId = searchParams.get('student_id');
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
+  const recentMaterials = useMemo(() =>
+    [...materials]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 5),
+    [materials]
+  );
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [linkedTeachers, setLinkedTeachers] = useState<LinkedTeacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +211,6 @@ export function MyKidsPage() {
   useEffect(() => {
     if (!selectedChild) {
       setOverview(null);
-      setMaterials([]);
       setTasks([]);
       setLinkedTeachers([]);
       // Load unassigned courses/materials for "All Children" view
@@ -225,10 +230,13 @@ export function MyKidsPage() {
           setUnassignedCourses(unassigned);
           const unassignedIds = new Set(unassigned.map(c => c.id));
           setUnassignedMaterials((mats as CourseContentItem[]).filter(m => !m.archived_at && unassignedIds.has(m.course_id)));
+          // Store ALL non-archived materials for the "all children" Class Materials panel
+          setMaterials((mats as CourseContentItem[]).filter(m => !m.archived_at));
           setCourses(courseList);
         }).catch(() => {
           setUnassignedCourses([]);
           setUnassignedMaterials([]);
+          setMaterials([]);
         }).finally(() => setSectionLoading(false));
       }
       return;
@@ -803,72 +811,91 @@ export function MyKidsPage() {
       </div>
 
       {!selectedChild ? (
-        /* All-children overview — tabs are the single navigation; jump straight to actionable content */
+        /* All-children overview — two-column grid with materials, study times, and unassigned sections */
         <>
-          {/* Unassigned Courses & Materials */}
           {sectionLoading ? (
             <PageSkeleton />
-          ) : (unassignedCourses.length > 0 || unassignedMaterials.length > 0) && (
-            <div className="mykids-sections">
-              {/* Unassigned Courses */}
-              {unassignedCourses.length > 0 && (
-                <div className="dash-section">
-                  <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showUnassignedCourses} onClick={() => setShowUnassignedCourses(p => !p)}>
-                    <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128218;</span> Unassigned Classes <span className="mykids-count-badge">{unassignedCourses.length}</span></span>
-                    <span className={`dash-section-chevron${!showUnassignedCourses ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-                  </button>
-                  {showUnassignedCourses && (
-                    <div className="dash-section-body mykids-list">
-                      {unassignedCourses.map(c => (
-                        <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                          <div className="mykids-list-body">
-                            <span className="mykids-list-title">{c.name}</span>
-                            <span className="mykids-list-meta">
-                              {c.subject && <span>{c.subject}</span>}
-                              {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
-                              {!c.subject && !c.teacher_name && <span>No child assigned</span>}
-                            </span>
-                          </div>
-                          <button
-                            className="mykids-list-action-btn"
-                            title="Assign to child"
-                            onClick={(e) => { e.stopPropagation(); setAssignCourseModal(c); }}
-                          >&#43;</button>
-                        </div>
-                      ))}
+          ) : (
+            <div className="dashboard-redesign">
+              {/* ── Class Materials (all children) ───────── */}
+              <SectionPanel
+                title="Class Materials"
+                icon="&#128196;"
+                count={materials.length}
+                collapsed={!showMaterials}
+                onToggle={() => setShowMaterials(p => !p)}
+                headerRight={
+                  materials.length > 0 ? (
+                    <button
+                      className="section-panel__view-all"
+                      onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
+                    >
+                      View All
+                    </button>
+                  ) : undefined
+                }
+              >
+                <div className="mykids-list">
+                  {materials.length === 0 ? (
+                    <p className="dash-empty-hint">No class materials yet.</p>
+                  ) : recentMaterials.map(m => (
+                    <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                      <div className="mykids-list-body">
+                        <span className="mykids-list-title">{m.title}</span>
+                        <span className="mykids-list-meta">
+                          <span className="mykids-badge">{m.content_type}</span>
+                          {m.course_name && <span> &middot; {m.course_name}</span>}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
+              </SectionPanel>
+
+              {/* ── Best Study Times (per child) ───────── */}
+              {children.map(child => (
+                <StudyTimeSuggestions key={child.student_id} studentId={child.student_id} />
+              ))}
+
+              {/* ── Unassigned Classes ─────────────────── */}
+              {unassignedCourses.length > 0 && (
+                <SectionPanel title="Unassigned Classes" icon="&#128218;" count={unassignedCourses.length} collapsed={!showUnassignedCourses} onToggle={() => setShowUnassignedCourses(p => !p)}>
+                  <div className="mykids-list">
+                    {unassignedCourses.map(c => (
+                      <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
+                        <div className="mykids-list-body">
+                          <span className="mykids-list-title">{c.name}</span>
+                          <span className="mykids-list-meta">
+                            {c.subject && <span>{c.subject}</span>}
+                            {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
+                            {!c.subject && !c.teacher_name && <span>No child assigned</span>}
+                          </span>
+                        </div>
+                        <button className="mykids-list-action-btn" title="Assign to child" onClick={(e) => { e.stopPropagation(); setAssignCourseModal(c); }}>&#43;</button>
+                      </div>
+                    ))}
+                  </div>
+                </SectionPanel>
               )}
 
-              {/* Unassigned Materials */}
+              {/* ── Unassigned Materials ───────────────── */}
               {unassignedMaterials.length > 0 && (
-                <div className="dash-section">
-                  <button className="dash-section-header dash-section-header--collapsible" aria-expanded={showUnassignedMaterials} onClick={() => setShowUnassignedMaterials(p => !p)}>
-                    <span className="dash-section-title"><span className="dash-section-title-icon" aria-hidden="true">&#128196;</span> Unassigned Materials <span className="mykids-count-badge">{unassignedMaterials.length}</span></span>
-                    <span className={`dash-section-chevron${!showUnassignedMaterials ? ' dash-section-chevron--collapsed' : ''}`}>&#9662;</span>
-                  </button>
-                  {showUnassignedMaterials && (
-                    <div className="dash-section-body mykids-list">
-                      {unassignedMaterials.map(m => (
-                        <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                          <div className="mykids-list-body">
-                            <span className="mykids-list-title">{m.title}</span>
-                            <span className="mykids-list-meta">
-                              <span className="mykids-badge">{m.content_type}</span>
-                              {m.course_name && <span> &middot; {m.course_name}</span>}
-                            </span>
-                          </div>
-                          <button
-                            className="mykids-list-action-btn"
-                            title="Move to class"
-                            onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
-                          >&#128194;</button>
+                <SectionPanel title="Unassigned Materials" icon="&#128196;" count={unassignedMaterials.length} collapsed={!showUnassignedMaterials} onToggle={() => setShowUnassignedMaterials(p => !p)}>
+                  <div className="mykids-list">
+                    {unassignedMaterials.map(m => (
+                      <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                        <div className="mykids-list-body">
+                          <span className="mykids-list-title">{m.title}</span>
+                          <span className="mykids-list-meta">
+                            <span className="mykids-badge">{m.content_type}</span>
+                            {m.course_name && <span> &middot; {m.course_name}</span>}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        <button className="mykids-list-action-btn" title="Move to class" onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}>&#128194;</button>
+                      </div>
+                    ))}
+                  </div>
+                </SectionPanel>
               )}
             </div>
           )}
@@ -940,15 +967,21 @@ export function MyKidsPage() {
           </div>
 
           <div className="dashboard-redesign">
-          {/* ── Best Study Times ──────────────────── */}
-          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
-
           {/* ── Class Materials ───────────────────── */}
-          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)}>
+          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)} headerRight={
+            materials.length > 0 ? (
+              <button
+                className="section-panel__view-all"
+                onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
+              >
+                View All
+              </button>
+            ) : undefined
+          }>
               <div className="mykids-list">
                 {materials.length === 0 ? (
                   <p className="dash-empty-hint">No class materials yet.</p>
-                ) : materials.map(m => (
+                ) : recentMaterials.map(m => (
                   <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
                     <div className="mykids-list-body">
                       <span className="mykids-list-title">{m.title}</span>
@@ -966,6 +999,9 @@ export function MyKidsPage() {
                 ))}
               </div>
           </SectionPanel>
+
+          {/* ── Best Study Times ──────────────────── */}
+          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
 
           {/* ── Courses ───────────────────────────── */}
           <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>

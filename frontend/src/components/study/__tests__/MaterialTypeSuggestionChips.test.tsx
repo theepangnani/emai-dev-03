@@ -87,23 +87,28 @@ describe('Solve with Explanations chip', () => {
 
   it('appears in past_exam chip set', () => {
     render(<MaterialTypeSuggestionChips {...defaultProps} documentType="past_exam" />);
-    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+    expect(screen.getByText(/Solve with Explanations/)).toBeInTheDocument();
   });
 
   it('appears in student_test chip set', () => {
     render(<MaterialTypeSuggestionChips {...defaultProps} documentType="student_test" />);
-    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+    expect(screen.getByText(/Solve with Explanations/)).toBeInTheDocument();
   });
 
   it('appears in custom chip set', () => {
     render(<MaterialTypeSuggestionChips {...defaultProps} documentType="custom" />);
-    expect(screen.getByText('Solve with Explanations')).toBeInTheDocument();
+    expect(screen.getByText(/Solve with Explanations/)).toBeInTheDocument();
+  });
+
+  it('appears in worksheet chip set', () => {
+    render(<MaterialTypeSuggestionChips {...defaultProps} documentType="worksheet" />);
+    expect(screen.getByText(/Solve with Explanations/)).toBeInTheDocument();
   });
 
   it('calls onChipClick with solve_problems action', () => {
     const onClick = vi.fn();
     render(<MaterialTypeSuggestionChips {...defaultProps} documentType="past_exam" onChipClick={onClick} />);
-    fireEvent.click(screen.getByText('Solve with Explanations'));
+    fireEvent.click(screen.getByText(/Solve with Explanations/));
     expect(onClick).toHaveBeenCalledWith('solve_problems', undefined);
   });
 });
