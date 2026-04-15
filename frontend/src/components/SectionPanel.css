@@ -113,6 +113,21 @@
   border-radius: 2px;
 }
 
+.section-panel__view-all {
+  background: none;
+  border: none;
+  color: #10b981;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.section-panel__view-all:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
 /* ── Responsive ─────────────────────────── */
 
 /* ── Dark mode ── */

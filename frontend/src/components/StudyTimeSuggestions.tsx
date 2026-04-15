@@ -42,7 +42,7 @@ export function StudyTimeSuggestions({ studentId }: Props) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
       const v = localStorage.getItem('study-suggestions-collapsed');
-      return v !== null ? v === '1' : false;
+      return v !== null ? v === '1' : true;
     } catch {
       return false;
     }
