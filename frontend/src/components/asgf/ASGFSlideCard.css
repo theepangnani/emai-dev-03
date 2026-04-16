@@ -1,0 +1,213 @@
+/* ── Slide card ──────────────────────────────────────────────── */
+.asgf-slide-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-border);
+  max-width: 720px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+/* ── Title bar ───────────────────────────────────────────────── */
+.asgf-slide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+.asgf-slide-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.asgf-slide-number {
+  font-size: 0.8rem;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 1rem;
+}
+
+/* ── Body content ────────────────────────────────────────────── */
+.asgf-slide-body {
+  padding: 1.5rem 1.25rem;
+  line-height: 1.7;
+  color: var(--color-ink);
+}
+
+.asgf-slide-body > :first-child {
+  margin-top: 0;
+}
+
+.asgf-slide-body > :last-child {
+  margin-bottom: 0;
+}
+
+/* ── Vocabulary terms ────────────────────────────────────────── */
+.asgf-slide-vocab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1rem;
+}
+
+.asgf-slide-vocab-term {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent-strong, #2a9fa8);
+  background: var(--color-accent-subtle, rgba(45, 182, 185, 0.1));
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+
+/* ── Source attribution badges ────────────────────────────────── */
+.asgf-slide-source {
+  padding: 0 1.25rem 1rem;
+}
+
+.asgf-slide-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+}
+
+.asgf-slide-source-badge svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+/* ── Bloom tier badge ────────────────────────────────────────── */
+.asgf-slide-bloom {
+  padding: 0 1.25rem 1rem;
+}
+
+.asgf-slide-bloom-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-xs, 4px);
+}
+
+/* ── Read more collapsible ───────────────────────────────────── */
+.asgf-slide-readmore {
+  border-top: 1px solid var(--color-border);
+}
+
+.asgf-slide-readmore-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent-strong, #2a9fa8);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.asgf-slide-readmore-toggle:hover {
+  background: var(--color-surface-alt);
+}
+
+.asgf-slide-readmore-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.asgf-slide-readmore-chevron--open {
+  transform: rotate(90deg);
+}
+
+.asgf-slide-readmore-content {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  padding: 0 1.25rem;
+}
+
+.asgf-slide-readmore-content--open {
+  max-height: 600px;
+  padding: 0 1.25rem 1rem;
+}
+
+.asgf-slide-readmore-content--open > :first-child {
+  margin-top: 0;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .asgf-slide-card {
+    max-width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .asgf-slide-header {
+    padding: 0.65rem 1rem;
+  }
+
+  .asgf-slide-body {
+    padding: 1.25rem 1rem;
+  }
+
+  .asgf-slide-vocab,
+  .asgf-slide-source,
+  .asgf-slide-bloom {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .asgf-slide-readmore-toggle {
+    padding: 0.65rem 1rem;
+  }
+
+  .asgf-slide-readmore-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .asgf-slide-readmore-content--open {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* ── Dark mode ───────────────────────────────────────────────── */
+[data-theme="dark"] .asgf-slide-card {
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .asgf-slide-header {
+  border-bottom-color: var(--color-border);
+}
+
+[data-theme="dark"] .asgf-slide-readmore {
+  border-top-color: var(--color-border);
+}

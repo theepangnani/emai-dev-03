@@ -1,5 +1,7 @@
 """Pydantic schemas for the AI Study Guide Factory (ASGF)."""
 
+from typing import Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -71,3 +73,147 @@ class ASGFContextDataResponse(BaseModel):
     children: list[ChildItem]
     courses: list[CourseItem]
     upcoming_tasks: list[TaskItem]
+
+
+# --- Context assembly & learning cycle plan (from #3396) ---
+
+
+class StudentProfile(BaseModel):
+    """Typed student profile for ContextPackage."""
+
+    grade: str = ""
+    board: str = ""
+    school: str = ""
+
+
+class ClassroomContext(BaseModel):
+    """Typed classroom context for ContextPackage."""
+
+    course_name: str = ""
+    teacher: str = ""
+    subject: str = ""
+
+
+class GapData(BaseModel):
+    """Typed gap analysis data for ContextPackage."""
+
+    weak_topics: list[str] = Field(default_factory=list)
+    previously_studied: list[str] = Field(default_factory=list)
+
+
+class ContextPackage(BaseModel):
+    """Structured input assembled for plan generation."""
+
+    question: str
+    subject: str = ""
+    grade_level: str = ""
+    topic: str = ""
+    bloom_entry_point: str = ""
+    concepts: list[dict] = Field(default_factory=list)
+    gap_data: GapData = Field(default_factory=GapData)
+    document_metadata: list[dict] = Field(default_factory=list)
+    student_profile: StudentProfile = Field(default_factory=StudentProfile)
+    classroom_context: ClassroomContext = Field(default_factory=ClassroomContext)
+    session_metadata: dict = Field(default_factory=dict)
+
+
+class SlidePlanItem(BaseModel):
+    """A single slide in the learning cycle plan."""
+
+    title: str
+    brief: str
+    bloom_tier: str = ""
+
+
+class QuizPlanItem(BaseModel):
+    """A single quiz question in the learning cycle plan."""
+
+    bloom_tier: str
+    format: str  # e.g. "multiple_choice", "short_answer", "true_false"
+    topic: str
+    difficulty: str  # "easy", "medium", "hard"
+
+
+class LearningCyclePlan(BaseModel):
+    """Structured output from Claude plan generation."""
+
+    topic_classification: dict = Field(
+        default_factory=dict,
+        description="subject, grade_level, bloom_entry_point",
+    )
+    core_concepts: list[str] = Field(
+        default_factory=list,
+        description="3-5 key concepts",
+    )
+    prerequisite_check: dict = Field(
+        default_factory=dict,
+        description="known vs needs-establishing",
+    )
+    slide_plan: list[SlidePlanItem] = Field(default_factory=list)
+    direct_answer_outline: dict = Field(
+        default_factory=dict,
+        description="Structure of the answer",
+    )
+    sample_plan: list[dict] = Field(
+        default_factory=list,
+        description="2-3 worked examples",
+    )
+    quiz_plan: list[QuizPlanItem] = Field(default_factory=list)
+    estimated_session_time_min: int = 12
+
+
+class CreateSessionRequest(BaseModel):
+    """Request to create a new ASGF session."""
+
+    question: str = Field(..., min_length=1, max_length=2000)
+    file_ids: list[str] = Field(default_factory=list)
+    child_id: str | None = None
+    subject: str | None = None
+    grade: str | None = None
+    course_id: str | None = None
+
+
+class CreateSessionResponse(BaseModel):
+    """Response after session creation with plan preview."""
+
+    session_id: str
+    topic: str
+    subject: str
+    grade_level: str
+    slide_count: int
+    quiz_count: int
+    estimated_time_min: int
+
+
+# --- Slide generation (from #3398) ---
+
+class ASGFSlideRequest(BaseModel):
+    """Request body for the slide generation SSE endpoint."""
+
+    session_id: str = Field(..., min_length=1)
+
+
+class ASGFSlideResponse(BaseModel):
+    """A single generated slide."""
+
+    slide_number: int
+    title: str
+    body: str
+    vocabulary_terms: list[str] = Field(default_factory=list)
+    source_attribution: str | None = None
+    read_more_content: str | None = None
+    bloom_tier: str = "understand"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# --- Comprehension signal (#3399) ---
+
+class ComprehensionSignalRequest(BaseModel):
+    slide_number: int = Field(..., ge=0)
+    signal: Literal["got_it", "still_confused"]
+
+
+class ComprehensionSignalResponse(BaseModel):
+    acknowledged: bool = True
+    re_explanation_slide: Optional[ASGFSlideResponse] = None

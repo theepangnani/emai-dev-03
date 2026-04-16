@@ -1,0 +1,138 @@
+.asgf-comprehension-signal {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  justify-content: center;
+}
+
+.asgf-comprehension-signal__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, opacity 0.2s, transform 0.1s;
+  line-height: 1.4;
+}
+
+.asgf-comprehension-signal__btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* --- Got it (green) --- */
+.asgf-comprehension-signal__btn--got-it {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+.asgf-comprehension-signal__btn--got-it:hover:not(:disabled):not(.asgf-comprehension-signal__btn--selected) {
+  background-color: #c8e6c9;
+  border-color: #66bb6a;
+}
+
+.asgf-comprehension-signal__btn--got-it.asgf-comprehension-signal__btn--selected {
+  background-color: #2e7d32;
+  color: #fff;
+  border-color: #2e7d32;
+}
+
+/* --- Still confused (amber) --- */
+.asgf-comprehension-signal__btn--confused {
+  background-color: #fff8e1;
+  color: #e65100;
+  border-color: #ffe082;
+}
+
+.asgf-comprehension-signal__btn--confused:hover:not(:disabled):not(.asgf-comprehension-signal__btn--selected) {
+  background-color: #ffecb3;
+  border-color: #ffb74d;
+}
+
+.asgf-comprehension-signal__btn--confused.asgf-comprehension-signal__btn--selected {
+  background-color: #e65100;
+  color: #fff;
+  border-color: #e65100;
+}
+
+/* --- Dimmed (other button when one is selected) --- */
+.asgf-comprehension-signal__btn--dimmed {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* --- Disabled (while generating) --- */
+.asgf-comprehension-signal__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Loading spinner inside button --- */
+.asgf-comprehension-signal__spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: asgf-signal-spin 0.7s linear infinite;
+}
+
+@keyframes asgf-signal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Mobile responsive --- */
+@media (max-width: 480px) {
+  .asgf-comprehension-signal {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .asgf-comprehension-signal__btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+}
+
+/* --- Dark mode --- */
+[data-theme='dark'] .asgf-comprehension-signal__btn--got-it {
+  background-color: rgba(46, 125, 50, 0.15);
+  color: #81c784;
+  border-color: rgba(76, 175, 80, 0.4);
+}
+
+[data-theme='dark'] .asgf-comprehension-signal__btn--got-it:hover:not(:disabled):not(.asgf-comprehension-signal__btn--selected) {
+  background-color: rgba(46, 125, 50, 0.25);
+  border-color: rgba(76, 175, 80, 0.6);
+}
+
+[data-theme='dark'] .asgf-comprehension-signal__btn--got-it.asgf-comprehension-signal__btn--selected {
+  background-color: #2e7d32;
+  color: #fff;
+  border-color: #2e7d32;
+}
+
+[data-theme='dark'] .asgf-comprehension-signal__btn--confused {
+  background-color: rgba(230, 81, 0, 0.15);
+  color: #ffb74d;
+  border-color: rgba(255, 152, 0, 0.4);
+}
+
+[data-theme='dark'] .asgf-comprehension-signal__btn--confused:hover:not(:disabled):not(.asgf-comprehension-signal__btn--selected) {
+  background-color: rgba(230, 81, 0, 0.25);
+  border-color: rgba(255, 152, 0, 0.6);
+}
+
+[data-theme='dark'] .asgf-comprehension-signal__btn--confused.asgf-comprehension-signal__btn--selected {
+  background-color: #e65100;
+  color: #fff;
+  border-color: #e65100;
+}
