@@ -23,9 +23,14 @@ from app.schemas.asgf import (
     ASGFContextDataResponse,
     ASGFSlideRequest,
     ASGFSlideResponse,
+    AssignmentOptionsResponse,
+    AssignmentOption,
+    AssignRequest,
+    AssignResponse,
     ChildItem,
     ComprehensionSignalRequest,
     ComprehensionSignalResponse,
+    CourseSuggestion,
     CourseItem,
     CreateSessionRequest,
     CreateSessionResponse,
@@ -36,6 +41,12 @@ from app.schemas.asgf import (
     TaskItem,
 )
 from app.services import asgf_service
+from app.services.asgf_assignment_service import (
+    assign_material,
+    detect_course,
+    get_role_options,
+    resolve_student_id,
+)
 from app.services.asgf_ingestion_service import ASGFIngestionService
 from app.services.asgf_slide_service import ASGFSlideService
 from app.services.file_processor import FileProcessingError, process_file
@@ -637,3 +648,110 @@ async def record_comprehension_signal(
         acknowledged=True,
         re_explanation_slide=re_explanation,
     )
+
+
+# --- GET /asgf/session/{session_id}/assignment-options (#3402) ----------------
+
+@router.get(
+    "/session/{session_id}/assignment-options",
+    response_model=AssignmentOptionsResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_assignment_options(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return role-aware assignment options and auto-detected course for a session."""
+    from app.models.learning_history import LearningHistory
+
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    # Build role-specific options
+    options = [AssignmentOption(**o) for o in get_role_options(role)]
+
+    # Auto-detect course
+    suggested_course: CourseSuggestion | None = None
+    student_id = resolve_student_id(
+        user_id=current_user.id,
+        role=role,
+        child_id=history_row.student_id,
+        db=db,
+    )
+
+    if student_id:
+        topic = history_row.question_asked or ""
+        subject = history_row.subject or ""
+        course_match = await detect_course(
+            topic=topic,
+            subject=subject,
+            student_id=student_id,
+            db=db,
+        )
+        if course_match.get("course_id"):
+            suggested_course = CourseSuggestion(
+                course_id=course_match["course_id"],
+                course_name=course_match["course_name"],
+                confidence=course_match["confidence"],
+            )
+
+    return AssignmentOptionsResponse(
+        role=role,
+        options=options,
+        suggested_course=suggested_course,
+    )
+
+
+# --- POST /asgf/session/{session_id}/assign (#3402) --------------------------
+
+@router.post(
+    "/session/{session_id}/assign",
+    response_model=AssignResponse,
+)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def assign_session_material(
+    session_id: str,
+    body: AssignRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Execute the assignment choice for a session's material."""
+    from app.models.learning_history import LearningHistory
+
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # If no material_id yet, use the history row id as a reference
+    material_id = history_row.material_id or history_row.id
+
+    course_id = int(body.course_id) if body.course_id else None
+
+    result = await assign_material(
+        material_id=material_id,
+        assignment_type=body.assignment_type,
+        course_id=course_id,
+        due_date=body.due_date,
+        db=db,
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return AssignResponse(success=result["success"], message=result["message"])

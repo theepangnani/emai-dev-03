@@ -21,6 +21,35 @@ export interface MultiFileUploadResponse {
   total_size_bytes: number;
 }
 
+export interface AssignmentOption {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface CourseSuggestion {
+  course_id: string | null;
+  course_name: string | null;
+  confidence: number;
+}
+
+export interface AssignmentOptionsResponse {
+  role: string;
+  options: AssignmentOption[];
+  suggested_course: CourseSuggestion | null;
+}
+
+export interface AssignRequest {
+  assignment_type: string;
+  course_id?: string | null;
+  due_date?: string | null;
+}
+
+export interface AssignResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface ComprehensionSignalRequest {
   slide_number: number;
   signal: 'got_it' | 'still_confused';
@@ -80,6 +109,26 @@ export const asgfApi = {
   generateSlidesUrl(sessionId: string): string {
     const baseUrl = api.defaults.baseURL || '';
     return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
+  },
+
+  /** Fetch role-aware assignment options and course suggestion for a session. */
+  async getAssignmentOptions(sessionId: string): Promise<AssignmentOptionsResponse> {
+    const response = await api.get<AssignmentOptionsResponse>(
+      `/api/asgf/session/${sessionId}/assignment-options`,
+    );
+    return response.data;
+  },
+
+  /** Assign session material with the chosen option. */
+  async assignMaterial(
+    sessionId: string,
+    body: AssignRequest,
+  ): Promise<AssignResponse> {
+    const response = await api.post<AssignResponse>(
+      `/api/asgf/session/${sessionId}/assign`,
+      body,
+    );
+    return response.data;
   },
 
   /** Record a per-slide comprehension signal (got_it / still_confused). */
