@@ -21,6 +21,35 @@ export interface MultiFileUploadResponse {
   total_size_bytes: number;
 }
 
+export interface AssignmentOption {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface CourseSuggestion {
+  course_id: string | null;
+  course_name: string | null;
+  confidence: number;
+}
+
+export interface AssignmentOptionsResponse {
+  role: string;
+  options: AssignmentOption[];
+  suggested_course: CourseSuggestion | null;
+}
+
+export interface AssignRequest {
+  assignment_type: string;
+  course_id?: string | null;
+  due_date?: string | null;
+}
+
+export interface AssignResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface ComprehensionSignalRequest {
   slide_number: number;
   signal: 'got_it' | 'still_confused';
@@ -39,6 +68,21 @@ export interface CreateSessionResponse {
   slide_count: number;
   quiz_count: number;
   estimated_time_min: number;
+}
+
+export interface ASGFQuizQuestion {
+  question_text: string;
+  options: string[];
+  correct_index: number;
+  bloom_tier: string;
+  slide_reference: number;
+  hint_text: string;
+  explanation: string;
+}
+
+export interface ASGFQuizResponse {
+  session_id: string;
+  questions: ASGFQuizQuestion[];
 }
 
 export const asgfApi = {
@@ -82,6 +126,26 @@ export const asgfApi = {
     return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
   },
 
+  /** Fetch role-aware assignment options and course suggestion for a session. */
+  async getAssignmentOptions(sessionId: string): Promise<AssignmentOptionsResponse> {
+    const response = await api.get<AssignmentOptionsResponse>(
+      `/api/asgf/session/${sessionId}/assignment-options`,
+    );
+    return response.data;
+  },
+
+  /** Assign session material with the chosen option. */
+  async assignMaterial(
+    sessionId: string,
+    body: AssignRequest,
+  ): Promise<AssignResponse> {
+    const response = await api.post<AssignResponse>(
+      `/api/asgf/session/${sessionId}/assign`,
+      body,
+    );
+    return response.data;
+  },
+
   /** Record a per-slide comprehension signal (got_it / still_confused). */
   async sendComprehensionSignal(
     sessionId: string,
@@ -90,6 +154,16 @@ export const asgfApi = {
     const response = await api.post<ComprehensionSignalResponse>(
       `/api/asgf/session/${sessionId}/signal`,
       body,
+      AI_TIMEOUT,
+    );
+    return response.data;
+  },
+
+  /** Generate slide-anchored quiz questions for a completed session. */
+  async generateQuiz(sessionId: string): Promise<ASGFQuizResponse> {
+    const response = await api.post<ASGFQuizResponse>(
+      `/api/asgf/session/${sessionId}/quiz`,
+      {},
       AI_TIMEOUT,
     );
     return response.data;

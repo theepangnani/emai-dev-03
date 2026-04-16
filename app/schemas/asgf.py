@@ -217,3 +217,73 @@ class ComprehensionSignalRequest(BaseModel):
 class ComprehensionSignalResponse(BaseModel):
     acknowledged: bool = True
     re_explanation_slide: Optional[ASGFSlideResponse] = None
+
+
+# --- Quiz bridge (#3400) ---
+
+class ASGFQuizQuestion(BaseModel):
+    """A single slide-anchored quiz question."""
+
+    question_text: str
+    options: list[str] = Field(..., min_length=4, max_length=4)
+    correct_index: int = Field(..., ge=0, le=3)
+    bloom_tier: str
+    slide_reference: int = Field(..., ge=0)
+    hint_text: str
+    explanation: str
+
+
+class ASGFQuizResponse(BaseModel):
+    """Quiz questions generated for an ASGF session."""
+
+    session_id: str
+    questions: list[ASGFQuizQuestion]
+
+
+# --- Session completion / auto-save (#3401) ---
+
+class QuizResultItem(BaseModel):
+    question_text: str
+    correct: bool
+    attempts: int = Field(..., ge=1)
+    xp_earned: int = Field(..., ge=0)
+
+
+class CompleteSessionRequest(BaseModel):
+    quiz_results: list[QuizResultItem] = Field(..., min_length=1)
+
+
+class CompleteSessionResponse(BaseModel):
+    material_id: int
+    summary: str
+
+
+# --- Assignment options (#3402) ---
+
+class AssignmentOption(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class CourseSuggestion(BaseModel):
+    course_id: str | None = None
+    course_name: str | None = None
+    confidence: float = 0.0
+
+
+class AssignmentOptionsResponse(BaseModel):
+    role: str
+    options: list[AssignmentOption]
+    suggested_course: CourseSuggestion | None = None
+
+
+class AssignRequest(BaseModel):
+    assignment_type: str = Field(..., min_length=1)
+    course_id: str | None = None
+    due_date: str | None = None
+
+
+class AssignResponse(BaseModel):
+    success: bool
+    message: str
