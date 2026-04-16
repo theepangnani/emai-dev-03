@@ -70,10 +70,12 @@ class ASGFSlideService:
         }
         """
         system_prompt = self._build_slide_system_prompt(context_package)
+        client = get_async_anthropic_client()
 
         for slide_number in range(1, TOTAL_SLIDES + 1):
             try:
                 slide = await self._generate_single_slide(
+                    client=client,
                     system_prompt=system_prompt,
                     learning_cycle_plan=learning_cycle_plan,
                     context_package=context_package,
@@ -128,10 +130,24 @@ class ASGFSlideService:
             teacher_examples.extend(c.get("examples", []))
         teacher_examples = teacher_examples[:10]  # cap at 10
 
+        # Pull grade level from context for the constraint block
+        grade_level = context_package.get("grade_level", "")
+
         prompt_parts = [
             "You are an expert educational content creator building interactive "
             "mini-lesson slides for a student.",
             "",
+        ]
+
+        if grade_level:
+            prompt_parts.extend([
+                "=== GRADE LEVEL CONSTRAINT ===",
+                f"All content MUST be appropriate for {grade_level}. Vocabulary, sentence complexity, "
+                "and examples must match this grade level.",
+                "",
+            ])
+
+        prompt_parts.extend([
             "=== CRITICAL RULE: TEACHER VOCABULARY PRIORITY ===",
             "Use the teacher's exact vocabulary, examples, and notation from the "
             "uploaded class notes. Only fall back to curriculum-standard language "
@@ -141,7 +157,7 @@ class ASGFSlideService:
             "vs 'slope'), ALWAYS prefer the teacher's term. The student learns "
             "from this teacher and must recognize the same language in class.",
             "",
-        ]
+        ])
 
         if teacher_vocab:
             prompt_parts.append("=== TEACHER VOCABULARY (use these exact terms) ===")
@@ -219,6 +235,7 @@ class ASGFSlideService:
 
     async def _generate_single_slide(
         self,
+        client,
         system_prompt: str,
         learning_cycle_plan: dict,
         context_package: dict,
@@ -227,7 +244,6 @@ class ASGFSlideService:
         """Generate a single slide using Claude API."""
         user_prompt = self._build_slide_user_prompt(learning_cycle_plan, slide_number)
 
-        client = get_async_anthropic_client()
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=800,

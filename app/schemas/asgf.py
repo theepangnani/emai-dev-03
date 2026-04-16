@@ -1,6 +1,6 @@
 """Pydantic schemas for the AI Study Guide Factory (ASGF)."""
 
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -77,6 +77,30 @@ class ASGFContextDataResponse(BaseModel):
 
 # --- Context assembly & learning cycle plan (from #3396) ---
 
+
+class StudentProfile(BaseModel):
+    """Typed student profile for ContextPackage."""
+
+    grade: str = ""
+    board: str = ""
+    school: str = ""
+
+
+class ClassroomContext(BaseModel):
+    """Typed classroom context for ContextPackage."""
+
+    course_name: str = ""
+    teacher: str = ""
+    subject: str = ""
+
+
+class GapData(BaseModel):
+    """Typed gap analysis data for ContextPackage."""
+
+    weak_topics: list[str] = Field(default_factory=list)
+    previously_studied: list[str] = Field(default_factory=list)
+
+
 class ContextPackage(BaseModel):
     """Structured input assembled for plan generation."""
 
@@ -86,10 +110,10 @@ class ContextPackage(BaseModel):
     topic: str = ""
     bloom_entry_point: str = ""
     concepts: list[dict] = Field(default_factory=list)
-    gap_data: dict = Field(default_factory=dict)
+    gap_data: GapData = Field(default_factory=GapData)
     document_metadata: list[dict] = Field(default_factory=list)
-    student_profile: dict = Field(default_factory=dict)
-    classroom_context: dict = Field(default_factory=dict)
+    student_profile: StudentProfile = Field(default_factory=StudentProfile)
+    classroom_context: ClassroomContext = Field(default_factory=ClassroomContext)
     session_metadata: dict = Field(default_factory=dict)
 
 
@@ -197,4 +221,4 @@ class ComprehensionSignalRequest(BaseModel):
 
 class ComprehensionSignalResponse(BaseModel):
     acknowledged: bool = True
-    re_explanation_slide: Optional[dict[str, Any]] = None
+    re_explanation_slide: Optional[ASGFSlideResponse] = None

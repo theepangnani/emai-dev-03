@@ -7,11 +7,15 @@ import openai
 from app.core.config import settings
 from app.core.logging_config import get_logger
 from app.schemas.asgf import (
+    ASGFSlideResponse,
+    ClassroomContext,
     ContextPackage,
+    GapData,
     IntentClassifyResponse,
     LearningCyclePlan,
     QuizPlanItem,
     SlidePlanItem,
+    StudentProfile,
 )
 from app.services.ai_service import get_async_anthropic_client
 
@@ -105,14 +109,38 @@ async def assemble_context_package(
     student_profile: dict | None = None,
     classroom_context: dict | None = None,
     session_metadata: dict | None = None,
+    intent_result: IntentClassifyResponse | None = None,
 ) -> ContextPackage:
     """Assemble the full context package for Claude API.
 
     Combines the user's question, ingestion pipeline output, student profile,
     classroom context, and session metadata into a single ContextPackage.
+
+    If *intent_result* is provided, skip the redundant classify_intent() call.
     """
-    # Run intent classification to get subject/grade/topic/bloom
-    intent = await classify_intent(question)
+    # Only classify if caller hasn't already done so
+    intent = intent_result if intent_result is not None else await classify_intent(question)
+
+    # Build typed sub-models from raw dicts
+    gap_raw = ingestion_result.get("gap_data", {})
+    gap = GapData(
+        weak_topics=gap_raw.get("weak_topics", []),
+        previously_studied=gap_raw.get("previously_studied", []),
+    )
+
+    sp_raw = student_profile or {}
+    sp = StudentProfile(
+        grade=sp_raw.get("grade", ""),
+        board=sp_raw.get("board", ""),
+        school=sp_raw.get("school", ""),
+    )
+
+    cc_raw = classroom_context or {}
+    cc = ClassroomContext(
+        course_name=cc_raw.get("course_name", ""),
+        teacher=cc_raw.get("teacher", ""),
+        subject=cc_raw.get("subject", ""),
+    )
 
     return ContextPackage(
         question=question,
@@ -121,10 +149,10 @@ async def assemble_context_package(
         topic=intent.topic,
         bloom_entry_point=intent.bloom_tier,
         concepts=ingestion_result.get("concepts", []),
-        gap_data=ingestion_result.get("gap_data", {}),
+        gap_data=gap,
         document_metadata=ingestion_result.get("document_metadata", []),
-        student_profile=student_profile or {},
-        classroom_context=classroom_context or {},
+        student_profile=sp,
+        classroom_context=cc,
         session_metadata=session_metadata or {},
     )
 
@@ -152,27 +180,25 @@ async def generate_learning_cycle_plan(
 
     # Include student profile if available
     sp = context_package.student_profile
-    if sp:
-        profile_parts = []
-        if sp.get("grade"):
-            profile_parts.append(f"Grade: {sp['grade']}")
-        if sp.get("board"):
-            profile_parts.append(f"Board: {sp['board']}")
-        if sp.get("school"):
-            profile_parts.append(f"School: {sp['school']}")
-        if profile_parts:
-            parts.append(f"Student profile: {', '.join(profile_parts)}")
+    profile_parts = []
+    if sp.grade:
+        profile_parts.append(f"Grade: {sp.grade}")
+    if sp.board:
+        profile_parts.append(f"Board: {sp.board}")
+    if sp.school:
+        profile_parts.append(f"School: {sp.school}")
+    if profile_parts:
+        parts.append(f"Student profile: {', '.join(profile_parts)}")
 
     # Include classroom context if available
     cc = context_package.classroom_context
-    if cc:
-        cc_parts = []
-        if cc.get("course_name"):
-            cc_parts.append(f"Course: {cc['course_name']}")
-        if cc.get("teacher"):
-            cc_parts.append(f"Teacher: {cc['teacher']}")
-        if cc_parts:
-            parts.append(f"Classroom context: {', '.join(cc_parts)}")
+    cc_parts = []
+    if cc.course_name:
+        cc_parts.append(f"Course: {cc.course_name}")
+    if cc.teacher:
+        cc_parts.append(f"Teacher: {cc.teacher}")
+    if cc_parts:
+        parts.append(f"Classroom context: {', '.join(cc_parts)}")
 
     # Include session metadata
     sm = context_package.session_metadata
@@ -201,13 +227,12 @@ async def generate_learning_cycle_plan(
 
     # Include gap data
     gap = context_package.gap_data
-    if gap:
-        if gap.get("weak_topics"):
-            parts.append(f"Weak topics: {', '.join(gap['weak_topics'])}")
-        if gap.get("previously_studied"):
-            parts.append(
-                f"Previously studied: {', '.join(gap['previously_studied'])}"
-            )
+    if gap.weak_topics:
+        parts.append(f"Weak topics: {', '.join(gap.weak_topics)}")
+    if gap.previously_studied:
+        parts.append(
+            f"Previously studied: {', '.join(gap.previously_studied)}"
+        )
 
     user_prompt = "\n\n".join(parts)
 
@@ -306,11 +331,11 @@ _RE_EXPLANATION_SYSTEM = (
 async def generate_re_explanation(
     slide_content: dict[str, Any],
     context_package: dict[str, Any] | None = None,
-) -> dict[str, Any] | None:
+) -> ASGFSlideResponse | None:
     """Generate a simplified re-explanation slide using Claude API.
 
     Uses simpler language, different analogy, shorter sentences.
-    Returns a slide dict in the same format as regular slides, or None on failure.
+    Returns an ASGFSlideResponse or None on failure.
     """
     slide_title = slide_content.get("title", "")
     slide_body = slide_content.get("content", "")
@@ -346,14 +371,15 @@ async def generate_re_explanation(
 
         data: dict[str, Any] = json.loads(raw)
 
-        return {
-            "title": data.get("title", f"Let's try again: {slide_title}"),
-            "content": data.get("content", ""),
-            "analogy": data.get("analogy", ""),
-            "key_takeaway": data.get("key_takeaway", ""),
-            "is_re_explanation": True,
-            "original_slide_title": slide_title,
-        }
+        return ASGFSlideResponse(
+            slide_number=0,
+            title=data.get("title", f"Let's try again: {slide_title}"),
+            body=data.get("content", ""),
+            vocabulary_terms=[],
+            source_attribution=None,
+            read_more_content=data.get("key_takeaway"),
+            bloom_tier="understand",
+        )
     except json.JSONDecodeError as e:
         logger.warning("ASGF re-explanation JSON parse error: %s", e)
         return None
