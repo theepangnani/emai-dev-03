@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 from jose import jwt as jose_jwt
 
+from sqlalchemy import text
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -32,6 +33,7 @@ from app.api.routes import parent_email_digest
 from app.api.routes import admin_contacts
 from app.api.routes import features as features_route
 from app.api.routes import ile
+from app.api.routes import asgf
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -63,6 +65,7 @@ from app.models.daily_quiz import DailyQuiz  # noqa: F401
 from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
+from app.models.learning_history import LearningHistory  # noqa: F401 — ASGF learning history (#3391)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -98,6 +101,93 @@ if _is_pg:
     except Exception as _conn_err:
         print(f"[UTDF-MIGRATION] FAILED: {_conn_err}", flush=True)
         logger.error("UTDF synchronous migration FAILED (connection level): %s", _conn_err)
+
+# Safety CREATE TABLE for learning_history (#3391) — create_all should handle it,
+# but explicit migration ensures it exists even if import order changes.
+# Wrapped with pg_try_advisory_lock for Cloud Run safety (#3425).
+_lh_lock_conn = None
+_lh_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _lh_time
+        _lh_lock_conn = engine.connect()
+        for _lh_attempt in range(1, 4):
+            _lh_result = _lh_lock_conn.execute(text("SELECT pg_try_advisory_lock(3391)"))
+            _lh_lock_acquired = _lh_result.scalar()
+            if _lh_lock_acquired:
+                logger.info("Acquired advisory lock 3391 for learning_history migration (attempt %d)", _lh_attempt)
+                break
+            logger.warning("Advisory lock 3391 held by another instance (attempt %d/3), retrying in 5s...", _lh_attempt)
+            _lh_time.sleep(5)
+        if not _lh_lock_acquired:
+            logger.warning("Could not acquire advisory lock 3391 after 3 attempts — running learning_history migration without lock")
+
+    with engine.connect() as _conn:
+        if _is_pg:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_history (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    session_id VARCHAR(36) NOT NULL UNIQUE,
+                    session_type VARCHAR(20) NOT NULL,
+                    question_asked TEXT,
+                    subject VARCHAR(100),
+                    topic_tags JSON,
+                    grade_level VARCHAR(20),
+                    school_board VARCHAR(100),
+                    documents_uploaded JSON,
+                    quiz_results JSON,
+                    overall_score_pct INTEGER,
+                    avg_attempts_per_q DOUBLE PRECISION,
+                    weak_concepts JSON,
+                    slides_generated JSON,
+                    material_id INTEGER REFERENCES study_guides(id) ON DELETE SET NULL,
+                    assigned_to_course VARCHAR(255),
+                    session_duration_sec INTEGER,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    teacher_visible BOOLEAN NOT NULL DEFAULT FALSE
+                )
+            """))
+            _conn.execute(text("CREATE INDEX IF NOT EXISTS ix_learning_history_student_id ON learning_history(student_id)"))
+            _conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_learning_history_session_id ON learning_history(session_id)"))
+        else:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    session_id VARCHAR(36) NOT NULL UNIQUE,
+                    session_type VARCHAR(20) NOT NULL,
+                    question_asked TEXT,
+                    subject VARCHAR(100),
+                    topic_tags JSON,
+                    grade_level VARCHAR(20),
+                    school_board VARCHAR(100),
+                    documents_uploaded JSON,
+                    quiz_results JSON,
+                    overall_score_pct INTEGER,
+                    avg_attempts_per_q REAL,
+                    weak_concepts JSON,
+                    slides_generated JSON,
+                    material_id INTEGER REFERENCES study_guides(id) ON DELETE SET NULL,
+                    assigned_to_course VARCHAR(255),
+                    session_duration_sec INTEGER,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    teacher_visible BOOLEAN NOT NULL DEFAULT FALSE
+                )
+            """))
+        _conn.commit()
+        logger.info("learning_history table migration completed (#3391)")
+except Exception as _lh_err:
+    logger.warning("learning_history table migration note: %s", _lh_err)
+finally:
+    if _lh_lock_conn is not None:
+        if _lh_lock_acquired:
+            try:
+                _lh_lock_conn.execute(text("SELECT pg_advisory_unlock(3391)"))
+                _lh_lock_conn.commit()
+            except Exception:
+                pass
+        _lh_lock_conn.close()
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
@@ -333,6 +423,7 @@ from app.api.routes import admin_outreach
 app.include_router(admin_outreach.router, prefix="/api")
 app.include_router(features_route.router, prefix="/api")
 app.include_router(ile.router, prefix="/api")
+app.include_router(asgf.router, prefix="/api")
 
 logger.info("API routes registered at /api")
 
