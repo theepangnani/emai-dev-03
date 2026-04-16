@@ -26,6 +26,8 @@ interface Props {
   loading?: boolean;
   /** Disable the buttons entirely (e.g. while navigating) */
   disabled?: boolean;
+  /** Restore previously-selected signal when the component re-mounts on slide navigation */
+  initialSignal?: ComprehensionSignalType | null;
 }
 
 export default function ASGFComprehensionSignal({
@@ -33,8 +35,9 @@ export default function ASGFComprehensionSignal({
   onSignal,
   loading = false,
   disabled = false,
+  initialSignal = null,
 }: Props) {
-  const [selected, setSelected] = useState<ComprehensionSignalType | null>(null);
+  const [selected, setSelected] = useState<ComprehensionSignalType | null>(initialSignal);
 
   const handleClick = (signal: ComprehensionSignalType) => {
     if (disabled || loading) return;
