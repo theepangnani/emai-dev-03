@@ -156,7 +156,7 @@ async def upload_asgf_documents(
 
 @router.get("/context-data", response_model=ASGFContextDataResponse)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
-def get_context_data(
+async def get_context_data(
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
