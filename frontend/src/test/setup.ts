@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest'
+import { vi } from 'vitest'
 
 // Mock ResizeObserver (not available in jsdom)
 global.ResizeObserver = class {
@@ -25,7 +26,7 @@ Object.defineProperty(window, 'localStorage', { value: localStorageMock })
 // Mock matchMedia (not available in jsdom)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: (query: string) => ({
+  value: vi.fn((query: string) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -34,5 +35,5 @@ Object.defineProperty(window, 'matchMedia', {
     addEventListener: () => {},
     removeEventListener: () => {},
     dispatchEvent: () => false,
-  }),
+  })),
 })

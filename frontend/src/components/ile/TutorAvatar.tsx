@@ -18,6 +18,7 @@ export function TutorAvatar({ size = 48, mood = 'neutral', className }: TutorAva
   );
 
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
     mq.addEventListener('change', handler);
