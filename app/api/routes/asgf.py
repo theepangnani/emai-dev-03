@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user
@@ -19,6 +21,8 @@ from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.asgf import (
     ASGFContextDataResponse,
+    ASGFSlideRequest,
+    ASGFSlideResponse,
     ChildItem,
     CourseItem,
     FileUploadResponse,
@@ -28,6 +32,7 @@ from app.schemas.asgf import (
     TaskItem,
 )
 from app.services import asgf_service
+from app.services.asgf_slide_service import ASGFSlideService
 from app.services.file_processor import FileProcessingError, process_file
 from app.services.storage_service import save_file
 
@@ -275,3 +280,63 @@ async def get_context_data(
         courses=courses_out,
         upcoming_tasks=tasks_out,
     )
+
+
+# --- POST /asgf/generate-slides (SSE stream) --------------------------------
+
+@router.post("/generate-slides")
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
+async def generate_slides_stream(
+    request: Request,
+    body: ASGFSlideRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Stream 7-slide mini-lesson content via SSE.
+
+    Accepts a learning_cycle_plan and context_package (output of the
+    ingestion pipeline) and streams one slide at a time as SSE events.
+
+    Event types:
+      - ``event: start``  — session metadata
+      - ``event: slide``  — individual slide JSON
+      - ``event: done``   — generation complete
+      - ``event: error``  — generation error
+    """
+    session_id = uuid4().hex
+
+    async def event_stream():
+        yield (
+            f"event: start\n"
+            f"data: {json.dumps({'session_id': session_id, 'total_slides': 7})}\n\n"
+        )
+
+        slide_service = ASGFSlideService()
+        slide_count = 0
+
+        try:
+            async for slide in slide_service.generate_slides(
+                learning_cycle_plan=body.learning_cycle_plan,
+                context_package=body.context_package,
+            ):
+                slide_count += 1
+                yield f"event: slide\ndata: {json.dumps(slide)}\n\n"
+
+            yield (
+                f"event: done\n"
+                f"data: {json.dumps({'session_id': session_id, 'slides_generated': slide_count})}\n\n"
+            )
+
+        except Exception as e:
+            logger.error("ASGF slide stream error: %s", e)
+            yield (
+                f"event: error\n"
+                f"data: {json.dumps({'message': 'Slide generation failed. Please try again.'})}\n\n"
+            )
+
+    logger.info(
+        "ASGF generate-slides: user=%d, session=%s",
+        current_user.id,
+        session_id,
+    )
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

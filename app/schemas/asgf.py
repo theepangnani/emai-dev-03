@@ -71,3 +71,30 @@ class ASGFContextDataResponse(BaseModel):
     children: list[ChildItem]
     courses: list[CourseItem]
     upcoming_tasks: list[TaskItem]
+
+
+# --- Slide generation (from #3398) ---
+
+class ASGFSlideRequest(BaseModel):
+    """Request body for the slide generation SSE endpoint."""
+
+    learning_cycle_plan: dict = Field(
+        ..., description="Output from asgf_service.generate_learning_cycle_plan()"
+    )
+    context_package: dict = Field(
+        ..., description="Output from asgf_ingestion_service.process_documents()"
+    )
+
+
+class ASGFSlideResponse(BaseModel):
+    """A single generated slide."""
+
+    slide_number: int
+    title: str
+    body: str
+    vocabulary_terms: list[str] = Field(default_factory=list)
+    source_attribution: str | None = None
+    read_more_content: str | None = None
+    bloom_tier: str = "understand"
+
+    model_config = ConfigDict(from_attributes=True)
