@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ASGFSlideCard } from './ASGFSlideCard';
 import type { SlideData } from './ASGFSlideCard';
+import ASGFComprehensionSignal from './ASGFComprehensionSignal';
+import type { ComprehensionSignalType } from './ASGFComprehensionSignal';
 import './ASGFSlideRenderer.css';
 
 export type { SlideData };
@@ -9,9 +11,13 @@ export interface ASGFSlideRendererProps {
   slides: SlideData[];
   isGenerating?: boolean;
   onSlideChange?: (slideIndex: number) => void;
+  /** Map of slide index → signal type, tracking comprehension state across navigation */
+  signalState?: Record<number, ComprehensionSignalType>;
+  /** Called when a slide's comprehension signal changes */
+  onSignalChange?: (slideIndex: number, signal: ComprehensionSignalType) => void;
 }
 
-export function ASGFSlideRenderer({ slides, isGenerating, onSlideChange }: ASGFSlideRendererProps) {
+export function ASGFSlideRenderer({ slides, isGenerating, onSlideChange, signalState, onSignalChange }: ASGFSlideRendererProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
   const [transitioning, setTransitioning] = useState(false);
@@ -88,6 +94,13 @@ export function ASGFSlideRenderer({ slides, isGenerating, onSlideChange }: ASGFS
         {slide && (
           <div className={`asgf-slide-wrapper${enterClass}`} key={currentIndex}>
             <ASGFSlideCard slide={slide} totalSlides={totalSlides} />
+            {onSignalChange && (
+              <ASGFComprehensionSignal
+                slideNumber={currentIndex}
+                initialSignal={signalState?.[currentIndex] ?? null}
+                onSignal={(payload) => onSignalChange(payload.slideNumber, payload.signal)}
+              />
+            )}
           </div>
         )}
 
