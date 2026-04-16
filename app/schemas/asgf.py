@@ -217,3 +217,24 @@ class ComprehensionSignalRequest(BaseModel):
 class ComprehensionSignalResponse(BaseModel):
     acknowledged: bool = True
     re_explanation_slide: Optional[ASGFSlideResponse] = None
+
+
+# --- Quiz bridge (#3400) ---
+
+class ASGFQuizQuestion(BaseModel):
+    """A single slide-anchored quiz question."""
+
+    question_text: str
+    options: list[str] = Field(..., min_length=4, max_length=4)
+    correct_index: int = Field(..., ge=0, le=3)
+    bloom_tier: str
+    slide_reference: int = Field(..., ge=0)
+    hint_text: str
+    explanation: str
+
+
+class ASGFQuizResponse(BaseModel):
+    """Quiz questions generated for an ASGF session."""
+
+    session_id: str
+    questions: list[ASGFQuizQuestion]

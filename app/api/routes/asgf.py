@@ -21,6 +21,8 @@ from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.asgf import (
     ASGFContextDataResponse,
+    ASGFQuizResponse,
+    ASGFQuizQuestion,
     ASGFSlideRequest,
     ASGFSlideResponse,
     ChildItem,
@@ -636,4 +638,115 @@ async def record_comprehension_signal(
     return ComprehensionSignalResponse(
         acknowledged=True,
         re_explanation_slide=re_explanation,
+    )
+
+
+# --- POST /asgf/session/{session_id}/quiz (#3400) ------------------------
+
+@router.post(
+    "/session/{session_id}/quiz",
+    response_model=ASGFQuizResponse,
+)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def generate_quiz(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate slide-anchored quiz questions for a completed ASGF session.
+
+    Retrieves the session's slides and learning cycle plan from
+    learning_history and uses GPT-4o-mini to produce 3-5 MCQ questions.
+    """
+    from app.models.learning_history import LearningHistory
+    from app.services.asgf_quiz_service import generate_asgf_quiz
+
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Auth check: verify session belongs to current user
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    owner_student_ids: list[int] = []
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            owner_student_ids.append(student_row.id)
+    elif role == "parent":
+        child_ids = [
+            sid
+            for (sid,) in db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        owner_student_ids.extend(child_ids)
+
+    if history_row.student_id not in owner_student_ids:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Extract slides from session data
+    # slides_generated stores the plan initially, then slide events are appended
+    raw_data = history_row.slides_generated or {}
+    slides: list[dict] = []
+
+    if isinstance(raw_data, list):
+        # If it's a list, filter for actual slide entries (have title/body)
+        slides = [
+            entry for entry in raw_data
+            if isinstance(entry, dict) and "title" in entry and ("body" in entry or "content" in entry)
+        ]
+    elif isinstance(raw_data, dict):
+        # Plan dict — extract slide_plan items as lightweight slides
+        slide_plan = raw_data.get("slide_plan", [])
+        for i, sp in enumerate(slide_plan):
+            if isinstance(sp, dict):
+                slides.append({
+                    "slide_number": i,
+                    "title": sp.get("title", f"Slide {i + 1}"),
+                    "body": sp.get("brief", ""),
+                    "bloom_tier": sp.get("bloom_tier", ""),
+                })
+
+    if not slides:
+        raise HTTPException(
+            status_code=400,
+            detail="No slide content found for this session. Complete the slide lesson first.",
+        )
+
+    learning_cycle_plan = {}
+    if isinstance(raw_data, dict):
+        learning_cycle_plan = raw_data
+    context_package = history_row.documents_uploaded or {}
+
+    questions = await generate_asgf_quiz(
+        slides=slides,
+        learning_cycle_plan=learning_cycle_plan,
+        context_package=context_package,
+    )
+
+    if not questions:
+        raise HTTPException(
+            status_code=500,
+            detail="Quiz generation failed. Please try again.",
+        )
+
+    logger.info(
+        "ASGF quiz: user=%d session=%s questions=%d",
+        current_user.id,
+        session_id,
+        len(questions),
+    )
+
+    return ASGFQuizResponse(
+        session_id=session_id,
+        questions=[ASGFQuizQuestion(**q) for q in questions],
     )

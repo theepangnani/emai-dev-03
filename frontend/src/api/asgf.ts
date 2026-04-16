@@ -41,6 +41,21 @@ export interface CreateSessionResponse {
   estimated_time_min: number;
 }
 
+export interface ASGFQuizQuestion {
+  question_text: string;
+  options: string[];
+  correct_index: number;
+  bloom_tier: string;
+  slide_reference: number;
+  hint_text: string;
+  explanation: string;
+}
+
+export interface ASGFQuizResponse {
+  session_id: string;
+  questions: ASGFQuizQuestion[];
+}
+
 export const asgfApi = {
   classifyIntent: async (question: string): Promise<IntentClassifyResponse> => {
     const response = await api.post<IntentClassifyResponse>('/api/asgf/classify-intent', { question });
@@ -90,6 +105,16 @@ export const asgfApi = {
     const response = await api.post<ComprehensionSignalResponse>(
       `/api/asgf/session/${sessionId}/signal`,
       body,
+      AI_TIMEOUT,
+    );
+    return response.data;
+  },
+
+  /** Generate slide-anchored quiz questions for a completed session. */
+  async generateQuiz(sessionId: string): Promise<ASGFQuizResponse> {
+    const response = await api.post<ASGFQuizResponse>(
+      `/api/asgf/session/${sessionId}/quiz`,
+      {},
       AI_TIMEOUT,
     );
     return response.data;
