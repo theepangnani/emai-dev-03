@@ -104,7 +104,24 @@ if _is_pg:
 
 # Safety CREATE TABLE for learning_history (#3391) — create_all should handle it,
 # but explicit migration ensures it exists even if import order changes.
+# Wrapped with pg_try_advisory_lock for Cloud Run safety (#3425).
+_lh_lock_conn = None
+_lh_lock_acquired = False
 try:
+    if _is_pg:
+        import time as _lh_time
+        _lh_lock_conn = engine.connect()
+        for _lh_attempt in range(1, 4):
+            _lh_result = _lh_lock_conn.execute(text("SELECT pg_try_advisory_lock(3391)"))
+            _lh_lock_acquired = _lh_result.scalar()
+            if _lh_lock_acquired:
+                logger.info("Acquired advisory lock 3391 for learning_history migration (attempt %d)", _lh_attempt)
+                break
+            logger.warning("Advisory lock 3391 held by another instance (attempt %d/3), retrying in 5s...", _lh_attempt)
+            _lh_time.sleep(5)
+        if not _lh_lock_acquired:
+            logger.warning("Could not acquire advisory lock 3391 after 3 attempts — running learning_history migration without lock")
+
     with engine.connect() as _conn:
         if _is_pg:
             _conn.execute(text("""
@@ -162,6 +179,15 @@ try:
         logger.info("learning_history table migration completed (#3391)")
 except Exception as _lh_err:
     logger.warning("learning_history table migration note: %s", _lh_err)
+finally:
+    if _lh_lock_conn is not None:
+        if _lh_lock_acquired:
+            try:
+                _lh_lock_conn.execute(text("SELECT pg_advisory_unlock(3391)"))
+                _lh_lock_conn.commit()
+            except Exception:
+                pass
+        _lh_lock_conn.close()
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
