@@ -256,3 +256,34 @@ class CompleteSessionRequest(BaseModel):
 class CompleteSessionResponse(BaseModel):
     material_id: int
     summary: str
+
+
+# --- Assignment options (#3402) ---
+
+class AssignmentOption(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class CourseSuggestion(BaseModel):
+    course_id: str | None = None
+    course_name: str | None = None
+    confidence: float = 0.0
+
+
+class AssignmentOptionsResponse(BaseModel):
+    role: str
+    options: list[AssignmentOption]
+    suggested_course: CourseSuggestion | None = None
+
+
+class AssignRequest(BaseModel):
+    assignment_type: str = Field(..., min_length=1)
+    course_id: str | None = None
+    due_date: str | None = None
+
+
+class AssignResponse(BaseModel):
+    success: bool
+    message: str
