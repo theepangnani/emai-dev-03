@@ -59,7 +59,9 @@ def _validate_extension(filename: str) -> str:
 # --- POST /asgf/classify-intent ------------------------------------------
 
 @router.post("/classify-intent", response_model=IntentClassifyResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
 async def classify_intent(
+    request: Request,
     body: IntentClassifyRequest,
     current_user: User = Depends(get_current_user),
 ):
