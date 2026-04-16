@@ -21,6 +21,8 @@ from app.schemas.asgf import (
     ASGFContextDataResponse,
     ChildItem,
     CourseItem,
+    CreateSessionRequest,
+    CreateSessionResponse,
     FileUploadResponse,
     IntentClassifyRequest,
     IntentClassifyResponse,
@@ -28,6 +30,7 @@ from app.schemas.asgf import (
     TaskItem,
 )
 from app.services import asgf_service
+from app.services.asgf_ingestion_service import ASGFIngestionService
 from app.services.file_processor import FileProcessingError, process_file
 from app.services.storage_service import save_file
 
@@ -274,4 +277,111 @@ async def get_context_data(
         children=children_out,
         courses=courses_out,
         upcoming_tasks=tasks_out,
+    )
+
+
+# --- POST /asgf/session -----------------------------------------------------
+
+@router.post("/session", response_model=CreateSessionResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def create_asgf_session(
+    request: Request,
+    body: CreateSessionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new ASGF session: assemble context and generate a learning cycle plan.
+
+    Accepts a question and optional context fields (child_id, subject, grade, course_id).
+    Runs context assembly + plan generation and returns a session preview.
+    """
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    # Build student profile from child_id if provided
+    student_profile: dict = {}
+    if body.child_id and role == "parent":
+        student = (
+            db.query(Student)
+            .options(selectinload(Student.user))
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                Student.id == int(body.child_id),
+            )
+            .first()
+        )
+        if student:
+            student_profile = {
+                "grade": str(student.grade_level) if student.grade_level else "",
+                "school": student.school_name or "",
+            }
+    elif role == "student":
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            student_profile = {
+                "grade": str(student.grade_level) if student.grade_level else "",
+                "school": student.school_name or "",
+            }
+
+    if body.grade:
+        student_profile["grade"] = body.grade
+
+    # Build classroom context from course_id if provided
+    classroom_context: dict = {}
+    if body.course_id:
+        course = db.query(Course).filter(Course.id == int(body.course_id)).first()
+        if course:
+            classroom_context = {
+                "course_name": course.name,
+                "teacher": course.teacher_name or "",
+            }
+
+    if body.subject:
+        classroom_context["subject"] = body.subject
+
+    # Session metadata
+    session_metadata: dict = {
+        "role": role,
+        "user_id": current_user.id,
+    }
+
+    # For now, ingestion result is empty (files not linked to sessions yet).
+    # Future milestones will wire uploaded file_ids to the ingestion pipeline.
+    ingestion_result: dict = {
+        "concepts": [],
+        "gap_data": {"weak_topics": [], "previously_studied": []},
+        "document_metadata": [],
+    }
+
+    # Assemble context
+    context_package = await asgf_service.assemble_context_package(
+        question=body.question,
+        ingestion_result=ingestion_result,
+        student_profile=student_profile,
+        classroom_context=classroom_context,
+        session_metadata=session_metadata,
+    )
+
+    # Generate plan
+    plan = await asgf_service.generate_learning_cycle_plan(context_package)
+
+    session_id = uuid4().hex
+
+    logger.info(
+        "ASGF session created: session_id=%s, user=%d, topic=%s",
+        session_id,
+        current_user.id,
+        plan.topic_classification.get("subject", "unknown"),
+    )
+
+    return CreateSessionResponse(
+        session_id=session_id,
+        topic=context_package.topic or plan.topic_classification.get("subject", ""),
+        subject=context_package.subject or plan.topic_classification.get("subject", ""),
+        grade_level=context_package.grade_level or plan.topic_classification.get("grade_level", ""),
+        slide_count=len(plan.slide_plan),
+        quiz_count=len(plan.quiz_plan),
+        estimated_time_min=plan.estimated_session_time_min,
     )

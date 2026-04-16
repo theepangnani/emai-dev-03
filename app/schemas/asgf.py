@@ -71,3 +71,89 @@ class ASGFContextDataResponse(BaseModel):
     children: list[ChildItem]
     courses: list[CourseItem]
     upcoming_tasks: list[TaskItem]
+
+
+# --- Context assembly & learning cycle plan (from #3396) ---
+
+class ContextPackage(BaseModel):
+    """Structured input assembled for plan generation."""
+
+    question: str
+    subject: str = ""
+    grade_level: str = ""
+    topic: str = ""
+    bloom_entry_point: str = ""
+    concepts: list[dict] = Field(default_factory=list)
+    gap_data: dict = Field(default_factory=dict)
+    document_metadata: list[dict] = Field(default_factory=list)
+    student_profile: dict = Field(default_factory=dict)
+    classroom_context: dict = Field(default_factory=dict)
+    session_metadata: dict = Field(default_factory=dict)
+
+
+class SlidePlanItem(BaseModel):
+    """A single slide in the learning cycle plan."""
+
+    title: str
+    brief: str
+    bloom_tier: str = ""
+
+
+class QuizPlanItem(BaseModel):
+    """A single quiz question in the learning cycle plan."""
+
+    bloom_tier: str
+    format: str  # e.g. "multiple_choice", "short_answer", "true_false"
+    topic: str
+    difficulty: str  # "easy", "medium", "hard"
+
+
+class LearningCyclePlan(BaseModel):
+    """Structured output from Claude plan generation."""
+
+    topic_classification: dict = Field(
+        default_factory=dict,
+        description="subject, grade_level, bloom_entry_point",
+    )
+    core_concepts: list[str] = Field(
+        default_factory=list,
+        description="3-5 key concepts",
+    )
+    prerequisite_check: dict = Field(
+        default_factory=dict,
+        description="known vs needs-establishing",
+    )
+    slide_plan: list[SlidePlanItem] = Field(default_factory=list)
+    direct_answer_outline: dict = Field(
+        default_factory=dict,
+        description="Structure of the answer",
+    )
+    sample_plan: list[dict] = Field(
+        default_factory=list,
+        description="2-3 worked examples",
+    )
+    quiz_plan: list[QuizPlanItem] = Field(default_factory=list)
+    estimated_session_time_min: int = 12
+
+
+class CreateSessionRequest(BaseModel):
+    """Request to create a new ASGF session."""
+
+    question: str = Field(..., min_length=1, max_length=2000)
+    file_ids: list[str] = Field(default_factory=list)
+    child_id: str | None = None
+    subject: str | None = None
+    grade: str | None = None
+    course_id: str | None = None
+
+
+class CreateSessionResponse(BaseModel):
+    """Response after session creation with plan preview."""
+
+    session_id: str
+    topic: str
+    subject: str
+    grade_level: str
+    slide_count: int
+    quiz_count: int
+    estimated_time_min: int
