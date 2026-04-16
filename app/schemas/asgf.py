@@ -166,12 +166,7 @@ class CreateSessionResponse(BaseModel):
 class ASGFSlideRequest(BaseModel):
     """Request body for the slide generation SSE endpoint."""
 
-    learning_cycle_plan: dict = Field(
-        ..., description="Output from asgf_service.generate_learning_cycle_plan()"
-    )
-    context_package: dict = Field(
-        ..., description="Output from asgf_ingestion_service.process_documents()"
-    )
+    session_id: str = Field(..., min_length=1)
 
 
 class ASGFSlideResponse(BaseModel):

@@ -376,6 +376,49 @@ async def create_asgf_session(
 
     session_id = uuid4().hex
 
+    # --- Persist session to learning_history (#3436) ---
+    from app.models.learning_history import LearningHistory
+
+    # Resolve student_id (required FK)
+    student_id: int | None = None
+    if body.child_id and role == "parent":
+        student_id = int(body.child_id)
+    elif role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            student_id = student_row.id
+    elif role == "parent" and not body.child_id:
+        # Use the first linked child if none specified
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        if first_child:
+            student_id = first_child[0]
+
+    if student_id:
+        history_row = LearningHistory(
+            student_id=student_id,
+            session_id=session_id,
+            session_type="asgf",
+            question_asked=body.question,
+            subject=context_package.subject or plan.topic_classification.get("subject", ""),
+            grade_level=context_package.grade_level or plan.topic_classification.get("grade_level", ""),
+            topic_tags=[plan.topic_classification.get("subject", "")],
+            slides_generated=plan.model_dump(),
+            documents_uploaded=context_package.model_dump(),
+        )
+        try:
+            db.add(history_row)
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.warning("ASGF session: failed to persist session %s to learning_history", session_id)
+    else:
+        logger.warning("ASGF session: no student_id resolved, skipping persistence for session %s", session_id)
+
     logger.info(
         "ASGF session created: session_id=%s, user=%d, topic=%s",
         session_id,
@@ -401,12 +444,13 @@ async def create_asgf_session(
 async def generate_slides_stream(
     request: Request,
     body: ASGFSlideRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Stream 7-slide mini-lesson content via SSE.
 
-    Accepts a learning_cycle_plan and context_package (output of the
-    ingestion pipeline) and streams one slide at a time as SSE events.
+    Accepts a session_id (from POST /asgf/session) and looks up the
+    persisted plan and context_package from learning_history.
 
     Event types:
       - ``event: start``  -- session metadata
@@ -414,7 +458,43 @@ async def generate_slides_stream(
       - ``event: done``   -- generation complete
       - ``event: error``  -- generation error
     """
-    session_id = uuid4().hex
+    from app.models.learning_history import LearningHistory
+
+    # Look up session from learning_history (#3435)
+    session_id = body.session_id
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Auth check: verify session belongs to current user
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    owner_user_ids: list[int] = []
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            owner_user_ids.append(student_row.id)
+    elif role == "parent":
+        child_ids = [
+            sid
+            for (sid,) in db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        owner_user_ids.extend(child_ids)
+
+    if history_row.student_id not in owner_user_ids:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    learning_cycle_plan = history_row.slides_generated or {}
+    context_package = history_row.documents_uploaded or {}
 
     async def event_stream():
         yield (
@@ -427,8 +507,8 @@ async def generate_slides_stream(
 
         try:
             async for slide in slide_service.generate_slides(
-                learning_cycle_plan=body.learning_cycle_plan,
-                context_package=body.context_package,
+                learning_cycle_plan=learning_cycle_plan,
+                context_package=context_package,
             ):
                 slide_count += 1
                 yield f"event: slide\ndata: {json.dumps(slide)}\n\n"
