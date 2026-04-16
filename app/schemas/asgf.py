@@ -217,3 +217,21 @@ class ComprehensionSignalRequest(BaseModel):
 class ComprehensionSignalResponse(BaseModel):
     acknowledged: bool = True
     re_explanation_slide: Optional[ASGFSlideResponse] = None
+
+
+# --- Session completion / auto-save (#3401) ---
+
+class QuizResultItem(BaseModel):
+    question_text: str
+    correct: bool
+    attempts: int = Field(..., ge=1)
+    xp_earned: int = Field(..., ge=0)
+
+
+class CompleteSessionRequest(BaseModel):
+    quiz_results: list[QuizResultItem] = Field(..., min_length=1)
+
+
+class CompleteSessionResponse(BaseModel):
+    material_id: int
+    summary: str

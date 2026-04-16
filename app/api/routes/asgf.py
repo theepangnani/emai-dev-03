@@ -24,6 +24,8 @@ from app.schemas.asgf import (
     ASGFSlideRequest,
     ASGFSlideResponse,
     ChildItem,
+    CompleteSessionRequest,
+    CompleteSessionResponse,
     ComprehensionSignalRequest,
     ComprehensionSignalResponse,
     CourseItem,
@@ -637,3 +639,100 @@ async def record_comprehension_signal(
         acknowledged=True,
         re_explanation_slide=re_explanation,
     )
+
+
+# --- POST /asgf/session/{session_id}/complete (#3401) --------------------
+
+@router.post(
+    "/session/{session_id}/complete",
+    response_model=CompleteSessionResponse,
+)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def complete_session(
+    session_id: str,
+    body: CompleteSessionRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Complete an ASGF session and auto-save as Class Material.
+
+    Accepts quiz results and triggers auto-save of the full session
+    (slides + quiz + AI summary) as a StudyGuide record.
+    """
+    from app.models.learning_history import LearningHistory
+    from app.services.asgf_save_service import auto_save_session
+
+    # Verify session exists
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Auth check: verify session belongs to current user
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    owner_student_ids: list[int] = []
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            owner_student_ids.append(student_row.id)
+    elif role == "parent":
+        child_ids = [
+            sid
+            for (sid,) in db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        owner_student_ids.extend(child_ids)
+
+    if history_row.student_id not in owner_student_ids:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Check not already completed (idempotency)
+    if history_row.material_id is not None:
+        # Already saved — return existing data
+        summary = "Session already saved."
+        return CompleteSessionResponse(
+            material_id=history_row.material_id,
+            summary=summary,
+        )
+
+    # Extract slides from session history
+    slides = history_row.slides_generated or []
+
+    # Convert quiz results to dicts
+    quiz_dicts = [qr.model_dump() for qr in body.quiz_results]
+
+    try:
+        material_id, summary = await auto_save_session(
+            session_id=session_id,
+            slides=slides,
+            quiz_results=quiz_dicts,
+            student_id=history_row.student_id,
+            db=db,
+        )
+    except ValueError as e:
+        logger.error("ASGF complete session error: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("ASGF complete session unexpected error")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save session. Please try again.",
+        )
+
+    logger.info(
+        "ASGF session completed: session_id=%s, user=%d, material_id=%d",
+        session_id,
+        current_user.id,
+        material_id,
+    )
+
+    return CompleteSessionResponse(material_id=material_id, summary=summary)
