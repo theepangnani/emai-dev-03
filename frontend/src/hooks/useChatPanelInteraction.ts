@@ -60,8 +60,12 @@ export function useChatPanelInteraction(storageKey: string = DEFAULT_STORAGE_KEY
   }, [panelState]);
 
   // #3341: Reactive mobile detection via matchMedia (no resize spam)
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+  // #3430: Guard for environments where matchMedia is unavailable (jsdom/SSR)
+  const [mobile, setMobile] = useState(() =>
+    typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
+  );
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
     const mql = window.matchMedia('(max-width: 767px)');
     const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
     mql.addEventListener('change', handler);
