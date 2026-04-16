@@ -24,6 +24,8 @@ from app.schemas.asgf import (
     ASGFSlideRequest,
     ASGFSlideResponse,
     ChildItem,
+    ComprehensionSignalRequest,
+    ComprehensionSignalResponse,
     CourseItem,
     CreateSessionRequest,
     CreateSessionResponse,
@@ -450,3 +452,108 @@ async def generate_slides_stream(
     )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# --- POST /asgf/session/{session_id}/signal (#3399) ----------------------
+
+@router.post(
+    "/session/{session_id}/signal",
+    response_model=ComprehensionSignalResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def record_comprehension_signal(
+    session_id: str,
+    body: ComprehensionSignalRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Record a per-slide comprehension signal (got_it / still_confused).
+
+    If the signal is ``still_confused``, an AI re-explanation slide is
+    generated and returned.  The signal is stored in the session's
+    learning history for future analytics.
+    """
+    from app.models.learning_history import LearningHistory
+
+    # --- Persist the signal in learning_history (best-effort) ---
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+
+    if history_row:
+        # Append signal to the JSON slides_generated list
+        signals: list = history_row.slides_generated or []
+        signals.append(
+            {
+                "slide_number": body.slide_number,
+                "signal": body.signal,
+            }
+        )
+        history_row.slides_generated = signals
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.warning(
+                "ASGF signal: failed to persist signal for session %s",
+                session_id,
+            )
+
+    # --- If "got_it", just acknowledge ---
+    if body.signal == "got_it":
+        logger.info(
+            "ASGF signal: user=%d session=%s slide=%d signal=got_it",
+            current_user.id,
+            session_id,
+            body.slide_number,
+        )
+        return ComprehensionSignalResponse(acknowledged=True)
+
+    # --- "still_confused" -> generate re-explanation ---
+    logger.info(
+        "ASGF signal: user=%d session=%s slide=%d signal=still_confused -- generating re-explanation",
+        current_user.id,
+        session_id,
+        body.slide_number,
+    )
+
+    # Retrieve the original slide content from the session history
+    slide_content: dict = {}
+    context_package: dict | None = None
+    if history_row and history_row.slides_generated:
+        # Look for actual slide data stored at this slide number
+        for entry in history_row.slides_generated:
+            if (
+                isinstance(entry, dict)
+                and entry.get("slide_number") == body.slide_number
+                and "title" in entry
+            ):
+                slide_content = entry
+                break
+
+    # If we couldn't find the slide in history, use a placeholder
+    if not slide_content:
+        slide_content = {
+            "title": f"Slide {body.slide_number + 1}",
+            "content": "The content for this slide.",
+        }
+
+    if history_row and history_row.question_asked:
+        context_package = {"question": history_row.question_asked}
+
+    try:
+        re_explanation = await asgf_service.generate_re_explanation(
+            slide_content=slide_content,
+            context_package=context_package,
+        )
+    except Exception:
+        logger.exception("ASGF re-explanation generation error")
+        re_explanation = None
+
+    return ComprehensionSignalResponse(
+        acknowledged=True,
+        re_explanation_slide=re_explanation,
+    )

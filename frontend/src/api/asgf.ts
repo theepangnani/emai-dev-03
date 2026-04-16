@@ -21,6 +21,16 @@ export interface MultiFileUploadResponse {
   total_size_bytes: number;
 }
 
+export interface ComprehensionSignalRequest {
+  slide_number: number;
+  signal: 'got_it' | 'still_confused';
+}
+
+export interface ComprehensionSignalResponse {
+  acknowledged: boolean;
+  re_explanation_slide: Record<string, unknown> | null;
+}
+
 export const asgfApi = {
   classifyIntent: async (question: string): Promise<IntentClassifyResponse> => {
     const response = await api.post<IntentClassifyResponse>('/api/asgf/classify-intent', { question });
@@ -41,5 +51,18 @@ export const asgfApi = {
         onUploadProgress,
       })
       .then((r) => r.data);
+  },
+
+  /** Record a per-slide comprehension signal (got_it / still_confused). */
+  async sendComprehensionSignal(
+    sessionId: string,
+    body: ComprehensionSignalRequest,
+  ): Promise<ComprehensionSignalResponse> {
+    const response = await api.post<ComprehensionSignalResponse>(
+      `/api/asgf/session/${sessionId}/signal`,
+      body,
+      AI_TIMEOUT,
+    );
+    return response.data;
   },
 };

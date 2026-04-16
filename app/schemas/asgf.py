@@ -1,5 +1,7 @@
 """Pydantic schemas for the AI Study Guide Factory (ASGF)."""
 
+from typing import Any, Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -184,3 +186,15 @@ class ASGFSlideResponse(BaseModel):
     bloom_tier: str = "understand"
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Comprehension signal (#3399) ---
+
+class ComprehensionSignalRequest(BaseModel):
+    slide_number: int = Field(..., ge=0)
+    signal: Literal["got_it", "still_confused"]
+
+
+class ComprehensionSignalResponse(BaseModel):
+    acknowledged: bool = True
+    re_explanation_slide: Optional[dict[str, Any]] = None
