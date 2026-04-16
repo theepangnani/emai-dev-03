@@ -1,5 +1,7 @@
 """Pydantic schemas for the AI Study Guide Factory (ASGF)."""
 
+from typing import Any, Literal, Optional
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -71,3 +73,15 @@ class ASGFContextDataResponse(BaseModel):
     children: list[ChildItem]
     courses: list[CourseItem]
     upcoming_tasks: list[TaskItem]
+
+
+# --- Comprehension signal (#3399) ---
+
+class ComprehensionSignalRequest(BaseModel):
+    slide_number: int = Field(..., ge=0)
+    signal: Literal["got_it", "still_confused"]
+
+
+class ComprehensionSignalResponse(BaseModel):
+    acknowledged: bool = True
+    re_explanation_slide: Optional[dict[str, Any]] = None
