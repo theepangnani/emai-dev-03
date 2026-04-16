@@ -55,6 +55,12 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
             confidence=float(data.get("confidence", 0.0)),
             bloom_tier=data.get("bloom_tier", ""),
         )
+    except (openai.APIError, openai.APITimeoutError) as e:
+        logger.warning("ASGF intent classification API error: %s", e)
+        return IntentClassifyResponse()
+    except json.JSONDecodeError as e:
+        logger.warning("ASGF intent classification JSON parse error: %s", e)
+        return IntentClassifyResponse()
     except Exception:
-        logger.exception("ASGF intent classification failed")
+        logger.exception("ASGF intent classification unexpected error")
         return IntentClassifyResponse()
