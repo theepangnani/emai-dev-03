@@ -11,6 +11,7 @@ from app.schemas.asgf import (
     ClassroomContext,
     ContextPackage,
     GapData,
+    IntentAlternative,
     IntentClassifyResponse,
     LearningCyclePlan,
     QuizPlanItem,
@@ -37,6 +38,10 @@ _SYSTEM_PROMPT = (
 async def classify_intent(question: str) -> IntentClassifyResponse:
     """Classify a student/parent question into subject, grade, and topic."""
     if len(question.strip()) < 15:
+        return IntentClassifyResponse()
+
+    if not settings.openai_api_key:
+        logger.warning("OpenAI API key not configured — skipping intent classification")
         return IntentClassifyResponse()
 
     try:
@@ -78,6 +83,51 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
         return IntentClassifyResponse()
 
 
+_ALTERNATIVES_SYSTEM_PROMPT = (
+    "You are an educational intent classifier. A student or parent question was ambiguous. "
+    "Suggest 2-4 possible subject/topic interpretations. "
+    "Return ONLY a JSON array of objects with keys: subject, topic, confidence (float 0-1). "
+    "Order by descending confidence. No markdown."
+)
+
+
+async def get_intent_alternatives(question: str) -> list[IntentAlternative]:
+    """Return 2-4 alternative subject/topic interpretations for an ambiguous question."""
+    try:
+        client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=5.0)
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": _ALTERNATIVES_SYSTEM_PROMPT},
+                {"role": "user", "content": question},
+            ],
+            temperature=0.3,
+            max_tokens=300,
+        )
+        content = response.choices[0].message.content or ""
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]
+        if content.endswith("```"):
+            content = content.rsplit("```", 1)[0]
+        content = content.strip()
+
+        data = json.loads(content)
+        if not isinstance(data, list):
+            return []
+        return [
+            IntentAlternative(
+                subject=item.get("subject", ""),
+                topic=item.get("topic", ""),
+                confidence=float(item.get("confidence", 0.0)),
+            )
+            for item in data[:4]
+        ]
+    except Exception:
+        logger.warning("ASGF alternatives generation failed", exc_info=True)
+        return []
+
+
 # ---------------------------------------------------------------------------
 # Context assembly
 # ---------------------------------------------------------------------------
@@ -110,6 +160,7 @@ async def assemble_context_package(
     classroom_context: dict | None = None,
     session_metadata: dict | None = None,
     intent_result: IntentClassifyResponse | None = None,
+    adaptive_context: dict | None = None,
 ) -> ContextPackage:
     """Assemble the full context package for Claude API.
 
@@ -117,15 +168,29 @@ async def assemble_context_package(
     classroom context, and session metadata into a single ContextPackage.
 
     If *intent_result* is provided, skip the redundant classify_intent() call.
+    If *adaptive_context* is provided (from learning history), enrich gap_data
+    with mastered/weak concepts so repeat sessions skip mastered material.
     """
     # Only classify if caller hasn't already done so
     intent = intent_result if intent_result is not None else await classify_intent(question)
 
     # Build typed sub-models from raw dicts
     gap_raw = ingestion_result.get("gap_data", {})
+    weak_topics = list(gap_raw.get("weak_topics", []))
+    previously_studied = list(gap_raw.get("previously_studied", []))
+
+    # Enrich gap data with adaptive context from learning history (#3403)
+    if adaptive_context and adaptive_context.get("is_repeat"):
+        for concept in adaptive_context.get("weak_concepts", []):
+            if concept not in weak_topics:
+                weak_topics.append(concept)
+        for concept in adaptive_context.get("mastered_concepts", []):
+            if concept not in previously_studied:
+                previously_studied.append(concept)
+
     gap = GapData(
-        weak_topics=gap_raw.get("weak_topics", []),
-        previously_studied=gap_raw.get("previously_studied", []),
+        weak_topics=weak_topics,
+        previously_studied=previously_studied,
     )
 
     sp_raw = student_profile or {}
@@ -142,6 +207,13 @@ async def assemble_context_package(
         subject=cc_raw.get("subject", ""),
     )
 
+    # Include adaptive metadata in session_metadata for plan generation
+    enriched_metadata = dict(session_metadata or {})
+    if adaptive_context and adaptive_context.get("is_repeat"):
+        enriched_metadata["is_repeat_session"] = True
+        enriched_metadata["prior_session_count"] = adaptive_context.get("session_count", 0)
+        enriched_metadata["best_prior_score"] = adaptive_context.get("best_score")
+
     return ContextPackage(
         question=question,
         subject=intent.subject,
@@ -153,7 +225,7 @@ async def assemble_context_package(
         document_metadata=ingestion_result.get("document_metadata", []),
         student_profile=sp,
         classroom_context=cc,
-        session_metadata=session_metadata or {},
+        session_metadata=enriched_metadata,
     )
 
 
@@ -235,6 +307,10 @@ async def generate_learning_cycle_plan(
         )
 
     user_prompt = "\n\n".join(parts)
+
+    if not settings.anthropic_api_key:
+        logger.warning("Anthropic API key not configured — returning empty plan")
+        return LearningCyclePlan()
 
     try:
         client = get_async_anthropic_client()
@@ -351,6 +427,10 @@ async def generate_re_explanation(
             user_prompt += f"**Original question:** {question}\n\n"
 
     user_prompt += "Please re-explain this concept in a simpler way."
+
+    if not settings.anthropic_api_key:
+        logger.warning("Anthropic API key not configured — skipping re-explanation")
+        return None
 
     try:
         client = get_async_anthropic_client()

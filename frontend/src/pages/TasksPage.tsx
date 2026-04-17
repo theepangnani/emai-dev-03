@@ -16,6 +16,7 @@ import { AddActionButton } from '../components/AddActionButton';
 import EmptyState from '../components/EmptyState';
 import { PageNav } from '../components/PageNav';
 import { ReportBugLink } from '../components/ReportBugLink';
+import { ASGFEntryButton } from '../components/asgf/ASGFEntryButton';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -728,6 +729,14 @@ export function TasksPage() {
                               ? `Content: ${task.course_content_title}`
                               : `Class: ${task.course_name}`}
                         </span>
+                      )}
+                      {!task.is_completed && !task.archived_at && (
+                        <ASGFEntryButton
+                          label="Help me understand"
+                          prefilledQuestion={task.title}
+                          prefilledContext={task.course_name || undefined}
+                          variant="inline"
+                        />
                       )}
                     </div>
                   </div>

@@ -204,9 +204,36 @@ def _get_ile_summaries_for_children(
     return summaries
 
 
+async def _get_asgf_summaries_for_children(
+    db: Session, briefing: DailyBriefingResponse
+) -> dict[int, dict]:
+    """Fetch ASGF learning journey data for all children in the briefing.
+
+    learning_history uses students.id as student_id (same FK as ChildBriefing),
+    so no user-id mapping is needed (unlike ILE).
+    """
+    if not briefing.children:
+        return {}
+
+    from datetime import timedelta
+
+    from app.services.asgf_pedi_service import get_asgf_digest_data
+
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=7)
+
+    summaries: dict[int, dict] = {}
+    for child in briefing.children:
+        data = get_asgf_digest_data(child.student_id, since, db)
+        if data["session_count"] > 0:
+            summaries[child.student_id] = data
+    return summaries
+
+
 def has_content(
     briefing: DailyBriefingResponse,
     ile_summaries: dict[int, dict] | None = None,
+    asgf_summaries: dict[int, dict] | None = None,
 ) -> bool:
     """Check if the briefing has anything worth reporting."""
     return (
@@ -214,6 +241,7 @@ def has_content(
         or briefing.total_due_today > 0
         or briefing.total_upcoming > 0
         or bool(ile_summaries)
+        or bool(asgf_summaries)
     )
 
 
@@ -255,9 +283,10 @@ async def send_daily_digest_email(db: Session, parent_user_id: int, force: bool 
 
     briefing = generate_daily_digest(db, parent_user_id)
     ile_summaries = _get_ile_summaries_for_children(db, briefing)
+    asgf_summaries = await _get_asgf_summaries_for_children(db, briefing)
 
     # Skip if nothing to report (unless forced, e.g. test send)
-    if not force and not has_content(briefing, ile_summaries):
+    if not force and not has_content(briefing, ile_summaries, asgf_summaries):
         return False
 
     lang = getattr(parent, "preferred_language", "en") or "en"
