@@ -225,6 +225,8 @@ class TestUpdateLearningHistoryOnComplete:
         update_learning_history_on_complete(
             session_id=row.session_id, quiz_results=quiz, db=db_session,
         )
+        # Caller is responsible for commit (#3497)
+        db_session.commit()
 
         db_session.refresh(row)
         assert row.overall_score_pct == 75  # 3/4
