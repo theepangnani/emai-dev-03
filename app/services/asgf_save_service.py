@@ -156,7 +156,7 @@ async def auto_save_session(
 
     # Delegate quiz-result writing to the shared service (#3489)
     # This avoids duplicating score/weak-concept logic in two places.
-    await update_learning_history_on_complete(
+    update_learning_history_on_complete(
         session_id=session_id, quiz_results=quiz_results, db=db,
     )
     # Refresh after the service committed
