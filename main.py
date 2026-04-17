@@ -616,7 +616,7 @@ async def startup_event():
         CronTrigger(day_of_week="sun", hour=20, minute=0),
         id="weekly_report",
         replace_existing=True,
-        misfire_grace_time=3600,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
         coalesce=True,
     )
 
