@@ -310,3 +310,12 @@ class ReviewTopicItem(BaseModel):
 class ReviewTopicsResponse(BaseModel):
     student_id: int
     topics: list[ReviewTopicItem]
+
+
+# --- ASGF usage / session cap (#3405) ---
+
+class ASGFUsageResponse(BaseModel):
+    used: int
+    limit: int
+    remaining: int
+    can_start: bool

@@ -25,6 +25,7 @@ from app.schemas.asgf import (
     ASGFQuizResponse,
     ASGFQuizQuestion,
     ASGFSlideResponse,
+    ASGFUsageResponse,
     AssignmentOptionsResponse,
     AssignmentOption,
     AssignRequest,
@@ -46,6 +47,7 @@ from app.schemas.asgf import (
     ReviewTopicItem,
     TaskItem,
 )
+from app.services.asgf_cost_service import check_session_cap
 from app.services import asgf_service
 from app.services.asgf_assignment_service import (
     assign_material,
@@ -101,6 +103,56 @@ async def classify_intent(
 ):
     """Classify a question into subject, grade level, topic, and Bloom's tier."""
     return await asgf_service.classify_intent(body.question)
+
+
+# --- GET /asgf/usage (#3405) -----------------------------------------------
+
+@router.get("/usage", response_model=ASGFUsageResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_asgf_usage(
+    request: Request,
+    child_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return remaining ASGF sessions this month for the current user's child."""
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    student_id: int | None = None
+    if child_id and role == "parent":
+        # Verify the child belongs to this parent
+        valid = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                Student.id == child_id,
+            )
+            .first()
+        )
+        if valid:
+            student_id = valid[0]
+    elif role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            student_id = student_row.id
+    elif role == "parent" and not child_id:
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        if first_child:
+            student_id = first_child[0]
+
+    if not student_id:
+        raise HTTPException(status_code=404, detail="No linked student found.")
+
+    cap_info = await check_session_cap(student_id, db)
+    return ASGFUsageResponse(**cap_info)
 
 
 # --- POST /asgf/upload ----------------------------------------------------
@@ -325,6 +377,35 @@ async def create_asgf_session(
     Runs context assembly + plan generation and returns a session preview.
     """
     role = _get_user_role(current_user)
+
+    # --- Session cap enforcement (#3405) ---
+    cap_student_id: int | None = None
+    if body.child_id and role == "parent":
+        cap_student_id = int(body.child_id)
+    elif role == "student":
+        cap_student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if cap_student_row:
+            cap_student_id = cap_student_row.id
+    elif role == "parent" and not body.child_id:
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        if first_child:
+            cap_student_id = first_child[0]
+
+    if cap_student_id:
+        cap_info = await check_session_cap(cap_student_id, db)
+        if not cap_info["can_start"]:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"Monthly ASGF session limit reached ({cap_info['limit']} sessions). "
+                    "Upgrade your plan for unlimited sessions."
+                ),
+            )
 
     # Build student profile from child_id if provided
     student_profile: dict = {}
