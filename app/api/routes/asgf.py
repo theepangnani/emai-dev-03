@@ -564,7 +564,7 @@ async def create_asgf_session(
     )
 
 
-# --- POST /asgf/generate-slides (SSE stream) --------------------------------
+# --- GET /asgf/generate-slides (SSE stream) --------------------------------
 
 @router.get("/generate-slides")
 @limiter.limit("5/minute", key_func=get_user_id_or_ip)
