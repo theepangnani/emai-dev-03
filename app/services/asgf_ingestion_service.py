@@ -16,6 +16,10 @@ import openai
 from app.core.config import settings
 from app.core.logging_config import get_logger
 from app.services.ai_service import get_async_anthropic_client
+from app.services.asgf_ocr_service import (
+    extract_text_with_gcp_vision,
+    is_gcp_vision_configured,
+)
 from app.services.file_processor import (
     IMAGE_EXTENSIONS,
     FileProcessingError,
@@ -155,17 +159,40 @@ class ASGFIngestionService:
     # ------------------------------------------------------------------
 
     async def _stage2_extract_text(self, file: dict, file_type: str) -> str:
-        """Extract text using existing file_processor utilities."""
+        """Extract text using GCP Vision (if configured) or file_processor utilities."""
         filename: str = file["filename"]
         content: bytes = file["content"]
+        ext = Path(filename).suffix.lower()
 
         try:
             # Validate first (size, extension, magic bytes)
             validate_file(content, filename)
-            # Delegate to the synchronous process_file via thread pool
+
+            # For image files, try GCP Vision OCR first (better for handwriting)
+            if ext in IMAGE_EXTENSIONS and is_gcp_vision_configured():
+                gcp_text = await extract_text_with_gcp_vision(content, filename)
+                if gcp_text:
+                    logger.info(
+                        "ASGF stage-2: GCP Vision OCR extracted %d chars from %s",
+                        len(gcp_text),
+                        filename,
+                    )
+                    return gcp_text
+                # GCP Vision returned empty — fall through to Anthropic Vision
+                logger.info(
+                    "ASGF stage-2: GCP Vision returned no text for %s, "
+                    "falling back to Anthropic Vision",
+                    filename,
+                )
+
+            # Default path: delegate to the synchronous process_file via thread pool
             text = await asyncio.to_thread(process_file, content, filename)
+            ocr_method = "Anthropic Vision" if ext in IMAGE_EXTENSIONS else "file_processor"
             logger.info(
-                "ASGF stage-2: extracted %d chars from %s", len(text), filename
+                "ASGF stage-2: %s extracted %d chars from %s",
+                ocr_method,
+                len(text),
+                filename,
             )
             return text
         except FileProcessingError:
