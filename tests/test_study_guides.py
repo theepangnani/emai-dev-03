@@ -1074,6 +1074,175 @@ class TestGenerateFromCourseContent:
 
 
 # ------------------------------------------------------------------
+# Save Q&A as Guide  (POST /api/study/guides/{id}/qa/save-as-guide)
+# ------------------------------------------------------------------
+
+
+class TestSaveQAAsGuide:
+    """Regression tests for save_qa_as_guide endpoint (#3545)."""
+
+    URL = "/api/study/guides/{guide_id}/qa/save-as-guide"
+
+    def _url(self, guide_id: int) -> str:
+        return self.URL.format(guide_id=guide_id)
+
+    def test_happy_path(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Some Q&A answer text", "title": "My Sub Guide"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "My Sub Guide"
+        assert data["content"] == "Some Q&A answer text"
+        assert data["parent_guide_id"] == guide.id
+        assert data["relationship_type"] == "sub_guide"
+        assert data["generation_context"] == "Q&A response"
+        assert data["guide_type"] == "study_guide"
+        assert data["user_id"] == users["parent"].id
+        assert data["course_id"] == users["course"].id
+
+    def test_happy_path_default_title(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Answer content"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["title"] == f"Q&A: {guide.title}"
+
+    def test_404_guide_not_found(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(999999),
+            json={"content": "Some content"},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_403_not_owner(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["outsider"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Some content"},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_422_uncertainty_phrase(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "I'm not sure about the answer"},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+        assert "uncertain" in resp.json()["detail"].lower()
+
+
+# ------------------------------------------------------------------
+# Save Q&A as Material  (POST /api/study/guides/{id}/qa/save-as-material)
+# ------------------------------------------------------------------
+
+
+class TestSaveQAAsMaterial:
+    """Regression tests for save_qa_as_material endpoint (#3545)."""
+
+    URL = "/api/study/guides/{guide_id}/qa/save-as-material"
+
+    def _url(self, guide_id: int) -> str:
+        return self.URL.format(guide_id=guide_id)
+
+    def test_happy_path(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Course notes from Q&A", "title": "My Notes"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["title"] == "My Notes"
+        assert data["course_id"] == users["course"].id
+        assert data["content_type"] == "notes"
+        assert "id" in data
+
+    def test_happy_path_default_title(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Some notes content"},
+            headers=headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["title"] == f"Q&A Notes: {guide.title}"
+
+    def test_404_guide_not_found(self, client, users):
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(999999),
+            json={"content": "Some content"},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_403_not_owner(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["outsider"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "Some content"},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_422_uncertainty_phrase(self, client, users):
+        guide = users["parent_guide"]
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(guide.id),
+            json={"content": "I don't know the answer to that"},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+        assert "uncertain" in resp.json()["detail"].lower()
+
+    def test_400_no_course_id(self, client, users, db_session, monkeypatch):
+        """Guide with no course_id should return 400."""
+        from app.models.study_guide import StudyGuide
+
+        no_course_guide = StudyGuide(
+            user_id=users["parent"].id,
+            title="No Course Guide",
+            content="# Content",
+            guide_type="study_guide",
+            version=1,
+            course_id=None,
+        )
+        db_session.add(no_course_guide)
+        db_session.commit()
+        db_session.refresh(no_course_guide)
+
+        headers = _auth(client, users["parent"].email)
+        resp = client.post(
+            self._url(no_course_guide.id),
+            json={"content": "Some content"},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "no associated course" in resp.json()["detail"].lower()
+
+
+# ------------------------------------------------------------------
 # Config: verify default Claude model is up-to-date
 # ------------------------------------------------------------------
 

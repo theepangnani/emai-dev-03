@@ -325,6 +325,17 @@ class SaveQAAsMaterialRequest(BaseModel):
     title: str = Field(default="", max_length=255)
 
 
+class SaveAsMaterialResponse(BaseModel):
+    """Response from saving a Q&A response as course material."""
+    id: int
+    title: str
+    course_id: int
+    content_type: str
+
+    class Config:
+        from_attributes = True
+
+
 class ClassifyDocumentResponse(BaseModel):
     """Response from document classification endpoint."""
     document_type: str
