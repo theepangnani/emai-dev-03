@@ -93,6 +93,28 @@ export interface ASGFQuizResponse {
   questions: ASGFQuizQuestion[];
 }
 
+export interface ResumeSessionResponse {
+  session_id: string;
+  current_slide_index: number;
+  signals_given: Array<{ slide_number: number; signal: string }>;
+  quiz_progress: Array<Record<string, unknown>>;
+  slides: Array<Record<string, unknown>>;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface ActiveSessionItem {
+  session_id: string;
+  question: string;
+  subject: string;
+  created_at: string;
+  slide_count: number;
+}
+
+export interface ActiveSessionsResponse {
+  sessions: ActiveSessionItem[];
+}
+
 export const asgfApi = {
   classifyIntent: async (question: string): Promise<IntentClassifyResponse> => {
     const response = await api.post<IntentClassifyResponse>('/api/asgf/classify-intent', { question });
@@ -173,6 +195,22 @@ export const asgfApi = {
       `/api/asgf/session/${sessionId}/quiz`,
       {},
       AI_TIMEOUT,
+    );
+    return response.data;
+  },
+
+  /** Get session state for resumption (within 24h). */
+  async resumeSession(sessionId: string): Promise<ResumeSessionResponse> {
+    const response = await api.get<ResumeSessionResponse>(
+      `/api/asgf/session/${sessionId}/resume`,
+    );
+    return response.data;
+  },
+
+  /** Get list of active (resumable) ASGF sessions for the current user. */
+  async getActiveSessions(): Promise<ActiveSessionsResponse> {
+    const response = await api.get<ActiveSessionsResponse>(
+      '/api/asgf/active-sessions',
     );
     return response.data;
   },
