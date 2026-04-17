@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, courseContentsApi, coursesApi, tasksApi, invitesApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
+import { listIntegrations } from '../api/parentEmailDigest';
 import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
@@ -110,6 +111,12 @@ export function MyKidsPage() {
 
   // Email digest wizard
   const [showEmailDigestWizard, setShowEmailDigestWizard] = useState(false);
+  const [hasEmailDigestIntegration, setHasEmailDigestIntegration] = useState(false);
+  useEffect(() => {
+    listIntegrations().then(res => {
+      setHasEmailDigestIntegration(res.data.length > 0);
+    }).catch(() => {});
+  }, []);
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
@@ -960,7 +967,7 @@ export function MyKidsPage() {
               <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
               <span>Report Cards</span>
             </button>
-            <button className="dash-quick-action" onClick={() => setShowEmailDigestWizard(true)}>
+            <button className="dash-quick-action" onClick={() => hasEmailDigestIntegration ? navigate('/email-digest') : setShowEmailDigestWizard(true)}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4E7;</span>
               <span>Email Digest</span>
             </button>
