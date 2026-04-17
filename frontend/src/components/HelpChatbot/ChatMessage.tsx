@@ -159,6 +159,7 @@ function QASaveActions({
       <button
         className="help-chatbot-qa-action"
         onClick={() => navigate(`/ask?question=${encodeURIComponent(content)}`)}
+        aria-label="Start Learning Session"
       >
         Start Learning Session
       </button>

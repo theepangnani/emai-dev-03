@@ -447,6 +447,7 @@ export function ASGFPage() {
                     className="asgf-page__study-guide-link"
                     onClick={() => navigate('/course-materials')}
                     type="button"
+                    aria-label="Go to course materials for a study guide"
                   >
                     Just give me a study guide instead
                   </button>

@@ -1306,7 +1306,7 @@ export function CourseMaterialDetailPage() {
           >
             Start a Learning Session
           </button>
-          <button className="cm-upload-dismiss-btn" onClick={() => setUploadStatus(null)}>&times;</button>
+          <button className="cm-upload-dismiss-btn" onClick={() => setUploadStatus(null)} aria-label="Dismiss upload notification">&times;</button>
         </div>
       )}
       {uploadStatus === 'error' && (
