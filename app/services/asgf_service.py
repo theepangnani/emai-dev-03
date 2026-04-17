@@ -39,6 +39,10 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
     if len(question.strip()) < 15:
         return IntentClassifyResponse()
 
+    if not settings.openai_api_key:
+        logger.warning("OpenAI API key not configured — skipping intent classification")
+        return IntentClassifyResponse()
+
     try:
         client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=5.0)
         response = await client.chat.completions.create(

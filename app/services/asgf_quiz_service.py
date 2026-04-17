@@ -73,6 +73,10 @@ async def generate_asgf_quiz(
         f"e.g. 'Look back at Slide 3')."
     )
 
+    if not settings.openai_api_key:
+        logger.warning("OpenAI API key not configured — skipping quiz generation")
+        return []
+
     try:
         client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=15.0)
         response = await client.chat.completions.create(

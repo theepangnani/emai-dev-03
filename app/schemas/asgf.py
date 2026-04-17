@@ -2,7 +2,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- Intent classification (from #3413) ---
@@ -273,9 +273,20 @@ class AssignmentOptionsResponse(BaseModel):
 
 
 class AssignRequest(BaseModel):
-    assignment_type: str = Field(..., min_length=1)
+    assignment_type: Literal["private", "share_teacher", "share_parent", "review_task", "submit_teacher"] = Field(...)
     course_id: str | None = None
     due_date: str | None = None
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v):
+        if v is not None:
+            from datetime import date
+            try:
+                date.fromisoformat(v)
+            except ValueError:
+                raise ValueError("due_date must be in ISO format (YYYY-MM-DD)")
+        return v
 
 
 class AssignResponse(BaseModel):

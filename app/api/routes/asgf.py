@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -145,7 +146,7 @@ async def upload_asgf_documents(
 
     results: list[FileUploadResponse] = []
     for upload_file, content in file_data:
-        filename = upload_file.filename or "unknown"
+        filename = os.path.basename(upload_file.filename or "unknown")
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
         # Persist to uploads dir (reuse existing storage service)
