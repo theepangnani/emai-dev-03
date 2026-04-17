@@ -1,11 +1,18 @@
 import { api, AI_TIMEOUT } from './client';
 
+export interface IntentAlternative {
+  subject: string;
+  topic: string;
+  confidence: number;
+}
+
 export interface IntentClassifyResponse {
   subject: string;
   grade_level: string;
   topic: string;
   confidence: number;
   bloom_tier: string;
+  alternatives: IntentAlternative[];
 }
 
 export interface FileUploadResponse {
@@ -14,6 +21,7 @@ export interface FileUploadResponse {
   file_type: string;
   file_size_bytes: number;
   text_preview: string;
+  extraction_failed: boolean;
 }
 
 export interface MultiFileUploadResponse {
@@ -85,6 +93,28 @@ export interface ASGFQuizResponse {
   questions: ASGFQuizQuestion[];
 }
 
+export interface ResumeSessionResponse {
+  session_id: string;
+  current_slide_index: number;
+  signals_given: Array<{ slide_number: number; signal: string }>;
+  quiz_progress: Array<Record<string, unknown>>;
+  slides: Array<Record<string, unknown>>;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface ActiveSessionItem {
+  session_id: string;
+  question: string;
+  subject: string;
+  created_at: string;
+  slide_count: number;
+}
+
+export interface ActiveSessionsResponse {
+  sessions: ActiveSessionItem[];
+}
+
 export const asgfApi = {
   classifyIntent: async (question: string): Promise<IntentClassifyResponse> => {
     const response = await api.post<IntentClassifyResponse>('/api/asgf/classify-intent', { question });
@@ -120,10 +150,60 @@ export const asgfApi = {
     return response.data;
   },
 
-  /** Stream slide generation via SSE. Returns an EventSource-compatible URL. */
+  /** Stream slide generation via SSE using fetch (supports auth headers). */
+  async *generateSlides(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): AsyncGenerator<{ event: string; data: string }> {
+    const baseUrl = api.defaults.baseURL || '';
+    const token = localStorage.getItem('token') || '';
+    const url = `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`SSE request failed: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          let event = 'message';
+          let data = '';
+          for (const line of part.split('\n')) {
+            if (line.startsWith('event: ')) event = line.slice(7);
+            else if (line.startsWith('data: ')) data = line.slice(6);
+          }
+          yield { event, data };
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
+  /** @deprecated Use generateSlides() async generator instead. */
   generateSlidesUrl(sessionId: string): string {
     const baseUrl = api.defaults.baseURL || '';
-    return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
+    const token = localStorage.getItem('token') || '';
+    return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
   },
 
   /** Fetch role-aware assignment options and course suggestion for a session. */
@@ -165,6 +245,22 @@ export const asgfApi = {
       `/api/asgf/session/${sessionId}/quiz`,
       {},
       AI_TIMEOUT,
+    );
+    return response.data;
+  },
+
+  /** Get session state for resumption (within 24h). */
+  async resumeSession(sessionId: string): Promise<ResumeSessionResponse> {
+    const response = await api.get<ResumeSessionResponse>(
+      `/api/asgf/session/${sessionId}/resume`,
+    );
+    return response.data;
+  },
+
+  /** Get list of active (resumable) ASGF sessions for the current user. */
+  async getActiveSessions(): Promise<ActiveSessionsResponse> {
+    const response = await api.get<ActiveSessionsResponse>(
+      '/api/asgf/active-sessions',
     );
     return response.data;
   },
