@@ -49,7 +49,7 @@ const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
 
 export function MyKidsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
   const { toast } = useToast();
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -113,6 +113,21 @@ export function MyKidsPage() {
 
   // Study times child selector (#3495)
   const [studyTimesChildId, setStudyTimesChildId] = useState<number | null>(null);
+
+  // Auto-trigger action from query params (#3504)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'help') {
+      studyTools.setShowStudyModal(true);
+    } else if (action === 'add-child') {
+      setShowAddChildModal(true);
+    }
+    if (action) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
