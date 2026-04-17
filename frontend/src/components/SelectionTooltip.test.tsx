@@ -87,4 +87,55 @@ describe('SelectionTooltip', () => {
     expect(screen.getByText('Add to Notes')).toBeInTheDocument()
     expect(screen.getByText('Ask Chat Bot')).toBeInTheDocument()
   })
+
+  it('does not render Start Session button when callback not provided', () => {
+    render(
+      <SelectionTooltip rect={mockRect} visible onAddToNotes={vi.fn()} />
+    )
+    expect(screen.queryByText('Start Session')).not.toBeInTheDocument()
+  })
+
+  it('renders Start Session button when callback is provided', () => {
+    render(
+      <SelectionTooltip
+        rect={mockRect}
+        visible
+        onAddToNotes={vi.fn()}
+        onStartSession={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Start Session')).toBeInTheDocument()
+  })
+
+  it('calls onStartSession when Start Session is clicked', async () => {
+    const user = userEvent.setup()
+    const onStartSession = vi.fn()
+    render(
+      <SelectionTooltip
+        rect={mockRect}
+        visible
+        onAddToNotes={vi.fn()}
+        onStartSession={onStartSession}
+      />
+    )
+    await user.click(screen.getByText('Start Session'))
+    expect(onStartSession).toHaveBeenCalledOnce()
+  })
+
+  it('renders all three buttons when all callbacks provided', () => {
+    render(
+      <SelectionTooltip
+        rect={mockRect}
+        visible
+        onAddToNotes={vi.fn()}
+        onAskChatBot={vi.fn()}
+        onStartSession={vi.fn()}
+      />
+    )
+    const buttons = screen.getAllByRole('button')
+    expect(buttons).toHaveLength(3)
+    expect(screen.getByText('Add to Notes')).toBeInTheDocument()
+    expect(screen.getByText('Ask Chat Bot')).toBeInTheDocument()
+    expect(screen.getByText('Start Session')).toBeInTheDocument()
+  })
 })
