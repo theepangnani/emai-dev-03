@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { GenerationSpinner } from './GenerationSpinner';
 import { ReportBugLink } from './ReportBugLink';
@@ -64,6 +65,19 @@ const GUIDE_TYPES = [
       </svg>
     ),
   },
+  {
+    id: 'learning_session',
+    title: 'Learning Session',
+    description: 'Interactive slides + quiz session',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="5" width="22" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.8"/>
+        <path d="M12 10L18 13L12 16V10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M10 23H18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M14 20V23" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ];
 
 export function GenerateSubGuideModal({
@@ -81,6 +95,7 @@ export function GenerateSubGuideModal({
   contentTitle,
   textContent,
 }: GenerateSubGuideModalProps) {
+  const navigate = useNavigate();
   const [selectedType, setSelectedType] = useState('study_guide');
   const [customPrompt, setCustomPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -105,6 +120,13 @@ export function GenerateSubGuideModal({
       : selectedText;
 
   const handleGenerate = async () => {
+    // For learning_session type, navigate to /ask with context
+    if (selectedType === 'learning_session') {
+      navigate(`/ask?question=${encodeURIComponent(selectedText || '')}&content_id=${courseContentId || ''}`);
+      onClose();
+      return;
+    }
+
     // For study_guide type, use streaming if callback is provided
     if (selectedType === 'study_guide' && onStreamGenerate) {
       const focusPrompt = selectedText + (customPrompt ? `\n\n${customPrompt}` : '');
