@@ -224,7 +224,7 @@ async def _get_asgf_summaries_for_children(
 
     summaries: dict[int, dict] = {}
     for child in briefing.children:
-        data = await get_asgf_digest_data(child.student_id, since, db)
+        data = get_asgf_digest_data(child.student_id, since, db)
         if data["session_count"] > 0:
             summaries[child.student_id] = data
     return summaries

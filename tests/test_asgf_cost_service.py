@@ -81,7 +81,7 @@ async def test_check_session_cap_no_sessions(db_session, student):
     """Cap check returns full capacity when no sessions exist."""
     from app.services.asgf_cost_service import check_session_cap
 
-    result = await check_session_cap(student.id, db_session)
+    result = check_session_cap(student.id, db_session)
     assert result["used"] == 0
     assert result["limit"] == 10
     assert result["remaining"] == 10
@@ -105,7 +105,7 @@ async def test_check_session_cap_at_limit(db_session, student):
         )
     db_session.commit()
 
-    result = await check_session_cap(student.id, db_session)
+    result = check_session_cap(student.id, db_session)
     assert result["used"] == ASGF_FREE_TIER_LIMIT
     assert result["remaining"] == 0
     assert result["can_start"] is False
@@ -118,7 +118,7 @@ async def test_log_asgf_cost(db_session, student_user):
     from app.services.asgf_cost_service import log_asgf_cost
 
     session_id = uuid4().hex
-    await log_asgf_cost(
+    log_asgf_cost(
         session_id=session_id,
         operation="asgf_plan",
         model="gpt-4o-mini",
@@ -161,7 +161,7 @@ async def test_get_monthly_cost_summary(db_session, student):
         )
     db_session.commit()
 
-    result = await get_monthly_cost_summary(student.id, db_session)
+    result = get_monthly_cost_summary(student.id, db_session)
     assert result["session_count"] == 3
     assert "total_cost_usd" in result
     assert "total_tokens" in result

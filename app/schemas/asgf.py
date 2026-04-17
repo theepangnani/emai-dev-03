@@ -174,6 +174,10 @@ class CreateSessionRequest(BaseModel):
     """Request to create a new ASGF session."""
 
     question: str = Field(..., min_length=1, max_length=2000)
+    # Known limitation: file_ids are accepted but not yet linked to sessions.
+    # The upload endpoint generates a uuid4 file_id per file, but it is not
+    # persisted or associated with the session record.  File linking will be
+    # implemented when the ingestion pipeline is wired to sessions.
     file_ids: list[str] = Field(default_factory=list)
     child_id: str | None = None
     subject: str | None = None

@@ -142,7 +142,7 @@ class TestGetSpacedRepetitionTopics:
     async def test_returns_weak_topics_due_for_review(self, db_session, student, weak_history):
         from app.services.asgf_learning_history_service import get_spaced_repetition_topics
 
-        topics = await get_spaced_repetition_topics(student_id=student.id, db=db_session)
+        topics = get_spaced_repetition_topics(student_id=student.id, db=db_session)
         assert len(topics) >= 1
         t = topics[0]
         assert t["subject"] == "Science"
@@ -154,7 +154,7 @@ class TestGetSpacedRepetitionTopics:
     async def test_excludes_strong_scores(self, db_session, student, strong_history):
         from app.services.asgf_learning_history_service import get_spaced_repetition_topics
 
-        topics = await get_spaced_repetition_topics(student_id=student.id, db=db_session)
+        topics = get_spaced_repetition_topics(student_id=student.id, db=db_session)
         subjects = [t["subject"] for t in topics]
         assert "Biology" not in subjects
 
@@ -162,7 +162,7 @@ class TestGetSpacedRepetitionTopics:
     async def test_empty_for_no_history(self, db_session, student):
         from app.services.asgf_learning_history_service import get_spaced_repetition_topics
 
-        topics = await get_spaced_repetition_topics(student_id=student.id, db=db_session)
+        topics = get_spaced_repetition_topics(student_id=student.id, db=db_session)
         assert topics == []
 
 
@@ -173,7 +173,7 @@ class TestGetAdaptiveContext:
     async def test_returns_adaptive_context_for_repeat(self, db_session, student, weak_history):
         from app.services.asgf_learning_history_service import get_adaptive_context
 
-        ctx = await get_adaptive_context(student_id=student.id, topic="Newton", db=db_session)
+        ctx = get_adaptive_context(student_id=student.id, topic="Newton", db=db_session)
         assert ctx["is_repeat"] is True
         assert ctx["session_count"] >= 1
         assert ctx["best_score"] == 50
@@ -183,7 +183,7 @@ class TestGetAdaptiveContext:
     async def test_returns_not_repeat_for_new_topic(self, db_session, student, weak_history):
         from app.services.asgf_learning_history_service import get_adaptive_context
 
-        ctx = await get_adaptive_context(student_id=student.id, topic="Algebra", db=db_session)
+        ctx = get_adaptive_context(student_id=student.id, topic="Algebra", db=db_session)
         assert ctx["is_repeat"] is False
         assert ctx["session_count"] == 0
 
@@ -191,7 +191,7 @@ class TestGetAdaptiveContext:
     async def test_mastered_concepts_from_correct_answers(self, db_session, student, weak_history):
         from app.services.asgf_learning_history_service import get_adaptive_context
 
-        ctx = await get_adaptive_context(student_id=student.id, topic="Newton's Third Law", db=db_session)
+        ctx = get_adaptive_context(student_id=student.id, topic="Newton's Third Law", db=db_session)
         # "What is Newton's Third Law?" was correct
         assert "What is Newton's Third Law?" in ctx["mastered_concepts"]
         # "Draw a force diagram" was incorrect
@@ -222,7 +222,7 @@ class TestUpdateLearningHistoryOnComplete:
             {"question_text": "Q3", "correct": True, "attempts": 1, "xp_earned": 10},
             {"question_text": "Q4", "correct": True, "attempts": 2, "xp_earned": 5},
         ]
-        await update_learning_history_on_complete(
+        update_learning_history_on_complete(
             session_id=row.session_id, quiz_results=quiz, db=db_session,
         )
 
@@ -237,7 +237,7 @@ class TestUpdateLearningHistoryOnComplete:
         from app.services.asgf_learning_history_service import update_learning_history_on_complete
 
         # Should not raise
-        await update_learning_history_on_complete(
+        update_learning_history_on_complete(
             session_id="nonexistent", quiz_results=[], db=db_session,
         )
 

@@ -308,6 +308,10 @@ async def generate_learning_cycle_plan(
 
     user_prompt = "\n\n".join(parts)
 
+    if not settings.anthropic_api_key:
+        logger.warning("Anthropic API key not configured — returning empty plan")
+        return LearningCyclePlan()
+
     try:
         client = get_async_anthropic_client()
         response = await client.messages.create(
@@ -423,6 +427,10 @@ async def generate_re_explanation(
             user_prompt += f"**Original question:** {question}\n\n"
 
     user_prompt += "Please re-explain this concept in a simpler way."
+
+    if not settings.anthropic_api_key:
+        logger.warning("Anthropic API key not configured — skipping re-explanation")
+        return None
 
     try:
         client = get_async_anthropic_client()

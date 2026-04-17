@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 ASGF_FREE_TIER_LIMIT = 10
 
 
-async def log_asgf_cost(
+def log_asgf_cost(
     session_id: str,
     operation: str,
     model: str,
@@ -45,9 +45,20 @@ async def log_asgf_cost(
     """
     total_tokens = input_tokens + output_tokens
 
-    # Rough cost estimate (gpt-4o-mini pricing as of 2025-Q1).
-    cost_per_input = 0.15 / 1_000_000   # $0.15 per 1M input tokens
-    cost_per_output = 0.60 / 1_000_000  # $0.60 per 1M output tokens
+    # Model-specific pricing (per token).
+    # gpt-4o-mini: $0.15/M input, $0.60/M output
+    # claude-haiku-4-5: $1.00/M input, $5.00/M output
+    model_lower = model.lower()
+    if "haiku" in model_lower:
+        cost_per_input = 1.00 / 1_000_000
+        cost_per_output = 5.00 / 1_000_000
+    elif "sonnet" in model_lower:
+        cost_per_input = 3.00 / 1_000_000
+        cost_per_output = 15.00 / 1_000_000
+    else:
+        # Default: gpt-4o-mini pricing
+        cost_per_input = 0.15 / 1_000_000
+        cost_per_output = 0.60 / 1_000_000
     estimated_cost = input_tokens * cost_per_input + output_tokens * cost_per_output
 
     row = AIUsageHistory(
@@ -71,7 +82,7 @@ async def log_asgf_cost(
         )
 
 
-async def check_session_cap(student_id: int, db: Session) -> dict:
+def check_session_cap(student_id: int, db: Session) -> dict:
     """Count ASGF sessions this calendar month for a student.
 
     Returns
@@ -100,7 +111,7 @@ async def check_session_cap(student_id: int, db: Session) -> dict:
     }
 
 
-async def get_monthly_cost_summary(student_id: int, db: Session) -> dict:
+def get_monthly_cost_summary(student_id: int, db: Session) -> dict:
     """Total AI cost for ASGF operations this month for a given student.
 
     Joins ``ai_usage_history`` rows whose ``generation_type`` starts with
