@@ -101,6 +101,7 @@ function QASaveActions({
   hasCourseId?: boolean;
   isUncertain?: boolean;
 }) {
+  const navigate = useNavigate();
   const [saving, setSaving] = useState<'guide' | 'material' | null>(null);
   const [saved, setSaved] = useState<'guide' | 'material' | null>(null);
   const { toast } = useToast();
@@ -155,6 +156,13 @@ function QASaveActions({
           {saved === 'material' ? 'Saved as Material' : saving === 'material' ? 'Saving...' : 'Save as Class Material'}
         </button>
       )}
+      <button
+        className="help-chatbot-qa-action"
+        onClick={() => navigate(`/ask?question=${encodeURIComponent(content)}`)}
+        aria-label="Start Learning Session"
+      >
+        Start Learning Session
+      </button>
     </div>
   );
 }

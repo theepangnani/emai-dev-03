@@ -79,7 +79,7 @@ export function ReplaceDocumentModal({
       }
 
       onContentUpdated(result);
-      onUploadStatusChange(null);
+      onUploadStatusChange('success');
 
       const extra = files.length > 1 ? ` ${files.length - 1} additional file(s) added to course.` : '';
       if (result.archived_guides_count > 0) {

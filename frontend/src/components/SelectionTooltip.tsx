@@ -5,9 +5,10 @@ interface SelectionTooltipProps {
   visible: boolean;
   onAddToNotes: () => void;
   onAskChatBot?: () => void;
+  onStartSession?: () => void;
 }
 
-export function SelectionTooltip({ rect, visible, onAddToNotes, onAskChatBot }: SelectionTooltipProps) {
+export function SelectionTooltip({ rect, visible, onAddToNotes, onAskChatBot, onStartSession }: SelectionTooltipProps) {
   if (!visible) return null;
 
   const top = rect.top + window.scrollY - 44;
@@ -41,6 +42,19 @@ export function SelectionTooltip({ rect, visible, onAddToNotes, onAskChatBot }: 
             <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 3V3z" />
           </svg>
           <span>Ask Chat Bot</span>
+        </button>
+      )}
+      {onStartSession && (
+        <button
+          className="selection-tooltip-btn selection-tooltip-btn-session"
+          onClick={onStartSession}
+          onTouchEnd={(e) => { e.preventDefault(); onStartSession(); }}
+          data-testid="selection-tooltip-session"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="5,3 13,8 5,13" />
+          </svg>
+          <span>Start Session</span>
         </button>
       )}
     </div>
