@@ -352,6 +352,17 @@ export function ParentDashboard() {
               {
                 icon: (
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                  </svg>
+                ),
+                label: 'Ask a Question',
+                onClick: () => pd.navigate('/ask'),
+              },
+              {
+                icon: (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 11l3 3L22 4" />
                     <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
                   </svg>
@@ -454,6 +465,7 @@ export function ParentDashboard() {
                 <h3 className="dash-section-title">Quick Actions</h3>
               </div>
               <div className="dash-quick-actions">
+                <button className="dash-quick-action" onClick={() => pd.navigate('/ask')}><span className="dash-quick-action-icon">❓</span> Ask a Question</button>
                 <button className="dash-quick-action" onClick={() => pd.navigate('/ai-tools')}><span className="dash-quick-action-icon">💡</span> Help My Kid</button>
                 <button className="dash-quick-action" onClick={() => pd.navigate('/courses')}><span className="dash-quick-action-icon">📚</span> View Classes</button>
                 <button className="dash-quick-action" onClick={() => pd.navigate('/courses?create=1')}><span className="dash-quick-action-icon">➕</span> Create Class</button>
