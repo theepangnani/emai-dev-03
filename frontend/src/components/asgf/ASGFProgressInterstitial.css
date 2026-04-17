@@ -1,0 +1,237 @@
+/* --- Container: full-screen centred layout --- */
+.asgf-progress-interstitial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+/* --- Stage list --- */
+.asgf-progress-interstitial__stages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+  margin-bottom: 24px;
+}
+
+/* --- Individual stage row --- */
+.asgf-progress-interstitial__stage {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #f5f7fa;
+  border: 1px solid #e0e4ea;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #8b95a5;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s, opacity 0.3s;
+  opacity: 0.55;
+}
+
+.asgf-progress-interstitial__stage--active {
+  background: #eef3ff;
+  border-color: #a4bcf4;
+  color: #1a56db;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.asgf-progress-interstitial__stage--complete {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+  color: #2e7d32;
+  opacity: 1;
+}
+
+/* --- Icon area (left of label) --- */
+.asgf-progress-interstitial__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* --- Spinner for active stage --- */
+.asgf-progress-interstitial__spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid #a4bcf4;
+  border-top-color: #1a56db;
+  border-radius: 50%;
+  animation: asgf-progress-spin 0.7s linear infinite;
+}
+
+@keyframes asgf-progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- Checkmark animation --- */
+.asgf-progress-interstitial__check {
+  display: inline-block;
+  color: #2e7d32;
+  font-size: 1.2rem;
+  font-weight: 700;
+  animation: asgf-progress-check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes asgf-progress-check-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* --- Slow message --- */
+.asgf-progress-interstitial__slow-msg {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: #7c8594;
+  font-style: italic;
+  animation: asgf-progress-fade-in 0.5s ease both;
+}
+
+@keyframes asgf-progress-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Preview card --- */
+.asgf-progress-interstitial__preview {
+  margin-top: 20px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: #f0f4ff;
+  border: 1px solid #c5d4f7;
+  width: 100%;
+  max-width: 380px;
+  text-align: left;
+  animation: asgf-progress-preview-enter 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes asgf-progress-preview-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.asgf-progress-interstitial__preview-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1f2e;
+  margin: 0 0 12px;
+}
+
+.asgf-progress-interstitial__preview-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.asgf-progress-interstitial__preview-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.asgf-progress-interstitial__preview-stat-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* --- Mobile responsive --- */
+@media (max-width: 480px) {
+  .asgf-progress-interstitial {
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  .asgf-progress-interstitial__stages {
+    max-width: 100%;
+  }
+
+  .asgf-progress-interstitial__preview {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .asgf-progress-interstitial__preview-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* --- Dark mode --- */
+[data-theme='dark'] .asgf-progress-interstitial__stage {
+  background: #1e2230;
+  border-color: #2d3348;
+  color: #6b7589;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__stage--active {
+  background: rgba(26, 86, 219, 0.15);
+  border-color: rgba(164, 188, 244, 0.4);
+  color: #93b4f5;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__stage--complete {
+  background: rgba(46, 125, 50, 0.15);
+  border-color: rgba(76, 175, 80, 0.4);
+  color: #81c784;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__spinner {
+  border-color: rgba(164, 188, 244, 0.4);
+  border-top-color: #93b4f5;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__check {
+  color: #81c784;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__slow-msg {
+  color: #8b95a8;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__preview {
+  background: rgba(26, 86, 219, 0.1);
+  border-color: rgba(164, 188, 244, 0.3);
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__preview-title {
+  color: #e2e6ef;
+}
+
+[data-theme='dark'] .asgf-progress-interstitial__preview-stat {
+  color: #9ca3b4;
+}
