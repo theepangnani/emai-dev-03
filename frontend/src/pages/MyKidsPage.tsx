@@ -50,7 +50,7 @@ const handleKeyDown = (e: React.KeyboardEvent, callback: () => void) => {
 
 export function MyKidsPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { confirm, confirmModal } = useConfirm();
   const { toast } = useToast();
   const [children, setChildren] = useState<ChildSummary[]>([]);
@@ -117,6 +117,24 @@ export function MyKidsPage() {
       setHasEmailDigestIntegration(res.data.length > 0);
     }).catch(() => {});
   }, []);
+
+  // Study times child selector (#3495)
+  const [studyTimesChildId, setStudyTimesChildId] = useState<number | null>(null);
+
+  // Auto-trigger action from query params (#3504)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'help') {
+      studyTools.setShowStudyModal(true);
+    } else if (action === 'add-child') {
+      setShowAddChildModal(true);
+    }
+    if (action) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
@@ -650,6 +668,11 @@ export function MyKidsPage() {
     );
   }
 
+  // Derived study-times child: falls back if the selected child was removed (#3508)
+  const activeStudyChild = (studyTimesChildId && children.find(c => c.student_id === studyTimesChildId))
+    ? studyTimesChildId
+    : children[0]?.student_id;
+
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       <PageNav items={[
@@ -859,10 +882,26 @@ export function MyKidsPage() {
                 </div>
               </SectionPanel>
 
-              {/* ── Best Study Times (per child) ───────── */}
-              {children.map(child => (
-                <StudyTimeSuggestions key={child.student_id} studentId={child.student_id} />
-              ))}
+              {/* ── Best Study Times ───────── */}
+              {children.length > 0 && (
+                <div className="mykids-study-times-wrap">
+                  {children.length > 1 && (
+                    <div className="mykids-study-times-switcher">
+                      <select
+                        aria-label="Select child for study times"
+                        value={activeStudyChild}
+                        onChange={e => setStudyTimesChildId(Number(e.target.value))}
+                        className="mykids-child-select"
+                      >
+                        {children.map(c => (
+                          <option key={c.student_id} value={c.student_id}>{c.full_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <StudyTimeSuggestions studentId={activeStudyChild} />
+                </div>
+              )}
 
               {/* ── Unassigned Classes ─────────────────── */}
               {unassignedCourses.length > 0 && (

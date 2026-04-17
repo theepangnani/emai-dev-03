@@ -189,6 +189,16 @@ export function StudyGuidesPage() {
   const datePromptModalRef = useFocusTrap<HTMLDivElement>(datePromptTasks.length > 0);
   const createCourseModalRef = useFocusTrap<HTMLDivElement>(showCreateCourseModal, () => setShowCreateCourseModal(false));
 
+  // Auto-open upload wizard when navigated with ?action=upload (#3503)
+  useEffect(() => {
+    if (searchParams.get('action') === 'upload') {
+      setShowModal(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     loadData();
     if (_pendingGenerations.length > 0) {
