@@ -609,6 +609,7 @@ async def generate_slides_stream(
 
         slide_service = ASGFSlideService()
         slide_count = 0
+        generated_slides: list[dict] = []
 
         try:
             async for slide in slide_service.generate_slides(
@@ -616,7 +617,25 @@ async def generate_slides_stream(
                 context_package=context_package,
             ):
                 slide_count += 1
+                generated_slides.append(slide)
                 yield f"event: slide\ndata: {json.dumps(slide)}\n\n"
+
+            # Persist generated slides back to learning_history (#3478)
+            try:
+                persist_row = (
+                    db.query(LearningHistory)
+                    .filter(LearningHistory.session_id == session_id)
+                    .first()
+                )
+                if persist_row:
+                    existing = persist_row.slides_generated or {}
+                    if isinstance(existing, dict):
+                        existing["_generated_slides"] = generated_slides
+                        persist_row.slides_generated = existing
+                        db.commit()
+            except Exception:
+                db.rollback()
+                logger.warning("ASGF: failed to persist generated slides for session %s", session_id)
 
             yield (
                 f"event: done\n"
@@ -716,8 +735,14 @@ async def record_comprehension_signal(
     slide_content: dict = {}
     context_package: dict | None = None
     if history_row and history_row.slides_generated:
-        # Look for actual slide data stored at this slide number
-        for entry in history_row.slides_generated:
+        raw = history_row.slides_generated
+        # Search _generated_slides key for actual slide content (#3480)
+        search_list: list = []
+        if isinstance(raw, dict):
+            search_list = raw.get("_generated_slides", [])
+        elif isinstance(raw, list):
+            search_list = raw
+        for entry in search_list:
             if (
                 isinstance(entry, dict)
                 and entry.get("slide_number") == body.slide_number
@@ -813,23 +838,7 @@ async def generate_quiz(
     _verify_session_ownership(history_row, current_user, db)
 
     raw_data = history_row.slides_generated or {}
-    slides: list[dict] = []
-
-    if isinstance(raw_data, list):
-        slides = [
-            entry for entry in raw_data
-            if isinstance(entry, dict) and "title" in entry and ("body" in entry or "content" in entry)
-        ]
-    elif isinstance(raw_data, dict):
-        slide_plan = raw_data.get("slide_plan", [])
-        for i, sp in enumerate(slide_plan):
-            if isinstance(sp, dict):
-                slides.append({
-                    "slide_number": i,
-                    "title": sp.get("title", f"Slide {i + 1}"),
-                    "body": sp.get("brief", ""),
-                    "bloom_tier": sp.get("bloom_tier", ""),
-                })
+    slides: list[dict] = _extract_slide_content(raw_data)
 
     if not slides:
         raise HTTPException(
@@ -880,7 +889,7 @@ async def complete_session(
     if history_row.material_id is not None:
         return CompleteSessionResponse(material_id=history_row.material_id, summary="Session already saved.")
 
-    slides = history_row.slides_generated or []
+    slides = _extract_slide_content(history_row.slides_generated)
     quiz_dicts = [qr.model_dump() for qr in body.quiz_results]
 
     try:
@@ -989,7 +998,12 @@ SESSION_EXPIRY_HOURS = 24
 def _extract_signals(slides_generated) -> list[dict]:
     """Extract comprehension signals from the slides_generated JSON."""
     signals: list[dict] = []
-    if isinstance(slides_generated, list):
+    if isinstance(slides_generated, dict):
+        # Signals are stored under _comprehension_signals key (#3478)
+        for entry in slides_generated.get("_comprehension_signals", []):
+            if isinstance(entry, dict) and "signal" in entry and "slide_number" in entry:
+                signals.append({"slide_number": entry["slide_number"], "signal": entry["signal"]})
+    elif isinstance(slides_generated, list):
         for entry in slides_generated:
             if isinstance(entry, dict) and "signal" in entry and "slide_number" in entry:
                 signals.append({"slide_number": entry["slide_number"], "signal": entry["signal"]})
@@ -999,20 +1013,28 @@ def _extract_signals(slides_generated) -> list[dict]:
 def _extract_slide_content(slides_generated) -> list[dict]:
     """Extract actual slide content from slides_generated JSON."""
     slides: list[dict] = []
-    if isinstance(slides_generated, list):
+    if isinstance(slides_generated, dict):
+        # Prefer _generated_slides (persisted after SSE stream) (#3478)
+        generated = slides_generated.get("_generated_slides", [])
+        if generated:
+            for entry in generated:
+                if isinstance(entry, dict) and "title" in entry:
+                    slides.append(entry)
+        else:
+            # Fallback to slide_plan summaries if slides not yet generated
+            slide_plan = slides_generated.get("slide_plan", [])
+            for i, sp in enumerate(slide_plan):
+                if isinstance(sp, dict):
+                    slides.append({
+                        "slide_number": i,
+                        "title": sp.get("title", f"Slide {i + 1}"),
+                        "body": sp.get("brief", ""),
+                        "bloom_tier": sp.get("bloom_tier", ""),
+                    })
+    elif isinstance(slides_generated, list):
         for entry in slides_generated:
             if isinstance(entry, dict) and "title" in entry and ("body" in entry or "content" in entry):
                 slides.append(entry)
-    elif isinstance(slides_generated, dict):
-        slide_plan = slides_generated.get("slide_plan", [])
-        for i, sp in enumerate(slide_plan):
-            if isinstance(sp, dict):
-                slides.append({
-                    "slide_number": i,
-                    "title": sp.get("title", f"Slide {i + 1}"),
-                    "body": sp.get("brief", ""),
-                    "bloom_tier": sp.get("bloom_tier", ""),
-                })
     return slides
 
 
