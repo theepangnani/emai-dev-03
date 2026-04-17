@@ -1340,6 +1340,13 @@ export function CourseMaterialDetailPage() {
               window.getSelection()?.removeAllRanges();
             }
           }}
+          onStartSession={() => {
+            if (selection) {
+              navigate('/ask?question=' + encodeURIComponent(selection.text));
+              clearSelection();
+              window.getSelection()?.removeAllRanges();
+            }
+          }}
         />
       )}
       <TextSelectionContextMenu
