@@ -8,10 +8,21 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Highlight from '@tiptap/extension-highlight';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import DOMPurify from 'dompurify';
 import { notesApi, type NoteItem, type NoteHighlight, type NoteVersionItem, type NoteVersionFull } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
 import { NotesToolbar } from './NotesToolbar';
 import './NotesPanel.css';
+
+/** Escape HTML special characters to prevent injection when building HTML strings. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 interface NotesPanelProps {
   courseContentId: number;
@@ -245,7 +256,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       setLoading(true);
       return; // loadNote will re-run due to parentEditing change, then append will fire again
     }
-    const quotedHtml = `<blockquote><p>${appendText.replace(/\n/g, '<br>')}</p></blockquote><p></p>`;
+    const quotedHtml = `<blockquote><p>${escapeHtml(appendText).replace(/\n/g, '<br>')}</p></blockquote><p></p>`;
     editor.chain().focus().insertContent(quotedHtml).run();
     const newContent = editor.getHTML();
     setContent(newContent);
@@ -323,6 +334,13 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   useEffect(() => {
     saveNoteRef.current = saveNote;
   }, [saveNote]);
+
+  // Clean up save timer on unmount to prevent state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -442,7 +460,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
               <div className="notes-version-preview-meta">
                 {formatDate(previewVersion.created_at)}
               </div>
-              <div className="notes-version-preview-content">{previewVersion.content}</div>
+              <div className="notes-version-preview-content notes-readonly-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewVersion.content || '') }} />
               <div className="notes-version-preview-actions">
                 <button
                   className="notes-version-back-btn"
@@ -541,7 +559,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       ) : isEffectivelyReadOnly ? (
         <div className="notes-panel-body">
           {content ? (
-            <div className="notes-readonly-content" dangerouslySetInnerHTML={{ __html: content }} />
+            <div className="notes-readonly-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
           ) : (
             <p className="notes-empty">No notes yet.</p>
           )}

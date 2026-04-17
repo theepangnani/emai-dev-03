@@ -39,7 +39,10 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
     if (!linkUrl) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
     } else {
-      const url = linkUrl.startsWith('http') ? linkUrl : `https://${linkUrl}`;
+      const trimmed = linkUrl.trim();
+      // Block dangerous protocols
+      if (/^javascript:/i.test(trimmed) || /^data:/i.test(trimmed) || /^vbscript:/i.test(trimmed)) return;
+      const url = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
       editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
     }
     setShowLinkInput(false);
@@ -56,12 +59,14 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
   if (!editor) return null;
 
   return (
-    <div className="notes-toolbar">
+    <div className="notes-toolbar" role="toolbar" aria-label="Text formatting">
       <button
         type="button"
         className={`notes-tb-btn${editor.isActive('bold') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleBold().run()}
         title="Bold"
+        aria-label="Bold"
+        aria-pressed={editor.isActive('bold')}
       >
         <strong>B</strong>
       </button>
@@ -70,6 +75,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('italic') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         title="Italic"
+        aria-label="Italic"
+        aria-pressed={editor.isActive('italic')}
       >
         <em>I</em>
       </button>
@@ -78,6 +85,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('underline') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
         title="Underline"
+        aria-label="Underline"
+        aria-pressed={editor.isActive('underline')}
       >
         <span style={{ textDecoration: 'underline' }}>U</span>
       </button>
@@ -86,6 +95,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('strike') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleStrike().run()}
         title="Strikethrough"
+        aria-label="Strikethrough"
+        aria-pressed={editor.isActive('strike')}
       >
         <span style={{ textDecoration: 'line-through' }}>S</span>
       </button>
@@ -97,6 +108,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('heading', { level: 1 }) ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         title="Heading 1"
+        aria-label="Heading 1"
       >
         H1
       </button>
@@ -105,6 +117,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('heading', { level: 2 }) ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         title="Heading 2"
+        aria-label="Heading 2"
       >
         H2
       </button>
@@ -113,6 +126,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('heading', { level: 3 }) ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         title="Heading 3"
+        aria-label="Heading 3"
       >
         H3
       </button>
@@ -124,6 +138,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('bulletList') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         title="Bullet list"
+        aria-label="Bullet list"
       >
         &#8226;
       </button>
@@ -132,6 +147,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('orderedList') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         title="Numbered list"
+        aria-label="Numbered list"
       >
         1.
       </button>
@@ -140,6 +156,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('blockquote') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         title="Blockquote"
+        aria-label="Blockquote"
       >
         &#8220;
       </button>
@@ -148,6 +165,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         className={`notes-tb-btn${editor.isActive('codeBlock') ? ' active' : ''}`}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         title="Code block"
+        aria-label="Code block"
       >
         {'</>'}
       </button>
@@ -160,6 +178,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
           className={`notes-tb-btn${editor.isActive('highlight') ? ' active' : ''}`}
           onClick={() => setShowHighlightPicker(!showHighlightPicker)}
           title="Highlight"
+          aria-label="Highlight"
+          aria-expanded={showHighlightPicker}
         >
           <span className="notes-tb-highlight-icon">H</span>
         </button>
@@ -201,6 +221,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
           className={`notes-tb-btn${editor.isActive('link') ? ' active' : ''}`}
           onClick={openLinkInput}
           title="Link"
+          aria-label="Insert link"
+          aria-expanded={showLinkInput}
         >
           &#128279;
         </button>
@@ -211,7 +233,8 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
               placeholder="https://..."
               value={linkUrl}
               onChange={e => setLinkUrl(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') setLink(); }}
+              onKeyDown={e => { if (e.key === 'Enter') setLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl(''); } }}
+              aria-label="URL"
               autoFocus
             />
             <button type="button" onClick={setLink}>
@@ -229,6 +252,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         title="Undo"
+        aria-label="Undo"
       >
         &#8617;
       </button>
@@ -238,6 +262,7 @@ export function NotesToolbar({ editor }: NotesToolbarProps) {
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         title="Redo"
+        aria-label="Redo"
       >
         &#8618;
       </button>
