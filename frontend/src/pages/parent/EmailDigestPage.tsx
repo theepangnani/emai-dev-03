@@ -13,6 +13,7 @@ import {
   listMonitoredEmails,
   addMonitoredEmail,
   removeMonitoredEmail,
+  getGmailAuthUrl,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
@@ -130,6 +131,17 @@ export function EmailDigestPage() {
     });
   };
 
+  const handleReconnect = async () => {
+    try {
+      const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
+      const res = await getGmailAuthUrl(redirectUri);
+      window.location.href = res.data.authorization_url;
+    } catch {
+      // fallback — navigate to my-kids to use the wizard
+      navigate('/my-kids');
+    }
+  };
+
   const isLoading = intLoading;
 
   return (
@@ -176,6 +188,25 @@ export function EmailDigestPage() {
           </div>
         )}
 
+        {!isLoading && activeIntegration && !activeIntegration.is_active && (
+          <div className="ed-reconnect-banner">
+            <div className="ed-reconnect-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div className="ed-reconnect-text">
+              <h3>Gmail Connection Expired</h3>
+              <p>Your Gmail access has expired. Reconnect to continue receiving email digests.</p>
+            </div>
+            <button className="ed-primary-btn" onClick={handleReconnect}>
+              Reconnect Gmail
+            </button>
+          </div>
+        )}
+
         {!isLoading && activeIntegration && (
           <>
             {/* Quick Settings */}
@@ -216,7 +247,7 @@ export function EmailDigestPage() {
                 <button
                   className="ed-sync-btn"
                   onClick={() => syncMutation.mutate(activeIntegration.id)}
-                  disabled={syncMutation.isPending}
+                  disabled={syncMutation.isPending || !activeIntegration.is_active}
                 >
                   {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
                 </button>
@@ -226,7 +257,7 @@ export function EmailDigestPage() {
                     sendDigestMutation.reset();
                     sendDigestMutation.mutate(activeIntegration.id);
                   }}
-                  disabled={sendDigestMutation.isPending}
+                  disabled={sendDigestMutation.isPending || !activeIntegration.is_active}
                 >
                   {sendDigestMutation.isPending ? 'Sending...' : 'Send Digest Now'}
                 </button>
@@ -237,7 +268,9 @@ export function EmailDigestPage() {
                   <span className="ed-success-text">Sync complete!</span>
                 )}
                 {sendDigestMutation.isError && (
-                  <span className="ed-error-text">Failed to send digest. Please try again.</span>
+                  <span className="ed-error-text">
+                    {(sendDigestMutation.error as any)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
+                  </span>
                 )}
                 {sendDigestMutation.isSuccess && (
                   <span className="ed-success-text">{sendDigestMutation.data?.data?.message ?? 'Digest sent!'}</span>
