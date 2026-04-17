@@ -70,6 +70,11 @@ export function ASGFPage() {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
+  // Context data (fetched from API)
+  const [contextChildren, setContextChildren] = useState<{ id: string; name: string; grade: string; board: string }[]>([]);
+  const [contextCourses, setContextCourses] = useState<{ id: string; name: string; teacher: string }[]>([]);
+  const [contextTasks, setContextTasks] = useState<{ id: string; title: string; due_date: string }[]>([]);
+
   const userRole = (user?.role || user?.roles?.[0] || 'student') as 'parent' | 'student' | 'teacher';
 
   // Cleanup SSE on unmount
@@ -77,6 +82,25 @@ export function ASGFPage() {
     return () => {
       abortRef.current?.abort();
     };
+  }, []);
+
+  // Fetch context data (children, courses, tasks) on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchContextData() {
+      try {
+        const data = await asgfApi.getContextData();
+        if (!cancelled) {
+          setContextChildren(data.children || []);
+          setContextCourses(data.courses || []);
+          setContextTasks(data.upcoming_tasks || []);
+        }
+      } catch {
+        // Non-critical — context panel works without pre-populated data
+      }
+    }
+    fetchContextData();
+    return () => { cancelled = true; };
   }, []);
 
   // Handle intent classification
@@ -334,6 +358,9 @@ export function ASGFPage() {
               <ASGFContextPanel
                 intentResult={intentResult || undefined}
                 userRole={userRole}
+                children={contextChildren}
+                courses={contextCourses}
+                upcomingTasks={contextTasks}
                 onContextConfirmed={handleContextConfirmed}
               />
 
@@ -378,6 +405,13 @@ export function ASGFPage() {
           {/* Stage 3: Slides */}
           {stage === 'slides' && (
             <div className="asgf-page__slides-stage">
+              <button
+                className="asgf-page__back-btn"
+                onClick={() => { abortRef.current?.abort(); setStage('input'); setSlides([]); setIsGeneratingSlides(false); }}
+                type="button"
+              >
+                &larr; Back to question
+              </button>
               <ASGFSlideRenderer
                 slides={slides}
                 isGenerating={isGeneratingSlides}
