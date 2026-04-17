@@ -233,6 +233,13 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
     </svg>
   ),
+  'Ask a Question': (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  ),
   Features: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3"/>
@@ -369,6 +376,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       '/link-requests': 'Link Requests',
       '/quiz-history': 'Quiz History',
       '/flash-tutor': 'Flash Tutor',
+      '/ask': 'Ask a Question',
       '/settings/emails': 'Email Settings',
       '/settings/notifications': 'Notification Preferences',
       '/settings/account': 'Account Settings',
@@ -417,6 +425,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
         { label: 'Flash Tutor', path: '/flash-tutor' },
+        { label: 'Ask a Question', path: '/ask' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -433,6 +442,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
         { label: 'Flash Tutor', path: '/flash-tutor' },
+        { label: 'Ask a Question', path: '/ask' },
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
