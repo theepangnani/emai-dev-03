@@ -205,13 +205,7 @@ def update_learning_history_on_complete(
     if weak:
         row.weak_concepts = weak
 
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        logger.exception(
-            "Failed to update learning_history for session %s", session_id
-        )
+    # NOTE: caller is responsible for db.commit() — no commit here (#3497)
 
 
 # ---------------------------------------------------------------------------

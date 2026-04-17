@@ -159,12 +159,10 @@ async def auto_save_session(
     update_learning_history_on_complete(
         session_id=session_id, quiz_results=quiz_results, db=db,
     )
-    # Refresh after the service committed
-    db.refresh(history_row)
 
     # Set the material link (not handled by update_learning_history_on_complete)
     history_row.material_id = study_guide.id
-    db.commit()
+    db.commit()  # Single commit for flush + quiz data + material_id (#3497)
 
     logger.info(
         "ASGF auto-save: session=%s, material_id=%d, score=%d%%, xp=%d",

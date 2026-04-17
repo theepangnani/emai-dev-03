@@ -59,7 +59,14 @@ from app.services.asgf_assignment_service import (
     resolve_student_id,
 )
 from app.models.learning_history import LearningHistory
+from app.models.teacher import Teacher
 from app.services.asgf_ingestion_service import ASGFIngestionService
+from app.services.asgf_learning_history_service import (
+    get_adaptive_context,
+    get_spaced_repetition_topics,
+)
+from app.services.asgf_quiz_service import generate_asgf_quiz
+from app.services.asgf_save_service import auto_save_session
 from app.services.asgf_slide_service import ASGFSlideService
 from app.services.file_processor import FileProcessingError, process_file
 from app.services.storage_service import save_file
@@ -117,7 +124,24 @@ def _resolve_student_id(
         )
         return first_child[0] if first_child else None
 
-    if role in ("admin", "teacher"):
+    if role == "teacher":
+        if child_id:
+            # Verify teacher teaches this student (#3499)
+            teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+            if teacher:
+                enrolled = (
+                    db.query(Student.id)
+                    .join(student_courses, student_courses.c.student_id == Student.id)
+                    .join(Course, Course.id == student_courses.c.course_id)
+                    .filter(Course.teacher_id == teacher.id, Student.id == int(child_id))
+                    .first()
+                )
+                if enrolled:
+                    return enrolled[0]
+            return None  # Teacher doesn't teach this student
+        return None
+
+    if role == "admin":
         return int(child_id) if child_id else None
 
     return None
@@ -330,8 +354,6 @@ async def get_context_data(
             .all()
         )
     elif role == "teacher":
-        from app.models.teacher import Teacher
-
         teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         if teacher:
             course_rows = (
@@ -515,7 +537,6 @@ async def create_asgf_session(
     # Fetch adaptive context for repeat sessions (#3403)
     adaptive_context: dict | None = None
     if student_id:
-        from app.services.asgf_learning_history_service import get_adaptive_context
         adaptive_context = get_adaptive_context(
             student_id=student_id, topic=body.question, db=db,
         )
@@ -803,8 +824,6 @@ def _verify_session_ownership(
     # verify the session topic matches that course.  Full per-course scoping
     # is deferred to v2.
     if role == "teacher":
-        from app.models.teacher import Teacher
-
         teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         if teacher:
             enrolled = (
@@ -852,8 +871,6 @@ async def generate_quiz(
     current_user: User = Depends(get_current_user),
 ):
     """Generate slide-anchored quiz questions for a completed ASGF session."""
-    from app.services.asgf_quiz_service import generate_asgf_quiz
-
     history_row = (
         db.query(LearningHistory)
         .filter(LearningHistory.session_id == session_id)
@@ -901,8 +918,6 @@ async def complete_session(
     current_user: User = Depends(get_current_user),
 ):
     """Complete an ASGF session and auto-save as Class Material."""
-    from app.services.asgf_save_service import auto_save_session
-
     history_row = (
         db.query(LearningHistory)
         .filter(LearningHistory.session_id == session_id)
@@ -1003,7 +1018,12 @@ async def assign_session_material(
 
     _verify_session_ownership(history_row, current_user, db)
 
-    material_id = history_row.material_id or history_row.id
+    if not history_row.material_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Session has not been completed yet. Complete the session before assigning.",
+        )
+    material_id = history_row.material_id
     course_id = int(body.course_id) if body.course_id else None
 
     result = await assign_material(
@@ -1210,8 +1230,6 @@ async def get_review_topics(
     - Admins can query for any student.
     - Teachers can query for students enrolled in their courses.
     """
-    from app.services.asgf_learning_history_service import get_spaced_repetition_topics
-
     role = _get_user_role(current_user)
 
     # Auth: verify the requester has access to this student
@@ -1222,7 +1240,6 @@ async def get_review_topics(
             raise HTTPException(status_code=404, detail="Student not found")
     elif role == "teacher":
         # Teachers can see students enrolled in their courses
-        from app.models.teacher import Teacher
         teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
         if not teacher:
             raise HTTPException(status_code=404, detail="Student not found")
