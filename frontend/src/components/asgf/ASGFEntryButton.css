@@ -1,0 +1,56 @@
+/* ASGFEntryButton — subtle entry point for ASGF flow (#3407) */
+
+.asgf-entry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-secondary, #6b7280);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.asgf-entry-btn:hover {
+  background: var(--color-primary-bg, #eff6ff);
+  color: var(--color-primary, #3b82f6);
+  border-color: var(--color-primary, #3b82f6);
+}
+
+.asgf-entry-btn:active {
+  transform: scale(0.97);
+}
+
+.asgf-entry-btn__icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.asgf-entry-btn:hover .asgf-entry-btn__icon {
+  opacity: 1;
+}
+
+.asgf-entry-btn__label {
+  line-height: 1.2;
+}
+
+/* Sidebar variant — slightly larger for sidebar placement */
+.asgf-entry-btn--sidebar {
+  padding: 8px 14px;
+  font-size: 13px;
+  width: 100%;
+  justify-content: center;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Inline variant — compact for card rows */
+.asgf-entry-btn--inline {
+  padding: 3px 8px;
+  font-size: 11px;
+}
