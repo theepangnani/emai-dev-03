@@ -45,6 +45,7 @@ from app.schemas.study import (
     StudyGuideTreeResponse,
     SaveQAAsGuideRequest,
     SaveQAAsMaterialRequest,
+    SaveAsMaterialResponse,
     ClassifyDocumentResponse,
     WorksheetGenerateRequest,
     WorksheetResponse,
@@ -3073,7 +3074,7 @@ async def save_qa_as_guide(
     return StudyGuideResponse.model_validate(new_guide)
 
 
-@router.post("/guides/{guide_id}/qa/save-as-material")
+@router.post("/guides/{guide_id}/qa/save-as-material", response_model=SaveAsMaterialResponse)
 async def save_qa_as_material(
     guide_id: int,
     request: SaveQAAsMaterialRequest,
