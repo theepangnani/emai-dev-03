@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
@@ -14,6 +14,7 @@ import {
   addMonitoredEmail,
   removeMonitoredEmail,
   getGmailAuthUrl,
+  connectGmail,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
@@ -131,13 +132,37 @@ export function EmailDigestPage() {
     });
   };
 
+  // Gmail reconnect via popup (same pattern as setup wizard)
+  const oauthStateRef = useRef('');
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'gmail-oauth-callback' && event.data?.code) {
+        try {
+          const redirectUri = window.location.origin + '/oauth/gmail/callback';
+          await connectGmail(event.data.code, oauthStateRef.current, redirectUri);
+          // Refresh integration data — this will clear the reconnect banner
+          queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+        } catch {
+          // If reconnect fails, user can try again
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [queryClient]);
+
   const handleReconnect = async () => {
     try {
-      const redirectUri = `${window.location.origin}/gmail-oauth-callback`;
+      const redirectUri = window.location.origin + '/oauth/gmail/callback';
       const res = await getGmailAuthUrl(redirectUri);
-      window.location.href = res.data.authorization_url;
+      oauthStateRef.current = res.data.state;
+      const w = 500;
+      const h = 600;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      window.open(res.data.authorization_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
     } catch {
-      // fallback — navigate to my-kids to use the wizard
       navigate('/my-kids');
     }
   };
