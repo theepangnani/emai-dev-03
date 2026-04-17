@@ -287,3 +287,27 @@ class AssignRequest(BaseModel):
 class AssignResponse(BaseModel):
     success: bool
     message: str
+
+
+# --- Session resume (#3409) ---
+
+class ResumeSessionResponse(BaseModel):
+    session_id: str
+    current_slide_index: int
+    signals_given: list[dict] = Field(default_factory=list)
+    quiz_progress: list[dict] = Field(default_factory=list)
+    slides: list[dict] = Field(default_factory=list)
+    created_at: str
+    expires_at: str
+
+
+class ActiveSessionItem(BaseModel):
+    session_id: str
+    question: str
+    subject: str
+    created_at: str
+    slide_count: int
+
+
+class ActiveSessionsResponse(BaseModel):
+    sessions: list[ActiveSessionItem]

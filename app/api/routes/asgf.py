@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -20,6 +20,8 @@ from app.models.student import Student, parent_students
 from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.asgf import (
+    ActiveSessionItem,
+    ActiveSessionsResponse,
     ASGFContextDataResponse,
     ASGFQuizResponse,
     ASGFQuizQuestion,
@@ -42,6 +44,7 @@ from app.schemas.asgf import (
     IntentClassifyRequest,
     IntentClassifyResponse,
     MultiFileUploadResponse,
+    ResumeSessionResponse,
     TaskItem,
 )
 from app.services import asgf_service
@@ -882,3 +885,169 @@ async def assign_session_material(
         raise HTTPException(status_code=400, detail=result["message"])
 
     return AssignResponse(success=result["success"], message=result["message"])
+
+
+# --- Session resume helpers -----------------------------------------------
+
+SESSION_EXPIRY_HOURS = 24
+
+
+def _extract_signals(slides_generated) -> list[dict]:
+    """Extract comprehension signals from the slides_generated JSON."""
+    signals: list[dict] = []
+    if isinstance(slides_generated, list):
+        for entry in slides_generated:
+            if isinstance(entry, dict) and "signal" in entry and "slide_number" in entry:
+                signals.append({"slide_number": entry["slide_number"], "signal": entry["signal"]})
+    return signals
+
+
+def _extract_slide_content(slides_generated) -> list[dict]:
+    """Extract actual slide content from slides_generated JSON."""
+    slides: list[dict] = []
+    if isinstance(slides_generated, list):
+        for entry in slides_generated:
+            if isinstance(entry, dict) and "title" in entry and ("body" in entry or "content" in entry):
+                slides.append(entry)
+    elif isinstance(slides_generated, dict):
+        slide_plan = slides_generated.get("slide_plan", [])
+        for i, sp in enumerate(slide_plan):
+            if isinstance(sp, dict):
+                slides.append({
+                    "slide_number": i,
+                    "title": sp.get("title", f"Slide {i + 1}"),
+                    "body": sp.get("brief", ""),
+                    "bloom_tier": sp.get("bloom_tier", ""),
+                })
+    return slides
+
+
+# --- GET /asgf/session/{session_id}/resume (#3409) -------------------------
+
+@router.get("/session/{session_id}/resume", response_model=ResumeSessionResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def resume_session(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return session state for resumption within 24 hours of creation."""
+    from app.models.learning_history import LearningHistory
+
+    history_row = (
+        db.query(LearningHistory)
+        .filter(LearningHistory.session_id == session_id)
+        .first()
+    )
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    _verify_session_ownership(history_row, current_user, db)
+
+    # Check 24h expiry
+    created = history_row.created_at
+    if created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    expires_at = created + timedelta(hours=SESSION_EXPIRY_HOURS)
+    now = datetime.now(timezone.utc)
+
+    if now > expires_at:
+        raise HTTPException(status_code=410, detail="Session expired")
+
+    # Already completed sessions cannot be resumed
+    if history_row.material_id is not None:
+        raise HTTPException(status_code=400, detail="Session already completed")
+
+    signals = _extract_signals(history_row.slides_generated)
+    slides = _extract_slide_content(history_row.slides_generated)
+
+    # Current slide index = number of signals given (user moves forward after each signal)
+    current_slide_index = len(signals)
+
+    # Quiz progress from quiz_results if any partial results stored
+    quiz_progress: list[dict] = []
+    if history_row.quiz_results and isinstance(history_row.quiz_results, list):
+        quiz_progress = history_row.quiz_results
+
+    logger.info("ASGF resume: user=%d session=%s slide_index=%d", current_user.id, session_id, current_slide_index)
+
+    return ResumeSessionResponse(
+        session_id=session_id,
+        current_slide_index=current_slide_index,
+        signals_given=signals,
+        quiz_progress=quiz_progress,
+        slides=slides,
+        created_at=created.isoformat(),
+        expires_at=expires_at.isoformat(),
+    )
+
+
+# --- GET /asgf/active-sessions (#3409) -------------------------------------
+
+@router.get("/active-sessions", response_model=ActiveSessionsResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_active_sessions(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return resumable ASGF sessions (created within 24h, not yet completed)."""
+    from app.models.learning_history import LearningHistory
+
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    # Resolve student IDs owned by current user
+    student_ids: list[int] = []
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            student_ids.append(student_row.id)
+    elif role == "parent":
+        child_ids = [
+            sid
+            for (sid,) in db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        student_ids.extend(child_ids)
+
+    if not student_ids:
+        return ActiveSessionsResponse(sessions=[])
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=SESSION_EXPIRY_HOURS)
+
+    rows = (
+        db.query(LearningHistory)
+        .filter(
+            LearningHistory.student_id.in_(student_ids),
+            LearningHistory.session_type == "asgf",
+            LearningHistory.material_id.is_(None),
+            LearningHistory.created_at >= cutoff,
+        )
+        .order_by(LearningHistory.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    sessions: list[ActiveSessionItem] = []
+    for row in rows:
+        slides = _extract_slide_content(row.slides_generated)
+        created = row.created_at
+        if created and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        sessions.append(
+            ActiveSessionItem(
+                session_id=row.session_id,
+                question=row.question_asked or "",
+                subject=row.subject or "",
+                created_at=created.isoformat() if created else "",
+                slide_count=len(slides),
+            )
+        )
+
+    logger.info("ASGF active-sessions: user=%d count=%d", current_user.id, len(sessions))
+    return ActiveSessionsResponse(sessions=sessions)

@@ -1,0 +1,123 @@
+.asgf-resume-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border: 1px solid #bbdefb;
+  border-radius: 10px;
+  background-color: #e3f2fd;
+  margin-bottom: 16px;
+}
+
+.asgf-resume-prompt__icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.asgf-resume-prompt__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.asgf-resume-prompt__text {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  color: #1565c0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.asgf-resume-prompt__meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #5c6bc0;
+}
+
+.asgf-resume-prompt__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.asgf-resume-prompt__btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.asgf-resume-prompt__btn:active {
+  transform: scale(0.97);
+}
+
+.asgf-resume-prompt__btn--resume {
+  background-color: #1565c0;
+  color: #fff;
+}
+
+.asgf-resume-prompt__btn--resume:hover {
+  background-color: #0d47a1;
+}
+
+.asgf-resume-prompt__btn--fresh {
+  background-color: transparent;
+  color: #5c6bc0;
+  border: 1px solid #c5cae9;
+}
+
+.asgf-resume-prompt__btn--fresh:hover {
+  background-color: #e8eaf6;
+}
+
+/* --- Mobile --- */
+@media (max-width: 600px) {
+  .asgf-resume-prompt {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .asgf-resume-prompt__actions {
+    width: 100%;
+  }
+
+  .asgf-resume-prompt__btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+/* --- Dark mode --- */
+[data-theme='dark'] .asgf-resume-prompt {
+  background-color: rgba(21, 101, 192, 0.12);
+  border-color: rgba(33, 150, 243, 0.3);
+}
+
+[data-theme='dark'] .asgf-resume-prompt__text {
+  color: #90caf9;
+}
+
+[data-theme='dark'] .asgf-resume-prompt__meta {
+  color: #9fa8da;
+}
+
+[data-theme='dark'] .asgf-resume-prompt__btn--resume {
+  background-color: #1565c0;
+  color: #fff;
+}
+
+[data-theme='dark'] .asgf-resume-prompt__btn--resume:hover {
+  background-color: #1976d2;
+}
+
+[data-theme='dark'] .asgf-resume-prompt__btn--fresh {
+  color: #9fa8da;
+  border-color: rgba(159, 168, 218, 0.3);
+}
+
+[data-theme='dark'] .asgf-resume-prompt__btn--fresh:hover {
+  background-color: rgba(159, 168, 218, 0.1);
+}
