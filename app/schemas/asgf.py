@@ -11,12 +11,19 @@ class IntentClassifyRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
 
 
+class IntentAlternative(BaseModel):
+    subject: str = ""
+    topic: str = ""
+    confidence: float = 0.0
+
+
 class IntentClassifyResponse(BaseModel):
     subject: str = ""
     grade_level: str = ""
     topic: str = ""
     confidence: float = 0.0
     bloom_tier: str = ""
+    alternatives: list[IntentAlternative] = Field(default_factory=list)
 
 
 # --- File upload (from #3411) ---
@@ -29,6 +36,7 @@ class FileUploadResponse(BaseModel):
     file_type: str
     file_size_bytes: int
     text_preview: str
+    extraction_failed: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -101,8 +101,16 @@ async def classify_intent(
     body: IntentClassifyRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Classify a question into subject, grade level, topic, and Bloom's tier."""
-    return await asgf_service.classify_intent(body.question)
+    """Classify a question into subject, grade level, topic, and Bloom's tier.
+
+    When confidence < 0.5, the response includes ``alternatives`` — a list of
+    possible subject/topic interpretations so the frontend can offer
+    disambiguation chips.
+    """
+    result = await asgf_service.classify_intent(body.question)
+    if result.confidence < 0.5 and result.subject:
+        result.alternatives = await asgf_service.get_intent_alternatives(body.question)
+    return result
 
 
 # --- GET /asgf/usage (#3405) -----------------------------------------------
@@ -207,16 +215,19 @@ async def upload_asgf_documents(
         stored_name = await asyncio.to_thread(save_file, content, filename)
         file_id = uuid4().hex
 
-        # Extract text preview (best-effort)
+        # Extract text preview (best-effort — partial success per file)
         text_preview = ""
+        extraction_failed = False
         try:
             extracted = await asyncio.to_thread(process_file, content, filename)
             text_preview = (extracted[:TEXT_PREVIEW_LENGTH] + "...") if len(extracted) > TEXT_PREVIEW_LENGTH else extracted
         except FileProcessingError:
             text_preview = "(text extraction unavailable)"
+            extraction_failed = True
         except Exception as exc:
             logger.warning("ASGF text extraction failed for %s: %s", filename, exc)
             text_preview = "(text extraction unavailable)"
+            extraction_failed = True
 
         results.append(
             FileUploadResponse(
@@ -225,6 +236,7 @@ async def upload_asgf_documents(
                 file_type=ext,
                 file_size_bytes=len(content),
                 text_preview=text_preview,
+                extraction_failed=extraction_failed,
             )
         )
 

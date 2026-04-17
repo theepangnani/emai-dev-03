@@ -11,6 +11,7 @@ from app.schemas.asgf import (
     ClassroomContext,
     ContextPackage,
     GapData,
+    IntentAlternative,
     IntentClassifyResponse,
     LearningCyclePlan,
     QuizPlanItem,
@@ -80,6 +81,51 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
     except Exception:
         logger.exception("ASGF intent classification unexpected error")
         return IntentClassifyResponse()
+
+
+_ALTERNATIVES_SYSTEM_PROMPT = (
+    "You are an educational intent classifier. A student or parent question was ambiguous. "
+    "Suggest 2-4 possible subject/topic interpretations. "
+    "Return ONLY a JSON array of objects with keys: subject, topic, confidence (float 0-1). "
+    "Order by descending confidence. No markdown."
+)
+
+
+async def get_intent_alternatives(question: str) -> list[IntentAlternative]:
+    """Return 2-4 alternative subject/topic interpretations for an ambiguous question."""
+    try:
+        client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=5.0)
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": _ALTERNATIVES_SYSTEM_PROMPT},
+                {"role": "user", "content": question},
+            ],
+            temperature=0.3,
+            max_tokens=300,
+        )
+        content = response.choices[0].message.content or ""
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]
+        if content.endswith("```"):
+            content = content.rsplit("```", 1)[0]
+        content = content.strip()
+
+        data = json.loads(content)
+        if not isinstance(data, list):
+            return []
+        return [
+            IntentAlternative(
+                subject=item.get("subject", ""),
+                topic=item.get("topic", ""),
+                confidence=float(item.get("confidence", 0.0)),
+            )
+            for item in data[:4]
+        ]
+    except Exception:
+        logger.warning("ASGF alternatives generation failed", exc_info=True)
+        return []
 
 
 # ---------------------------------------------------------------------------
