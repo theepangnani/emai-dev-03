@@ -1270,6 +1270,7 @@ export function CourseMaterialDetailPage() {
           readOnly={isParent && !!resolvedStudent}
           childStudentId={isParent ? resolvedStudent?.student_user_id : undefined}
           childName={isParent ? resolvedStudent?.student_name : undefined}
+          materialTitle={content.title}
         />
 
       </div>

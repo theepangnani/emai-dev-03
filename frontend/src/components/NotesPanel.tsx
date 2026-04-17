@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notesApi, type NoteItem, type NoteHighlight, type NoteVersionItem, type NoteVersionFull } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
+import { downloadAsPdf } from '../utils/exportUtils';
 import './NotesPanel.css';
 
 interface NotesPanelProps {
@@ -17,9 +18,10 @@ interface NotesPanelProps {
   readOnly?: boolean;
   childStudentId?: number;
   childName?: string;
+  materialTitle?: string;
 }
 
-export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange, removeHighlightText, onRemoveHighlightConsumed, readOnly, childStudentId, childName }: NotesPanelProps) {
+export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onAppendConsumed, addHighlight, onHighlightConsumed, onHighlightsChange, removeHighlightText, onRemoveHighlightConsumed, readOnly, childStudentId, childName, materialTitle }: NotesPanelProps) {
   const [note, setNote] = useState<NoteItem | null>(null);
   const [content, setContent] = useState('');
   const [highlights, setHighlights] = useState<NoteHighlight[]>([]);
@@ -41,6 +43,11 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [previewVersion, setPreviewVersion] = useState<NoteVersionFull | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [restoringVersion, setRestoringVersion] = useState(false);
+
+  // Export state
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Drag state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -112,6 +119,17 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     if (showTaskDropdown) document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showTaskDropdown]);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    if (showExportDropdown) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportDropdown]);
 
   // Drag handlers
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -345,6 +363,112 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     setPreviewVersion(null);
   };
 
+  // ── Export helpers ──
+  const sanitizeFilename = (name: string) =>
+    name.replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '-').toLowerCase().slice(0, 80) || 'classbridge-notes';
+
+  const getExportTitle = () => materialTitle || 'ClassBridge Notes';
+  const getExportFilename = () => sanitizeFilename(materialTitle || 'classbridge-notes');
+
+  const handleExportPdf = async () => {
+    setShowExportDropdown(false);
+    setExporting(true);
+    try {
+      const title = getExportTitle();
+      const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      // Convert plain-text content to HTML paragraphs
+      const bodyHtml = content
+        .split('\n')
+        .map(line => line ? `<p style="margin:0.3em 0">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : '<br/>')
+        .join('');
+
+      const container = document.createElement('div');
+      container.style.padding = '40px';
+      container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+      container.style.color = '#1a1a2e';
+      container.style.lineHeight = '1.6';
+      container.innerHTML = `
+        <h1 style="font-size:1.4rem;border-bottom:2px solid #4a90d9;padding-bottom:0.4rem">${title} &mdash; Notes</h1>
+        <p style="color:#888;font-size:0.8rem;margin-bottom:1.2em">Exported from ClassBridge on ${dateStr}</p>
+        <div>${bodyHtml}</div>
+      `;
+
+      document.body.appendChild(container);
+      await downloadAsPdf(container, `${getExportFilename()}-notes`);
+      document.body.removeChild(container);
+      showToast('PDF downloaded');
+    } catch {
+      showToast('Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const htmlToMarkdown = (html: string): string => {
+    const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+    const walk = (node: Node): string => {
+      if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
+      if (node.nodeType !== Node.ELEMENT_NODE) return '';
+      const el = node as HTMLElement;
+      const tag = el.tagName.toLowerCase();
+      const inner = () => Array.from(el.childNodes).map(walk).join('');
+
+      switch (tag) {
+        case 'h1': return `# ${inner()}\n\n`;
+        case 'h2': return `## ${inner()}\n\n`;
+        case 'h3': return `### ${inner()}\n\n`;
+        case 'h4': return `#### ${inner()}\n\n`;
+        case 'strong': case 'b': return `**${inner()}**`;
+        case 'em': case 'i': return `*${inner()}*`;
+        case 'u': return `__${inner()}__`;
+        case 's': case 'del': return `~~${inner()}~~`;
+        case 'code':
+          if (el.parentElement?.tagName.toLowerCase() === 'pre') return inner();
+          return `\`${inner()}\``;
+        case 'pre': {
+          const code = el.querySelector('code');
+          const text = code ? code.textContent || '' : inner();
+          return `\n\`\`\`\n${text}\n\`\`\`\n\n`;
+        }
+        case 'blockquote': return inner().split('\n').filter(Boolean).map(l => `> ${l}`).join('\n') + '\n\n';
+        case 'a': return `[${inner()}](${el.getAttribute('href') || ''})`;
+        case 'img': return `![${el.getAttribute('alt') || ''}](${el.getAttribute('src') || ''})`;
+        case 'br': return '\n';
+        case 'p': return `${inner()}\n\n`;
+        case 'ul': return Array.from(el.children).map(li => `- ${walk(li).trim()}`).join('\n') + '\n\n';
+        case 'ol': return Array.from(el.children).map((li, i) => `${i + 1}. ${walk(li).trim()}`).join('\n') + '\n\n';
+        case 'li': return inner();
+        case 'hr': return '\n---\n\n';
+        default: return inner();
+      }
+    };
+    return walk(doc.body.firstChild!).replace(/\n{3,}/g, '\n\n').trim();
+  };
+
+  const handleExportMarkdown = () => {
+    setShowExportDropdown(false);
+    try {
+      // For plain-text content, use as-is; for HTML, convert
+      const isHtml = /<[a-z][\s\S]*>/i.test(content);
+      const title = getExportTitle();
+      const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      const header = `# ${title} — Notes\n\n*Exported from ClassBridge on ${dateStr}*\n\n---\n\n`;
+      const body = isHtml ? htmlToMarkdown(content) : content;
+      const markdown = header + body;
+
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${getExportFilename()}-notes.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Markdown downloaded');
+    } catch {
+      showToast('Failed to export Markdown');
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     const now = new Date();
@@ -445,6 +569,29 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       <div className="notes-panel-header" onMouseDown={handleDragStart}>
         <h3>{isEffectivelyReadOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
         <div className="notes-header-actions">
+          {!loading && content.trim() && (
+            <div className="notes-export-dropdown-wrapper" ref={exportDropdownRef}>
+              <button
+                className="notes-export-btn"
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                title="Download notes"
+                aria-label="Download notes"
+                disabled={exporting}
+              >
+                {exporting ? '\u23F3' : '\u2B07'}
+              </button>
+              {showExportDropdown && (
+                <div className="notes-export-dropdown">
+                  <button className="notes-export-dropdown-item" onClick={handleExportPdf}>
+                    {'\uD83D\uDCC4'} Download as PDF
+                  </button>
+                  <button className="notes-export-dropdown-item" onClick={handleExportMarkdown}>
+                    {'\uD83D\uDCDD'} Download as Markdown
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {!isEffectivelyReadOnly && note && !loading && (
             <>
               <button

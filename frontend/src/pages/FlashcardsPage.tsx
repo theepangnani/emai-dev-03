@@ -423,7 +423,7 @@ export function FlashcardsPage() {
       )}
       {guide.course_content_id && (
         <>
-          <NotesPanel courseContentId={guide.course_content_id} isOpen={notesOpen} onClose={() => setNotesOpen(false)} />
+          <NotesPanel courseContentId={guide.course_content_id} isOpen={notesOpen} onClose={() => setNotesOpen(false)} materialTitle={guide.title} />
         </>
       )}
     </div>

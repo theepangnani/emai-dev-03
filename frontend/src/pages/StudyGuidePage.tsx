@@ -599,6 +599,7 @@ export function StudyGuidePage() {
             childName={isParent ? resolvedStudent?.student_name : undefined}
             removeHighlightText={removeHighlightText}
             onRemoveHighlightConsumed={() => setRemoveHighlightText(null)}
+            materialTitle={guide.title}
           />
         </>
       )}
