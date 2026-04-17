@@ -1297,6 +1297,18 @@ export function CourseMaterialDetailPage() {
           Uploading &amp; extracting text...
         </div>
       )}
+      {uploadStatus === 'success' && (
+        <div className="cm-upload-status success">
+          Upload complete
+          <button
+            className="cm-upload-learn-btn"
+            onClick={() => { setUploadStatus(null); navigate(`/ask?content_id=${contentId}`); }}
+          >
+            Start a Learning Session
+          </button>
+          <button className="cm-upload-dismiss-btn" onClick={() => setUploadStatus(null)}>&times;</button>
+        </div>
+      )}
       {uploadStatus === 'error' && (
         <div className="cm-upload-status error">
           Upload failed
