@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { notesApi, type NoteItem, type NoteHighlight, type NoteVersionItem, type NoteVersionFull } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
+import { NoteMaterialForm } from './NoteMaterialForm';
 import './NotesPanel.css';
 
 interface NotesPanelProps {
@@ -26,6 +27,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [showTaskDropdown, setShowTaskDropdown] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [justAppended, setJustAppended] = useState(false);
@@ -288,6 +290,11 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     showToast('Task created from note');
   };
 
+  const handleMaterialCreated = () => {
+    setShowMaterialForm(false);
+    showToast('Note saved as class material!');
+  };
+
   const handleCreateQuickTask = () => {
     setShowTaskDropdown(false);
     setShowTaskForm(true);
@@ -474,6 +481,14 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
                     }}>
                       Linked Task (with material)
                     </button>
+                    {content.trim() && (
+                      <button className="notes-task-dropdown-item" onClick={() => {
+                        setShowTaskDropdown(false);
+                        setShowMaterialForm(true);
+                      }}>
+                        Save as Class Material
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -509,6 +524,15 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
             courseContentId={courseContentId}
             onCreated={handleTaskCreated}
             onCancel={() => setShowTaskForm(false)}
+          />
+        </div>
+      ) : showMaterialForm && note ? (
+        <div className="notes-panel-body">
+          <NoteMaterialForm
+            note={note}
+            courseContentId={courseContentId}
+            onCreated={handleMaterialCreated}
+            onCancel={() => setShowMaterialForm(false)}
           />
         </div>
       ) : (

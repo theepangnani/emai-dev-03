@@ -100,6 +100,11 @@ export const notesApi = {
     return response.data as NoteItem;
   },
 
+  saveAsMaterial: async (noteId: number, title: string, courseId: number) => {
+    const response = await api.post(`/api/notes/${noteId}/save-as-material`, { title, course_id: courseId });
+    return response.data as { id: number; title: string; message: string };
+  },
+
   createTask: async (noteId: number, courseContentId: number, data: NoteCreateTaskData) => {
     const response = await api.post('/api/tasks/', {
       title: data.title,

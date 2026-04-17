@@ -12,7 +12,7 @@ from app.models.note import Note
 from app.models.note_version import NoteVersion
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
-from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert, NoteVersionListItem, NoteVersionResponse
+from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert, NoteVersionListItem, NoteVersionResponse, SaveAsMaterialRequest, SaveAsMaterialResponse
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -309,6 +309,71 @@ def restore_version(
     db.commit()
     db.refresh(note)
     return note
+
+
+@router.post("/{note_id}/save-as-material", response_model=SaveAsMaterialResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def save_as_material(
+    request: Request,
+    note_id: int,
+    data: SaveAsMaterialRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a CourseContent record from a note's content."""
+    from app.models.course import Course, student_courses
+    from app.models.course_content import CourseContent
+
+    # Fetch note and verify ownership
+    note = db.query(Note).filter(
+        Note.id == note_id,
+        Note.user_id == current_user.id,
+    ).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Verify user has access to the target course
+    course = db.query(Course).filter(Course.id == data.course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    has_access = False
+    if current_user.has_role(UserRole.ADMIN):
+        has_access = True
+    elif course.created_by_user_id == current_user.id:
+        has_access = True
+    else:
+        # Check if user (as student) is enrolled in the course
+        from app.models.student import Student
+        student = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student:
+            enrolled = db.query(student_courses.c.student_id).filter(
+                student_courses.c.student_id == student.id,
+                student_courses.c.course_id == data.course_id,
+            ).first()
+            if enrolled:
+                has_access = True
+
+    if not has_access:
+        raise HTTPException(status_code=403, detail="You do not have access to this course")
+
+    content = CourseContent(
+        course_id=data.course_id,
+        title=data.title.strip(),
+        text_content=note.content,
+        content_type="notes",
+        created_by_user_id=current_user.id,
+        source_type="note",
+    )
+    db.add(content)
+    db.commit()
+    db.refresh(content)
+
+    return SaveAsMaterialResponse(
+        id=content.id,
+        title=content.title,
+        message="Note saved as class material",
+    )
 
 
 def cleanup_old_versions(db: Session) -> int:

@@ -49,6 +49,17 @@ class NoteVersionResponse(BaseModel):
         from_attributes = True
 
 
+class SaveAsMaterialRequest(BaseModel):
+    title: str
+    course_id: int
+
+
+class SaveAsMaterialResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+
+
 class NoteVersionListItem(BaseModel):
     id: int
     note_id: int
