@@ -609,6 +609,17 @@ async def startup_event():
         coalesce=True,
     )
 
+    # Weekly family report card — every Sunday at 8 PM UTC (#2228)
+    from app.jobs.weekly_report import send_weekly_reports
+    scheduler.add_job(
+        send_weekly_reports,
+        CronTrigger(day_of_week="sun", hour=20, minute=0),
+        id="weekly_report",
+        replace_existing=True,
+        misfire_grace_time=3600,
+        coalesce=True,
+    )
+
     # Daily digest email — every day at 7 AM UTC (#2023)
     from app.jobs.daily_digest_job import send_daily_digests
     scheduler.add_job(
