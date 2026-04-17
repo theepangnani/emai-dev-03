@@ -6,12 +6,18 @@ Issue: #3394
 """
 
 import asyncio
+import io
 import json
 import time
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import openai
+
+try:
+    import PyPDF2
+except ImportError:  # pragma: no cover
+    PyPDF2 = None  # type: ignore[assignment]
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
@@ -143,9 +149,8 @@ class ASGFIngestionService:
             file_type = "xlsx"
 
         page_count = None
-        if file_type == "pdf":
+        if file_type == "pdf" and PyPDF2 is not None:
             try:
-                import PyPDF2, io
                 reader = PyPDF2.PdfReader(io.BytesIO(content))
                 page_count = len(reader.pages)
             except Exception:

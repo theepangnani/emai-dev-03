@@ -74,6 +74,55 @@ def _get_user_role(user: User) -> str:
     role = user.role
     return role.value if hasattr(role, "value") else role
 
+
+def _resolve_student_id(
+    current_user: User,
+    child_id: int | str | None,
+    db: Session,
+) -> int | None:
+    """Resolve the student_id for the current user.
+
+    Logic:
+    - **student**: look up via user_id
+    - **parent + child_id**: verify the child belongs to the parent, return child_id
+    - **parent (no child_id)**: return first linked child
+    - **admin / teacher**: if child_id is given, return it directly (trusted)
+
+    Returns None if no student could be determined.
+    """
+    role = _get_user_role(current_user)
+
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        return student_row.id if student_row else None
+
+    if role == "parent":
+        if child_id:
+            valid = (
+                db.query(Student.id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(
+                    parent_students.c.parent_id == current_user.id,
+                    Student.id == int(child_id),
+                )
+                .first()
+            )
+            return valid[0] if valid else None
+        # No child_id — use first linked child
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        return first_child[0] if first_child else None
+
+    if role in ("admin", "teacher"):
+        return int(child_id) if child_id else None
+
+    return None
+
+
 # --- constants -----------------------------------------------------------
 MAX_FILES = 5
 MAX_TOTAL_BYTES = 25 * 1024 * 1024  # 25 MB
@@ -127,37 +176,7 @@ async def get_asgf_usage(
     current_user: User = Depends(get_current_user),
 ):
     """Return remaining ASGF sessions this month for the current user's child."""
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
-
-    student_id: int | None = None
-    if child_id and role == "parent":
-        # Verify the child belongs to this parent
-        valid = (
-            db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(
-                parent_students.c.parent_id == current_user.id,
-                Student.id == child_id,
-            )
-            .first()
-        )
-        if valid:
-            student_id = valid[0]
-    elif role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            student_id = student_row.id
-    elif role == "parent" and not child_id:
-        first_child = (
-            db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .first()
-        )
-        if first_child:
-            student_id = first_child[0]
+    student_id = _resolve_student_id(current_user, child_id, db)
 
     if not student_id:
         raise HTTPException(status_code=404, detail="No linked student found.")
@@ -415,22 +434,7 @@ async def create_asgf_session(
             )
 
     # --- Session cap enforcement (#3405) ---
-    cap_student_id: int | None = None
-    if body.child_id and role == "parent":
-        cap_student_id = int(body.child_id)
-    elif role == "student":
-        cap_student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if cap_student_row:
-            cap_student_id = cap_student_row.id
-    elif role == "parent" and not body.child_id:
-        first_child = (
-            db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .first()
-        )
-        if first_child:
-            cap_student_id = first_child[0]
+    cap_student_id = _resolve_student_id(current_user, body.child_id, db)
 
     if cap_student_id:
         cap_info = check_session_cap(cap_student_id, db)
@@ -500,23 +504,7 @@ async def create_asgf_session(
     }
 
     # --- Resolve student_id early for adaptive context (#3403) ---
-    student_id: int | None = None
-    if body.child_id and role == "parent":
-        student_id = int(body.child_id)
-    elif role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            student_id = student_row.id
-    elif role == "parent" and not body.child_id:
-        # Use the first linked child if none specified
-        first_child = (
-            db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .first()
-        )
-        if first_child:
-            student_id = first_child[0]
+    student_id = _resolve_student_id(current_user, body.child_id, db)
 
     if not student_id:
         raise HTTPException(
@@ -545,6 +533,7 @@ async def create_asgf_session(
     # Generate plan
     plan = await asgf_service.generate_learning_cycle_plan(context_package)
 
+    # Use .hex (32 chars, no dashes) — fits VARCHAR(36) column (#3492)
     session_id = uuid4().hex
 
     # --- Persist session to learning_history (#3436) ---
@@ -1147,25 +1136,24 @@ async def get_active_sessions(
 ):
     """Return resumable ASGF sessions (created within 24h, not yet completed)."""
 
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
 
     # Resolve student IDs owned by current user
     student_ids: list[int] = []
-    if role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            student_ids.append(student_row.id)
-    elif role == "parent":
-        child_ids = [
-            sid
-            for (sid,) in db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .all()
-        ]
-        student_ids.extend(child_ids)
+    resolved = _resolve_student_id(current_user, None, db)
+    if resolved:
+        if role == "parent":
+            # For parents, get ALL linked children (not just first)
+            child_ids = [
+                sid
+                for (sid,) in db.query(Student.id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(parent_students.c.parent_id == current_user.id)
+                .all()
+            ]
+            student_ids.extend(child_ids)
+        else:
+            student_ids.append(resolved)
 
     if not student_ids:
         return ActiveSessionsResponse(sessions=[])
@@ -1217,32 +1205,55 @@ async def get_review_topics(
 ):
     """Return topics due for spaced-repetition review for a student.
 
-    Parents can query for their linked children; students can query for themselves.
+    - Parents can query for their linked children.
+    - Students can query for themselves.
+    - Admins can query for any student.
+    - Teachers can query for students enrolled in their courses.
     """
     from app.services.asgf_learning_history_service import get_spaced_repetition_topics
 
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
 
-    # Auth: verify the requester owns this student
-    allowed_student_ids: list[int] = []
-    if role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            allowed_student_ids.append(student_row.id)
-    elif role == "parent":
-        child_ids = [
-            sid
-            for (sid,) in db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .all()
-        ]
-        allowed_student_ids.extend(child_ids)
+    # Auth: verify the requester has access to this student
+    if role == "admin":
+        # Admins can see any student — verify student exists
+        exists = db.query(Student.id).filter(Student.id == student_id).first()
+        if not exists:
+            raise HTTPException(status_code=404, detail="Student not found")
+    elif role == "teacher":
+        # Teachers can see students enrolled in their courses
+        from app.models.teacher import Teacher
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if not teacher:
+            raise HTTPException(status_code=404, detail="Student not found")
+        enrolled = (
+            db.query(Student.id)
+            .join(student_courses, student_courses.c.student_id == Student.id)
+            .join(Course, Course.id == student_courses.c.course_id)
+            .filter(Course.teacher_id == teacher.id, Student.id == student_id)
+            .first()
+        )
+        if not enrolled:
+            raise HTTPException(status_code=404, detail="Student not found")
+    else:
+        # Parent / student — scoped to own children or self
+        allowed_student_ids: list[int] = []
+        if role == "student":
+            student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+            if student_row:
+                allowed_student_ids.append(student_row.id)
+        elif role == "parent":
+            child_ids = [
+                sid
+                for (sid,) in db.query(Student.id)
+                .join(parent_students, parent_students.c.student_id == Student.id)
+                .filter(parent_students.c.parent_id == current_user.id)
+                .all()
+            ]
+            allowed_student_ids.extend(child_ids)
 
-    if student_id not in allowed_student_ids:
-        raise HTTPException(status_code=404, detail="Student not found")
+        if student_id not in allowed_student_ids:
+            raise HTTPException(status_code=404, detail="Student not found")
 
     topics = get_spaced_repetition_topics(student_id=student_id, db=db)
 
