@@ -51,6 +51,11 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const resizeState = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
+  // Maximize state
+  const [maximized, setMaximized] = useState(() => localStorage.getItem('notes-panel-maximized') === 'true');
+  const savedLayout = useRef<{ position: { x: number; y: number } | null; size: { w: number; h: number } | null }>({ position: null, size: null });
+  const lastClickTime = useRef(0);
+
   const parseHighlights = (json: string | null | undefined): NoteHighlight[] => {
     if (!json) return [];
     try {
@@ -113,9 +118,43 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     return () => document.removeEventListener('mousedown', handler);
   }, [showTaskDropdown]);
 
+  // Maximize toggle
+  const toggleMaximize = useCallback(() => {
+    setMaximized(prev => {
+      const next = !prev;
+      localStorage.setItem('notes-panel-maximized', String(next));
+      if (next) {
+        savedLayout.current = { position, size };
+      } else {
+        setPosition(savedLayout.current.position);
+        setSize(savedLayout.current.size);
+      }
+      return next;
+    });
+  }, [position, size]);
+
+  // Escape key restores from maximized
+  useEffect(() => {
+    if (!maximized) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') toggleMaximize();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [maximized, toggleMaximize]);
+
   // Drag handlers
   const handleDragStart = useCallback((e: React.MouseEvent) => {
+    if (maximized) return;
     if ((e.target as HTMLElement).closest('button')) return;
+    // Double-click detection: toggle maximize
+    const now = Date.now();
+    if (now - lastClickTime.current < 300) {
+      lastClickTime.current = 0;
+      toggleMaximize();
+      return;
+    }
+    lastClickTime.current = now;
     e.preventDefault();
     const panel = panelRef.current;
     if (!panel) return;
@@ -145,10 +184,11 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
-  }, []);
+  }, [maximized, toggleMaximize]);
 
   // Resize handler
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    if (maximized) return;
     e.preventDefault();
     e.stopPropagation();
     const panel = panelRef.current;
@@ -179,7 +219,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
-  }, []);
+  }, [maximized]);
 
   // Handle appended highlighted text
   useEffect(() => {
@@ -369,10 +409,12 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     ...(size ? { width: size.w, maxHeight: size.h } : {}),
   };
 
+  const panelClassName = `notes-panel-floating${maximized ? ' notes-panel--maximized' : ''}`;
+
   // History view
   if (showHistory) {
     return (
-      <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
+      <div className={panelClassName} ref={panelRef} style={panelStyle}>
         <div className="notes-panel-header" onMouseDown={handleDragStart}>
           <h3>
             <button className="notes-back-btn" onClick={handleCloseHistory} title="Back to notes" aria-label="Back to notes">
@@ -381,6 +423,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
             {previewVersion ? `Version ${previewVersion.version_number}` : 'Version History'}
           </h3>
           <div className="notes-header-actions">
+            <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore' : 'Maximize'}>
+              {maximized ? '\u2750' : '\u2B1C'}
+            </button>
             <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">
               &times;
             </button>
@@ -441,7 +486,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   }
 
   return (
-    <div className="notes-panel-floating" ref={panelRef} style={panelStyle}>
+    <div className={panelClassName} ref={panelRef} style={panelStyle}>
       <div className="notes-panel-header" onMouseDown={handleDragStart}>
         <h3>{isEffectivelyReadOnly ? `${childName ? childName + "'s " : "Child's "}Notes` : 'Notes'}</h3>
         <div className="notes-header-actions">
@@ -479,6 +524,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
               </div>
             </>
           )}
+          <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore' : 'Maximize'}>
+            {maximized ? '\u2750' : '\u2B1C'}
+          </button>
           <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">
             &times;
           </button>
