@@ -6,6 +6,7 @@ import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { DetailSkeleton, ListSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
+import { ASGFEntryButton } from '../components/asgf/ASGFEntryButton';
 import './TaskDetailPage.css';
 
 interface CourseOption { id: number; name: string; }
@@ -398,6 +399,14 @@ export function TaskDetailPage() {
                   Delete
                 </button>
               </div>
+              {!task.is_completed && (
+                <ASGFEntryButton
+                  label="Help me understand this"
+                  prefilledQuestion={task.title}
+                  prefilledContext={task.course_name || undefined}
+                  variant="sidebar"
+                />
+              )}
             </>
           )}
         </div>

@@ -7,6 +7,7 @@ from app.core.logging_config import get_logger
 from app.models.learning_history import LearningHistory
 from app.models.study_guide import StudyGuide
 from app.services.ai_service import get_async_anthropic_client
+from app.services.asgf_learning_history_service import update_learning_history_on_complete
 
 logger = get_logger(__name__)
 
@@ -153,13 +154,15 @@ async def auto_save_session(
     db.add(study_guide)
     db.flush()  # Get the ID before commit
 
-    # Update learning_history with quiz data + material link
-    history_row.quiz_results = quiz_results
-    history_row.overall_score_pct = score_pct
-    history_row.avg_attempts_per_q = round(avg_attempts, 2)
-    history_row.material_id = study_guide.id
+    # Delegate quiz-result writing to the shared service (#3489)
+    # This avoids duplicating score/weak-concept logic in two places.
+    update_learning_history_on_complete(
+        session_id=session_id, quiz_results=quiz_results, db=db,
+    )
 
-    db.commit()
+    # Set the material link (not handled by update_learning_history_on_complete)
+    history_row.material_id = study_guide.id
+    db.commit()  # Single commit for flush + quiz data + material_id (#3497)
 
     logger.info(
         "ASGF auto-save: session=%s, material_id=%d, score=%d%%, xp=%d",

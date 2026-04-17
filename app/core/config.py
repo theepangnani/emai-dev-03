@@ -106,6 +106,9 @@ class Settings(BaseSettings):
     gcs_bucket_name: str = ""
     use_gcs: bool = False
 
+    # GCP Vision OCR (#3410) — enable for handwritten student notes
+    gcp_vision_enabled: bool = False
+
     # Storage limits per tier (#1007)
     free_storage_limit_bytes: int = 104857600
     free_upload_limit_bytes: int = 10485760

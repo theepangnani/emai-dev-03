@@ -17,6 +17,7 @@ import { PageNav } from '../components/PageNav';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { MasteryNode } from '../components/ile/MasteryNode';
 import { TutorAvatar } from '../components/ile/TutorAvatar';
+import { ASGFEntryButton } from '../components/asgf/ASGFEntryButton';
 import './FlashTutorPage.css';
 
 type Mode = 'learning' | 'testing' | 'parent_teaching';
@@ -243,6 +244,10 @@ export function FlashTutorPage() {
             <p className="ft-subtitle">Quick AI-powered practice sessions</p>
             <span className="ft-time-badge">5-8 min sessions</span>
           </div>
+          <ASGFEntryButton
+            label="Generate from question"
+            variant="sidebar"
+          />
         </div>
 
         {/* Resume banner */}

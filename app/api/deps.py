@@ -96,6 +96,27 @@ def get_current_user_optional(
         return None
 
 
+def get_current_user_sse(
+    request: Request,
+    token: str | None = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+) -> User:
+    """Resolve the current user for SSE endpoints.
+
+    EventSource cannot send custom headers, so this dependency falls back
+    to a ``token`` query parameter when no Authorization header is present.
+    """
+    if not token:
+        token = request.query_params.get("token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return get_current_user(request=request, token=token, db=db)
+
+
 def require_role(*roles: UserRole):
     """Dependency factory that checks the current user has one of the required roles."""
     def checker(current_user: User = Depends(get_current_user)):

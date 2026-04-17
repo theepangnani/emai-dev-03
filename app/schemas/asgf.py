@@ -2,7 +2,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # --- Intent classification (from #3413) ---
@@ -11,12 +11,19 @@ class IntentClassifyRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
 
 
+class IntentAlternative(BaseModel):
+    subject: str = ""
+    topic: str = ""
+    confidence: float = 0.0
+
+
 class IntentClassifyResponse(BaseModel):
     subject: str = ""
     grade_level: str = ""
     topic: str = ""
     confidence: float = 0.0
     bloom_tier: str = ""
+    alternatives: list[IntentAlternative] = Field(default_factory=list)
 
 
 # --- File upload (from #3411) ---
@@ -29,6 +36,7 @@ class FileUploadResponse(BaseModel):
     file_type: str
     file_size_bytes: int
     text_preview: str
+    extraction_failed: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -166,6 +174,10 @@ class CreateSessionRequest(BaseModel):
     """Request to create a new ASGF session."""
 
     question: str = Field(..., min_length=1, max_length=2000)
+    # Known limitation: file_ids are accepted but not yet linked to sessions.
+    # The upload endpoint generates a uuid4 file_id per file, but it is not
+    # persisted or associated with the session record.  File linking will be
+    # implemented when the ingestion pipeline is wired to sessions.
     file_ids: list[str] = Field(default_factory=list)
     child_id: str | None = None
     subject: str | None = None
@@ -186,12 +198,6 @@ class CreateSessionResponse(BaseModel):
 
 
 # --- Slide generation (from #3398) ---
-
-class ASGFSlideRequest(BaseModel):
-    """Request body for the slide generation SSE endpoint."""
-
-    session_id: str = Field(..., min_length=1)
-
 
 class ASGFSlideResponse(BaseModel):
     """A single generated slide."""
@@ -279,11 +285,73 @@ class AssignmentOptionsResponse(BaseModel):
 
 
 class AssignRequest(BaseModel):
-    assignment_type: str = Field(..., min_length=1)
+    assignment_type: Literal["private", "share_teacher", "share_parent", "review_task", "submit_teacher"] = Field(...)
     course_id: str | None = None
     due_date: str | None = None
+
+    @field_validator("due_date")
+    @classmethod
+    def validate_due_date(cls, v):
+        if v is not None:
+            from datetime import date
+            try:
+                date.fromisoformat(v)
+            except ValueError:
+                raise ValueError("due_date must be in ISO format (YYYY-MM-DD)")
+        return v
 
 
 class AssignResponse(BaseModel):
     success: bool
     message: str
+
+
+# --- Spaced repetition / review topics (#3403) ---
+
+class ReviewTopicItem(BaseModel):
+    session_id: str
+    subject: str
+    topic: str
+    score_pct: int | None = None
+    weak_concepts: list[str] = Field(default_factory=list)
+    days_since_last: int
+    review_interval: int
+    last_session_date: str
+
+
+class ReviewTopicsResponse(BaseModel):
+    student_id: int
+    topics: list[ReviewTopicItem]
+
+
+# --- ASGF usage / session cap (#3405) ---
+
+class ASGFUsageResponse(BaseModel):
+    used: int
+    limit: int
+    remaining: int
+    can_start: bool
+
+
+# --- Session resume (#3409) ---
+
+class ResumeSessionResponse(BaseModel):
+    session_id: str
+    current_slide_index: int
+    signals_given: list[dict] = Field(default_factory=list)
+    quiz_progress: list[dict] = Field(default_factory=list)
+    slides: list[dict] = Field(default_factory=list)
+    created_at: str
+    expires_at: str
+
+
+class ActiveSessionItem(BaseModel):
+    session_id: str
+    question: str
+    subject: str
+    created_at: str
+    slide_count: int
+
+
+class ActiveSessionsResponse(BaseModel):
+    sessions: list[ActiveSessionItem]

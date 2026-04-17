@@ -1,0 +1,174 @@
+/* ASGFErrorRecovery.css — Error recovery UI states (#3408) */
+
+/* ===== Shared wrapper ===== */
+
+.asgf-error-recovery {
+  border-radius: var(--radius-md, 10px);
+  padding: 16px 20px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.asgf-error-recovery__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.asgf-error-recovery__icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.asgf-error-recovery__message {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text, #1e293b);
+  line-height: 1.4;
+}
+
+.asgf-error-recovery__filename {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+/* ===== OCR failure ===== */
+
+.asgf-error-recovery--ocr {
+  background: var(--color-warning-bg, #fef3c7);
+  border: 1px solid var(--color-warning-border, #fbbf24);
+}
+
+.asgf-error-recovery__textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  background: var(--color-bg, #fff);
+  color: var(--color-text, #1e293b);
+}
+
+.asgf-error-recovery__textarea:focus {
+  outline: none;
+  border-color: var(--color-accent, #4a90d9);
+  box-shadow: 0 0 0 2px var(--color-accent-light, #e8f0fe);
+}
+
+/* ===== Low confidence ===== */
+
+.asgf-error-recovery--low-confidence {
+  background: var(--color-info-bg, #dbeafe);
+  border: 1px solid var(--color-info-border, #93c5fd);
+}
+
+/* ===== Generation failure ===== */
+
+.asgf-error-recovery--generation {
+  background: var(--color-error-bg, #fee2e2);
+  border: 1px solid var(--color-error-border, #fca5a5);
+  align-items: center;
+  text-align: center;
+}
+
+/* ===== Vague question ===== */
+
+.asgf-error-recovery--vague {
+  background: var(--color-info-bg, #dbeafe);
+  border: 1px solid var(--color-info-border, #93c5fd);
+}
+
+/* ===== Chips / radio group ===== */
+
+.asgf-error-recovery__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asgf-error-recovery__chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius-full, 20px);
+  background: var(--color-bg, #fff);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text, #1e293b);
+  line-height: 1.3;
+}
+
+.asgf-error-recovery__chip:hover {
+  border-color: var(--color-accent, #4a90d9);
+  background: var(--color-accent-light, #e8f0fe);
+}
+
+.asgf-error-recovery__chip--selected {
+  border-color: var(--color-accent, #4a90d9);
+  background: var(--color-accent-light, #e8f0fe);
+  box-shadow: 0 0 0 2px var(--color-accent-light, #e8f0fe);
+}
+
+.asgf-error-recovery__chip-subject {
+  font-weight: 600;
+}
+
+.asgf-error-recovery__chip-topic {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+/* ===== Buttons ===== */
+
+.asgf-error-recovery__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.asgf-error-recovery__btn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.asgf-error-recovery__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.asgf-error-recovery__btn--primary {
+  background: var(--color-accent, #4a90d9);
+  color: #fff;
+}
+
+.asgf-error-recovery__btn--primary:hover:not(:disabled) {
+  background: var(--color-accent-dark, #3b7ac4);
+}
+
+.asgf-error-recovery__btn--secondary {
+  background: transparent;
+  color: var(--color-accent, #4a90d9);
+  border: 1px solid var(--color-accent, #4a90d9);
+}
+
+.asgf-error-recovery__btn--secondary:hover:not(:disabled) {
+  background: var(--color-accent-light, #e8f0fe);
+}
