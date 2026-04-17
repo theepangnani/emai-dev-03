@@ -646,6 +646,11 @@ export function MyKidsPage() {
     );
   }
 
+  // Derived study-times child: falls back if the selected child was removed (#3508)
+  const activeStudyChild = (studyTimesChildId && children.find(c => c.student_id === studyTimesChildId))
+    ? studyTimesChildId
+    : children[0]?.student_id;
+
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       <PageNav items={[
@@ -861,7 +866,8 @@ export function MyKidsPage() {
                   {children.length > 1 && (
                     <div className="mykids-study-times-switcher">
                       <select
-                        value={studyTimesChildId ?? children[0].student_id}
+                        aria-label="Select child for study times"
+                        value={activeStudyChild}
                         onChange={e => setStudyTimesChildId(Number(e.target.value))}
                         className="mykids-child-select"
                       >
@@ -871,7 +877,7 @@ export function MyKidsPage() {
                       </select>
                     </div>
                   )}
-                  <StudyTimeSuggestions studentId={studyTimesChildId ?? children[0].student_id} />
+                  <StudyTimeSuggestions studentId={activeStudyChild} />
                 </div>
               )}
 
