@@ -471,23 +471,32 @@ async def startup_event():
     finally:
         db.close()
 
+    # APScheduler: 1-hour grace window for Cloud Run cold-start delays
+    SCHEDULER_MISFIRE_GRACE = 3600
+
     scheduler.add_job(
         check_assignment_reminders,
         CronTrigger(hour=8, minute=0),
         id="assignment_reminders",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
     scheduler.add_job(
         check_task_reminders,
         CronTrigger(hour=8, minute=15),
         id="task_reminders",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
     scheduler.add_job(
         check_notification_reminders,
         CronTrigger(hour="*/6"),
         id="notification_reminders",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Cleanup expired token blacklist entries daily at 3 AM
@@ -510,6 +519,8 @@ async def startup_event():
         CronTrigger(hour=3, minute=0),
         id="token_blacklist_cleanup",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Background Google Classroom sync once daily at 6 AM
@@ -519,6 +530,8 @@ async def startup_event():
         CronTrigger(hour=6, minute=0),
         id="google_classroom_sync",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Process expired account deletions daily at 4 AM (#964)
@@ -528,6 +541,8 @@ async def startup_event():
         CronTrigger(hour=4, minute=0),
         id="account_deletion_cleanup",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Cleanup note versions older than 365 days, daily at 3:30 AM (#1139)
@@ -548,6 +563,8 @@ async def startup_event():
         CronTrigger(hour=3, minute=30),
         id="note_version_cleanup",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     from app.jobs.wallet_refresh import refresh_monthly_credits
@@ -556,6 +573,8 @@ async def startup_event():
         CronTrigger(day=1, hour=0, minute=0),
         id="wallet_monthly_refresh",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Nightly streak evaluation at 12:30 AM (#2002)
@@ -565,6 +584,8 @@ async def startup_event():
         CronTrigger(hour=0, minute=30),
         id="streak_check",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Monthly freeze token refresh on 1st of month (#2003)
@@ -573,6 +594,8 @@ async def startup_event():
         CronTrigger(day=1, hour=0, minute=0),
         id="freeze_token_refresh",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Weekly digest email — every Sunday at 7 PM UTC (#2022)
@@ -582,6 +605,19 @@ async def startup_event():
         CronTrigger(day_of_week="sun", hour=19, minute=0),
         id="weekly_digest",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
+    )
+
+    # Weekly family report card — every Sunday at 8 PM UTC (#2228)
+    from app.jobs.weekly_report import send_weekly_reports
+    scheduler.add_job(
+        send_weekly_reports,
+        CronTrigger(day_of_week="sun", hour=20, minute=0),
+        id="weekly_report",
+        replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Daily digest email — every day at 7 AM UTC (#2023)
@@ -591,6 +627,8 @@ async def startup_event():
         CronTrigger(hour=7, minute=0),
         id="daily_digest",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Parent email digest — every 4 hours (#2651)
@@ -600,6 +638,8 @@ async def startup_event():
         CronTrigger(hour="*/4"),
         id="parent_email_digest",
         replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
     )
 
     # Teacher comm sync disabled — all syncs are manual/on-demand per parent-first platform design

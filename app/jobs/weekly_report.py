@@ -49,6 +49,7 @@ async def send_weekly_reports():
                 else:
                     failed += 1
             except Exception as e:
+                db.rollback()
                 logger.error(
                     "Weekly report failed for user %d | error=%s",
                     parent.id,
