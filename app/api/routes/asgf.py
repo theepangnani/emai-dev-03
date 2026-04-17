@@ -25,6 +25,7 @@ from app.schemas.asgf import (
     ASGFQuizQuestion,
     ASGFSlideRequest,
     ASGFSlideResponse,
+    ASGFUsageResponse,
     AssignmentOptionsResponse,
     AssignmentOption,
     AssignRequest,
@@ -44,6 +45,7 @@ from app.schemas.asgf import (
     MultiFileUploadResponse,
     TaskItem,
 )
+from app.services.asgf_cost_service import check_session_cap
 from app.services import asgf_service
 from app.services.asgf_assignment_service import (
     assign_material,
@@ -51,6 +53,7 @@ from app.services.asgf_assignment_service import (
     get_role_options,
     resolve_student_id,
 )
+from app.models.learning_history import LearningHistory
 from app.services.asgf_ingestion_service import ASGFIngestionService
 from app.services.asgf_slide_service import ASGFSlideService
 from app.services.file_processor import FileProcessingError, process_file
@@ -92,6 +95,56 @@ async def classify_intent(
 ):
     """Classify a question into subject, grade level, topic, and Bloom's tier."""
     return await asgf_service.classify_intent(body.question)
+
+
+# --- GET /asgf/usage (#3405) -----------------------------------------------
+
+@router.get("/usage", response_model=ASGFUsageResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_asgf_usage(
+    request: Request,
+    child_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return remaining ASGF sessions this month for the current user's child."""
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    student_id: int | None = None
+    if child_id and role == "parent":
+        # Verify the child belongs to this parent
+        valid = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                Student.id == child_id,
+            )
+            .first()
+        )
+        if valid:
+            student_id = valid[0]
+    elif role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            student_id = student_row.id
+    elif role == "parent" and not child_id:
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        if first_child:
+            student_id = first_child[0]
+
+    if not student_id:
+        raise HTTPException(status_code=404, detail="No linked student found.")
+
+    cap_info = await check_session_cap(student_id, db)
+    return ASGFUsageResponse(**cap_info)
 
 
 # --- POST /asgf/upload ----------------------------------------------------
@@ -321,6 +374,35 @@ async def create_asgf_session(
     if hasattr(role, "value"):
         role = role.value
 
+    # --- Session cap enforcement (#3405) ---
+    cap_student_id: int | None = None
+    if body.child_id and role == "parent":
+        cap_student_id = int(body.child_id)
+    elif role == "student":
+        cap_student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if cap_student_row:
+            cap_student_id = cap_student_row.id
+    elif role == "parent" and not body.child_id:
+        first_child = (
+            db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .first()
+        )
+        if first_child:
+            cap_student_id = first_child[0]
+
+    if cap_student_id:
+        cap_info = await check_session_cap(cap_student_id, db)
+        if not cap_info["can_start"]:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    f"Monthly ASGF session limit reached ({cap_info['limit']} sessions). "
+                    "Upgrade your plan for unlimited sessions."
+                ),
+            )
+
     # Build student profile from child_id if provided
     student_profile: dict = {}
     if body.child_id and role == "parent":
@@ -392,7 +474,6 @@ async def create_asgf_session(
     session_id = uuid4().hex
 
     # --- Persist session to learning_history (#3436) ---
-    from app.models.learning_history import LearningHistory
 
     # Resolve student_id (required FK)
     student_id: int | None = None
@@ -473,7 +554,6 @@ async def generate_slides_stream(
       - ``event: done``   -- generation complete
       - ``event: error``  -- generation error
     """
-    from app.models.learning_history import LearningHistory
 
     # Look up session from learning_history (#3435)
     session_id = body.session_id
@@ -485,28 +565,7 @@ async def generate_slides_stream(
     if not history_row:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Auth check: verify session belongs to current user
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
-
-    owner_user_ids: list[int] = []
-    if role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            owner_user_ids.append(student_row.id)
-    elif role == "parent":
-        child_ids = [
-            sid
-            for (sid,) in db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .all()
-        ]
-        owner_user_ids.extend(child_ids)
-
-    if history_row.student_id not in owner_user_ids:
-        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_ownership(history_row, current_user, db)
 
     learning_cycle_plan = history_row.slides_generated or {}
     context_package = history_row.documents_uploaded or {}
@@ -569,7 +628,6 @@ async def record_comprehension_signal(
     generated and returned.  The signal is stored in the session's
     learning history for future analytics.
     """
-    from app.models.learning_history import LearningHistory
 
     # --- Persist the signal in learning_history (best-effort) ---
     history_row = (
@@ -578,16 +636,24 @@ async def record_comprehension_signal(
         .first()
     )
 
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    _verify_session_ownership(history_row, current_user, db)
+
     if history_row:
-        # Append signal to the JSON slides_generated list
-        signals: list = history_row.slides_generated or []
-        signals.append(
-            {
-                "slide_number": body.slide_number,
-                "signal": body.signal,
-            }
-        )
-        history_row.slides_generated = signals
+        # Append signal to the _comprehension_signals key within slides_generated
+        existing = history_row.slides_generated or {}
+        if isinstance(existing, dict):
+            signals = existing.get("_comprehension_signals", [])
+            signals.append(
+                {
+                    "slide_number": body.slide_number,
+                    "signal": body.signal,
+                }
+            )
+            existing["_comprehension_signals"] = signals
+            history_row.slides_generated = existing
         try:
             db.commit()
         except Exception:
@@ -809,7 +875,6 @@ async def get_assignment_options(
     current_user: User = Depends(get_current_user),
 ):
     """Return role-aware assignment options and auto-detected course for a session."""
-    from app.models.learning_history import LearningHistory
 
     history_row = (
         db.query(LearningHistory)
@@ -858,7 +923,6 @@ async def assign_session_material(
     current_user: User = Depends(get_current_user),
 ):
     """Execute the assignment choice for a session's material."""
-    from app.models.learning_history import LearningHistory
 
     history_row = (
         db.query(LearningHistory)

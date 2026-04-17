@@ -287,3 +287,12 @@ class AssignRequest(BaseModel):
 class AssignResponse(BaseModel):
     success: bool
     message: str
+
+
+# --- ASGF usage / session cap (#3405) ---
+
+class ASGFUsageResponse(BaseModel):
+    used: int
+    limit: int
+    remaining: int
+    can_start: bool
