@@ -270,6 +270,13 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   'Create Task': NAV_SVG.Tasks,
 };
 
+const QA_ICON_MATERIALS = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>);
+const QA_ICON_UPLOAD = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>);
+const QA_ICON_HELP = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 015.12 1.5c0 2-3 2-3 4" /><circle cx="12" cy="18" r="0.5" fill="currentColor" /></svg>);
+const QA_ICON_QUIZ = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>);
+const QA_ICON_ADD_CHILD = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>);
+const QA_ICON_SETTINGS = (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" /></svg>);
+
 export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, headerSlot }: DashboardLayoutProps) {
   const { user, logout, switchRole, resendVerification } = useAuth();
   const navigate = useNavigate();
@@ -294,49 +301,28 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   });
   const { canInstall, installApp } = usePWAInstall();
 
-  const parentQuickActions: QuickAction[] = user?.role === 'parent' ? [
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>),
-      label: 'View Class Materials',
-      onClick: () => navigate('/course-materials'),
-    },
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>),
-      label: 'Upload Class Material',
-      onClick: () => navigate('/course-materials?action=upload'),
-    },
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9 9a3 3 0 015.12 1.5c0 2-3 2-3 4" /><circle cx="12" cy="18" r="0.5" fill="currentColor" /></svg>),
-      label: 'Help My Kid',
-      onClick: () => navigate('/my-kids?action=help'),
-    },
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>),
-      label: 'Quiz History',
-      onClick: () => navigate('/quiz-history'),
-    },
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>),
-      label: 'Add Child',
-      onClick: () => navigate('/my-kids?action=add-child'),
-    },
-    {
-      icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
-      label: 'Account Settings',
-      onClick: () => navigate('/settings/account'),
-    },
-  ].filter(a => {
-    const routeMap: Record<string, string[]> = {
-      'View Class Materials': ['/course-materials'],
-      'Upload Class Material': ['/course-materials'],
-      'Help My Kid': ['/my-kids'],
-      'Quiz History': ['/quiz-history'],
-      'Add Child': ['/my-kids'],
-      'Account Settings': ['/settings'],
-    };
-    const hideOn = routeMap[a.label];
-    return !hideOn?.some(r => location.pathname.startsWith(r));
-  }) : [];
+  const parentQuickActions = useMemo<QuickAction[]>(() => {
+    if (user?.role !== 'parent') return [];
+    return [
+      { icon: QA_ICON_MATERIALS, label: 'View Class Materials', onClick: () => navigate('/course-materials') },
+      { icon: QA_ICON_UPLOAD, label: 'Upload Class Material', onClick: () => navigate('/course-materials?action=upload') },
+      { icon: QA_ICON_HELP, label: 'Help My Kid', onClick: () => navigate('/my-kids?action=help') },
+      { icon: QA_ICON_QUIZ, label: 'Quiz History', onClick: () => navigate('/quiz-history') },
+      { icon: QA_ICON_ADD_CHILD, label: 'Add Child', onClick: () => navigate('/my-kids?action=add-child') },
+      { icon: QA_ICON_SETTINGS, label: 'Account Settings', onClick: () => navigate('/settings/account') },
+    ].filter(a => {
+      const routeMap: Record<string, string[]> = {
+        'View Class Materials': ['/course-materials'],
+        'Upload Class Material': ['/course-materials'],
+        'Help My Kid': ['/my-kids'],
+        'Quiz History': ['/quiz-history'],
+        'Add Child': ['/my-kids'],
+        'Account Settings': ['/settings'],
+      };
+      const hideOn = routeMap[a.label];
+      return !hideOn?.some(r => location.pathname.startsWith(r));
+    });
+  }, [user?.role, location.pathname, navigate]);
 
   useEffect(() => {
     let safetyTimer: ReturnType<typeof setTimeout> | null = null;
