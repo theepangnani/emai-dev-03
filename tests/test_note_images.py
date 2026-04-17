@@ -1,5 +1,5 @@
 import io
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from PIL import Image
@@ -99,6 +99,18 @@ class TestUploadNoteImage:
         )
         assert resp.status_code == 400
         assert "Invalid file type" in resp.json()["detail"]
+
+    def test_reject_spoofed_content_type(self, client, setup):
+        """A non-image file sent with image/png content-type should be rejected."""
+        headers = _auth(client, "imgowner@test.com")
+        fake_bytes = b"This is not an image at all, just plain text."
+        resp = client.post(
+            "/api/notes/images",
+            files={"file": ("fake.png", io.BytesIO(fake_bytes), "image/png")},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+        assert "does not match" in resp.json()["detail"]
 
     def test_reject_unauthenticated(self, client, setup):
         png_bytes = _make_png_bytes()

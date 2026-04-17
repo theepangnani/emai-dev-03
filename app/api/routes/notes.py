@@ -1,4 +1,5 @@
 import io
+import logging
 import re
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -19,6 +20,8 @@ from app.models.user import User, UserRole
 from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert, NoteVersionListItem, NoteVersionResponse
 from app.schemas.note_image import NoteImageResponse
 from app.services.gcs_service import upload_file as gcs_upload_file, download_file as gcs_download_file
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -323,10 +326,35 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 MAX_IMAGE_WIDTH = 1200
 
+# Magic byte signatures for allowed image types
+_IMAGE_MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG\r\n\x1a\n": "image/png",
+    b"GIF87a": "image/gif",
+    b"GIF89a": "image/gif",
+    b"RIFF": "image/webp",  # WebP starts with RIFF....WEBP
+}
+
+
+def _validate_image_magic_bytes(data: bytes) -> str | None:
+    """Validate image content by checking magic bytes. Returns detected MIME type or None."""
+    for magic, mime in _IMAGE_MAGIC_BYTES.items():
+        if data[:len(magic)] == magic:
+            # Extra check for WebP: must have WEBP at offset 8
+            if mime == "image/webp" and data[8:12] != b"WEBP":
+                continue
+            return mime
+    return None
+
 
 def _compress_note_image(image_bytes: bytes, max_width: int = MAX_IMAGE_WIDTH) -> tuple[bytes, str]:
     """Resize image to max_width and compress. Returns (compressed_bytes, media_type)."""
     img = Image.open(io.BytesIO(image_bytes))
+    # Validate that PIL can actually identify the image format
+    img.verify()
+    # Re-open after verify (verify closes the image)
+    img = Image.open(io.BytesIO(image_bytes))
+
     if img.width > max_width:
         ratio = max_width / img.width
         img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
@@ -380,10 +408,19 @@ def upload_note_image(
             detail=f"File too large. Maximum size is {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
         )
 
+    # Validate actual file content via magic bytes (prevents spoofed content-type)
+    detected_type = _validate_image_magic_bytes(file_bytes)
+    if detected_type is None or detected_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="File content does not match a valid image format.",
+        )
+
     # Compress image
     try:
         compressed_bytes, media_type = _compress_note_image(file_bytes)
-    except Exception:
+    except Exception as exc:
+        logger.warning("Image compression failed for user %s: %s", current_user.id, exc)
         raise HTTPException(status_code=400, detail="Could not process image. The file may be corrupt.")
 
     # Determine file extension from media_type
@@ -394,7 +431,8 @@ def upload_note_image(
     # Upload to GCS
     try:
         gcs_upload_file(gcs_path, compressed_bytes, media_type)
-    except Exception:
+    except Exception as exc:
+        logger.error("GCS upload failed for user %s, path %s: %s", current_user.id, gcs_path, exc)
         raise HTTPException(status_code=500, detail="Failed to upload image. Please try again.")
 
     # Create DB record
@@ -437,7 +475,8 @@ def serve_note_image(
     # Download from GCS
     try:
         image_bytes = gcs_download_file(image.gcs_path)
-    except Exception:
+    except Exception as exc:
+        logger.error("GCS download failed for image %s, path %s: %s", image_id, image.gcs_path, exc)
         raise HTTPException(status_code=404, detail="Image file not found in storage")
 
     return Response(
