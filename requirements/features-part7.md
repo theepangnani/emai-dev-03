@@ -1192,3 +1192,162 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 **AI Chip Visibility Rules:**
 - [x] Show "Solve with Explanations" chip for document types: `past_exam`, `mock_exam`, `student_test`, `quiz_paper`, `worksheet`, `custom`
 - [x] Hide the chip for other document types (e.g., `lecture_notes`, `textbook_chapter`, `syllabus`)
+
+---
+
+### 6.137 AI Study Guide Generator — Ask-a-Question to Flash Study (CB-ASGF-001) - DEPLOYED
+
+**Status:** DEPLOYED | **Epic:** #3390 | **PRD:** CB-ILE-001 v2.0 §18
+
+**Purpose:** Transform the study guide generation experience from a static document-upload-and-wait workflow into an interactive, question-driven learning cycle. Students (or parents on their behalf) ask a question, optionally attach documents for context, and receive a short slide-based learning plan with an integrated Flash Tutor quiz — all in a single flow. This bridges the gap between "I have a question" and "I understand the answer" by combining AI-generated micro-lessons with immediate comprehension checks.
+
+#### §6.137.1 Enhanced Question Input + Intent Detection — DEPLOYED
+
+- [x] Free-text question input with 500-character limit and real-time character counter
+- [x] Intent classifier detects question type (conceptual, procedural, factual, comparison) using keyword heuristics
+- [x] Intent badge displayed next to question for transparency
+- [x] Placeholder suggestions rotate to guide students toward effective questions
+- [x] Input validation prevents empty or too-short questions (minimum 10 characters)
+
+**Issues:** #3391, #3392 | **PR:** #3421 (M5a)
+
+#### §6.137.2 Multi-Document Upload + Ingestion Pipeline — DEPLOYED
+
+- [x] Drag-and-drop + click-to-browse file upload supporting PDF, DOCX, images (PNG/JPG)
+- [x] Up to 3 documents per session (configurable limit)
+- [x] Server-side ingestion: PDF text extraction (PyPDF2), DOCX parsing (python-docx), image OCR (Tesseract fallback to Cloud Vision)
+- [x] Chunking pipeline splits extracted text into 1,500-token chunks with 200-token overlap
+- [x] Upload progress indicators with per-file status (uploading → processing → ready)
+- [x] File type validation and size limit (10 MB per file)
+
+**Issues:** #3393, #3394 | **PR:** #3421 (M5a)
+
+#### §6.137.3 Context Selection + AI Context Assembly — DEPLOYED
+
+- [x] Context panel shows uploaded documents and existing course materials side-by-side
+- [x] Checkbox selection allows combining multiple context sources
+- [x] AI context assembly concatenates selected chunks with source attribution headers
+- [x] Token budget management — truncates context to fit within model context window (8K reserved for generation)
+- [x] "No context" mode supported — AI answers from general knowledge when no documents selected
+
+**Issues:** #3395, #3396 | **PR:** #3434 (M5b)
+
+#### §6.137.4 Short Learning Cycle Plan + Slide Generation — DEPLOYED
+
+- [x] AI generates 3-5 slide learning plan based on question + context
+- [x] Each slide contains: title, key concept, explanation (300-500 words), and optional diagram description
+- [x] Slide renderer with navigation (prev/next), progress bar, and keyboard shortcuts (arrow keys)
+- [x] Markdown rendering within slides (headers, bold, lists, code blocks, LaTeX math)
+- [x] Comprehension signal — "Got it" / "Need more detail" buttons on each slide to adjust depth
+- [x] Responsive slide layout for mobile and desktop
+
+**Issues:** #3397, #3398 | **PR:** #3434 (M5b)
+
+#### §6.137.5 Integrated Flash Tutor Quiz (Slide-Anchored) — DEPLOYED
+
+- [x] After completing slides, auto-launches a 5-question Flash Tutor quiz on the slide content
+- [x] Questions anchored to specific slides — incorrect answers link back to the relevant slide
+- [x] Quiz uses existing ILE question generation with slide content as context
+- [x] Score summary with per-question slide references for review
+- [x] Option to retry quiz or return to slides for review before retrying
+
+**Issues:** #3399, #3400 | **PR:** #3447 (M5c)
+
+#### §6.137.6 Auto-Save + Role-Aware Assignment — DEPLOYED
+
+- [x] Generated study guide auto-saved to student's study guide library
+- [x] Parent-initiated sessions assigned to the selected child's account
+- [x] Teacher-initiated sessions saved as class materials with course assignment
+- [x] Guide metadata includes: source question, intent type, context document IDs, slide count, quiz score
+- [x] Duplicate detection — warns if a similar question was asked in the last 7 days
+
+**Issues:** #3401, #3402 | **PR:** #3447 (M5c)
+
+#### §6.137.7 Learning History + Spaced Repetition — DEPLOYED
+
+- [x] Session history page shows past ASGF sessions with question, date, quiz score
+- [x] Spaced repetition scheduling — resurfaces low-scoring sessions after 1, 3, 7, 14 days
+- [x] "Review again" button re-opens slides + quiz for a previous session
+- [x] Progress tracking — shows improvement trend across repeated sessions on the same topic
+
+**Issues:** #3403, #3404 | **PR:** #3477 (M5d)
+
+#### §6.137.8 Cost Model + Session Caps — DEPLOYED
+
+- [x] Per-session cost: ~$0.02 USD (slide generation + quiz generation)
+- [x] Daily cap: 10 ASGF sessions per student (configurable via admin)
+- [x] Credit deduction: 2 AI credits per ASGF session (slides + quiz)
+- [x] Cost logging integrated with existing `ai_usage_logs` table
+- [x] Admin analytics dashboard shows ASGF usage and cost breakdown
+
+**Issues:** #3405, #3406 | **PR:** #3477 (M5d)
+
+#### §6.137.9 Error Recovery + Session Resume — DEPLOYED
+
+- [x] Session state persisted to database at each step (question → upload → slides → quiz)
+- [x] Browser refresh or disconnect resumes from last completed step
+- [x] Partial slide generation saved — if generation fails mid-stream, completed slides are preserved
+- [x] Retry button on generation failure with exponential backoff
+- [x] Graceful degradation — if quiz generation fails, slides are still accessible
+
+**Issues:** #3407, #3408 | **PR:** #3477 (M5d)
+
+#### §6.137.10 Integration Bridges — PLANNED
+
+Seven bridges to connect ASGF with existing ClassBridge UX:
+
+- [ ] **Course Material → ASGF:** "Ask a question about this" button on course material detail page
+- [ ] **Study Guide → ASGF:** "Dive deeper" button on existing study guides to launch ASGF with guide content as context
+- [ ] **Flash Tutor → ASGF:** "Learn more" link on incorrect quiz answers to launch ASGF for the topic
+- [ ] **My Kids → ASGF:** Parent dashboard card showing child's recent ASGF sessions
+- [ ] **Chatbot → ASGF:** Chatbot suggests ASGF when detecting study-related questions
+- [ ] **Google Classroom → ASGF:** Auto-suggest ASGF sessions for newly synced assignments
+- [ ] **Email Digest → ASGF:** Include ASGF session summaries in parent daily digest
+
+**Issues:** #3409-#3415
+
+#### Key PRs
+
+| PR | Milestone | Description |
+|----|-----------|-------------|
+| #3421 | M5a Foundation | Schema, intent classifier, upload, ingestion, context panel |
+| #3434 | M5b Generation | Context assembly, slide renderer, slide generation, comprehension signal |
+| #3447 | M5c Integration | Quiz bridge, auto-save, role-aware assignment |
+| #3477 | M5d Polish | Spaced repetition, cost model, error recovery, session resume |
+| #3518 | Page | Complete Ask-a-Question to Flash Study page |
+
+#### Sub-Milestones
+
+- **M5a Foundation** (#3390): Schema + intent classifier + upload pipeline — PR #3421
+- **M5b Generation** (#3390): Context assembly + slide generation + renderer — PR #3434
+- **M5c Integration** (#3390): Quiz bridge + auto-save + role-aware assignment — PR #3447
+- **M5d Polish** (#3390): Spaced repetition + cost model + error recovery — PR #3477
+- **Page** (#3390): Complete ASGF page wiring all milestones together — PR #3518
+
+---
+
+### Recent PRs (April 8–15, 2026)
+
+| Commit | PR | Description |
+|--------|----|-------------|
+| b88d4ec6 | #3525 | fix: Gmail reconnect uses popup OAuth flow with correct redirect_uri |
+| c1d6e67e | #3518 | feat: ASGF page — complete Ask-a-Question to Flash Study flow |
+| 7efee95f | #3517 | fix: show Gmail reconnect banner when integration is inactive |
+| 3c8e75da | #3502 | fix: parent UX — deduplicate study times + global quick actions |
+| 5c0e6a84 | #3515 | feat: CB-ASGF-001 M5d + final polish — complete ASGF feature |
+| 22f31f96 | #3513 | fix: Email Digest button navigates to dashboard when integration exists |
+| ff30fd01 | #3452 | fix: add db.rollback() on digest failure + WhatsApp test script |
+| be079287 | #3473 | fix: daily email digest not delivered — scheduler misfire, session poisoning |
+| 7ce62843 | #3404 | feat: ASGF PEDI digest enrichment — session summaries for parent email |
+| 08bd3798 | #3447 | feat: CB-ASGF-001 M5c Integration — quiz bridge, auto-save, role-aware assignment |
+| 18371fbc | #3431 | fix: matchMedia test mock — unblocks deploy CI |
+| 68ce28ce | #3434 | feat: CB-ASGF-001 M5b Generation — context assembly, slide renderer, generation |
+| 74913cb8 | #3421 | feat: CB-ASGF-001 M5a Foundation — schema, intent classifier, upload, ingestion |
+| 933ad66f | #3386 | fix: task filtering — correct child assignment + calendar dedup |
+| 9d458218 | #3368 | feat: Solve with Explanations — problem solver guide type |
+| 17861b67 | #3378 | fix: PDF black images, focus area, continue button |
+| c07cc423 | #3362 | fix: My Kids page — panel order, material limit, collapse defaults |
+| 0835d41f | #3357 | fix: Study Session page — trailing slash, centralized API, graceful degradation |
+| 98861745 | #3356 | fix: Flash Tutor defects, nav icons, deploy workflow improvements |
+| c03a7a58 | #3337 | feat: chatbot window drag, resize, and maximize |
+| 2c935915 | #3379 | fix: assign auto-created tasks to child enrolled in source course |
