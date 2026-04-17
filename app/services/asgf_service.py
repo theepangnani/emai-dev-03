@@ -114,6 +114,7 @@ async def assemble_context_package(
     classroom_context: dict | None = None,
     session_metadata: dict | None = None,
     intent_result: IntentClassifyResponse | None = None,
+    adaptive_context: dict | None = None,
 ) -> ContextPackage:
     """Assemble the full context package for Claude API.
 
@@ -121,15 +122,29 @@ async def assemble_context_package(
     classroom context, and session metadata into a single ContextPackage.
 
     If *intent_result* is provided, skip the redundant classify_intent() call.
+    If *adaptive_context* is provided (from learning history), enrich gap_data
+    with mastered/weak concepts so repeat sessions skip mastered material.
     """
     # Only classify if caller hasn't already done so
     intent = intent_result if intent_result is not None else await classify_intent(question)
 
     # Build typed sub-models from raw dicts
     gap_raw = ingestion_result.get("gap_data", {})
+    weak_topics = list(gap_raw.get("weak_topics", []))
+    previously_studied = list(gap_raw.get("previously_studied", []))
+
+    # Enrich gap data with adaptive context from learning history (#3403)
+    if adaptive_context and adaptive_context.get("is_repeat"):
+        for concept in adaptive_context.get("weak_concepts", []):
+            if concept not in weak_topics:
+                weak_topics.append(concept)
+        for concept in adaptive_context.get("mastered_concepts", []):
+            if concept not in previously_studied:
+                previously_studied.append(concept)
+
     gap = GapData(
-        weak_topics=gap_raw.get("weak_topics", []),
-        previously_studied=gap_raw.get("previously_studied", []),
+        weak_topics=weak_topics,
+        previously_studied=previously_studied,
     )
 
     sp_raw = student_profile or {}
@@ -146,6 +161,13 @@ async def assemble_context_package(
         subject=cc_raw.get("subject", ""),
     )
 
+    # Include adaptive metadata in session_metadata for plan generation
+    enriched_metadata = dict(session_metadata or {})
+    if adaptive_context and adaptive_context.get("is_repeat"):
+        enriched_metadata["is_repeat_session"] = True
+        enriched_metadata["prior_session_count"] = adaptive_context.get("session_count", 0)
+        enriched_metadata["best_prior_score"] = adaptive_context.get("best_score")
+
     return ContextPackage(
         question=question,
         subject=intent.subject,
@@ -157,7 +179,7 @@ async def assemble_context_package(
         document_metadata=ingestion_result.get("document_metadata", []),
         student_profile=sp,
         classroom_context=cc,
-        session_metadata=session_metadata or {},
+        session_metadata=enriched_metadata,
     )
 
 

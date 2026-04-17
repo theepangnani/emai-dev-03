@@ -292,3 +292,21 @@ class AssignRequest(BaseModel):
 class AssignResponse(BaseModel):
     success: bool
     message: str
+
+
+# --- Spaced repetition / review topics (#3403) ---
+
+class ReviewTopicItem(BaseModel):
+    session_id: str
+    subject: str
+    topic: str
+    score_pct: int | None = None
+    weak_concepts: list[str] = Field(default_factory=list)
+    days_since_last: int
+    review_interval: int
+    last_session_date: str
+
+
+class ReviewTopicsResponse(BaseModel):
+    student_id: int
+    topics: list[ReviewTopicItem]

@@ -42,6 +42,8 @@ from app.schemas.asgf import (
     IntentClassifyRequest,
     IntentClassifyResponse,
     MultiFileUploadResponse,
+    ReviewTopicsResponse,
+    ReviewTopicItem,
     TaskItem,
 )
 from app.services import asgf_service
@@ -380,23 +382,7 @@ async def create_asgf_session(
         "document_metadata": [],
     }
 
-    # Assemble context
-    context_package = await asgf_service.assemble_context_package(
-        question=body.question,
-        ingestion_result=ingestion_result,
-        student_profile=student_profile,
-        classroom_context=classroom_context,
-        session_metadata=session_metadata,
-    )
-
-    # Generate plan
-    plan = await asgf_service.generate_learning_cycle_plan(context_package)
-
-    session_id = uuid4().hex
-
-    # --- Persist session to learning_history (#3436) ---
-
-    # Resolve student_id (required FK)
+    # --- Resolve student_id early for adaptive context (#3403) ---
     student_id: int | None = None
     if body.child_id and role == "parent":
         student_id = int(body.child_id)
@@ -420,6 +406,31 @@ async def create_asgf_session(
             status_code=400,
             detail="Could not determine student for this session. Please select a child or ensure your student profile is set up.",
         )
+
+    # Fetch adaptive context for repeat sessions (#3403)
+    adaptive_context: dict | None = None
+    if student_id:
+        from app.services.asgf_learning_history_service import get_adaptive_context
+        adaptive_context = await get_adaptive_context(
+            student_id=student_id, topic=body.question, db=db,
+        )
+
+    # Assemble context
+    context_package = await asgf_service.assemble_context_package(
+        question=body.question,
+        ingestion_result=ingestion_result,
+        student_profile=student_profile,
+        classroom_context=classroom_context,
+        session_metadata=session_metadata,
+        adaptive_context=adaptive_context,
+    )
+
+    # Generate plan
+    plan = await asgf_service.generate_learning_cycle_plan(context_package)
+
+    session_id = uuid4().hex
+
+    # --- Persist session to learning_history (#3436) ---
 
     history_row = LearningHistory(
         student_id=student_id,
@@ -872,3 +883,50 @@ async def assign_session_material(
         raise HTTPException(status_code=400, detail=result["message"])
 
     return AssignResponse(success=result["success"], message=result["message"])
+
+
+# --- GET /asgf/student/{student_id}/review-topics (#3403) --------------------
+
+@router.get("/student/{student_id}/review-topics", response_model=ReviewTopicsResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+async def get_review_topics(
+    student_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return topics due for spaced-repetition review for a student.
+
+    Parents can query for their linked children; students can query for themselves.
+    """
+    from app.services.asgf_learning_history_service import get_spaced_repetition_topics
+
+    role = current_user.role
+    if hasattr(role, "value"):
+        role = role.value
+
+    # Auth: verify the requester owns this student
+    allowed_student_ids: list[int] = []
+    if role == "student":
+        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
+        if student_row:
+            allowed_student_ids.append(student_row.id)
+    elif role == "parent":
+        child_ids = [
+            sid
+            for (sid,) in db.query(Student.id)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        allowed_student_ids.extend(child_ids)
+
+    if student_id not in allowed_student_ids:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    topics = await get_spaced_repetition_topics(student_id=student_id, db=db)
+
+    return ReviewTopicsResponse(
+        student_id=student_id,
+        topics=[ReviewTopicItem(**t) for t in topics],
+    )
