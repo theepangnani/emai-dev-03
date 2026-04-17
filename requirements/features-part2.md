@@ -366,6 +366,16 @@ Parent nav includes full navigation: Overview, Child Profiles, Courses, Course M
 
 **Status:** IMPLEMENTED ✅
 
+#### 6.22.7 Global Parent Quick Actions (#3496)
+The parent quick action bar ("View Class Materials", "Upload Class Material", "Help My Kid", etc.) must appear consistently on ALL parent-facing pages, not just the Parent Dashboard. Implementation: render `RoleQuickActions` in `DashboardLayout` for parent users, with context-aware filtering to hide buttons that are redundant on the current page (e.g., hide "View Class Materials" on `/course-materials`). The Parent Dashboard retains its own modal-aware version; the layout version uses navigation-only actions.
+
+**Status:** IMPLEMENTED ✅
+
+#### 6.22.8 Best Study Times Deduplication (#3495)
+On the My Kids page all-children overview, show a single "Best Study Times" card with a child-switcher dropdown instead of rendering one card per child. The single-child detail view continues to show the selected child's study times directly.
+
+**Status:** IMPLEMENTED ✅
+
 ### 6.23 Security Hardening (Phase 1) - IMPLEMENTED
 
 Critical security vulnerabilities identified in the Feb 2026 risk audit and fixed:
