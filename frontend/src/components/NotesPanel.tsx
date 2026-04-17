@@ -52,7 +52,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const resizeState = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   // Maximize state
-  const [maximized, setMaximized] = useState(() => localStorage.getItem('notes-panel-maximized') === 'true');
+  const [maximized, setMaximized] = useState(() => {
+    try { return localStorage.getItem('notes-panel-maximized') === 'true'; } catch { return false; }
+  });
   const savedLayout = useRef<{ position: { x: number; y: number } | null; size: { w: number; h: number } | null }>({ position: null, size: null });
   const lastClickTime = useRef(0);
 
@@ -122,9 +124,12 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const toggleMaximize = useCallback(() => {
     setMaximized(prev => {
       const next = !prev;
-      localStorage.setItem('notes-panel-maximized', String(next));
+      try { localStorage.setItem('notes-panel-maximized', String(next)); } catch { /* QuotaExceededError */ }
       if (next) {
         savedLayout.current = { position, size };
+        // Clear inline position/size so maximized CSS rules take full effect
+        setPosition(null);
+        setSize(null);
       } else {
         setPosition(savedLayout.current.position);
         setSize(savedLayout.current.size);
@@ -133,14 +138,18 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     });
   }, [position, size]);
 
-  // Escape key restores from maximized
+  // Escape key restores from maximized — capture phase so it fires before
+  // modal/chatbot Escape handlers and stops propagation
   useEffect(() => {
     if (!maximized) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') toggleMaximize();
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        toggleMaximize();
+      }
     };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    document.addEventListener('keydown', handleKey, true);
+    return () => document.removeEventListener('keydown', handleKey, true);
   }, [maximized, toggleMaximize]);
 
   // Drag handlers
@@ -423,7 +432,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
             {previewVersion ? `Version ${previewVersion.version_number}` : 'Version History'}
           </h3>
           <div className="notes-header-actions">
-            <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore' : 'Maximize'}>
+            <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore panel' : 'Maximize panel'} aria-expanded={maximized}>
               {maximized ? '\u2750' : '\u2B1C'}
             </button>
             <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">

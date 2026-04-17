@@ -543,8 +543,8 @@
   width: auto !important;
   height: auto !important;
   max-height: none !important;
-  z-index: 10001;
-  transition: all 200ms ease;
+  z-index: 9999;
+  transition: top 200ms ease, left 200ms ease, right 200ms ease, bottom 200ms ease, width 200ms ease, height 200ms ease, max-height 200ms ease;
 }
 
 .notes-panel--maximized .notes-panel-resize-handle {
