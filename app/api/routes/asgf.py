@@ -60,6 +60,12 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/asgf", tags=["ASGF"])
 
+
+def _get_user_role(user: User) -> str:
+    """Normalize user role to a plain string value."""
+    role = user.role
+    return role.value if hasattr(role, "value") else role
+
 # --- constants -----------------------------------------------------------
 MAX_FILES = 5
 MAX_TOTAL_BYTES = 25 * 1024 * 1024  # 25 MB
@@ -191,9 +197,7 @@ async def get_context_data(
     courses_out: list[CourseItem] = []
     tasks_out: list[TaskItem] = []
 
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
 
     # --- Children (parent only) ---
     if role == "parent":
@@ -317,9 +321,7 @@ async def create_asgf_session(
     Accepts a question and optional context fields (child_id, subject, grade, course_id).
     Runs context assembly + plan generation and returns a session preview.
     """
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
 
     # Build student profile from child_id if provided
     student_profile: dict = {}
@@ -413,26 +415,29 @@ async def create_asgf_session(
         if first_child:
             student_id = first_child[0]
 
-    if student_id:
-        history_row = LearningHistory(
-            student_id=student_id,
-            session_id=session_id,
-            session_type="asgf",
-            question_asked=body.question,
-            subject=context_package.subject or plan.topic_classification.get("subject", ""),
-            grade_level=context_package.grade_level or plan.topic_classification.get("grade_level", ""),
-            topic_tags=[plan.topic_classification.get("subject", "")],
-            slides_generated=plan.model_dump(),
-            documents_uploaded=context_package.model_dump(),
+    if not student_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not determine student for this session. Please select a child or ensure your student profile is set up.",
         )
-        try:
-            db.add(history_row)
-            db.commit()
-        except Exception:
-            db.rollback()
-            logger.warning("ASGF session: failed to persist session %s to learning_history", session_id)
-    else:
-        logger.warning("ASGF session: no student_id resolved, skipping persistence for session %s", session_id)
+
+    history_row = LearningHistory(
+        student_id=student_id,
+        session_id=session_id,
+        session_type="asgf",
+        question_asked=body.question,
+        subject=context_package.subject or plan.topic_classification.get("subject", ""),
+        grade_level=context_package.grade_level or plan.topic_classification.get("grade_level", ""),
+        topic_tags=[plan.topic_classification.get("subject", "")],
+        slides_generated=plan.model_dump(),
+        documents_uploaded=context_package.model_dump(),
+    )
+    try:
+        db.add(history_row)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.warning("ASGF session: failed to persist session %s to learning_history", session_id)
 
     logger.info(
         "ASGF session created: session_id=%s, user=%d, topic=%s",
@@ -486,27 +491,7 @@ async def generate_slides_stream(
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Auth check: verify session belongs to current user
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
-
-    owner_user_ids: list[int] = []
-    if role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            owner_user_ids.append(student_row.id)
-    elif role == "parent":
-        child_ids = [
-            sid
-            for (sid,) in db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .all()
-        ]
-        owner_user_ids.extend(child_ids)
-
-    if history_row.student_id not in owner_user_ids:
-        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_ownership(history_row, current_user, db)
 
     learning_cycle_plan = history_row.slides_generated or {}
     context_package = history_row.documents_uploaded or {}
@@ -660,9 +645,15 @@ def _verify_session_ownership(
     history_row, current_user: User, db: Session
 ) -> None:
     """Verify the session belongs to the current user. Raises 404 if not."""
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
+
+    # Admins can access all sessions
+    if role == "admin":
+        return
+    # Teachers can access sessions for students in their courses
+    # (v2 will add proper teacher scoping)
+    if role == "teacher":
+        return
 
     owner_student_ids: list[int] = []
     if role == "student":
@@ -821,9 +812,7 @@ async def get_assignment_options(
 
     _verify_session_ownership(history_row, current_user, db)
 
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
+    role = _get_user_role(current_user)
 
     options = [AssignmentOption(**o) for o in get_role_options(role)]
 
