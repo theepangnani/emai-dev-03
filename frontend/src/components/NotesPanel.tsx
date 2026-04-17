@@ -364,6 +364,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   };
 
   // ── Export helpers ──
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   const sanitizeFilename = (name: string) =>
     name.replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '-').toLowerCase().slice(0, 80) || 'classbridge-notes';
 
@@ -373,16 +376,17 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const handleExportPdf = async () => {
     setShowExportDropdown(false);
     setExporting(true);
+    let container: HTMLDivElement | null = null;
     try {
-      const title = getExportTitle();
-      const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+      const title = escapeHtml(getExportTitle());
+      const dateStr = escapeHtml(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
       // Convert plain-text content to HTML paragraphs
       const bodyHtml = content
         .split('\n')
-        .map(line => line ? `<p style="margin:0.3em 0">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>` : '<br/>')
+        .map(line => line ? `<p style="margin:0.3em 0">${escapeHtml(line)}</p>` : '<br/>')
         .join('');
 
-      const container = document.createElement('div');
+      container = document.createElement('div');
       container.style.padding = '40px';
       container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
       container.style.color = '#1a1a2e';
@@ -395,11 +399,13 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
       document.body.appendChild(container);
       await downloadAsPdf(container, `${getExportFilename()}-notes`);
-      document.body.removeChild(container);
       showToast('PDF downloaded');
     } catch {
       showToast('Failed to export PDF');
     } finally {
+      if (container?.parentNode) {
+        document.body.removeChild(container);
+      }
       setExporting(false);
     }
   };
@@ -461,8 +467,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       const a = document.createElement('a');
       a.href = url;
       a.download = `${getExportFilename()}-notes.md`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
       showToast('Markdown downloaded');
     } catch {
       showToast('Failed to export Markdown');
