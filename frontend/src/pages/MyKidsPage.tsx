@@ -111,6 +111,9 @@ export function MyKidsPage() {
   // Email digest wizard
   const [showEmailDigestWizard, setShowEmailDigestWizard] = useState(false);
 
+  // Study times child selector (#3495)
+  const [studyTimesChildId, setStudyTimesChildId] = useState<number | null>(null);
+
   // Wizard-local child selection (does not mutate page filter) (#1994)
   const [wizardChildId, setWizardChildId] = useState<number | null>(null);
   const [wizardCourses, setWizardCourses] = useState<{ id: number; name: string }[] | undefined>(undefined);
@@ -852,10 +855,25 @@ export function MyKidsPage() {
                 </div>
               </SectionPanel>
 
-              {/* ── Best Study Times (per child) ───────── */}
-              {children.map(child => (
-                <StudyTimeSuggestions key={child.student_id} studentId={child.student_id} />
-              ))}
+              {/* ── Best Study Times ───────── */}
+              {children.length > 0 && (
+                <div className="mykids-study-times-wrap">
+                  {children.length > 1 && (
+                    <div className="mykids-study-times-switcher">
+                      <select
+                        value={studyTimesChildId ?? children[0].student_id}
+                        onChange={e => setStudyTimesChildId(Number(e.target.value))}
+                        className="mykids-child-select"
+                      >
+                        {children.map(c => (
+                          <option key={c.student_id} value={c.student_id}>{c.full_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <StudyTimeSuggestions studentId={studyTimesChildId ?? children[0].student_id} />
+                </div>
+              )}
 
               {/* ── Unassigned Classes ─────────────────── */}
               {unassignedCourses.length > 0 && (
