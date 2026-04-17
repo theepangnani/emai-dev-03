@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, selectinload
 
@@ -23,7 +23,6 @@ from app.schemas.asgf import (
     ASGFContextDataResponse,
     ASGFQuizResponse,
     ASGFQuizQuestion,
-    ASGFSlideRequest,
     ASGFSlideResponse,
     AssignmentOptionsResponse,
     AssignmentOption,
@@ -454,11 +453,11 @@ async def create_asgf_session(
 
 # --- POST /asgf/generate-slides (SSE stream) --------------------------------
 
-@router.post("/generate-slides")
+@router.get("/generate-slides")
 @limiter.limit("5/minute", key_func=get_user_id_or_ip)
 async def generate_slides_stream(
     request: Request,
-    body: ASGFSlideRequest,
+    session_id: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -476,7 +475,6 @@ async def generate_slides_stream(
     from app.models.learning_history import LearningHistory
 
     # Look up session from learning_history (#3435)
-    session_id = body.session_id
     history_row = (
         db.query(LearningHistory)
         .filter(LearningHistory.session_id == session_id)

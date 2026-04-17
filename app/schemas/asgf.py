@@ -187,12 +187,6 @@ class CreateSessionResponse(BaseModel):
 
 # --- Slide generation (from #3398) ---
 
-class ASGFSlideRequest(BaseModel):
-    """Request body for the slide generation SSE endpoint."""
-
-    session_id: str = Field(..., min_length=1)
-
-
 class ASGFSlideResponse(BaseModel):
     """A single generated slide."""
 
