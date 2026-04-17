@@ -443,6 +443,13 @@ export function ASGFPage() {
                       />
                     </svg>
                   </button>
+                  <button
+                    className="asgf-page__study-guide-link"
+                    onClick={() => navigate('/course-materials')}
+                    type="button"
+                  >
+                    Just give me a study guide instead
+                  </button>
                 </div>
               )}
             </div>
