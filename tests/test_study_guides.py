@@ -1086,10 +1086,7 @@ class TestSaveQAAsGuide:
     def _url(self, guide_id: int) -> str:
         return self.URL.format(guide_id=guide_id)
 
-    def test_happy_path(self, client, users, monkeypatch):
-        monkeypatch.setattr(
-            "app.api.routes.study.log_action", lambda *a, **kw: None
-        )
+    def test_happy_path(self, client, users):
         guide = users["parent_guide"]
         headers = _auth(client, users["parent"].email)
         resp = client.post(
@@ -1108,10 +1105,7 @@ class TestSaveQAAsGuide:
         assert data["user_id"] == users["parent"].id
         assert data["course_id"] == users["course"].id
 
-    def test_happy_path_default_title(self, client, users, monkeypatch):
-        monkeypatch.setattr(
-            "app.api.routes.study.log_action", lambda *a, **kw: None
-        )
+    def test_happy_path_default_title(self, client, users):
         guide = users["parent_guide"]
         headers = _auth(client, users["parent"].email)
         resp = client.post(
@@ -1166,10 +1160,7 @@ class TestSaveQAAsMaterial:
     def _url(self, guide_id: int) -> str:
         return self.URL.format(guide_id=guide_id)
 
-    def test_happy_path(self, client, users, monkeypatch):
-        monkeypatch.setattr(
-            "app.api.routes.study.log_action", lambda *a, **kw: None
-        )
+    def test_happy_path(self, client, users):
         guide = users["parent_guide"]
         headers = _auth(client, users["parent"].email)
         resp = client.post(
@@ -1184,10 +1175,7 @@ class TestSaveQAAsMaterial:
         assert data["content_type"] == "notes"
         assert "id" in data
 
-    def test_happy_path_default_title(self, client, users, monkeypatch):
-        monkeypatch.setattr(
-            "app.api.routes.study.log_action", lambda *a, **kw: None
-        )
+    def test_happy_path_default_title(self, client, users):
         guide = users["parent_guide"]
         headers = _auth(client, users["parent"].email)
         resp = client.post(
