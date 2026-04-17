@@ -150,10 +150,60 @@ export const asgfApi = {
     return response.data;
   },
 
-  /** Stream slide generation via SSE. Returns an EventSource-compatible URL. */
+  /** Stream slide generation via SSE using fetch (supports auth headers). */
+  async *generateSlides(
+    sessionId: string,
+    signal?: AbortSignal,
+  ): AsyncGenerator<{ event: string; data: string }> {
+    const baseUrl = api.defaults.baseURL || '';
+    const token = localStorage.getItem('token') || '';
+    const url = `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`SSE request failed: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No response body');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          let event = 'message';
+          let data = '';
+          for (const line of part.split('\n')) {
+            if (line.startsWith('event: ')) event = line.slice(7);
+            else if (line.startsWith('data: ')) data = line.slice(6);
+          }
+          yield { event, data };
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
+  /** @deprecated Use generateSlides() async generator instead. */
   generateSlidesUrl(sessionId: string): string {
     const baseUrl = api.defaults.baseURL || '';
-    return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}`;
+    const token = localStorage.getItem('token') || '';
+    return `${baseUrl}/api/asgf/generate-slides?session_id=${encodeURIComponent(sessionId)}&token=${encodeURIComponent(token)}`;
   },
 
   /** Fetch role-aware assignment options and course suggestion for a session. */

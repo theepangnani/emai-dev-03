@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_sse
 from app.core.logging_config import get_logger
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
@@ -393,6 +393,23 @@ async def create_asgf_session(
     """
     role = _get_user_role(current_user)
 
+    # --- Verify parent-child relationship (#3482) ---
+    if body.child_id and role == "parent":
+        verified_child = (
+            db.query(Student)
+            .join(parent_students, parent_students.c.student_id == Student.id)
+            .filter(
+                parent_students.c.parent_id == current_user.id,
+                Student.id == int(body.child_id),
+            )
+            .first()
+        )
+        if not verified_child:
+            raise HTTPException(
+                status_code=404,
+                detail="Child not found or not linked to your account",
+            )
+
     # --- Session cap enforcement (#3405) ---
     cap_student_id: int | None = None
     if body.child_id and role == "parent":
@@ -572,7 +589,7 @@ async def generate_slides_stream(
     request: Request,
     session_id: str = Query(..., min_length=1),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_sse),
 ):
     """Stream 7-slide mini-lesson content via SSE.
 
