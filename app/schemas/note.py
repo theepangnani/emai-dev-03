@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 
@@ -50,8 +50,8 @@ class NoteVersionResponse(BaseModel):
 
 
 class SaveAsMaterialRequest(BaseModel):
-    title: str
-    course_id: int
+    title: str = Field(min_length=1, max_length=255)
+    course_id: int = Field(gt=0)
 
 
 class SaveAsMaterialResponse(BaseModel):

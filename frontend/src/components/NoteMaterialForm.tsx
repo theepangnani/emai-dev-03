@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { notesApi, type NoteItem } from '../api/notes';
-import { coursesApi } from '../api/courses';
+import { coursesApi, courseContentsApi } from '../api/courses';
 
 interface NoteMaterialFormProps {
   note: NoteItem;
@@ -28,10 +28,10 @@ export function NoteMaterialForm({ note, courseContentId, onCreated, onCancel }:
     const load = async () => {
       try {
         // Get the course_id from the current course content
-        const content = await import('../api/courses').then(m => m.courseContentsApi.get(courseContentId));
+        const content = await courseContentsApi.get(courseContentId);
         const courseList = await coursesApi.list();
         if (cancelled) return;
-        setCourses(courseList.map((c: any) => ({ id: c.id, name: c.name })));
+        setCourses(courseList.map((c: { id: number; name: string }) => ({ id: c.id, name: c.name })));
         if (content?.course_id) {
           setCourseId(content.course_id);
         } else if (courseList.length > 0) {
@@ -57,8 +57,9 @@ export function NoteMaterialForm({ note, courseContentId, onCreated, onCancel }:
     try {
       await notesApi.saveAsMaterial(note.id, title.trim(), courseId as number);
       onCreated?.();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save as material');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setError(detail || 'Failed to save as material');
     } finally {
       setSaving(false);
     }

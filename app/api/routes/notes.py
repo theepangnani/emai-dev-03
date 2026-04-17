@@ -332,6 +332,10 @@ def save_as_material(
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
 
+    # Reject empty notes
+    if not note.content or not _strip_html(note.content).strip():
+        raise HTTPException(status_code=400, detail="Note has no content to save")
+
     # Verify user has access to the target course
     course = db.query(Course).filter(Course.id == data.course_id).first()
     if not course:
@@ -344,7 +348,6 @@ def save_as_material(
         has_access = True
     else:
         # Check if user (as student) is enrolled in the course
-        from app.models.student import Student
         student = db.query(Student).filter(Student.user_id == current_user.id).first()
         if student:
             enrolled = db.query(student_courses.c.student_id).filter(
@@ -353,6 +356,20 @@ def save_as_material(
             ).first()
             if enrolled:
                 has_access = True
+
+        # Check if user (as parent) has a child enrolled in the course
+        if not has_access and current_user.has_role(UserRole.PARENT):
+            child_user_ids = _get_linked_child_user_ids(db, current_user.id)
+            if child_user_ids:
+                child_students = db.query(Student.id).filter(Student.user_id.in_(child_user_ids)).all()
+                child_student_ids = [s[0] for s in child_students]
+                if child_student_ids:
+                    enrolled = db.query(student_courses.c.student_id).filter(
+                        student_courses.c.student_id.in_(child_student_ids),
+                        student_courses.c.course_id == data.course_id,
+                    ).first()
+                    if enrolled:
+                        has_access = True
 
     if not has_access:
         raise HTTPException(status_code=403, detail="You do not have access to this course")
