@@ -1138,6 +1138,45 @@
   color: var(--color-danger);
 }
 
+.cm-upload-status.success {
+  border-color: var(--color-success, #22c55e);
+  color: var(--color-ink);
+}
+
+.cm-upload-learn-btn {
+  margin-left: 8px;
+  padding: 4px 12px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.cm-upload-learn-btn:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.cm-upload-dismiss-btn {
+  margin-left: 4px;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cm-upload-dismiss-btn:hover {
+  color: var(--color-ink);
+}
+
 
 /* ── Regeneration prompt ──────────────────────── */
 .cm-regen-prompt {
