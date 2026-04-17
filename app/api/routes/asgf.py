@@ -162,7 +162,7 @@ async def get_asgf_usage(
     if not student_id:
         raise HTTPException(status_code=404, detail="No linked student found.")
 
-    cap_info = await check_session_cap(student_id, db)
+    cap_info = check_session_cap(student_id, db)
     return ASGFUsageResponse(**cap_info)
 
 
@@ -216,6 +216,10 @@ async def upload_asgf_documents(
 
         # Persist to uploads dir (reuse existing storage service)
         stored_name = await asyncio.to_thread(save_file, content, filename)
+        # NOTE: file_id is returned to the client but is NOT persisted to the
+        # database or linked to any session record.  This is a known limitation
+        # (#3481) — file-to-session linking will be added when the ingestion
+        # pipeline is wired to sessions.
         file_id = uuid4().hex
 
         # Extract text preview (best-effort — partial success per file)
@@ -412,7 +416,7 @@ async def create_asgf_session(
             cap_student_id = first_child[0]
 
     if cap_student_id:
-        cap_info = await check_session_cap(cap_student_id, db)
+        cap_info = check_session_cap(cap_student_id, db)
         if not cap_info["can_start"]:
             raise HTTPException(
                 status_code=429,
@@ -507,7 +511,7 @@ async def create_asgf_session(
     adaptive_context: dict | None = None
     if student_id:
         from app.services.asgf_learning_history_service import get_adaptive_context
-        adaptive_context = await get_adaptive_context(
+        adaptive_context = get_adaptive_context(
             student_id=student_id, topic=body.question, db=db,
         )
 
@@ -762,10 +766,27 @@ def _verify_session_ownership(
     # Admins can access all sessions
     if role == "admin":
         return
-    # Teachers can access sessions for students in their courses
-    # (v2 will add proper teacher scoping)
+    # Teachers can access sessions for students enrolled in their courses.
+    # SECURITY NOTE: This is a basic scope check — it verifies the teacher
+    # teaches at least one course the student is enrolled in, but does NOT
+    # verify the session topic matches that course.  Full per-course scoping
+    # is deferred to v2.
     if role == "teacher":
-        return
+        from app.models.teacher import Teacher
+
+        teacher = db.query(Teacher).filter(Teacher.user_id == current_user.id).first()
+        if teacher:
+            enrolled = (
+                db.query(student_courses.c.student_id)
+                .join(Course, Course.id == student_courses.c.course_id)
+                .filter(Course.teacher_id == teacher.id)
+                .all()
+            )
+            enrolled_ids = {sid for (sid,) in enrolled}
+            if history_row.student_id in enrolled_ids:
+                return
+        # Teacher does not teach any course this student is in
+        raise HTTPException(status_code=404, detail="Session not found")
 
     owner_student_ids: list[int] = []
     if role == "student":
@@ -1184,7 +1205,7 @@ async def get_review_topics(
     if student_id not in allowed_student_ids:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    topics = await get_spaced_repetition_topics(student_id=student_id, db=db)
+    topics = get_spaced_repetition_topics(student_id=student_id, db=db)
 
     return ReviewTopicsResponse(
         student_id=student_id,

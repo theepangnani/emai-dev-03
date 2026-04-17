@@ -50,7 +50,7 @@ def _compute_xp_trend(
     return "stable"
 
 
-async def get_asgf_digest_data(
+def get_asgf_digest_data(
     student_id: int,
     since: datetime,
     db: Session,

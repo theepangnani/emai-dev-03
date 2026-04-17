@@ -36,7 +36,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         assert result["session_count"] == 0
         assert result["top_subjects"] == []
@@ -59,7 +59,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.scalar.return_value = None
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         assert result["session_count"] == 3
         assert result["top_subjects"][0] == "Math"
@@ -79,7 +79,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.scalar.return_value = None
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         assert "decimals" in result["weak_topics"]
         assert "fractions" in result["weak_topics"]
@@ -98,7 +98,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.scalar.return_value = None
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         assert "algebra" in result["weak_topics"]
         assert "geometry" in result["weak_topics"]
@@ -116,7 +116,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.scalar.return_value = None
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         summary = result["session_summaries"][0]["summary"]
         assert len(summary) == 120
@@ -138,7 +138,7 @@ class TestGetAsgfDigestData:
         db.query.return_value.filter.return_value.scalar.return_value = None
 
         since = datetime.now(timezone.utc) - timedelta(days=7)
-        result = await get_asgf_digest_data(42, since, db)
+        result = get_asgf_digest_data(42, since, db)
 
         summary = result["session_summaries"][0]
         assert "date" in summary

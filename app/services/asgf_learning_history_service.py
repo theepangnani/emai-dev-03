@@ -19,7 +19,7 @@ EBBINGHAUS_INTERVALS = [1, 3, 7, 14, 30]
 WEAK_SCORE_THRESHOLD = 70
 
 
-async def get_spaced_repetition_topics(
+def get_spaced_repetition_topics(
     student_id: int, db: Session
 ) -> list[dict]:
     """Return topics due for spaced-repetition review.
@@ -43,12 +43,15 @@ async def get_spaced_repetition_topics(
         .all()
     )
 
-    # Group by subject+topic to find the latest session per topic
+    # Group by subject+topic to find the latest session and session count per topic
     topic_latest: dict[str, LearningHistory] = {}
+    topic_session_count: dict[str, int] = {}
     for row in rows:
         key = _topic_key(row)
-        if key and key not in topic_latest:
-            topic_latest[key] = row
+        if key:
+            topic_session_count[key] = topic_session_count.get(key, 0) + 1
+            if key not in topic_latest:
+                topic_latest[key] = row
 
     results: list[dict] = []
     for key, row in topic_latest.items():
@@ -61,7 +64,8 @@ async def get_spaced_repetition_topics(
             created = created.replace(tzinfo=timezone.utc)
 
         days_since = (now - created).days
-        due_interval = _due_review_interval(days_since)
+        session_count = topic_session_count.get(key, 1)
+        due_interval = _due_review_interval(days_since, session_count)
 
         if due_interval is not None:
             results.append({
@@ -84,7 +88,7 @@ async def get_spaced_repetition_topics(
     return results
 
 
-async def get_adaptive_context(
+def get_adaptive_context(
     student_id: int, topic: str, db: Session
 ) -> dict:
     """Return adaptive context for a repeat session on a topic.
@@ -161,7 +165,7 @@ async def get_adaptive_context(
     }
 
 
-async def update_learning_history_on_complete(
+def update_learning_history_on_complete(
     session_id: str, quiz_results: list[dict], db: Session
 ) -> None:
     """Update the learning_history record with quiz data after session completion.
@@ -233,16 +237,22 @@ def _extract_topic(row: LearningHistory) -> str:
     return row.subject or ""
 
 
-def _due_review_interval(days_since: int) -> int | None:
+def _due_review_interval(days_since: int, session_count: int = 1) -> int | None:
     """Return the Ebbinghaus interval the student is due for, or None.
 
-    Finds the largest interval <= days_since. If days_since hasn't reached
-    the first interval (1 day), returns None (not yet due).
+    Uses ``session_count`` (number of prior review sessions on this topic) to
+    determine which interval in the Ebbinghaus sequence applies next.  The
+    topic is due only when ``days_since`` (days since the last session) meets
+    or exceeds that interval.
+
+    Example: session_count=1 → next interval is EBBINGHAUS_INTERVALS[0] (1 day).
+    session_count=3 → next interval is EBBINGHAUS_INTERVALS[2] (7 days).
     """
-    matched: int | None = None
-    for interval in EBBINGHAUS_INTERVALS:
-        if days_since >= interval:
-            matched = interval
-        else:
-            break
-    return matched
+    # The index into EBBINGHAUS_INTERVALS is (session_count - 1), clamped to
+    # the last interval for students who have completed the full sequence.
+    idx = min(max(session_count - 1, 0), len(EBBINGHAUS_INTERVALS) - 1)
+    required_interval = EBBINGHAUS_INTERVALS[idx]
+
+    if days_since >= required_interval:
+        return required_interval
+    return None
