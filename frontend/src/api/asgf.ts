@@ -1,11 +1,18 @@
 import { api, AI_TIMEOUT } from './client';
 
+export interface IntentAlternative {
+  subject: string;
+  topic: string;
+  confidence: number;
+}
+
 export interface IntentClassifyResponse {
   subject: string;
   grade_level: string;
   topic: string;
   confidence: number;
   bloom_tier: string;
+  alternatives: IntentAlternative[];
 }
 
 export interface FileUploadResponse {
@@ -14,6 +21,7 @@ export interface FileUploadResponse {
   file_type: string;
   file_size_bytes: number;
   text_preview: string;
+  extraction_failed: boolean;
 }
 
 export interface MultiFileUploadResponse {
