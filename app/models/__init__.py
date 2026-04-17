@@ -25,6 +25,7 @@ from app.models.waitlist import Waitlist
 from app.models.ai_limit_request import AILimitRequest
 from app.models.note import Note
 from app.models.note_version import NoteVersion
+from app.models.note_image import NoteImage
 from app.models.data_export import DataExportRequest
 
 from app.models.ai_usage_history import AIUsageHistory
@@ -101,6 +102,7 @@ __all__ = [
     "AILimitRequest",
 "Note",
     "NoteVersion",
+    "NoteImage",
 "DataExportRequest",
     "AIUsageHistory",
     "SourceFile",
