@@ -51,6 +51,7 @@ from app.services.asgf_assignment_service import (
     get_role_options,
     resolve_student_id,
 )
+from app.models.learning_history import LearningHistory
 from app.services.asgf_ingestion_service import ASGFIngestionService
 from app.services.asgf_slide_service import ASGFSlideService
 from app.services.file_processor import FileProcessingError, process_file
@@ -392,7 +393,6 @@ async def create_asgf_session(
     session_id = uuid4().hex
 
     # --- Persist session to learning_history (#3436) ---
-    from app.models.learning_history import LearningHistory
 
     # Resolve student_id (required FK)
     student_id: int | None = None
@@ -473,7 +473,6 @@ async def generate_slides_stream(
       - ``event: done``   -- generation complete
       - ``event: error``  -- generation error
     """
-    from app.models.learning_history import LearningHistory
 
     # Look up session from learning_history (#3435)
     session_id = body.session_id
@@ -485,28 +484,7 @@ async def generate_slides_stream(
     if not history_row:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Auth check: verify session belongs to current user
-    role = current_user.role
-    if hasattr(role, "value"):
-        role = role.value
-
-    owner_user_ids: list[int] = []
-    if role == "student":
-        student_row = db.query(Student).filter(Student.user_id == current_user.id).first()
-        if student_row:
-            owner_user_ids.append(student_row.id)
-    elif role == "parent":
-        child_ids = [
-            sid
-            for (sid,) in db.query(Student.id)
-            .join(parent_students, parent_students.c.student_id == Student.id)
-            .filter(parent_students.c.parent_id == current_user.id)
-            .all()
-        ]
-        owner_user_ids.extend(child_ids)
-
-    if history_row.student_id not in owner_user_ids:
-        raise HTTPException(status_code=404, detail="Session not found")
+    _verify_session_ownership(history_row, current_user, db)
 
     learning_cycle_plan = history_row.slides_generated or {}
     context_package = history_row.documents_uploaded or {}
@@ -569,7 +547,6 @@ async def record_comprehension_signal(
     generated and returned.  The signal is stored in the session's
     learning history for future analytics.
     """
-    from app.models.learning_history import LearningHistory
 
     # --- Persist the signal in learning_history (best-effort) ---
     history_row = (
@@ -578,16 +555,24 @@ async def record_comprehension_signal(
         .first()
     )
 
+    if not history_row:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    _verify_session_ownership(history_row, current_user, db)
+
     if history_row:
-        # Append signal to the JSON slides_generated list
-        signals: list = history_row.slides_generated or []
-        signals.append(
-            {
-                "slide_number": body.slide_number,
-                "signal": body.signal,
-            }
-        )
-        history_row.slides_generated = signals
+        # Append signal to _comprehension_signals key within slides_generated
+        existing = history_row.slides_generated or {}
+        if isinstance(existing, dict):
+            signals = existing.get("_comprehension_signals", [])
+            signals.append(
+                {
+                    "slide_number": body.slide_number,
+                    "signal": body.signal,
+                }
+            )
+            existing["_comprehension_signals"] = signals
+            history_row.slides_generated = existing
         try:
             db.commit()
         except Exception:
@@ -697,7 +682,6 @@ async def generate_quiz(
     current_user: User = Depends(get_current_user),
 ):
     """Generate slide-anchored quiz questions for a completed ASGF session."""
-    from app.models.learning_history import LearningHistory
     from app.services.asgf_quiz_service import generate_asgf_quiz
 
     history_row = (
@@ -763,7 +747,6 @@ async def complete_session(
     current_user: User = Depends(get_current_user),
 ):
     """Complete an ASGF session and auto-save as Class Material."""
-    from app.models.learning_history import LearningHistory
     from app.services.asgf_save_service import auto_save_session
 
     history_row = (
@@ -809,7 +792,6 @@ async def get_assignment_options(
     current_user: User = Depends(get_current_user),
 ):
     """Return role-aware assignment options and auto-detected course for a session."""
-    from app.models.learning_history import LearningHistory
 
     history_row = (
         db.query(LearningHistory)
@@ -858,7 +840,6 @@ async def assign_session_material(
     current_user: User = Depends(get_current_user),
 ):
     """Execute the assignment choice for a session's material."""
-    from app.models.learning_history import LearningHistory
 
     history_row = (
         db.query(LearningHistory)
