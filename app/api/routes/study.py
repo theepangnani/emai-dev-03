@@ -3067,8 +3067,8 @@ async def save_qa_as_guide(
     db.commit()
     db.refresh(new_guide)
 
-    log_action(db, current_user.id, "study_guide_create", "study_guide", new_guide.id,
-               details=f"Saved Q&A response as sub-guide of #{guide_id}")
+    log_action(db, user_id=current_user.id, action="study_guide_create", resource_type="study_guide",
+               resource_id=new_guide.id, details={"parent_guide_id": guide_id, "source": "qa_response"})
 
     return StudyGuideResponse.model_validate(new_guide)
 
@@ -3104,8 +3104,8 @@ async def save_qa_as_material(
     db.commit()
     db.refresh(new_content)
 
-    log_action(db, current_user.id, "course_content_create", "course_content", new_content.id,
-               details=f"Saved Q&A response as course material from guide #{guide_id}")
+    log_action(db, user_id=current_user.id, action="course_content_create", resource_type="course_content",
+               resource_id=new_content.id, details={"source_guide_id": guide_id, "source": "qa_response"})
 
     return {
         "id": new_content.id,
