@@ -41,6 +41,7 @@ async def send_daily_digests():
                 else:
                     skipped += 1  # no content to report
             except Exception as e:
+                db.rollback()
                 logger.error(
                     "Daily digest failed for user %d | error=%s",
                     parent.id,
