@@ -216,6 +216,7 @@ def gmail_callback(
         existing.access_token = encrypt_token(tokens["access_token"])
         existing.refresh_token = encrypt_token(tokens["refresh_token"])
         existing.connected_at = datetime.now(timezone.utc)
+        existing.is_active = True
         db.commit()
         return GmailCallbackResponse(status="ok", gmail_address=gmail_address, integration_id=existing.id)
     else:
