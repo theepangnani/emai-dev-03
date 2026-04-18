@@ -599,8 +599,12 @@ def send_admin_message(
 
 # ── Feature Toggles ──────────────────────────────────────────────────
 
+ALLOWED_VARIANTS = {"off", "on_50", "on_for_all"}
+
+
 class FeatureToggleUpdate(BaseModel):
-    enabled: bool
+    enabled: bool | None = None
+    variant: str | None = None  # 'off' | 'on_50' | 'on_for_all' (#3601)
 
 
 @router.get("/features")
@@ -614,8 +618,8 @@ def get_feature_toggles(
     from app.models.feature_flag import FeatureFlag
 
     config_flags = [
-        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "updated_at": None},
-        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "updated_at": None},
+        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "variant": None, "updated_at": None},
+        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "variant": None, "updated_at": None},
     ]
     db_flags = db.query(FeatureFlag).order_by(FeatureFlag.id).all()
     return config_flags + [
@@ -624,6 +628,7 @@ def get_feature_toggles(
             "name": f.name,
             "description": f.description,
             "enabled": f.enabled,
+            "variant": getattr(f, "variant", None) or "off",
             "updated_at": f.updated_at.isoformat() if f.updated_at else None,
         }
         for f in db_flags
@@ -639,12 +644,30 @@ def update_feature_toggle(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    """Toggle a feature on or off. Changes persist in the database."""
+    """Toggle a feature on or off and/or update its A/B variant.
+
+    Accepts `enabled` (bool) and/or `variant` ('off'|'on_50'|'on_for_all').
+    At least one field must be provided. (#3601)
+    """
     from app.models.feature_flag import FeatureFlag
 
-    # Handle legacy config-based flags
+    if body.enabled is None and body.variant is None:
+        raise HTTPException(status_code=400, detail="Must provide 'enabled' and/or 'variant'")
+
+    if body.variant is not None and body.variant not in ALLOWED_VARIANTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid variant '{body.variant}'. Must be one of: {sorted(ALLOWED_VARIANTS)}",
+        )
+
+    # Handle legacy config-based flags (only support `enabled`, no variant)
     config_features = {"google_classroom": "google_classroom_enabled", "waitlist_enabled": "waitlist_enabled"}
     if feature_key in config_features:
+        if body.variant is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Config-based flag '{feature_key}' does not support variants",
+            )
         attr = config_features[feature_key]
         setattr(settings, attr, body.enabled)
         log_action(
@@ -656,26 +679,40 @@ def update_feature_toggle(
         )
         db.commit()
         logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
-        return {"feature": feature_key, "enabled": body.enabled}
+        return {"feature": feature_key, "enabled": body.enabled, "variant": None}
 
     # Handle DB-backed flags
     flag = db.query(FeatureFlag).filter(FeatureFlag.key == feature_key).first()
     if not flag:
         raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
 
-    flag.enabled = body.enabled
+    details_parts: list[str] = []
+    if body.enabled is not None:
+        flag.enabled = body.enabled
+        details_parts.append(f"{feature_key}={'enabled' if body.enabled else 'disabled'}")
+    if body.variant is not None:
+        flag.variant = body.variant
+        details_parts.append(f"variant={body.variant}")
+
     flag.updated_at = datetime.now(timezone.utc)
     log_action(
         db,
         user_id=current_user.id,
         action="update",
         resource_type="feature_toggle",
-        details=f"{feature_key}={'enabled' if body.enabled else 'disabled'}",
+        details="; ".join(details_parts),
     )
     db.commit()
 
-    logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
-    return {"feature": feature_key, "enabled": body.enabled}
+    logger.info(
+        f"Feature toggle '{feature_key}' updated by admin {current_user.id}: "
+        f"enabled={flag.enabled} variant={flag.variant}"
+    )
+    return {
+        "feature": feature_key,
+        "enabled": flag.enabled,
+        "variant": getattr(flag, "variant", None) or "off",
+    }
 
 
 # --- Storage limit admin endpoints (#1007) ---

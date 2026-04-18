@@ -2402,3 +2402,28 @@ def _run_migrations_inner(engine, settings, logger):
                     logger.info("Added 'parent_hint_note' column to ile_question_attempts (#3212)")
     except Exception as e:
         logger.debug("ILE parent_hint_note migration skipped: %s", e)
+
+    # --- Feature flags: variant column for A/B rollout (#3601) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "feature_flags" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("feature_flags")}
+                if "variant" not in existing_cols:
+                    _is_sqlite = "sqlite" in settings.database_url
+                    if _is_sqlite:
+                        try:
+                            conn.execute(text(
+                                "ALTER TABLE feature_flags ADD COLUMN variant TEXT NOT NULL DEFAULT 'off'"
+                            ))
+                        except Exception:
+                            conn.rollback()
+                    else:
+                        conn.execute(text(
+                            "ALTER TABLE feature_flags ADD COLUMN IF NOT EXISTS "
+                            "variant VARCHAR(20) NOT NULL DEFAULT 'off'"
+                        ))
+                    conn.commit()
+                    logger.info("Added 'variant' column to feature_flags (#3601)")
+    except Exception as e:
+        logger.debug("feature_flags variant migration skipped: %s", e)

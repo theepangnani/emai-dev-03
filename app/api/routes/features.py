@@ -24,16 +24,19 @@ def get_public_features(
     current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ):
-    """Return feature flags as {key: bool}.
+    """Return feature flags as {key: bool} plus a `_variants` map.
 
-    Config-based flags are always returned. DB-backed flags are
-    included only when the caller is authenticated.
+    The boolean top-level entries are kept for backwards compatibility
+    with existing `useFeatureToggles()` consumers. DB-backed flags also
+    have their A/B variant exposed under `_variants` (#3601):
+    `{ _variants: { flag_key: "off" | "on_50" | "on_for_all" } }`.
     """
     # Config-based flags (always available)
-    result: dict[str, bool] = {
+    result: dict = {
         "google_classroom": settings.google_classroom_enabled,
         "waitlist_enabled": settings.waitlist_enabled,
     }
+    variants: dict[str, str] = {}
 
     # DB-backed flags (require authentication)
     if current_user is not None:
@@ -42,5 +45,7 @@ def get_public_features(
         db_flags = db.query(FeatureFlag).all()
         for flag in db_flags:
             result[flag.key] = flag.enabled
+            variants[flag.key] = getattr(flag, "variant", None) or "off"
 
+    result["_variants"] = variants
     return result
