@@ -1,0 +1,37 @@
+{
+  "board": "DDSB",
+  "display_name": "Durham DSB",
+  "tools_named": ["Google Classroom", "School-Day", "Teams"],
+  "beats": [
+    {
+      "index": 1,
+      "timestamp": "3:15 PM",
+      "without": "Student misses a pickup-change notice posted to Google Classroom; parent learns at 3:45 PM via panicked text.",
+      "with": "7:00 AM digest flagged the change. Both parent and child saw it at breakfast."
+    },
+    {
+      "index": 2,
+      "timestamp": "Tuesday evening",
+      "without": "A School-Day app grade update drops overnight. Parent only finds it on Friday while clicking through the portal.",
+      "with": "School-Day delta surfaced in Tuesday's digest with a one-line 'what changed' summary."
+    },
+    {
+      "index": 3,
+      "timestamp": "Wednesday 8:00 AM",
+      "without": "Teacher posts a Google Classroom assignment due Friday. Student forgets, parent never sees it, assignment turns in late.",
+      "with": "Assignment appears in the student's study plan and the parent's morning brief with a due-date countdown."
+    },
+    {
+      "index": 4,
+      "timestamp": "Thursday lunchtime",
+      "without": "A Teams meeting with a Resource teacher is rescheduled. Parent shows up to the old slot.",
+      "with": "Teams reschedule caught by the digest the same morning; calendar updated, parent arrives on time."
+    },
+    {
+      "index": 5,
+      "timestamp": "Friday 6:00 PM",
+      "without": "Weekend field-trip permission form was buried in Google Classroom three days ago. It's due Monday and the parent just found out.",
+      "with": "Permission form flagged in Tuesday's digest with a 'respond by' date. Signed and returned by Wednesday."
+    }
+  ]
+}

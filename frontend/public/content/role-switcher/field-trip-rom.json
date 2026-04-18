@@ -1,0 +1,41 @@
+{
+  "event": "Franklin St. PS, Grade 8 ROM field trip, October 17",
+  "roles": {
+    "parent": {
+      "title": "Parent view",
+      "content_items": [
+        "Digest card: ROM field trip, Oct 17 — permission form due Oct 10.",
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
+        "Action needed: sign and return permission form.",
+        "Cost: $18 (paid via school cash online)."
+      ]
+    },
+    "student": {
+      "title": "Student view",
+      "content_items": [
+        "Digest card: ROM field trip, Oct 17 — bring a bagged lunch.",
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, meet in homeroom.",
+        "What to bring: lunch, water bottle, notebook, pencil.",
+        "Post-trip assignment: 1-page reflection due Oct 21."
+      ]
+    },
+    "teacher": {
+      "title": "Teacher view",
+      "content_items": [
+        "Roster: 28 students, 24 confirmed, 4 pending permission.",
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
+        "Chaperones: 3 confirmed parent volunteers.",
+        "Reminder: final headcount to office by Oct 14."
+      ]
+    },
+    "admin": {
+      "title": "Admin view",
+      "content_items": [
+        "Approval status: approved by principal Sept 28.",
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
+        "Bus booking: confirmed, 1 coach (50 seats).",
+        "Insurance & risk: field-trip form on file."
+      ]
+    }
+  }
+}
