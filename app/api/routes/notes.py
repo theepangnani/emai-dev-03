@@ -374,6 +374,16 @@ def save_as_material(
     if not has_access:
         raise HTTPException(status_code=403, detail="You do not have access to this course")
 
+    # Prevent duplicate materials from the same note content
+    existing_material = db.query(CourseContent).filter(
+        CourseContent.course_id == data.course_id,
+        CourseContent.created_by_user_id == current_user.id,
+        CourseContent.source_type == "note",
+        CourseContent.text_content == note.content,
+    ).first()
+    if existing_material:
+        raise HTTPException(status_code=409, detail="This note has already been saved as material in this course")
+
     content = CourseContent(
         course_id=data.course_id,
         title=data.title.strip(),
