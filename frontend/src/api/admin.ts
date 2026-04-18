@@ -1,11 +1,14 @@
 import { api } from './client';
 
 // Feature Flag Types
+export type FeatureVariantValue = 'off' | 'on_50' | 'on_for_all';
+
 export interface FeatureFlagItem {
   key: string;
   name: string;
   description: string | null;
   enabled: boolean;
+  variant: FeatureVariantValue | null;  // null for config-based flags (#3601)
   updated_at: string | null;
 }
 
@@ -133,7 +136,13 @@ export const adminApi = {
 
   updateFeatureToggle: async (key: string, enabled: boolean) => {
     const response = await api.patch(`/api/admin/features/${key}`, { enabled });
-    return response.data as { feature: string; enabled: boolean };
+    return response.data as { feature: string; enabled: boolean; variant: FeatureVariantValue | null };
+  },
+
+  // Update A/B variant for a DB-backed feature flag (#3601)
+  updateFeatureVariant: async (key: string, variant: FeatureVariantValue) => {
+    const response = await api.patch(`/api/admin/features/${key}`, { variant });
+    return response.data as { feature: string; enabled: boolean; variant: FeatureVariantValue | null };
   },
 
   // Storage limits (#1007)
