@@ -409,3 +409,35 @@ class TestEmailTemplate:
         )
         assert "<!DOCTYPE html>" in html
         assert "classbridge-logo.png" in html
+
+    def test_html_escapes_user_supplied_full_name(self, db_session):
+        """XSS guard: an HTML-tag full_name must be rendered as escaped text."""
+        from app.services.email_templates.demo_verification import (
+            build_demo_verification_email,
+        )
+
+        _, html = build_demo_verification_email(
+            full_name='<script>alert(1)</script>',
+            email="attacker@example.com",
+            magic_link_url="https://example.com/verify?token=abc",
+            fallback_code="000000",
+        )
+        # The literal tag must NOT appear; the escaped form must appear.
+        assert "<script>alert(1)</script>" not in html
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+    def test_html_escapes_magic_link_url(self, db_session):
+        """An attacker-ish URL with quotes must not break out of the href attribute."""
+        from app.services.email_templates.demo_verification import (
+            build_demo_verification_email,
+        )
+
+        _, html = build_demo_verification_email(
+            full_name="Jane",
+            email="jane@example.com",
+            magic_link_url='https://example.com/x"><script>bad()</script><a href="',
+            fallback_code="123456",
+        )
+        assert '<script>bad()</script>' not in html
+        # Escaped double-quote should appear in the href value.
+        assert "&quot;" in html or "&#x27;" in html or "&#34;" in html
