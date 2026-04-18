@@ -5,6 +5,17 @@
 - **Bugs fixed:** 410+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
+**Apr 18 — WhatsApp Production Integration (CB-PEDI-001):**
+- **Twilio setup:** Account created (classbridge), upgraded from trial, Canadian number +1 647-800-8533 purchased
+- **WhatsApp Business:** Registered with Meta (Class Bridge Inc.), domain classbridge.ca verified via meta tag, business verification submitted (in review)
+- **Template API:** `daily_digest` template approved on Meta + Twilio Content Template Builder (SID: HX5fb1ebf94a75f33d1f88a2955f5f7234)
+- **Backend:** `send_whatsapp_template()` with Content API support, truncation safety (content truncated before template wrapping), dual-mode (Content API when SID configured, body-text fallback otherwise)
+- **Deploy workflow:** TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (Secret Manager), TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_DIGEST_CONTENT_SID added to Cloud Run deploy
+- **Digest db.rollback():** Added missing rollback on per-parent digest failure to prevent cascading session poisoning (#3452)
+- **PRs merged:** #3494, #3578, #3579, #3587, #3589
+- **Issues created:** #3471 (sender identity enrichment), #3472 (noreply detection), #3585/#3586 (template fixes, closed), #3591 (OTP template), #3592 (E2E testing), #3593 (Meta verification follow-up)
+- **Remaining:** Meta business verification approval (~2 business days), OTP authentication template, E2E WhatsApp digest UI testing
+
 **Apr 14 — CB-ILE-001 M1-M4 Complete, Flash Tutor Fully Deployed:**
 - **CB-ILE-001 M1 (Learning Mode + Adaptive):** Component extraction (HintBubble, ExplanationBubble, XpPopBadge, StreakCounter), within-session adaptive difficulty engine, session persistence + resume within 24h (#3203-#3205, PRs #3243, #3246, #3248)
 - **CB-ILE-001 M2 (Topic Mastery + Cost Optimization):** Topic mastery tracking + weak areas, Surprise Me weighted selection, Fill-in-the-Blank with de-escalation, question bank pre-generation + hint caching, SM-2 spaced repetition + Memory Glow UI, 4 new ILE badges + student calibration (#3206-#3211, PRs #3245, #3250, #3252-#3255)
