@@ -77,12 +77,10 @@ class TestIsAutomatedSender:
     def test_only_at_sign_returns_false(self):
         assert is_automated_sender("@") is False
 
-    def test_only_local_part_returns_false(self):
-        # Missing domain but has @ — local part "noreply" alone would match pattern
-        # but we still require an "@" split; domain empty is OK, but we want to be
-        # strict: empty-after-split gives empty domain — is_automated should still
-        # match because the local-part matches.
-        assert is_automated_sender("noreply@") is True
+    def test_missing_domain_returns_false(self):
+        # "noreply@" has empty domain — not a valid address, reject even though
+        # the local-part pattern would otherwise match.
+        assert is_automated_sender("noreply@") is False
 
     def test_empty_local_part_returns_false(self):
         assert is_automated_sender("@domain.com") is False

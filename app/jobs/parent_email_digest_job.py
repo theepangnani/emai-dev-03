@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.config import settings as app_settings
 from app.db.database import SessionLocal
 from app.models.parent_gmail_integration import (
     ParentGmailIntegration,
@@ -158,7 +159,6 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     plain_text = plain_text[:max_content_len - 3] + "..."
 
                 # Use Content API template if content_sid configured (#3585)
-                from app.core.config import settings as app_settings
                 content_sid = app_settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
                     wa_success = send_whatsapp_template(

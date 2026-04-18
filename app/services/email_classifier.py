@@ -33,8 +33,9 @@ def is_automated_sender(sender_email: str) -> bool:
     if not sender_email or "@" not in sender_email:
         return False
 
-    local_part = sender_email.strip().split("@", 1)[0].lower()
-    if not local_part:
+    local_part, _, domain = sender_email.strip().partition("@")
+    local_part = local_part.lower()
+    if not local_part or not domain.strip():
         return False
 
     for pattern in _LOCAL_PART_PATTERNS:

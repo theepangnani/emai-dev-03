@@ -117,9 +117,9 @@ async def generate_parent_digest(
         )
         sender_email = email.get("sender_email") or ""
         if sender_email and sender_display != sender_email:
-            parts.append(f"From: {auto_tag}{sender_display} <{sender_email}>")
+            parts.append(f"From: {sender_display} <{sender_email}>")
         else:
-            parts.append(f"From: {auto_tag}{sender_display}")
+            parts.append(f"From: {sender_display}")
         if email.get("subject"):
             parts.append(f"Subject: {email['subject']}")
         received_at = email.get("received_at")
