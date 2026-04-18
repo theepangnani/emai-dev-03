@@ -166,7 +166,7 @@ jobs:
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
             $CLOUDSQL_FLAG \
-            --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca,CANONICAL_DOMAIN=www.classbridge.ca,USE_GCS=true,GCS_BUCKET_NAME=classbridge-files,APP_VERSION=${{ github.sha }},GITHUB_TOKEN=${{ secrets.BUG_REPORT_GITHUB_TOKEN }},FROM_EMAIL=noreply@classbridge.ca,TWILIO_WHATSAPP_FROM=+16478008533,TWILIO_WHATSAPP_DIGEST_CONTENT_SID=HX5fb1ebf94a75f33d1f88a2955f5f7234" \
+            --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca,CANONICAL_DOMAIN=www.classbridge.ca,USE_GCS=true,GCS_BUCKET_NAME=classbridge-files,APP_VERSION=${{ github.sha }},GITHUB_TOKEN=${{ secrets.BUG_REPORT_GITHUB_TOKEN }},FROM_EMAIL=noreply@classbridge.ca,TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }},TWILIO_WHATSAPP_DIGEST_CONTENT_SID=${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID }}" \
             --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest" \
             --memory 1Gi \
             --cpu 1 \

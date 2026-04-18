@@ -4,7 +4,8 @@ import { api } from './client';
 export interface MonitoredEmail {
   id: number;
   integration_id: number;
-  email_address: string;
+  email_address: string | null;
+  sender_name: string | null;
   label: string | null;
   created_at: string;
 }
@@ -112,7 +113,7 @@ export const sendDigestNow = (integrationId: number) =>
 export const listMonitoredEmails = (integrationId: number) =>
   api.get<MonitoredEmail[]>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`);
 
-export const addMonitoredEmail = (integrationId: number, data: { email_address: string; label?: string }) =>
+export const addMonitoredEmail = (integrationId: number, data: { email_address?: string; sender_name?: string; label?: string }) =>
   api.post<MonitoredEmail>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`, data);
 
 export const removeMonitoredEmail = (integrationId: number, emailId: number) =>

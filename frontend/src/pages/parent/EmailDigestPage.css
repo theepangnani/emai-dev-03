@@ -381,6 +381,15 @@
   white-space: nowrap;
 }
 
+.ed-monitored-name {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary, #6b7280);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ed-monitored-label {
   font-size: 0.75rem;
   color: var(--color-text-secondary, #6b7280);

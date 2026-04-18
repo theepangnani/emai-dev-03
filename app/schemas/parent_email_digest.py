@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Literal, Optional
 from zoneinfo import available_timezones
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +111,7 @@ class DigestDeliveryLogResponse(BaseModel):
     delivered_at: datetime
     channels_used: Optional[str] = None
     status: str
+    whatsapp_delivery_status: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -146,22 +147,39 @@ class WhatsAppOTPRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 class MonitoredEmailCreate(BaseModel):
-    email_address: str
+    email_address: Optional[str] = None
+    sender_name: Optional[str] = None
     label: Optional[str] = None
 
     @field_validator("email_address")
     @classmethod
-    def validate_email(cls, v: str) -> str:
+    def validate_email(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v.strip() == "":
+            return None
         v = v.strip().lower()
         if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", v):
             raise ValueError("Invalid email address")
         return v
 
+    @field_validator("sender_name")
+    @classmethod
+    def validate_sender_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v.strip() == "":
+            return None
+        return v.strip()
+
+    @model_validator(mode="after")
+    def at_least_one(self):
+        if not self.email_address and not self.sender_name:
+            raise ValueError("Either email_address or sender_name must be provided")
+        return self
+
 
 class MonitoredEmailResponse(BaseModel):
     id: int
     integration_id: int
-    email_address: str
+    email_address: Optional[str] = None
+    sender_name: Optional[str] = None
     label: Optional[str] = None
     created_at: datetime
 

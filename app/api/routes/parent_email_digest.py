@@ -386,33 +386,35 @@ def add_monitored_email(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ):
-    """Add an email address to monitor."""
+    """Add an email address or sender name to monitor."""
     integration = _get_owned_integration(db, integration_id, current_user.id)
 
-    # Check for duplicate
+    # Check for duplicate on the combined (email_address, sender_name) tuple
     existing = (
         db.query(ParentDigestMonitoredEmail)
         .filter(
             ParentDigestMonitoredEmail.integration_id == integration.id,
             ParentDigestMonitoredEmail.email_address == body.email_address,
+            ParentDigestMonitoredEmail.sender_name == body.sender_name,
         )
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Email address already monitored")
+        raise HTTPException(status_code=409, detail="Monitored sender already exists")
 
-    # Limit to 10 monitored addresses per integration
+    # Limit to 10 monitored entries per integration
     count = (
         db.query(ParentDigestMonitoredEmail)
         .filter(ParentDigestMonitoredEmail.integration_id == integration.id)
         .count()
     )
     if count >= 10:
-        raise HTTPException(status_code=400, detail="Maximum of 10 monitored email addresses per integration")
+        raise HTTPException(status_code=400, detail="Maximum of 10 monitored senders per integration")
 
     monitored = ParentDigestMonitoredEmail(
         integration_id=integration.id,
         email_address=body.email_address,
+        sender_name=body.sender_name,
         label=body.label,
     )
     db.add(monitored)
@@ -603,7 +605,8 @@ async def send_digest_now(
 
     from app.jobs.parent_email_digest_job import send_digest_for_integration
 
-    result = await send_digest_for_integration(db, integration, skip_dedup=True)
+    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = await send_digest_for_integration(db, integration, skip_dedup=True, since=since_24h)
     return result
 
 

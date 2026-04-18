@@ -2357,6 +2357,23 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("Monitored emails data migration skipped: %s", e)
 
+    # --- Add sender_name column to monitored_emails (#3652) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_digest_monitored_emails ADD COLUMN IF NOT EXISTS sender_name VARCHAR(100)"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Migration add sender_name failed: {e}")
+
+    # --- Drop NOT NULL on email_address so name-only entries work (#3652, PG only) ---
+    if "sqlite" not in settings.database_url:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE parent_digest_monitored_emails ALTER COLUMN email_address DROP NOT NULL"))
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration drop NOT NULL on email_address failed: {e}")
+
     # --- ILE Sessions: ai_cost_estimate and flagged_reason columns (#3216) ---
     try:
         with engine.connect() as conn:
@@ -2427,3 +2444,25 @@ def _run_migrations_inner(engine, settings, logger):
                     logger.info("Added 'variant' column to feature_flags (#3601)")
     except Exception as e:
         logger.debug("feature_flags variant migration skipped: %s", e)
+
+    # --- Digest: whatsapp_delivery_status column on digest_delivery_log (#3620) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "digest_delivery_log" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("digest_delivery_log")}
+                if "whatsapp_delivery_status" not in existing_cols:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE digest_delivery_log ADD COLUMN whatsapp_delivery_status VARCHAR(20)"
+                        ))
+                        conn.commit()
+                        logger.info("Added whatsapp_delivery_status column to digest_delivery_log (#3620)")
+                    except Exception as col_err:
+                        conn.rollback()
+                        logger.warning(
+                            "Failed to add whatsapp_delivery_status to digest_delivery_log (#3620): %s",
+                            col_err,
+                        )
+    except Exception as e:
+        logger.debug("whatsapp_delivery_status migration skipped (column likely exists): %s", e)

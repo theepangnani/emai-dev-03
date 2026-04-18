@@ -14,6 +14,13 @@ from app.services.google_classroom import get_gmail_service
 
 logger = logging.getLogger(__name__)
 
+# Parent Gmail OAuth consents to these 3 scopes only — must match gmail_oauth_service.GMAIL_OAUTH_SCOPES
+PARENT_GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
+
 
 async def fetch_child_emails(
     db: Session,
@@ -33,13 +40,23 @@ async def fetch_child_emails(
     - On token refresh failure: sets is_active=False
     - Deduplicates by gmail_message_id (source_id)
     """
-    # Build list of monitored emails — prefer new table, fall back to legacy field
-    monitored_addresses = [m.email_address for m in integration.monitored_emails]
-    if not monitored_addresses and integration.child_school_email:
-        monitored_addresses = [integration.child_school_email]
-    if not monitored_addresses:
+    # Build Gmail query parts from both email_address and sender_name.
+    # Prefer new monitored_emails table; fall back to legacy child_school_email.
+    monitored_entries = integration.monitored_emails or []
+    query_parts: list[str] = []
+    for m in monitored_entries:
+        if getattr(m, "email_address", None):
+            query_parts.append(f'from:"{m.email_address}"')
+        if getattr(m, "sender_name", None):
+            query_parts.append(f'from:"{m.sender_name}"')
+
+    # Backward compat: fall back to legacy child_school_email if nothing else configured
+    if not query_parts and integration.child_school_email:
+        query_parts.append(f'from:"{integration.child_school_email}"')
+
+    if not query_parts:
         logger.warning(
-            "Integration %d has no monitored email addresses configured",
+            "Integration %d has no monitored entries configured",
             integration.id,
         )
         return []
@@ -66,15 +83,14 @@ async def fetch_child_emails(
         logger.error("Integration %d has no access token", integration.id)
         return []
 
-    def _sync_fetch(at, rt, email_addresses, since_dt, max_res):
+    def _sync_fetch(at, rt, q_parts, since_dt, max_res):
         """Synchronous Gmail fetch — runs in thread pool."""
-        svc, creds = get_gmail_service(at, rt)
+        svc, creds = get_gmail_service(at, rt, scopes=PARENT_GMAIL_SCOPES)
         epoch_seconds = int(since_dt.timestamp())
-        if len(email_addresses) == 1:
-            query = f'from:"{email_addresses[0]}" in:inbox after:{epoch_seconds}'
+        if len(q_parts) == 1:
+            query = f'{q_parts[0]} in:inbox after:{epoch_seconds}'
         else:
-            from_parts = " OR ".join(f'from:"{addr}"' for addr in email_addresses)
-            query = f'({from_parts}) in:inbox after:{epoch_seconds}'
+            query = f'({" OR ".join(q_parts)}) in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
@@ -111,7 +127,7 @@ async def fetch_child_emails(
             _sync_fetch,
             access_token,
             refresh_token,
-            monitored_addresses,
+            query_parts,
             since,
             max_results,
         )
@@ -160,11 +176,11 @@ async def fetch_child_emails(
     db.commit()
 
     logger.info(
-        "Fetched %d emails for integration %d (parent %d, monitored: %s)",
+        "Fetched %d emails for integration %d (parent %d, query_parts: %s)",
         len(parsed),
         integration.id,
         integration.parent_id,
-        monitored_addresses,
+        query_parts,
     )
     return parsed
 
@@ -179,15 +195,24 @@ async def verify_forwarding(
     Checks for at least 1 email from child_school_email in the last 30 days.
     Returns: {verified: bool, email_count: int, latest_email_date: str|None}
     """
-    monitored_addresses = [m.email_address for m in integration.monitored_emails]
-    if not monitored_addresses and integration.child_school_email:
-        monitored_addresses = [integration.child_school_email]
-    if not monitored_addresses:
+    # Build Gmail query parts from both email_address and sender_name.
+    monitored_entries = integration.monitored_emails or []
+    query_parts: list[str] = []
+    for m in monitored_entries:
+        if getattr(m, "email_address", None):
+            query_parts.append(f'from:"{m.email_address}"')
+        if getattr(m, "sender_name", None):
+            query_parts.append(f'from:"{m.sender_name}"')
+
+    if not query_parts and integration.child_school_email:
+        query_parts.append(f'from:"{integration.child_school_email}"')
+
+    if not query_parts:
         return {
             "verified": False,
             "email_count": 0,
             "latest_email_date": None,
-            "message": "No monitored email addresses configured",
+            "message": "No monitored senders configured",
         }
 
     access_token = (
@@ -209,18 +234,17 @@ async def verify_forwarding(
             "message": "No access token",
         }
 
-    def _sync_verify(at, rt, email_addresses):
+    def _sync_verify(at, rt, q_parts):
         """Synchronous Gmail verify — runs in thread pool."""
-        svc, creds = get_gmail_service(at, rt)
+        svc, creds = get_gmail_service(at, rt, scopes=PARENT_GMAIL_SCOPES)
 
         # Check last 30 days
         since_dt = datetime.now(timezone.utc) - timedelta(days=30)
         epoch_seconds = int(since_dt.timestamp())
-        if len(email_addresses) == 1:
-            query = f'from:"{email_addresses[0]}" in:inbox after:{epoch_seconds}'
+        if len(q_parts) == 1:
+            query = f'{q_parts[0]} in:inbox after:{epoch_seconds}'
         else:
-            from_parts = " OR ".join(f'from:"{addr}"' for addr in email_addresses)
-            query = f'({from_parts}) in:inbox after:{epoch_seconds}'
+            query = f'({" OR ".join(q_parts)}) in:inbox after:{epoch_seconds}'
 
         results = (
             svc.users()
@@ -258,7 +282,7 @@ async def verify_forwarding(
             _sync_verify,
             access_token,
             refresh_token,
-            monitored_addresses,
+            query_parts,
         )
     except HttpError as e:
         return {

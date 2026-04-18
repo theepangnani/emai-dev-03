@@ -126,6 +126,53 @@ class TestParentGmailService:
     @patch("app.services.parent_gmail_service._parse_gmail_message")
     @patch("app.services.parent_gmail_service.get_gmail_service")
     @patch("app.services.parent_gmail_service.decrypt_token")
+    async def test_fetch_child_emails_from_name_filter(self, mock_decrypt, mock_get_gmail, mock_parse):
+        """Gmail query mixes email_address and sender_name entries (#3652)."""
+        from app.services.parent_gmail_service import fetch_child_emails
+
+        mock_decrypt.return_value = "decrypted_token"
+
+        mock_service = MagicMock()
+        mock_creds = MagicMock()
+        mock_creds.token = "decrypted_token"
+        mock_get_gmail.return_value = (mock_service, mock_creds)
+        mock_service.users().messages().list().execute.return_value = {"messages": []}
+
+        # Build integration with mixed monitored_emails entries
+        db = MagicMock()
+        integration = self._make_integration(child_school_email=None)
+
+        entry_email_only = MagicMock()
+        entry_email_only.email_address = "office@school.ca"
+        entry_email_only.sender_name = None
+
+        entry_name_only = MagicMock()
+        entry_name_only.email_address = None
+        entry_name_only.sender_name = "Mrs. Smith"
+
+        entry_both = MagicMock()
+        entry_both.email_address = "principal@school.ca"
+        entry_both.sender_name = "Principal Jones"
+
+        integration.monitored_emails = [entry_email_only, entry_name_only, entry_both]
+
+        await fetch_child_emails(db, integration)
+
+        # Inspect the q= kwarg passed to messages().list()
+        call_args = mock_service.users().messages().list.call_args_list[-1]
+        q = call_args.kwargs.get("q") or call_args.args
+        q_str = q if isinstance(q, str) else str(q)
+        # Should include ALL four from:"..." parts joined by OR
+        assert 'from:"office@school.ca"' in q_str
+        assert 'from:"Mrs. Smith"' in q_str
+        assert 'from:"principal@school.ca"' in q_str
+        assert 'from:"Principal Jones"' in q_str
+        assert " OR " in q_str
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_gmail_service._parse_gmail_message")
+    @patch("app.services.parent_gmail_service.get_gmail_service")
+    @patch("app.services.parent_gmail_service.decrypt_token")
     async def test_fetch_child_emails_deduplication(self, mock_decrypt, mock_get_gmail, mock_parse):
         """Duplicate message IDs are deduplicated."""
         from app.services.parent_gmail_service import fetch_child_emails
@@ -260,7 +307,12 @@ class TestParentDigestAIService:
         mock_client.messages.create.return_value = mock_message
         mock_get_client.return_value = mock_client
 
-        emails = [{"from": "teacher@school.ca", "subject": "Homework", "body": "Due Friday"}]
+        emails = [{
+            "sender_name": "Ms. Johnson",
+            "sender_email": "teacher@school.ca",
+            "subject": "Homework",
+            "body": "Due Friday",
+        }]
         result = await generate_parent_digest(emails, "Alex", "Sarah", "full")
 
         assert result == "<h3>Digest</h3>"
@@ -268,6 +320,8 @@ class TestParentDigestAIService:
         call_kwargs = mock_client.messages.create.call_args
         user_msg = call_kwargs[1]["messages"][0]["content"] if call_kwargs[1] else call_kwargs.kwargs["messages"][0]["content"]
         assert "FULL digest" in user_msg
+        # Sender name should appear in the prompt so the AI can attribute emails
+        assert "Ms. Johnson" in user_msg
         assert call_kwargs[1].get("max_tokens", call_kwargs.kwargs.get("max_tokens")) == 1200
 
     @pytest.mark.asyncio
@@ -284,7 +338,12 @@ class TestParentDigestAIService:
         mock_client.messages.create.return_value = mock_message
         mock_get_client.return_value = mock_client
 
-        emails = [{"from": "teacher@school.ca", "subject": "Test", "snippet": "Snippet"}]
+        emails = [{
+            "sender_name": "Ms. Johnson",
+            "sender_email": "teacher@school.ca",
+            "subject": "Test",
+            "snippet": "Snippet",
+        }]
         result = await generate_parent_digest(emails, "Alex", "Sarah", "brief")
 
         assert result == "Brief digest"
@@ -305,12 +364,63 @@ class TestParentDigestAIService:
         mock_client.messages.create.return_value = mock_message
         mock_get_client.return_value = mock_client
 
-        emails = [{"from": "admin@school.ca", "subject": "Forms due", "body": "Sign by Friday"}]
+        emails = [{
+            "sender_name": "School Admin",
+            "sender_email": "admin@school.ca",
+            "subject": "Forms due",
+            "body": "Sign by Friday",
+        }]
         result = await generate_parent_digest(emails, "Alex", "Sarah", "actions_only")
 
         assert result == "Action items"
         call_kwargs = mock_client.messages.create.call_args
         assert call_kwargs[1].get("max_tokens", call_kwargs.kwargs.get("max_tokens")) == 300
+
+    def test_resolve_sender_display_uses_name_when_present(self):
+        """When sender_name is set, it is returned verbatim."""
+        from app.services.parent_digest_ai_service import _resolve_sender_display
+
+        assert _resolve_sender_display("Ms. Johnson", "teacher@school.ca") == "Ms. Johnson"
+
+    def test_resolve_sender_display_falls_back_to_local_part(self):
+        """Empty sender_name falls back to the email local-part."""
+        from app.services.parent_digest_ai_service import _resolve_sender_display
+
+        assert _resolve_sender_display("", "grade3.teacher@school.ca") == "grade3.teacher"
+
+    def test_resolve_sender_display_unknown_when_no_data(self):
+        """Empty name AND no valid email returns 'Unknown sender'."""
+        from app.services.parent_digest_ai_service import _resolve_sender_display
+
+        assert _resolve_sender_display("", "") == "Unknown sender"
+        assert _resolve_sender_display("", "no-at-sign") == "Unknown sender"
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_digest_ai_service.get_anthropic_client")
+    async def test_generate_digest_uses_sender_local_part_when_name_empty(self, mock_get_client):
+        """Digest prompt uses email local-part when sender_name is empty."""
+        from app.services.parent_digest_ai_service import generate_parent_digest
+
+        mock_client = MagicMock()
+        mock_message = MagicMock()
+        mock_message.content = [MagicMock(text="Digest")]
+        mock_message.usage.input_tokens = 50
+        mock_message.usage.output_tokens = 20
+        mock_client.messages.create.return_value = mock_message
+        mock_get_client.return_value = mock_client
+
+        emails = [{
+            "sender_name": "",
+            "sender_email": "grade3.teacher@school.ca",
+            "subject": "Field trip",
+            "body": "Permission slip due Friday",
+        }]
+        await generate_parent_digest(emails, "Alex", "Sarah", "full")
+
+        call_kwargs = mock_client.messages.create.call_args
+        user_msg = call_kwargs[1]["messages"][0]["content"] if call_kwargs[1] else call_kwargs.kwargs["messages"][0]["content"]
+        # Local-part of email should be used as sender display
+        assert "grade3.teacher" in user_msg
 
     @pytest.mark.asyncio
     @patch("app.services.parent_digest_ai_service.get_anthropic_client")
@@ -322,7 +432,12 @@ class TestParentDigestAIService:
         mock_client.messages.create.side_effect = RuntimeError("API down")
         mock_get_client.return_value = mock_client
 
-        emails = [{"from": "t@school.ca", "subject": "X", "body": "Y"}]
+        emails = [{
+            "sender_name": "",
+            "sender_email": "t@school.ca",
+            "subject": "X",
+            "body": "Y",
+        }]
         with pytest.raises(RuntimeError, match="API down"):
             await generate_parent_digest(emails, "Alex", "Sarah")
 

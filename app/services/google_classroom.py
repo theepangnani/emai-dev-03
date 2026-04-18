@@ -158,12 +158,15 @@ def get_classroom_service(access_token: str, refresh_token: str | None = None):
     return build("classroom", "v1", credentials=credentials), credentials
 
 
-def get_gmail_service(access_token: str, refresh_token: str | None = None):
+def get_gmail_service(access_token: str, refresh_token: str | None = None, scopes: list[str] | None = None):
     """Build Gmail API service with auto-refresh.
 
-    Uses ALL_SCOPES since gmail.readonly is required for this service.
+    Args:
+        scopes: OAuth scopes matching what was originally granted. Defaults to ALL_SCOPES
+                for backward compatibility with teacher email monitoring. Callers using
+                parent-Gmail OAuth (3 scopes only) should pass PARENT_GMAIL_SCOPES.
     """
-    credentials = get_credentials(access_token, refresh_token, scopes=ALL_SCOPES)
+    credentials = get_credentials(access_token, refresh_token, scopes=scopes or ALL_SCOPES)
 
     if credentials.refresh_token:
         try:

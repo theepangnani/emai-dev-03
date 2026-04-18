@@ -61,8 +61,9 @@ class ParentDigestMonitoredEmail(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id", ondelete="CASCADE"), nullable=False, index=True)
-    email_address = Column(String(255), nullable=False)
+    email_address = Column(String(255), nullable=True)
     label = Column(String(100), nullable=True)
+    sender_name = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     integration = relationship("ParentGmailIntegration", back_populates="monitored_emails")
@@ -80,6 +81,7 @@ class DigestDeliveryLog(Base):
     delivered_at = Column(DateTime(timezone=True), server_default=func.now())
     channels_used = Column(String(50), nullable=True)
     status = Column(String(20), nullable=False, default="delivered")
+    whatsapp_delivery_status = Column(String(20), nullable=True)  # "sent", "failed", "skipped", or None if not attempted
 
     parent = relationship("User")
     integration = relationship("ParentGmailIntegration", back_populates="delivery_logs")
