@@ -158,7 +158,8 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     plain_text = plain_text[:max_content_len - 3] + "..."
 
                 # Use Content API template if content_sid configured (#3585)
-                content_sid = settings.twilio_whatsapp_digest_content_sid
+                from app.core.config import settings as app_settings
+                content_sid = app_settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
                     wa_success = send_whatsapp_template(
                         integration.whatsapp_phone,
