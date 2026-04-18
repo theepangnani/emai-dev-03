@@ -136,24 +136,38 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
             channels=notification_channels,
         )
 
-    # WhatsApp delivery (#2987)
+    # WhatsApp delivery (#2987, #3585, #3586)
     if "whatsapp" in channels:
         if integration.whatsapp_verified and integration.whatsapp_phone:
             try:
-                from app.services.whatsapp_service import send_whatsapp_message
+                from app.services.whatsapp_service import send_whatsapp_message, send_whatsapp_template
                 if settings.digest_format != "brief":
                     from app.services.parent_digest_ai_service import generate_parent_digest as gen_brief
                     whatsapp_content = await gen_brief(emails, child_name, parent_name, "brief")
                 else:
                     whatsapp_content = digest_content
                 plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
-                # Format to match approved WhatsApp template (daily_digest)
-                template_msg = (
-                    f"Hi {parent_name}, here's your child's daily school email summary:\n\n"
-                    f"{plain_text}\n\n"
-                    f"View full digest at https://www.classbridge.ca/email-digest"
-                )
-                send_whatsapp_message(integration.whatsapp_phone, template_msg)
+
+                # Truncate digest content BEFORE wrapping in template (#3586)
+                # Reserve space for header + footer so they're never cut off
+                header = f"Hi {parent_name}, here's your child's daily school email summary:\n\n"
+                footer = "\n\nView full digest at https://www.classbridge.ca/email-digest"
+                max_content_len = 1600 - len(header) - len(footer)
+                if len(plain_text) > max_content_len:
+                    plain_text = plain_text[:max_content_len - 3] + "..."
+
+                # Use Content API template if content_sid configured (#3585)
+                content_sid = settings.twilio_whatsapp_digest_content_sid
+                if content_sid:
+                    send_whatsapp_template(
+                        integration.whatsapp_phone,
+                        content_sid,
+                        {"1": parent_name, "2": plain_text},
+                    )
+                else:
+                    # Fallback: body-text matching (works in sandbox / session window)
+                    template_msg = f"{header}{plain_text}{footer}"
+                    send_whatsapp_message(integration.whatsapp_phone, template_msg)
             except Exception as e:
                 logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
 
