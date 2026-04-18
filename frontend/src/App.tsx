@@ -108,6 +108,7 @@ const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m)
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
 const ASGFPage = lazyRetry(() => import('./pages/ASGFPage').then((m) => ({ default: m.ASGFPage })));
+const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +141,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route path="/demo/verified" element={<DemoVerifiedPage />} />
               <Route path="/survey" element={<SurveyPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
