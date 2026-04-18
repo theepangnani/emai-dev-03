@@ -57,6 +57,35 @@ def send_whatsapp_message(to_phone: str, message: str) -> bool:
         return False
 
 
+def send_whatsapp_template(
+    to_phone: str, content_sid: str, content_variables: dict[str, str]
+) -> bool:
+    """Send a WhatsApp template message via Twilio Content API.
+
+    Uses content_sid + content_variables for proper template invocation
+    outside the 24-hour session window.
+    """
+    if not is_whatsapp_enabled():
+        logger.warning("WhatsApp not configured — skipping template to %s", _mask_phone(to_phone))
+        return False
+
+    try:
+        import json
+
+        client = TwilioClient(settings.twilio_account_sid, settings.twilio_auth_token)
+        msg = client.messages.create(
+            from_=f"whatsapp:{settings.twilio_whatsapp_from}",
+            to=f"whatsapp:{to_phone}",
+            content_sid=content_sid,
+            content_variables=json.dumps(content_variables),
+        )
+        logger.info("WhatsApp template sent to %s: SID %s", _mask_phone(to_phone), msg.sid)
+        return True
+    except Exception as e:
+        logger.error("WhatsApp template send failed to %s: %s", _mask_phone(to_phone), e)
+        return False
+
+
 def generate_otp() -> str:
     """Generate a 6-digit OTP code."""
     return f"{secrets.randbelow(1000000):06d}"
