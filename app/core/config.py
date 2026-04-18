@@ -131,6 +131,7 @@ class Settings(BaseSettings):
     twilio_account_sid: str = ""
     twilio_auth_token: str = ""
     twilio_whatsapp_from: str = ""  # e.g. +14155238886 (Twilio sandbox)
+    twilio_whatsapp_digest_content_sid: str = ""  # Twilio Content SID for daily_digest template
     twilio_sms_from: str = ""
 
     # Rate limiting storage (memory:// for dev, redis://host:port for prod)
