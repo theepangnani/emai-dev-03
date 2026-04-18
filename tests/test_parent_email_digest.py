@@ -805,3 +805,125 @@ class TestMonitoredEmailWrongUser:
             headers=headers2,
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# From-name filter (#3652)
+# ---------------------------------------------------------------------------
+
+
+class TestSenderNameFilter:
+    """#3652 — allow monitored senders to be filtered by From name."""
+
+    @pytest.fixture(autouse=True)
+    def _clear_monitored(self, db_session, setup):
+        """Each test starts from a clean monitored_emails slate."""
+        from app.models.parent_gmail_integration import ParentDigestMonitoredEmail
+        iid = setup["integration"].id
+        db_session.query(ParentDigestMonitoredEmail).filter(
+            ParentDigestMonitoredEmail.integration_id == iid,
+        ).delete()
+        db_session.commit()
+
+    def test_add_sender_name_only(self, client, setup):
+        """A sender-name-only entry is accepted (no email_address)."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"sender_name": "Mrs. Smith", "label": "Math Teacher"},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["sender_name"] == "Mrs. Smith"
+        assert data["email_address"] is None
+        assert data["label"] == "Math Teacher"
+
+    def test_add_email_only_backward_compat(self, client, setup):
+        """Email-only entry (no sender_name) still works — backward compat."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "legacy@school.ca"},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["email_address"] == "legacy@school.ca"
+        assert data["sender_name"] is None
+
+    def test_add_email_and_sender_name(self, client, setup):
+        """Adding both email and sender_name works."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={
+                "email_address": "principal@school.ca",
+                "sender_name": "Principal Jones",
+                "label": "Principal",
+            },
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["email_address"] == "principal@school.ca"
+        assert data["sender_name"] == "Principal Jones"
+
+    def test_reject_empty_entry(self, client, setup):
+        """Both email and sender_name empty is rejected."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"label": "empty only"},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    def test_reject_both_blank_strings(self, client, setup):
+        """Whitespace-only strings for both email and sender_name is rejected."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        resp = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"email_address": "  ", "sender_name": "  "},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    def test_duplicate_detection_on_email_and_name(self, client, setup):
+        """Duplicate with same email AND same sender_name returns 409."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        payload = {"email_address": "dup_combo@school.ca", "sender_name": "Dup Name"}
+        r1 = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json=payload,
+            headers=headers,
+        )
+        assert r1.status_code == 201
+        r2 = client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json=payload,
+            headers=headers,
+        )
+        assert r2.status_code == 409
+
+    def test_response_includes_sender_name_field(self, client, setup):
+        """List responses include the sender_name field."""
+        headers = _auth(client, PARENT_EMAIL)
+        iid = setup["integration"].id
+        client.post(
+            f"{PREFIX}/integrations/{iid}/monitored-emails",
+            json={"sender_name": "Name Only Sender"},
+            headers=headers,
+        )
+        resp = client.get(f"{PREFIX}/integrations/{iid}/monitored-emails", headers=headers)
+        assert resp.status_code == 200
+        assert any(
+            me.get("sender_name") == "Name Only Sender" and me.get("email_address") is None
+            for me in resp.json()
+        )

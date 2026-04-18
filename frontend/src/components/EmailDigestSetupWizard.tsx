@@ -56,8 +56,9 @@ export function EmailDigestSetupWizard({
   const oauthStateRef = useRef(oauthState);
 
   // Step 2: Child info
-  const [monitoredEmails, setMonitoredEmails] = useState<{ email: string; label: string }[]>([]);
+  const [monitoredEmails, setMonitoredEmails] = useState<{ email: string; name: string; label: string }[]>([]);
   const [newEmail, setNewEmail] = useState('');
+  const [newName, setNewName] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [childFirstName, setChildFirstName] = useState(childName ?? '');
 
@@ -82,6 +83,7 @@ export function EmailDigestSetupWizard({
     setOauthState('');
     setMonitoredEmails([]);
     setNewEmail('');
+    setNewName('');
     setNewLabel('');
     setChildFirstName(childName ?? '');
     setDeliveryTime('07:00');
@@ -102,11 +104,12 @@ export function EmailDigestSetupWizard({
           setIntegrationId(integration.id);
           if (integration.monitored_emails && integration.monitored_emails.length > 0) {
             setMonitoredEmails(integration.monitored_emails.map(me => ({
-              email: me.email_address,
+              email: me.email_address || '',
+              name: me.sender_name || '',
               label: me.label || '',
             })));
           } else if (integration.child_school_email) {
-            setMonitoredEmails([{ email: integration.child_school_email, label: '' }]);
+            setMonitoredEmails([{ email: integration.child_school_email, name: '', label: '' }]);
           }
           if (integration.child_first_name) {
             setChildFirstName(integration.child_first_name);
@@ -207,14 +210,16 @@ export function EmailDigestSetupWizard({
       if (integrationId) {
         setLoading(true);
         try {
+          const firstEmail = monitoredEmails.find(e => e.email)?.email;
           await updateIntegration(integrationId, {
-            child_school_email: monitoredEmails[0].email,
+            child_school_email: firstEmail,
             child_first_name: childFirstName.trim(),
           });
           for (const entry of monitoredEmails) {
             try {
               await addMonitoredEmail(integrationId, {
-                email_address: entry.email,
+                email_address: entry.email || undefined,
+                sender_name: entry.name || undefined,
                 label: entry.label || undefined,
               });
             } catch (err: unknown) {
@@ -344,20 +349,24 @@ export function EmailDigestSetupWizard({
               </p>
               {monitoredEmails.length > 0 && (
                 <div className="edw-monitored-list">
-                  {monitoredEmails.map((entry) => (
-                    <div key={entry.email} className="edw-monitored-item">
-                      <span className="edw-monitored-email">{entry.email}</span>
-                      {entry.label && <span className="edw-monitored-label">{entry.label}</span>}
-                      <button
-                        type="button"
-                        className="edw-monitored-remove"
-                        onClick={() => setMonitoredEmails(prev => prev.filter(e => e.email !== entry.email))}
-                        aria-label={`Remove ${entry.email}`}
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
+                  {monitoredEmails.map((entry, idx) => {
+                    const primary = entry.email || entry.name || `entry-${idx}`;
+                    return (
+                      <div key={`${entry.email}|${entry.name}|${idx}`} className="edw-monitored-item">
+                        {entry.email && <span className="edw-monitored-email">{entry.email}</span>}
+                        {entry.name && <span className="edw-monitored-name">{entry.name}</span>}
+                        {entry.label && <span className="edw-monitored-label">{entry.label}</span>}
+                        <button
+                          type="button"
+                          className="edw-monitored-remove"
+                          onClick={() => setMonitoredEmails(prev => prev.filter((_, i) => i !== idx))}
+                          aria-label={`Remove ${primary}`}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {monitoredEmails.length < 10 && (
@@ -373,6 +382,16 @@ export function EmailDigestSetupWizard({
                       autoFocus
                     />
                   </div>
+                  <div className="edw-field" style={{ flex: 2 }}>
+                    <label htmlFor="edw-new-name">Sender Name (optional)</label>
+                    <input
+                      id="edw-new-name"
+                      type="text"
+                      placeholder="e.g. Mrs. Smith"
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                    />
+                  </div>
                   <div className="edw-field" style={{ flex: 1 }}>
                     <label htmlFor="edw-new-label">Label (optional)</label>
                     <input
@@ -386,15 +405,24 @@ export function EmailDigestSetupWizard({
                   <button
                     type="button"
                     className="edw-btn-add"
-                    disabled={!newEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim())}
+                    disabled={
+                      (!newEmail.trim() && !newName.trim()) ||
+                      (!!newEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail.trim()))
+                    }
                     onClick={() => {
-                      const email = newEmail.trim().toLowerCase();
-                      if (monitoredEmails.some(e => e.email === email)) {
-                        setError('This email address is already in the list.');
+                      const email = newEmail.trim() ? newEmail.trim().toLowerCase() : '';
+                      const name = newName.trim();
+                      if (!email && !name) {
+                        setError('Please enter an email address or sender name.');
                         return;
                       }
-                      setMonitoredEmails(prev => [...prev, { email, label: newLabel.trim() }]);
+                      if (monitoredEmails.some(e => e.email === email && e.name === name)) {
+                        setError('This sender is already in the list.');
+                        return;
+                      }
+                      setMonitoredEmails(prev => [...prev, { email, name, label: newLabel.trim() }]);
                       setNewEmail('');
+                      setNewName('');
                       setNewLabel('');
                       setError('');
                     }}
@@ -492,9 +520,9 @@ export function EmailDigestSetupWizard({
                   <span className="edw-summary-value">{childFirstName}</span>
                 </div>
                 <div className="edw-summary-row">
-                  <span className="edw-summary-label">Monitored Emails</span>
+                  <span className="edw-summary-label">Monitored Senders</span>
                   <span className="edw-summary-value">
-                    {monitoredEmails.length} address{monitoredEmails.length !== 1 ? 'es' : ''}: {monitoredEmails.map(e => e.email).join(', ')}
+                    {monitoredEmails.length} sender{monitoredEmails.length !== 1 ? 's' : ''}: {monitoredEmails.map(e => e.email || e.name).join(', ')}
                   </span>
                 </div>
                 <div className="edw-summary-row">

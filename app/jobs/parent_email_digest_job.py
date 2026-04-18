@@ -22,7 +22,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
-async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False) -> dict:
+async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False, since: datetime | None = None) -> dict:
     now = datetime.now(timezone.utc)
 
     if not skip_dedup:
@@ -47,7 +47,7 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
     try:
         from app.services.parent_gmail_service import fetch_child_emails
 
-        emails = await fetch_child_emails(db, integration)
+        emails = await fetch_child_emails(db, integration, since=since)
     except Exception as e:
         error_msg = str(e).lower()
         if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:

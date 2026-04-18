@@ -66,6 +66,7 @@ export function EmailDigestPage() {
   });
 
   const [newMonEmail, setNewMonEmail] = useState('');
+  const [newMonName, setNewMonName] = useState('');
   const [newMonLabel, setNewMonLabel] = useState('');
 
   const { data: monitoredEmails = [] } = useQuery<MonitoredEmail[]>({
@@ -75,12 +76,13 @@ export function EmailDigestPage() {
   });
 
   const addMonitoredMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { email_address: string; label?: string } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { email_address?: string; sender_name?: string; label?: string } }) =>
       addMonitoredEmail(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-digest', 'monitored-emails'] });
       queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
       setNewMonEmail('');
+      setNewMonName('');
       setNewMonLabel('');
     },
   });
@@ -308,23 +310,27 @@ export function EmailDigestPage() {
               <h2 className="ed-section-title">Monitored Emails</h2>
               {monitoredEmails.length > 0 ? (
                 <div className="ed-monitored-list">
-                  {monitoredEmails.map((me) => (
-                    <div key={me.id} className="ed-monitored-item">
-                      <span className="ed-monitored-email">{me.email_address}</span>
-                      {me.label && <span className="ed-monitored-label">{me.label}</span>}
-                      <button
-                        className="ed-monitored-remove"
-                        onClick={() => removeMonitoredMutation.mutate({ integrationId: activeIntegration.id, emailId: me.id })}
-                        disabled={removeMonitoredMutation.isPending}
-                        aria-label={`Remove ${me.email_address}`}
-                      >
-                        &times;
-                      </button>
-                    </div>
-                  ))}
+                  {monitoredEmails.map((me) => {
+                    const primary = me.email_address || me.sender_name || '';
+                    return (
+                      <div key={me.id} className="ed-monitored-item">
+                        {me.email_address && <span className="ed-monitored-email">{me.email_address}</span>}
+                        {me.sender_name && <span className="ed-monitored-name">{me.sender_name}</span>}
+                        {me.label && <span className="ed-monitored-label">{me.label}</span>}
+                        <button
+                          className="ed-monitored-remove"
+                          onClick={() => removeMonitoredMutation.mutate({ integrationId: activeIntegration.id, emailId: me.id })}
+                          disabled={removeMonitoredMutation.isPending}
+                          aria-label={`Remove ${primary}`}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="ed-empty-history">No monitored email addresses configured.</p>
+                <p className="ed-empty-history">No monitored senders configured.</p>
               )}
               {monitoredEmails.length < 10 && (
                 <div className="ed-add-email-row">
@@ -338,17 +344,32 @@ export function EmailDigestPage() {
                   <input
                     type="text"
                     className="ed-input"
+                    placeholder="Sender Name (optional), e.g. Mrs. Smith"
+                    value={newMonName}
+                    onChange={(e) => setNewMonName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    className="ed-input"
                     placeholder="Label (optional)"
                     value={newMonLabel}
                     onChange={(e) => setNewMonLabel(e.target.value)}
                   />
                   <button
                     className="ed-primary-btn"
-                    disabled={!newMonEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newMonEmail.trim()) || addMonitoredMutation.isPending}
+                    disabled={
+                      addMonitoredMutation.isPending ||
+                      (!newMonEmail.trim() && !newMonName.trim()) ||
+                      (!!newMonEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newMonEmail.trim()))
+                    }
                     onClick={() =>
                       addMonitoredMutation.mutate({
                         id: activeIntegration.id,
-                        data: { email_address: newMonEmail.trim().toLowerCase(), label: newMonLabel.trim() || undefined },
+                        data: {
+                          email_address: newMonEmail.trim() ? newMonEmail.trim().toLowerCase() : undefined,
+                          sender_name: newMonName.trim() || undefined,
+                          label: newMonLabel.trim() || undefined,
+                        },
                       })
                     }
                   >

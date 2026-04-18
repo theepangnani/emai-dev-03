@@ -126,6 +126,53 @@ class TestParentGmailService:
     @patch("app.services.parent_gmail_service._parse_gmail_message")
     @patch("app.services.parent_gmail_service.get_gmail_service")
     @patch("app.services.parent_gmail_service.decrypt_token")
+    async def test_fetch_child_emails_from_name_filter(self, mock_decrypt, mock_get_gmail, mock_parse):
+        """Gmail query mixes email_address and sender_name entries (#3652)."""
+        from app.services.parent_gmail_service import fetch_child_emails
+
+        mock_decrypt.return_value = "decrypted_token"
+
+        mock_service = MagicMock()
+        mock_creds = MagicMock()
+        mock_creds.token = "decrypted_token"
+        mock_get_gmail.return_value = (mock_service, mock_creds)
+        mock_service.users().messages().list().execute.return_value = {"messages": []}
+
+        # Build integration with mixed monitored_emails entries
+        db = MagicMock()
+        integration = self._make_integration(child_school_email=None)
+
+        entry_email_only = MagicMock()
+        entry_email_only.email_address = "office@school.ca"
+        entry_email_only.sender_name = None
+
+        entry_name_only = MagicMock()
+        entry_name_only.email_address = None
+        entry_name_only.sender_name = "Mrs. Smith"
+
+        entry_both = MagicMock()
+        entry_both.email_address = "principal@school.ca"
+        entry_both.sender_name = "Principal Jones"
+
+        integration.monitored_emails = [entry_email_only, entry_name_only, entry_both]
+
+        await fetch_child_emails(db, integration)
+
+        # Inspect the q= kwarg passed to messages().list()
+        call_args = mock_service.users().messages().list.call_args_list[-1]
+        q = call_args.kwargs.get("q") or call_args.args
+        q_str = q if isinstance(q, str) else str(q)
+        # Should include ALL four from:"..." parts joined by OR
+        assert 'from:"office@school.ca"' in q_str
+        assert 'from:"Mrs. Smith"' in q_str
+        assert 'from:"principal@school.ca"' in q_str
+        assert 'from:"Principal Jones"' in q_str
+        assert " OR " in q_str
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_gmail_service._parse_gmail_message")
+    @patch("app.services.parent_gmail_service.get_gmail_service")
+    @patch("app.services.parent_gmail_service.decrypt_token")
     async def test_fetch_child_emails_deduplication(self, mock_decrypt, mock_get_gmail, mock_parse):
         """Duplicate message IDs are deduplicated."""
         from app.services.parent_gmail_service import fetch_child_emails
