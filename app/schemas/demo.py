@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 RoleLiteral = Literal["parent", "student", "teacher", "other"]
 AdminStatusLiteral = Literal["pending", "approved", "rejected", "blocklisted"]
+DemoType = Literal["ask", "study_guide", "flash_tutor"]
 
 
 class DemoSessionCreate(BaseModel):
@@ -37,26 +38,29 @@ class DemoSessionResponse(BaseModel):
 
 
 class DemoGenerateRequest(BaseModel):
-    """Request body for generating demo content during a session."""
+    """Request body for POST /api/v1/demo/generate (PRD §11.6).
 
-    demo_session_id: str
-    prompt: Optional[str] = None
-    subject: Optional[str] = None
-    grade_level: Optional[str] = None
-    input_type: Optional[str] = None  # e.g. 'text', 'image', 'pdf'
-    metadata: Optional[dict[str, Any]] = None
+    The session is identified by the session JWT cookie/header, not by
+    a body field.
+    """
+
+    demo_type: DemoType
+    # Max 500 user-supplied words per generation (FR-052). Using a
+    # character cap of 500 * 8 ≈ 4000 chars as a permissive upper bound;
+    # word-level truncation is enforced in the service layer.
+    source_text: Optional[str] = Field(None, max_length=4000)
+    question: Optional[str] = Field(None, max_length=500)
 
 
 class DemoGenerateEvent(BaseModel):
-    """One entry stored inside `generations_json` for a demo session."""
+    """One entry stored inside `generations_json` for a demo session (PRD §11.5)."""
 
-    ts: datetime
-    kind: str  # e.g. 'quiz', 'summary', 'study_guide'
-    subject: Optional[str] = None
-    grade_level: Optional[str] = None
-    prompt_excerpt: Optional[str] = None
-    output_ref: Optional[str] = None
-    meta: Optional[dict[str, Any]] = None
+    demo_type: DemoType
+    latency_ms: int
+    input_tokens: int
+    output_tokens: int
+    cost_cents: int
+    created_at: datetime
 
 
 class AdminDemoSessionRow(BaseModel):

@@ -30,7 +30,7 @@ else:
         return Column(
             String(36),
             primary_key=True,
-            default=lambda: uuid.uuid4().hex,
+            default=lambda: str(uuid.uuid4()),
         )
 
 
@@ -45,7 +45,10 @@ class DemoSession(Base):
         nullable=False,
         server_default=func.now(),
     )
-    email_hash = Column(String(64), nullable=False, index=True)
+    # Case-insensitivity is enforced at the DB layer (CITEXT on PG,
+    # COLLATE NOCASE on SQLite) — Python-side `==` comparisons on the
+    # `email` column still need a lowered hash or explicit ilike.
+    email_hash = Column(String(64), nullable=False)
     email = Column(Text, nullable=False)
     full_name = Column(Text, nullable=True)
     # role: 'parent' | 'student' | 'teacher' | 'other'

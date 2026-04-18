@@ -216,6 +216,12 @@ try:
                 _conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
             except Exception as _ext_err:
                 logger.warning("pgcrypto extension note: %s", _ext_err)
+            try:
+                # Required for CITEXT column below; citext is not installed
+                # by default on all PG distributions.
+                _conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+            except Exception as _ext_err:
+                logger.warning("citext extension note: %s", _ext_err)
             _conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS demo_sessions (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
