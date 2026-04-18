@@ -124,25 +124,51 @@ export function TuesdayMirror() {
         <button
           type="button"
           role="tab"
+          id="tm-tab-without"
           aria-selected={mobileTab === 'without'}
+          aria-controls="tm-panel-without"
+          tabIndex={mobileTab === 'without' ? 0 : -1}
           className={`tm-tab ${mobileTab === 'without' ? 'tm-tab-active' : ''}`}
           onClick={() => setMobileTab('without')}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setMobileTab('with');
+              document.getElementById('tm-tab-with')?.focus();
+            }
+          }}
         >
           Without ClassBridge
         </button>
         <button
           type="button"
           role="tab"
+          id="tm-tab-with"
           aria-selected={mobileTab === 'with'}
+          aria-controls="tm-panel-with"
+          tabIndex={mobileTab === 'with' ? 0 : -1}
           className={`tm-tab ${mobileTab === 'with' ? 'tm-tab-active' : ''}`}
           onClick={() => setMobileTab('with')}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+              e.preventDefault();
+              setMobileTab('without');
+              document.getElementById('tm-tab-without')?.focus();
+            }
+          }}
         >
           With ClassBridge
         </button>
       </div>
 
       <div className={`tm-grid tm-mobile-${mobileTab}`}>
-        <div className="tm-column tm-column-without" aria-label="A Tuesday without ClassBridge">
+        <div
+          id="tm-panel-without"
+          className="tm-column tm-column-without"
+          role="tabpanel"
+          aria-labelledby="tm-tab-without"
+          tabIndex={0}
+        >
           <h3 className="tm-column-title">A Tuesday without ClassBridge</h3>
           <ol className="tm-beats" aria-live="polite">
             {beats.map((beat, i) => (
@@ -159,7 +185,13 @@ export function TuesdayMirror() {
           </ol>
         </div>
 
-        <div className="tm-column tm-column-with" aria-label="A Tuesday with ClassBridge">
+        <div
+          id="tm-panel-with"
+          className="tm-column tm-column-with"
+          role="tabpanel"
+          aria-labelledby="tm-tab-with"
+          tabIndex={0}
+        >
           <h3 className="tm-column-title">A Tuesday with ClassBridge</h3>
           <ol className="tm-beats" aria-live="polite">
             {beats.map((beat, i) => (
