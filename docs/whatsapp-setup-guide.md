@@ -295,14 +295,14 @@ Templates must also exist in Twilio's Content Template Builder:
 
 ### Environment Variables
 
-Set via `gcloud run services update` or in the deploy workflow:
+Set via `gcloud run services update` or in the deploy workflow. Values marked "GitHub Actions secret" are injected by the deploy workflow from repo-level secrets — they are NOT hardcoded in the YAML.
 
-| Variable | Type | Value |
-|----------|------|-------|
-| `TWILIO_WHATSAPP_FROM` | env var | `+16478008533` |
-| `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` | env var | `HX5fb1ebf94a75f33d1f88a2955f5f7234` |
-| `TWILIO_ACCOUNT_SID` | secret | `ACbf7497fc27cd1d588cb30a6aba30d748` |
-| `TWILIO_AUTH_TOKEN` | secret | (stored in GCP Secret Manager) |
+| Variable | Type | Source | Value |
+|----------|------|--------|-------|
+| `TWILIO_WHATSAPP_FROM` | env var | GitHub Actions secret | `+16478008533` |
+| `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` | env var | GitHub Actions secret | `HX5fb1ebf94a75f33d1f88a2955f5f7234` |
+| `TWILIO_ACCOUNT_SID` | secret | GCP Secret Manager | `ACbf7497fc27cd1d588cb30a6aba30d748` |
+| `TWILIO_AUTH_TOKEN` | secret | GCP Secret Manager | (stored in GCP Secret Manager) |
 
 ### Setting Secrets
 
@@ -328,14 +328,35 @@ gcloud run services update classbridge \
 
 ## Deploy Workflow
 
-The deploy workflow (`.github/workflows/deploy.yml`) must include all Twilio variables:
+The deploy workflow (`.github/workflows/deploy.yml`) must include all Twilio variables. Twilio env var values are injected from GitHub Actions secrets rather than hardcoded in the YAML, which makes rotation easier and keeps production config out of the repo.
 
 ```yaml
---set-env-vars "...,TWILIO_WHATSAPP_FROM=+16478008533,TWILIO_WHATSAPP_DIGEST_CONTENT_SID=HX5fb1ebf94a75f33d1f88a2955f5f7234" \
+--set-env-vars "...,TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }},TWILIO_WHATSAPP_DIGEST_CONTENT_SID=${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID }}" \
 --set-secrets "...,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest" \
 ```
 
 If a new env var or secret is added manually to Cloud Run but NOT to the deploy workflow, it will be wiped on the next deploy.
+
+### Required GitHub Actions Secrets (Twilio)
+
+The following repo-level GitHub Actions secrets MUST exist before the deploy workflow runs. If they are missing, the `gcloud run deploy` step will inject empty values for `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_DIGEST_CONTENT_SID`, which will break WhatsApp delivery in production.
+
+> WARNING: Create these secrets BEFORE merging any PR that references them, otherwise the next deploy will wipe the existing Cloud Run env vars and WhatsApp digests will stop working.
+
+Run these commands once (repo admin only) to set them:
+
+```bash
+gh secret set TWILIO_WHATSAPP_FROM --body "+16478008533"
+gh secret set TWILIO_WHATSAPP_DIGEST_CONTENT_SID --body "HX5fb1ebf94a75f33d1f88a2955f5f7234"
+```
+
+Verify they exist:
+
+```bash
+gh secret list | grep TWILIO_WHATSAPP
+```
+
+To rotate a value (e.g., new Content SID after template update), re-run `gh secret set` with the new value and trigger a deploy — no code change needed.
 
 ---
 

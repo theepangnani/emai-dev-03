@@ -5,16 +5,28 @@
 - **Bugs fixed:** 410+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
-**Apr 18 — WhatsApp Production Integration (CB-PEDI-001):**
+**Apr 18 — WhatsApp Production Integration + Digest Quality Improvements (CB-PEDI-001):**
+
+*Production WhatsApp:*
 - **Twilio setup:** Account created (classbridge), upgraded from trial, Canadian number +1 647-800-8533 purchased
 - **WhatsApp Business:** Registered with Meta (Class Bridge Inc.), domain classbridge.ca verified via meta tag, business verification submitted (in review)
 - **Template API:** `daily_digest` template approved on Meta + Twilio Content Template Builder (SID: HX5fb1ebf94a75f33d1f88a2955f5f7234)
 - **Backend:** `send_whatsapp_template()` with Content API support, truncation safety (content truncated before template wrapping), dual-mode (Content API when SID configured, body-text fallback otherwise)
-- **Deploy workflow:** TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (Secret Manager), TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_DIGEST_CONTENT_SID added to Cloud Run deploy
+- **Deploy workflow:** TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (Secret Manager), TWILIO_WHATSAPP_FROM, TWILIO_WHATSAPP_DIGEST_CONTENT_SID (both now GitHub Actions secrets via #3619)
 - **Digest db.rollback():** Added missing rollback on per-parent digest failure to prevent cascading session poisoning (#3452)
-- **PRs merged:** #3494, #3578, #3579, #3587, #3589
-- **Issues created:** #3471 (sender identity enrichment), #3472 (noreply detection), #3585/#3586 (template fixes, closed), #3591 (OTP template), #3592 (E2E testing), #3593 (Meta verification follow-up)
-- **Remaining:** Meta business verification approval (~2 business days), OTP authentication template, E2E WhatsApp digest UI testing
+
+*Digest Quality (PR #3626 — 4 issues bundled via 4 parallel worktree streams, 2× /pr-review):*
+- **#3471 Sender identity:** Fixed Gmail parser / AI service data mismatch (parser emits sender_name/sender_email/received_at, AI consumer now reads those keys instead of non-existent from/date). Added `_resolve_sender_display()` with fallback to email local-part (e.g., `grade3.teacher` from `grade3.teacher@school.ca`). AI prompt now attributes emails to specific senders.
+- **#3472 Noreply detection:** New `email_classifier.py` with `is_automated_sender()` regex matcher covering noreply/do-not-reply/notifications/alerts/mailer-daemon/postmaster/system/automated/bounces patterns. Parser now tags emails with `is_automated` flag. AI prompt prefixes `[AUTO]` so automated emails are grouped under "Automated Notifications" section. 43 new unit tests.
+- **#3619 GitHub secrets:** TWILIO_WHATSAPP_FROM and TWILIO_WHATSAPP_DIGEST_CONTENT_SID moved from hardcoded YAML to GitHub Actions secrets for easier rotation.
+- **#3620 Delivery status:** New `whatsapp_delivery_status` column (String(20), nullable) on DigestDeliveryLog — tracks "sent"/"failed"/"skipped"/NULL based on try/except AND return value of send_whatsapp_* functions. Startup migration in `app/db/migrations.py`. No more silent WhatsApp failures logged as "delivered".
+- **Bonus:** Fixed pre-existing settings-variable-shadowing bug in parent_email_digest_job.py (line 161 was reading twilio_whatsapp_digest_content_sid off the shadowed ParentDigestSettings instead of app config).
+
+- **PRs merged:** #3494, #3578, #3579, #3587, #3589, #3626 (integration PR bundling 4 fix streams)
+- **Issues closed:** #3471, #3472, #3585, #3586, #3619, #3620
+- **Issues remaining open:** #3591 (OTP template — blocked on Meta verification), #3592 (E2E UI testing), #3593 (Meta verification follow-up)
+- **Tests:** 161 passing on integration branch (43 new in test_email_classifier)
+- **Parallel agents used:** 4 worktree agents for fix streams + 2 /pr-review rounds
 
 **Apr 14 — CB-ILE-001 M1-M4 Complete, Flash Tutor Fully Deployed:**
 - **CB-ILE-001 M1 (Learning Mode + Adaptive):** Component extraction (HintBubble, ExplanationBubble, XpPopBadge, StreakCounter), within-session adaptive difficulty engine, session persistence + resume within 24h (#3203-#3205, PRs #3243, #3246, #3248)

@@ -80,6 +80,7 @@ class DigestDeliveryLog(Base):
     delivered_at = Column(DateTime(timezone=True), server_default=func.now())
     channels_used = Column(String(50), nullable=True)
     status = Column(String(20), nullable=False, default="delivered")
+    whatsapp_delivery_status = Column(String(20), nullable=True)  # "sent", "failed", "skipped", or None if not attempted
 
     parent = relationship("User")
     integration = relationship("ParentGmailIntegration", back_populates="delivery_logs")
