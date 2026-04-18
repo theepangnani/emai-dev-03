@@ -390,6 +390,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       container.style.padding = '40px';
       container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
       container.style.color = '#1a1a2e';
+      container.style.backgroundColor = '#ffffff';
       container.style.lineHeight = '1.6';
       container.innerHTML = `
         <h1 style="font-size:1.4rem;border-bottom:2px solid #4a90d9;padding-bottom:0.4rem">${title} &mdash; Notes</h1>
@@ -452,7 +453,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   };
 
   const handleExportMarkdown = () => {
+    if (exporting) return;
     setShowExportDropdown(false);
+    setExporting(true);
     try {
       // For plain-text content, use as-is; for HTML, convert
       const isHtml = /<[a-z][\s\S]*>/i.test(content);
@@ -474,6 +477,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       showToast('Markdown downloaded');
     } catch {
       showToast('Failed to export Markdown');
+    } finally {
+      setExporting(false);
     }
   };
 
