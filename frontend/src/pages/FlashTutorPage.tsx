@@ -246,7 +246,7 @@ export function FlashTutorPage() {
           </div>
           <ASGFEntryButton
             label="Generate from question"
-            variant="sidebar"
+            variant="inline"
           />
         </div>
 
