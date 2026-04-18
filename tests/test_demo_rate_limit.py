@@ -283,3 +283,35 @@ class TestRecordGeneration:
         assert session.generations_count == 2
         assert session.generations_json[0]["demo_type"] == "ask"
         assert session.generations_json[1]["demo_type"] == "flash_tutor"
+
+
+# ── Internal: column whitelist for _count_generations_since ─────────
+
+
+class TestCountableColumnsWhitelist:
+    def test_rejects_unwhitelisted_column(self, db_session):
+        """_count_generations_since must raise on any column not in whitelist
+        — protects against SQL injection via f-string interpolation."""
+        from datetime import datetime, timedelta, timezone
+
+        with pytest.raises(ValueError, match="column must be one of"):
+            drl._count_generations_since(
+                db_session,
+                column="email; DROP TABLE users--",
+                value="anything",
+                since=datetime.now(timezone.utc) - timedelta(hours=24),
+            )
+
+    def test_accepts_whitelisted_columns(self, db_session):
+        """email_hash and source_ip_hash are the only allowed filter columns."""
+        from datetime import datetime, timedelta, timezone
+
+        # Both should return 0 (no rows), not raise.
+        assert drl._count_generations_since(
+            db_session, column="email_hash", value="nobody",
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        ) == 0
+        assert drl._count_generations_since(
+            db_session, column="source_ip_hash", value="nobody",
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        ) == 0

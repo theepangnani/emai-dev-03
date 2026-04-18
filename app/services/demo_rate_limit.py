@@ -37,6 +37,12 @@ MAX_INPUT_WORDS = 500
 
 WINDOW = timedelta(hours=24)
 
+# Columns that `_count_generations_since` is allowed to filter by.
+# Gated explicitly because the column name is interpolated into raw SQL
+# via f-string below — any future caller passing user input without this
+# whitelist would create a SQL injection vector.
+_COUNTABLE_COLUMNS: frozenset[str] = frozenset({"email_hash", "source_ip_hash"})
+
 
 def _is_pg() -> bool:
     return "sqlite" not in settings.database_url
@@ -67,6 +73,10 @@ def _count_generations_since(
     Uses JSONB `jsonb_array_elements` on PG and `json_each` on SQLite so
     we never load full rows into Python memory.
     """
+    if column not in _COUNTABLE_COLUMNS:
+        raise ValueError(
+            f"column must be one of {sorted(_COUNTABLE_COLUMNS)}, got {column!r}"
+        )
     since_iso = since.strftime("%Y-%m-%dT%H:%M:%S")
     if _is_pg():
         sql = text(
