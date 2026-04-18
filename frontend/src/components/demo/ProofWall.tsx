@@ -118,7 +118,7 @@ export function ProofWall() {
         <div
           className="proof-wall__badges"
           role="list"
-          aria-label="Compliance certifications"
+          aria-label="Compliance commitments"
           data-testid="proof-wall-badges"
         >
           {badges.map((b) => (
