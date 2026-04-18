@@ -52,6 +52,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [justAppended, setJustAppended] = useState(false);
   const [parentEditing, setParentEditing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appendFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // History state
@@ -78,7 +80,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     extensions: [
       StarterKit,
       Underline,
-      Link.configure({ openOnClick: false }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
+      }),
       Image,
       Placeholder.configure({ placeholder: 'Start typing your notes...' }),
       Highlight.configure({ multicolor: true }),
@@ -268,7 +273,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
     // Flash animation
     setJustAppended(true);
-    setTimeout(() => setJustAppended(false), 800);
+    if (appendFlashTimer.current) clearTimeout(appendFlashTimer.current);
+    appendFlashTimer.current = setTimeout(() => setJustAppended(false), 800);
   }, [appendText, loading, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle addHighlight prop — add highlight entry (deduped by text)
@@ -335,16 +341,19 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     saveNoteRef.current = saveNote;
   }, [saveNote]);
 
-  // Clean up save timer on unmount to prevent state updates after unmount
+  // Clean up timers on unmount to prevent state updates after unmount
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (appendFlashTimer.current) clearTimeout(appendFlashTimer.current);
     };
   }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
   const handleTaskCreated = () => {
