@@ -16,7 +16,6 @@ _LOCAL_PART_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"^automated(\+.*)?$", re.IGNORECASE),
     re.compile(r"^bounce[-_.s]*(\+.*)?$", re.IGNORECASE),
     re.compile(r".*[-_.]no[-_.]?reply$", re.IGNORECASE),
-    re.compile(r".*[-_.]noreply$", re.IGNORECASE),
     re.compile(r".*[-_.]notifications?$", re.IGNORECASE),
 ]
 
