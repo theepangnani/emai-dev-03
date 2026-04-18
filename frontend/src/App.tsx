@@ -74,6 +74,7 @@ const FAQPage = lazyRetry(() => import('./pages/FAQPage').then((m) => ({ default
 const FAQDetailPage = lazyRetry(() => import('./pages/FAQDetailPage').then((m) => ({ default: m.FAQDetailPage })));
 const AdminFAQPage = lazyRetry(() => import('./pages/AdminFAQPage').then((m) => ({ default: m.AdminFAQPage })));
 const AdminWaitlistPage = lazyRetry(() => import('./pages/AdminWaitlistPage').then((m) => ({ default: m.AdminWaitlistPage })));
+const AdminDemoSessionsPage = lazyRetry(() => import('./pages/AdminDemoSessionsPage').then((m) => ({ default: m.AdminDemoSessionsPage })));
 const AdminContactsPage = lazyRetry(() => import('./pages/AdminContactsPage').then((m) => ({ default: m.AdminContactsPage })));
 const AdminAIUsagePage = lazyRetry(() => import('./pages/AdminAIUsagePage').then((m) => ({ default: m.AdminAIUsagePage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
@@ -445,6 +446,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/demo-sessions"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDemoSessionsPage />
                   </ProtectedRoute>
                 }
               />

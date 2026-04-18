@@ -1,0 +1,65 @@
+/* Admin Demo Sessions Page — shares waitlist table styling via class reuse. */
+
+.admin-demo-sessions-page {
+  max-width: 1200px;
+}
+
+.admin-demo-sessions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-demo-sessions-header h1 {
+  font-size: 18px;
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.admin-demo-sessions-moat {
+  font-size: 12px;
+  color: var(--color-ink-muted);
+  white-space: nowrap;
+}
+
+.admin-demo-sessions-verified-yes {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.admin-demo-sessions-verified-no {
+  color: var(--color-ink-muted);
+}
+
+.demo-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  text-transform: capitalize;
+}
+
+.demo-status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.demo-status-badge.approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.demo-status-badge.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.demo-status-badge.blocklisted {
+  background: #e5e7eb;
+  color: #374151;
+}
