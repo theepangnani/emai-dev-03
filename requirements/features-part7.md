@@ -1292,19 +1292,20 @@ AI-powered micro-learning engine replacing and extending the current quiz module
 
 **Issues:** #3407, #3408 | **PR:** #3477 (M5d)
 
-#### §6.137.10 Integration Bridges — PLANNED
+#### §6.137.10 ASGF Integration Bridges — DEPLOYED
 
-Seven bridges to connect ASGF with existing ClassBridge UX:
+Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 
-- [ ] **Course Material → ASGF:** "Ask a question about this" button on course material detail page
-- [ ] **Study Guide → ASGF:** "Dive deeper" button on existing study guides to launch ASGF with guide content as context
-- [ ] **Flash Tutor → ASGF:** "Learn more" link on incorrect quiz answers to launch ASGF for the topic
-- [ ] **My Kids → ASGF:** Parent dashboard card showing child's recent ASGF sessions
-- [ ] **Chatbot → ASGF:** Chatbot suggests ASGF when detecting study-related questions
-- [ ] **Google Classroom → ASGF:** Auto-suggest ASGF sessions for newly synced assignments
-- [ ] **Email Digest → ASGF:** Include ASGF session summaries in parent daily digest
+- [x] **Sidebar navigation:** "Ask a Question" nav item launches ASGF (#3537, PR #3555)
+- [x] **Dashboard quick action cards:** Parent + student dashboard cards link to ASGF (#3539, PR #3555)
+- [x] **GenerateSubGuideModal:** "Learning Session" added as 4th generation option (#3534, PR #3555)
+- [x] **Upload wizard:** "Start Learning Session" CTA after document upload (#3532, PR #3555)
+- [x] **FAB chatbot:** "Start Learning Session" button on study Q&A responses (#3531, PR #3555)
+- [x] **SelectionTooltip:** "Start Session" button on text selection (#3538, PR #3555)
+- [x] **ASGF page escape hatch:** "Generate study guide instead" link on ASGFPage (#3535, PR #3555)
+- [x] **ASGFPage at /ask route:** Full 5-stage wizard (question → upload → context → slides → quiz) (#3518, PR #3518)
 
-**Issues:** #3409-#3415
+**Issues:** #3531-#3539 | **Key PR:** #3555
 
 #### Key PRs
 
@@ -1315,6 +1316,7 @@ Seven bridges to connect ASGF with existing ClassBridge UX:
 | #3447 | M5c Integration | Quiz bridge, auto-save, role-aware assignment |
 | #3477 | M5d Polish | Spaced repetition, cost model, error recovery, session resume |
 | #3518 | Page | Complete Ask-a-Question to Flash Study page |
+| #3555 | Integration Bridges | 7 entry points connecting ASGF to existing UX |
 
 #### Sub-Milestones
 
@@ -1323,13 +1325,65 @@ Seven bridges to connect ASGF with existing ClassBridge UX:
 - **M5c Integration** (#3390): Quiz bridge + auto-save + role-aware assignment — PR #3447
 - **M5d Polish** (#3390): Spaced repetition + cost model + error recovery — PR #3477
 - **Page** (#3390): Complete ASGF page wiring all milestones together — PR #3518
+- **Integration Bridges** (#3390): 10 entry points across sidebar, dashboard, chatbot, upload wizard — PR #3555
 
 ---
 
-### Recent PRs (April 8–15, 2026)
+### 6.138 Notes Enhancement — Rich Text, Images, Export (CB-NOTES-001) - DEPLOYED (2026-04-17)
+
+**Status:** DEPLOYED | **Epic:** #3526
+
+**Purpose:** Upgrade the Notes panel from a plain textarea into a full-featured rich text editor with image support, maximize/restore, save-as-material, and export capabilities — making notes a first-class content creation tool within ClassBridge.
+
+#### Features
+
+- [x] **TipTap rich text editor** — replace textarea with TipTap (bold, italic, underline, strikethrough, headings, bullet/ordered lists, code blocks, blockquotes, horizontal rules) (#3527, PR #3559)
+- [x] **Image paste & upload** — paste images from clipboard or upload from file picker; images stored via NoteImage model with backend API endpoints (#3528, PR #3556)
+- [x] **Maximize/restore toggle** — expand Notes panel to full viewport height; toggle button in panel header (#3529, PR #3557)
+- [x] **Save note as class material** — one-click save of note content as a class material attached to the current course (#3530, PR #3558)
+- [x] **Download/export notes** — export notes as PDF or Markdown files (#3540, PR #3560)
+
+**Key PR:** #3577 (integration branch merging all Notes Enhancement work)
+
+**Sub-tasks:**
+- [x] Add TipTap editor with toolbar (bold, italic, headings, lists, code, blockquote) (#3527)
+- [x] Add NoteImage SQLAlchemy model and upload/list/delete API endpoints (#3528)
+- [x] Image paste handler and file upload button in editor toolbar (#3528)
+- [x] Maximize/restore toggle with CSS transition (#3529)
+- [x] Save-as-material endpoint with course assignment (#3530)
+- [x] PDF export via html-to-pdf conversion (#3540)
+- [x] Markdown export via HTML-to-Markdown converter (#3540)
+- [x] DOMPurify sanitization for rich text content (#3527)
+
+---
+
+### 6.139 Bug Fixes & Quality (April 15–17, 2026)
+
+**Purpose:** Roll-up of bug fixes, design gap closures, and quality improvements shipped during April 15–17.
+
+- [x] **Study guide generation survives page refresh** — retain `autoGenerate` param until stream succeeds; auto-retry interrupted study guides (#3575, PR #3576) — Design Gap fix
+- [x] **Save as Study Guide / Class Material** — fix `log_action` crash on missing `material_id`, correct response model for frontend consumption (#3533, PR #3554)
+- [x] **Gmail reconnect uses popup OAuth** — open OAuth flow in popup window with correct `redirect_uri` instead of full-page redirect (#3523, PR #3525)
+- [x] **Gmail reconnect banner** — show reconnect banner when Gmail integration is inactive, not just when missing (#3314, PR #3517)
+- [x] **Email Digest button navigation** — fix button to navigate to dashboard when integration already exists (#3509, PR #3513)
+- [x] **Daily email digest delivery** — fix scheduler misfire grace period, session poisoning from shared DB sessions, missing job registration (#3451–#3476, PR #3473)
+- [x] **Parent UX** — deduplicate study times across children + add global quick actions to no-child view (#3495–#3496, PR #3502)
+- [x] **Meta domain verification** — add meta tag for WhatsApp Business domain verification (PR #3578)
+
+---
+
+### Recent PRs (April 8–17, 2026)
 
 | Commit | PR | Description |
 |--------|----|-------------|
+| 067e3934 | #3579 | feat: WhatsApp digest template formatting for production |
+| f235b068 | #3578 | chore: Meta domain verification for WhatsApp Business |
+| 9bda4932 | #3577 | feat: Notes Enhancement — Rich Text, Image Paste, Maximize, Export, Save-as-Material |
+| fb981d3f | #3576 | fix: study guide generation survives page refresh during streaming |
+| 2a9fcdc1 | #3559 | feat: replace Notes textarea with TipTap rich text editor |
+| 3da76a15 | #3556 | feat: NoteImage model and API endpoints for image upload |
+| 7975479c | #3555 | feat: ASGF integration bridges — 7 entry points + documentation |
+| d199e995 | #3554 | fix: Save as Study Guide / Class Material — log_action crash, response model |
 | b88d4ec6 | #3525 | fix: Gmail reconnect uses popup OAuth flow with correct redirect_uri |
 | c1d6e67e | #3518 | feat: ASGF page — complete Ask-a-Question to Flash Study flow |
 | 7efee95f | #3517 | fix: show Gmail reconnect banner when integration is inactive |
