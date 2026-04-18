@@ -603,7 +603,8 @@ async def send_digest_now(
 
     from app.jobs.parent_email_digest_job import send_digest_for_integration
 
-    result = await send_digest_for_integration(db, integration, skip_dedup=True)
+    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    result = await send_digest_for_integration(db, integration, skip_dedup=True, since=since_24h)
     return result
 
 
