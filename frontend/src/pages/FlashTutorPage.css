@@ -590,6 +590,11 @@
   .ft-header {
     padding: 16px;
     gap: 14px;
+    flex-wrap: wrap;
+  }
+  .ft-header .asgf-entry-btn {
+    width: 100%;
+    order: 3;
   }
   .ft-topics-grid {
     grid-template-columns: 1fr 1fr;
