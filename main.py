@@ -34,6 +34,8 @@ from app.api.routes import admin_contacts
 from app.api.routes import features as features_route
 from app.api.routes import ile
 from app.api.routes import asgf
+from app.api.routes import demo_verify  # CB-DEMO-001 B2 (#3604)
+from app.api.routes import public as public_routes  # CB-DEMO-001 B2 (#3604)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -530,6 +532,8 @@ app.include_router(admin_outreach.router, prefix="/api")
 app.include_router(features_route.router, prefix="/api")
 app.include_router(ile.router, prefix="/api")
 app.include_router(asgf.router, prefix="/api")
+app.include_router(demo_verify.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
+app.include_router(public_routes.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
 
 logger.info("API routes registered at /api")
 
