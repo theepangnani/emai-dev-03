@@ -160,7 +160,72 @@ export const adminApi = {
     const response = await api.get('/api/admin/storage/overview');
     return response.data as StorageOverview;
   },
+
+  // Demo Sessions (CB-DEMO-001 FE5 — #3611)
+  listDemoSessions: async (params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    verified?: boolean;
+    search?: string;
+  }) => {
+    const response = await api.get('/api/admin/demo-sessions', { params });
+    return response.data as DemoSessionListResponse;
+  },
+
+  approveDemoSession: async (id: string) => {
+    const response = await api.post(`/api/admin/demo-sessions/${id}/approve`);
+    return response.data as DemoSessionItem;
+  },
+
+  rejectDemoSession: async (id: string) => {
+    const response = await api.post(`/api/admin/demo-sessions/${id}/reject`);
+    return response.data as DemoSessionItem;
+  },
+
+  blocklistDemoSession: async (id: string) => {
+    const response = await api.post(`/api/admin/demo-sessions/${id}/blocklist`);
+    return response.data as DemoSessionItem;
+  },
+
+  downloadDemoSessionsCsv: async () => {
+    const response = await api.get('/api/admin/demo-sessions/export.csv', {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
 };
+
+// Demo Session Types (CB-DEMO-001 FE5 — #3611)
+export interface DemoMoatSummary {
+  tm_beats_seen: number;
+  rs_roles_switched: number;
+  pw_viewport_reached: boolean;
+}
+
+export interface DemoSessionItem {
+  id: string;
+  created_at: string;
+  email: string | null;
+  full_name: string | null;
+  role: string | null;
+  verified: boolean;
+  verified_ts: string | null;
+  generations_count: number;
+  admin_status: string | null;
+  source_ip_hash: string | null;
+  user_agent: string | null;
+  archived_at: string | null;
+  moat_engagement_json: Record<string, unknown> | null;
+  moat_summary: DemoMoatSummary;
+}
+
+export interface DemoSessionListResponse {
+  items: DemoSessionItem[];
+  total: number;
+  page: number;
+  per_page: number;
+}
 
 export interface UserStorageInfo {
   storage_used_bytes: number;
