@@ -1405,3 +1405,33 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 | 98861745 | #3356 | fix: Flash Tutor defects, nav icons, deploy workflow improvements |
 | c03a7a58 | #3337 | feat: chatbot window drag, resize, and maximize |
 | 2c935915 | #3379 | fix: assign auto-created tasks to child enrolled in source course |
+
+---
+
+### 6.135 Instant Trial & Demo Experience (CB-DEMO-001) — PLANNED
+
+**Purpose:** Convert classbridge.ca visitors from waitlist-only → four-surface landing page (AI Instant Trial + Tuesday Mirror + Role Switcher + Proof Wall) to compress time-to-felt-value from days to <2 minutes and lift verified waitlist signups ≥3× in 14 days.
+
+**Target launch:** May 13, 2026 (50/50 A/B). Sunset gate May 29, 2026 if M4 < 2.0×.
+
+**Key deliverables:**
+- [ ] demo_sessions table + backend routes (#3600, #3603, #3604, #3605, #3606)
+- [ ] Feature flag variants (off/on_50/on_for_all) (#3601)
+- [ ] Email verification magic link + 6-digit fallback (#3602)
+- [ ] InstantTrialSection + InstantTrialModal + ConversionCard (#3607)
+- [ ] Tuesday Mirror 5-beat storyboard, 5 boards (#3608)
+- [ ] Role Switcher 4-role card (ROM field trip) (#3609)
+- [ ] Proof Wall (live counter + testimonials + compliance badges) (#3610)
+- [ ] Admin demo-sessions dashboard + landing wiring (#3611)
+- [ ] Content + prompts + compliance docs (#3612)
+
+**Scope deltas from PRD v1.1** (see issue #3599 for rationale):
+- Model: claude-haiku-4-5 (not GPT-4o-mini)
+- Turnstile deferred; slowapi + honeypot + disposable-email blocklist for v1.1
+- PostHog deferred; structured JSON logs with correlation IDs
+- i18n deferred (EN-only launch)
+- Auto-approve demo-verified signups (anomaly flag → manual)
+- Replaced "OECM procurement pathway" badge with "Canadian-hosted"
+- Tuesday Mirror names the tools (Google Classroom, Teach Assist, Teams, etc.)
+
+**Epic:** #3599 — see for full PRD + plan.

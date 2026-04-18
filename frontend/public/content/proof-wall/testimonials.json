@@ -1,0 +1,18 @@
+{
+  "testimonials": [
+    {
+      "id": "t1",
+      "quote": "[TBD — awaiting consent]",
+      "role": "parent",
+      "city": "Markham",
+      "status": "pending_consent"
+    },
+    {
+      "id": "t2",
+      "quote": "[TBD — awaiting consent]",
+      "role": "teacher",
+      "city": "Toronto",
+      "status": "pending_consent"
+    }
+  ]
+}

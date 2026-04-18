@@ -1,0 +1,44 @@
+{
+  "event": "Franklin St. PS, Grade 8 ROM field trip, October 17",
+  "roles": {
+    "parent": {
+      "title": "Parent view",
+      "content_items": [
+        "Permission-slip deadline (sign and return).",
+        "$22 fee — Interac tap-to-pay button.",
+        "Dietary preferences confirmation.",
+        "Bus pickup time.",
+        "Emergency-contact confirmation."
+      ]
+    },
+    "student": {
+      "title": "Student view",
+      "content_items": [
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
+        "Packing checklist.",
+        "Lunch option selector.",
+        "Which friends have confirmed yes."
+      ]
+    },
+    "teacher": {
+      "title": "Teacher view",
+      "content_items": [
+        "Roster: permission-status icons per student.",
+        "Fee-collection dashboard.",
+        "Bus seat assignment.",
+        "Allergy alerts.",
+        "One-tap reminder button."
+      ]
+    },
+    "admin": {
+      "title": "School Admin view",
+      "content_items": [
+        "Approval status.",
+        "Insurance documentation link.",
+        "Total collected vs. owed.",
+        "Opt-out count.",
+        "MFIPPA compliance checklist."
+      ]
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "board": "OCDSB",
+  "display_name": "Ottawa-Carleton DSB",
+  "tools_named": ["Google Classroom", "OCDSB Parent Portal", "Teams"],
+  "beats": [
+    {
+      "index": 1,
+      "timestamp": "3:15 PM",
+      "without": "Student misses a pickup-change notice posted to Google Classroom; parent learns at 3:45 PM via panicked text.",
+      "with": "7:00 AM digest flagged the change. Both parent and child saw it at breakfast."
+    },
+    {
+      "index": 2,
+      "timestamp": "3:42 PM",
+      "without": "Parent discovers tomorrow is a PA day only because a neighbour mentions it in the parking lot.",
+      "with": "PA day surfaced in Monday evening's look-ahead digest."
+    },
+    {
+      "index": 3,
+      "timestamp": "4:15 PM",
+      "without": "Teacher posts an assignment to the OCDSB Parent Portal; no one in the family sees it for two days.",
+      "with": "Assignment lands in the next morning's parent digest, already summarised."
+    },
+    {
+      "index": 4,
+      "timestamp": "5:30 PM",
+      "without": "Parent gets a Teams notification that swim lesson is cancelled — while the child is already at the pool.",
+      "with": "Cancellation cross-referenced against the student's schedule; priority push fired 90 minutes earlier."
+    },
+    {
+      "index": 5,
+      "timestamp": "7:20 PM",
+      "without": "Child casually mentions a community-program fee due tomorrow. Parent scrambles.",
+      "with": "Extracurricular commitments, including community programs, aggregated in the weekly digest."
+    }
+  ]
+}
