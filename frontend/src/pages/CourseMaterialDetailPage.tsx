@@ -459,8 +459,7 @@ export function CourseMaterialDetailPage() {
   useEffect(() => {
     const autoGen = searchParams.get('autoGenerate');
     if (autoGen === 'study_guide' && content && stream.status === 'idle' && !generating) {
-      // Remove param so refresh doesn't re-trigger
-      setSearchParams((prev) => { prev.delete('autoGenerate'); return prev; }, { replace: true });
+      // Keep autoGenerate param until stream succeeds — refresh will retry (#3575)
       // Skip confirm dialog — parent already confirmed in the wizard
       setActiveTab('guide');
       setGenerating('study_guide');
@@ -487,6 +486,7 @@ export function CourseMaterialDetailPage() {
   }, [searchParams]);
 
   // Pre-populate focus prompts from saved history (#1001, #3374)
+  const hasAutoRetried = useRef(false);
   const focusInitRef = useRef(false);
   useEffect(() => {
     focusInitRef.current = false;
@@ -688,6 +688,8 @@ export function CourseMaterialDetailPage() {
   // Handle streaming study guide completion
   useEffect(() => {
     if (stream.status === 'done') {
+      // Remove autoGenerate param now that generation succeeded (#3575)
+      setSearchParams((prev) => { prev.delete('autoGenerate'); return prev; }, { replace: true });
       refreshAIUsage();
       // Pre-populate focus prompt from the just-completed guide (#3374)
       if (stream.guide?.focus_prompt) {
@@ -716,6 +718,27 @@ export function CourseMaterialDetailPage() {
       }
     }
   }, [stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-retry: if study guide exists but has no content (interrupted generation), retry once (#3575)
+  useEffect(() => {
+    if (studyGuide && !studyGuide.content && !generating && stream.status === 'idle' && !hasAutoRetried.current && content) {
+      hasAutoRetried.current = true;
+      setActiveTab('guide');
+      setGenerating('study_guide');
+      const docType = content.document_type || undefined;
+      const sGoal = content.study_goal || undefined;
+      const sGoalText = content.study_goal_text || undefined;
+      stream.startStream({
+        course_content_id: Number(id),
+        course_id: content.course_id,
+        title: content.title,
+        content: content.text_content || content.description || '',
+        ...(docType ? { document_type: docType } : {}),
+        ...(sGoal ? { study_goal: sGoal } : {}),
+        ...(sGoalText ? { study_goal_text: sGoalText } : {}),
+      });
+    }
+  }, [studyGuide, generating, stream.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDeleteGuide = async (guide: { id: number; title: string }) => {
     const ok = await confirm({

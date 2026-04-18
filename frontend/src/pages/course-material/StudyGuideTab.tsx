@@ -335,7 +335,7 @@ export function StudyGuideTab({
           <LinkedTasksBanner tasks={linkedTasks} />
           {!studyGuide.content && !isStreaming && (
             <div className="cm-tab-card-body" style={{ textAlign: 'center', padding: '2rem' }}>
-              <p>Study guide generation failed. Please try again.</p>
+              <p>Study guide generation was interrupted. Click below to try again.</p>
               <span className={atLimit ? 'ai-btn-disabled-wrapper' : ''}>
                 <button className="cm-action-btn" onClick={() => onGenerate()} disabled={generating !== null || atLimit}>{'\u2728'} Regenerate Study Guide</button>
                 {atLimit && <span className="ai-limit-tooltip">AI limit reached</span>}
