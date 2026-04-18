@@ -52,6 +52,7 @@ for busy parents so they can stay informed at a glance.
 Rules:
 - Address the parent by first name warmly
 - Mention the child by first name for context
+- Attribute emails to specific senders by name (e.g., "Ms. Johnson sent a reminder about...")
 - Group emails by type: Teacher Messages, School Admin, Announcements
 - Highlight ACTION ITEMS (deadlines, forms to sign, RSVPs) in a separate section
 - Flag URGENT items (due today or tomorrow) clearly
@@ -60,6 +61,19 @@ Rules:
 - Format output as clean HTML suitable for embedding in an email template
 - Use <h3> for section headers, <ul>/<li> for lists, <strong> for emphasis
 - Do NOT include <html>, <head>, or <body> tags — just the content HTML"""
+
+
+def _resolve_sender_display(sender_name: str, sender_email: str) -> str:
+    """Resolve a human-readable sender label from parser fields.
+
+    Falls back to the email local-part (e.g., 'grade3.teacher' from
+    'grade3.teacher@school.ca') when no display name is set.
+    """
+    if sender_name:
+        return sender_name
+    if sender_email and "@" in sender_email:
+        return sender_email.split("@", 1)[0]
+    return "Unknown sender"
 
 
 async def generate_parent_digest(
@@ -71,7 +85,9 @@ async def generate_parent_digest(
     """Generate an AI-powered digest summary of school emails for a parent.
 
     Args:
-        emails: List of email dicts with keys like 'subject', 'from', 'snippet', 'body', 'date'.
+        emails: List of email dicts from the Gmail parser with keys like
+            'subject', 'sender_name', 'sender_email', 'snippet', 'body',
+            'received_at'.
         child_name: The child's first name for context.
         parent_name: The parent's first name for greeting.
         digest_format: One of 'full', 'brief', 'actions_only'.
@@ -91,12 +107,20 @@ async def generate_parent_digest(
     email_texts = []
     for i, email in enumerate(emails, 1):
         parts = [f"Email #{i}"]
-        if email.get("from"):
-            parts.append(f"From: {email['from']}")
+        sender_display = _resolve_sender_display(
+            email.get("sender_name") or "",
+            email.get("sender_email") or "",
+        )
+        sender_email = email.get("sender_email") or ""
+        if sender_email and sender_display != sender_email:
+            parts.append(f"From: {sender_display} <{sender_email}>")
+        else:
+            parts.append(f"From: {sender_display}")
         if email.get("subject"):
             parts.append(f"Subject: {email['subject']}")
-        if email.get("date"):
-            parts.append(f"Date: {email['date']}")
+        received_at = email.get("received_at")
+        if received_at:
+            parts.append(f"Date: {received_at}")
         body = email.get("body") or email.get("snippet") or ""
         if body:
             # Truncate very long emails to keep prompt manageable
