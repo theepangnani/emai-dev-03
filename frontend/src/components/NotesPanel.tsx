@@ -1,7 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
+import Highlight from '@tiptap/extension-highlight';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import DOMPurify from 'dompurify';
 import { notesApi, type NoteItem, type NoteHighlight, type NoteVersionItem, type NoteVersionFull } from '../api/notes';
 import { NoteTaskForm } from './NoteTaskForm';
+import { NotesToolbar } from './NotesToolbar';
 import './NotesPanel.css';
+
+/** Escape HTML special characters to prevent injection when building HTML strings. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 interface NotesPanelProps {
   courseContentId: number;
@@ -31,8 +52,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [justAppended, setJustAppended] = useState(false);
   const [parentEditing, setParentEditing] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const appendFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // History state
   const [showHistory, setShowHistory] = useState(false);
@@ -50,6 +72,45 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   // Resize state
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const resizeState = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
+
+  // Ref to hold the latest saveNote function for use in editor onUpdate
+  const saveNoteRef = useRef<((content: string, hl?: NoteHighlight[]) => Promise<void>) | undefined>(undefined);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' },
+      }),
+      Image,
+      Placeholder.configure({ placeholder: 'Start typing your notes...' }),
+      Highlight.configure({ multicolor: true }),
+      TextStyle,
+      Color,
+    ],
+    editable: !(readOnly && !parentEditing),
+    content: '',
+    onUpdate: ({ editor: ed }) => {
+      const html = ed.getHTML();
+      // Treat empty editor (just an empty paragraph) as empty
+      const isEmpty = html === '<p></p>' || html === '';
+      const val = isEmpty ? '' : html;
+      setContent(val);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        saveNoteRef.current?.(val);
+      }, 1000);
+    },
+  });
+
+  // Sync editable state when readOnly or parentEditing changes
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(!(readOnly && !parentEditing));
+    }
+  }, [editor, readOnly, parentEditing]);
 
   const parseHighlights = (json: string | null | undefined): NoteHighlight[] => {
     if (!json) return [];
@@ -73,6 +134,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       if (data) {
         setNote(data);
         setContent(data.content || '');
+        // Set editor content — use setTimeout to ensure editor is ready
+        if (editor) {
+          editor.commands.setContent(data.content || '');
+        }
         // Only sync highlights when loading own notes — child notes
         // don't carry the parent's highlights and must not overwrite them
         if (!isChildView) {
@@ -83,6 +148,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       } else {
         setNote(null);
         setContent('');
+        if (editor) {
+          editor.commands.setContent('');
+        }
         if (!isChildView) {
           setHighlights([]);
           onHighlightsChange?.([]);
@@ -91,6 +159,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     } catch {
       setNote(null);
       setContent('');
+      if (editor) {
+        editor.commands.setContent('');
+      }
       if (!(readOnly && childStudentId && !parentEditing)) {
         setHighlights([]);
         onHighlightsChange?.([]);
@@ -98,7 +169,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     } finally {
       setLoading(false);
     }
-  }, [courseContentId, readOnly, childStudentId, parentEditing]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [courseContentId, readOnly, childStudentId, parentEditing, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadNote(); }, [loadNote]);
 
@@ -183,34 +254,28 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
 
   // Handle appended highlighted text
   useEffect(() => {
-    if (!appendText || loading) return;
+    if (!appendText || loading || !editor) return;
     // When parent is in read-only mode, switch to own notes for editing
     if (readOnly && !parentEditing) {
       setParentEditing(true);
       setLoading(true);
       return; // loadNote will re-run due to parentEditing change, then append will fire again
     }
-    const quoted = appendText.split('\n').map(line => `> ${line}`).join('\n');
-    const separator = content.trim() ? '\n\n' : '';
-    const newContent = content + separator + quoted + '\n';
+    const quotedHtml = `<blockquote><p>${escapeHtml(appendText).replace(/\n/g, '<br>')}</p></blockquote><p></p>`;
+    editor.chain().focus().insertContent(quotedHtml).run();
+    const newContent = editor.getHTML();
     setContent(newContent);
     onAppendConsumed?.();
 
     // Auto-save immediately
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveNote(newContent), 300);
+    saveTimer.current = setTimeout(() => saveNoteRef.current?.(newContent), 300);
 
     // Flash animation
     setJustAppended(true);
-    setTimeout(() => setJustAppended(false), 800);
-
-    // Scroll to bottom
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
-      }
-    }, 50);
-  }, [appendText, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (appendFlashTimer.current) clearTimeout(appendFlashTimer.current);
+    appendFlashTimer.current = setTimeout(() => setJustAppended(false), 800);
+  }, [appendText, loading, editor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle addHighlight prop — add highlight entry (deduped by text)
   useEffect(() => {
@@ -234,7 +299,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     }
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveNote(contentForSave, updated), 300);
+    saveTimer.current = setTimeout(() => saveNoteRef.current?.(contentForSave, updated), 300);
   }, [addHighlight, loading, readOnly, parentEditing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle removeHighlightText prop — remove highlight entry by text
@@ -248,7 +313,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       onHighlightsChange?.(updated);
       // Auto-save with updated highlights
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => saveNote(content, updated), 300);
+      saveTimer.current = setTimeout(() => saveNoteRef.current?.(content, updated), 300);
       return updated;
     });
   }, [removeHighlightText]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -271,16 +336,24 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     }
   }, [courseContentId, highlights]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setContent(val);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveNote(val), 1000);
-  };
+  // Keep saveNoteRef in sync with latest saveNote
+  useEffect(() => {
+    saveNoteRef.current = saveNote;
+  }, [saveNote]);
+
+  // Clean up timers on unmount to prevent state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      if (appendFlashTimer.current) clearTimeout(appendFlashTimer.current);
+    };
+  }, []);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
   const handleTaskCreated = () => {
@@ -330,6 +403,9 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       const restored = await notesApi.restoreVersion(note.id, versionId);
       setNote(restored);
       setContent(restored.content || '');
+      if (editor) {
+        editor.commands.setContent(restored.content || '');
+      }
       setPreviewVersion(null);
       setShowHistory(false);
       showToast('Version restored');
@@ -393,7 +469,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
               <div className="notes-version-preview-meta">
                 {formatDate(previewVersion.created_at)}
               </div>
-              <div className="notes-version-preview-content">{previewVersion.content}</div>
+              <div className="notes-version-preview-content notes-readonly-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewVersion.content || '') }} />
               <div className="notes-version-preview-actions">
                 <button
                   className="notes-version-back-btn"
@@ -492,7 +568,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
       ) : isEffectivelyReadOnly ? (
         <div className="notes-panel-body">
           {content ? (
-            <div className="notes-readonly-content">{content}</div>
+            <div className="notes-readonly-content" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
           ) : (
             <p className="notes-empty">No notes yet.</p>
           )}
@@ -513,13 +589,10 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
         </div>
       ) : (
         <div className="notes-panel-body">
-          <textarea
-            ref={textareaRef}
-            className={`notes-textarea${justAppended ? ' notes-textarea--appended' : ''}`}
-            value={content}
-            onChange={handleChange}
-            placeholder="Type your notes here..."
-          />
+          <NotesToolbar editor={editor} />
+          <div className={`notes-editor-wrap${justAppended ? ' notes-editor--appended' : ''}`}>
+            <EditorContent editor={editor} />
+          </div>
           <div className="notes-panel-footer">
             {saving && <span className="notes-saving">Saving...</span>}
             {!saving && note && <span className="notes-saved">Saved</span>}

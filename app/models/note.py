@@ -20,6 +20,7 @@ class Note(Base):
 
     user = relationship("User", backref=backref("notes", passive_deletes=True))
     course_content = relationship("CourseContent", backref=backref("notes", passive_deletes=True))
+    images = relationship("NoteImage", back_populates="note", passive_deletes=True)
 
     __table_args__ = (
         UniqueConstraint("user_id", "course_content_id", name="uq_notes_user_content"),
