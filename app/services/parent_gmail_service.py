@@ -14,6 +14,13 @@ from app.services.google_classroom import get_gmail_service
 
 logger = logging.getLogger(__name__)
 
+# Parent Gmail OAuth consents to these 3 scopes only — must match gmail_oauth_service.GMAIL_OAUTH_SCOPES
+PARENT_GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+]
+
 
 async def fetch_child_emails(
     db: Session,
@@ -68,7 +75,7 @@ async def fetch_child_emails(
 
     def _sync_fetch(at, rt, email_addresses, since_dt, max_res):
         """Synchronous Gmail fetch — runs in thread pool."""
-        svc, creds = get_gmail_service(at, rt)
+        svc, creds = get_gmail_service(at, rt, scopes=PARENT_GMAIL_SCOPES)
         epoch_seconds = int(since_dt.timestamp())
         if len(email_addresses) == 1:
             query = f'from:"{email_addresses[0]}" in:inbox after:{epoch_seconds}'
@@ -211,7 +218,7 @@ async def verify_forwarding(
 
     def _sync_verify(at, rt, email_addresses):
         """Synchronous Gmail verify — runs in thread pool."""
-        svc, creds = get_gmail_service(at, rt)
+        svc, creds = get_gmail_service(at, rt, scopes=PARENT_GMAIL_SCOPES)
 
         # Check last 30 days
         since_dt = datetime.now(timezone.utc) - timedelta(days=30)
