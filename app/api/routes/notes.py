@@ -1,7 +1,11 @@
+import io
+import logging
 import re
+import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, File, status
+from PIL import Image
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
@@ -9,10 +13,15 @@ from app.api.deps import get_current_user
 from app.core.rate_limit import limiter, get_user_id_or_ip
 from app.db.database import get_db
 from app.models.note import Note
+from app.models.note_image import NoteImage
 from app.models.note_version import NoteVersion
 from app.models.student import Student, parent_students
 from app.models.user import User, UserRole
 from app.schemas.note import NoteListItem, NoteResponse, NoteUpsert, NoteVersionListItem, NoteVersionResponse
+from app.schemas.note_image import NoteImageResponse
+from app.services.gcs_service import upload_file as gcs_upload_file, download_file as gcs_download_file
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -309,6 +318,176 @@ def restore_version(
     db.commit()
     db.refresh(note)
     return note
+
+
+# --- Note image endpoints ---
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_IMAGE_WIDTH = 1200
+
+# Magic byte signatures for allowed image types
+_IMAGE_MAGIC_BYTES = {
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG\r\n\x1a\n": "image/png",
+    b"GIF87a": "image/gif",
+    b"GIF89a": "image/gif",
+    b"RIFF": "image/webp",  # WebP starts with RIFF....WEBP
+}
+
+
+def _validate_image_magic_bytes(data: bytes) -> str | None:
+    """Validate image content by checking magic bytes. Returns detected MIME type or None."""
+    for magic, mime in _IMAGE_MAGIC_BYTES.items():
+        if data[:len(magic)] == magic:
+            # Extra check for WebP: must have WEBP at offset 8
+            if mime == "image/webp" and data[8:12] != b"WEBP":
+                continue
+            return mime
+    return None
+
+
+def _compress_note_image(image_bytes: bytes, max_width: int = MAX_IMAGE_WIDTH) -> tuple[bytes, str]:
+    """Resize image to max_width and compress. Returns (compressed_bytes, media_type)."""
+    img = Image.open(io.BytesIO(image_bytes))
+    # Validate that PIL can actually identify the image format
+    img.verify()
+    # Re-open after verify (verify closes the image)
+    img = Image.open(io.BytesIO(image_bytes))
+
+    # Convert palette mode to RGBA before any processing (resize + save)
+    if img.mode == "P":
+        img = img.convert("RGBA")
+
+    if img.width > max_width:
+        ratio = max_width / img.width
+        img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
+    # Keep PNG for images with transparency
+    if img.mode in ("RGBA", "LA"):
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        return buf.getvalue(), "image/png"
+    else:
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return buf.getvalue(), "image/jpeg"
+
+
+def _verify_image_access(db: Session, image: NoteImage, current_user: User) -> None:
+    """Raise 404 if user cannot access the image."""
+    if image.user_id == current_user.id:
+        return
+    if current_user.has_role(UserRole.PARENT):
+        child_user_ids = _get_linked_child_user_ids(db, current_user.id)
+        if image.user_id in child_user_ids:
+            return
+    if current_user.has_role(UserRole.ADMIN):
+        return
+    raise HTTPException(status_code=404, detail="Image not found")
+
+
+@router.post("/images", response_model=NoteImageResponse)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def upload_note_image(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload an image for use in notes."""
+    # Validate content type
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type: {file.content_type}. Allowed: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}",
+        )
+
+    # Read file and validate size
+    file_bytes = file.file.read()
+    if len(file_bytes) > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size is {MAX_IMAGE_SIZE // (1024 * 1024)} MB.",
+        )
+
+    # Validate actual file content via magic bytes (prevents spoofed content-type)
+    detected_type = _validate_image_magic_bytes(file_bytes)
+    if detected_type is None or detected_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="File content does not match a valid image format.",
+        )
+
+    # Compress image
+    try:
+        compressed_bytes, media_type = _compress_note_image(file_bytes)
+    except Exception as exc:
+        logger.warning("Image compression failed for user %s: %s", current_user.id, exc)
+        raise HTTPException(status_code=400, detail="Could not process image. The file may be corrupt.")
+
+    # Determine file extension from media_type
+    ext_map = {"image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp"}
+    ext = ext_map.get(media_type, "jpg")
+    gcs_path = f"notes/{current_user.id}/{uuid.uuid4().hex}.{ext}"
+
+    # Upload to GCS
+    try:
+        gcs_upload_file(gcs_path, compressed_bytes, media_type)
+    except Exception as exc:
+        logger.error("GCS upload failed for user %s, path %s: %s", current_user.id, gcs_path, exc)
+        raise HTTPException(status_code=500, detail="Failed to upload image. Please try again.")
+
+    # Create DB record
+    note_image = NoteImage(
+        user_id=current_user.id,
+        gcs_path=gcs_path,
+        media_type=media_type,
+        file_size=len(compressed_bytes),
+    )
+    db.add(note_image)
+    db.commit()
+    db.refresh(note_image)
+
+    return NoteImageResponse(
+        id=note_image.id,
+        note_id=note_image.note_id,
+        user_id=note_image.user_id,
+        media_type=note_image.media_type,
+        file_size=note_image.file_size,
+        created_at=note_image.created_at,
+        image_url=f"/api/notes/images/{note_image.id}",
+    )
+
+
+@router.get("/images/{image_id}")
+@limiter.limit("120/minute", key_func=get_user_id_or_ip)
+def serve_note_image(
+    request: Request,
+    image_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Serve a note image. Auth: owner, parent of owner, or admin."""
+    image = db.query(NoteImage).filter(NoteImage.id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    _verify_image_access(db, image, current_user)
+
+    # Download from GCS
+    try:
+        image_bytes = gcs_download_file(image.gcs_path)
+    except Exception as exc:
+        logger.error("GCS download failed for image %s, path %s: %s", image_id, image.gcs_path, exc)
+        raise HTTPException(status_code=404, detail="Image file not found in storage")
+
+    return Response(
+        content=image_bytes,
+        media_type=image.media_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
 
 
 def cleanup_old_versions(db: Session) -> int:
