@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 
 from googleapiclient.errors import HttpError
+from app.services.email_classifier import is_automated_sender
 from app.services.google_classroom import get_gmail_service
 
 logger = logging.getLogger(__name__)
@@ -61,15 +62,17 @@ def _parse_gmail_message(msg: dict) -> dict:
     headers = {h["name"].lower(): h["value"] for h in msg["payload"]["headers"]}
 
     body_text = _extract_body_text(msg["payload"])
+    sender_email = _extract_sender_email(headers.get("from", ""))
 
     return {
         "source_id": msg["id"],
         "sender_name": _extract_sender_name(headers.get("from", "")),
-        "sender_email": _extract_sender_email(headers.get("from", "")),
+        "sender_email": sender_email,
         "subject": headers.get("subject", "(No Subject)"),
         "body": body_text,
         "snippet": msg.get("snippet", ""),
         "received_at": datetime.fromtimestamp(int(msg["internalDate"]) / 1000),
+        "is_automated": is_automated_sender(sender_email),
     }
 
 

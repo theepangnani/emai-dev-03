@@ -55,6 +55,9 @@ Rules:
 - Group emails by type: Teacher Messages, School Admin, Announcements
 - Highlight ACTION ITEMS (deadlines, forms to sign, RSVPs) in a separate section
 - Flag URGENT items (due today or tomorrow) clearly
+- Emails prefixed with [AUTO] are automated notifications (noreply/system senders). \
+Group these together under an "Automated Notifications" section and summarize them \
+briefly — do not treat them as personal teacher messages.
 - Keep the tone warm, clear, and professional
 - NEVER fabricate information — only summarize what is in the source emails
 - Format output as clean HTML suitable for embedding in an email template
@@ -90,9 +93,11 @@ async def generate_parent_digest(
     # Build the email listing for the prompt
     email_texts = []
     for i, email in enumerate(emails, 1):
-        parts = [f"Email #{i}"]
-        if email.get("from"):
-            parts.append(f"From: {email['from']}")
+        auto_tag = "[AUTO] " if email.get("is_automated") else ""
+        parts = [f"Email #{i} {auto_tag}".rstrip()]
+        sender = email.get("from") or email.get("sender_email")
+        if sender:
+            parts.append(f"From: {auto_tag}{sender}")
         if email.get("subject"):
             parts.append(f"Subject: {email['subject']}")
         if email.get("date"):
