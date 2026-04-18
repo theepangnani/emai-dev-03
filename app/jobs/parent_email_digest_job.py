@@ -147,7 +147,13 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 else:
                     whatsapp_content = digest_content
                 plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
-                send_whatsapp_message(integration.whatsapp_phone, plain_text)
+                # Format to match approved WhatsApp template (daily_digest)
+                template_msg = (
+                    f"Hi {parent_name}, here's your child's daily school email summary:\n\n"
+                    f"{plain_text}\n\n"
+                    f"View full digest at https://www.classbridge.ca/email-digest"
+                )
+                send_whatsapp_message(integration.whatsapp_phone, template_msg)
             except Exception as e:
                 logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
 
