@@ -1,0 +1,24 @@
+{
+  "badges": [
+    {
+      "id": "canada-hosted",
+      "label": "Hosted in Canada (GCP Toronto)",
+      "href": "/compliance#hosting"
+    },
+    {
+      "id": "mfippa",
+      "label": "MFIPPA-aligned",
+      "href": "/compliance#mfippa"
+    },
+    {
+      "id": "pipeda",
+      "label": "PIPEDA-compliant",
+      "href": "/compliance#pipeda"
+    },
+    {
+      "id": "canadian-stack",
+      "label": "Canadian-hosted stack",
+      "href": "/compliance#stack"
+    }
+  ]
+}

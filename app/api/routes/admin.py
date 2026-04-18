@@ -599,8 +599,12 @@ def send_admin_message(
 
 # ── Feature Toggles ──────────────────────────────────────────────────
 
+ALLOWED_VARIANTS = {"off", "on_50", "on_for_all"}
+
+
 class FeatureToggleUpdate(BaseModel):
-    enabled: bool
+    enabled: bool | None = None
+    variant: str | None = None  # 'off' | 'on_50' | 'on_for_all' (#3601)
 
 
 @router.get("/features")
@@ -614,8 +618,8 @@ def get_feature_toggles(
     from app.models.feature_flag import FeatureFlag
 
     config_flags = [
-        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "updated_at": None},
-        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "updated_at": None},
+        {"key": "google_classroom", "name": "Google Classroom", "description": "Google Classroom integration", "enabled": settings.google_classroom_enabled, "variant": None, "updated_at": None},
+        {"key": "waitlist_enabled", "name": "Waitlist", "description": "Waitlist-gated registration flow", "enabled": settings.waitlist_enabled, "variant": None, "updated_at": None},
     ]
     db_flags = db.query(FeatureFlag).order_by(FeatureFlag.id).all()
     return config_flags + [
@@ -624,6 +628,7 @@ def get_feature_toggles(
             "name": f.name,
             "description": f.description,
             "enabled": f.enabled,
+            "variant": getattr(f, "variant", None) or "off",
             "updated_at": f.updated_at.isoformat() if f.updated_at else None,
         }
         for f in db_flags
@@ -639,12 +644,30 @@ def update_feature_toggle(
     current_user: User = Depends(require_role(UserRole.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    """Toggle a feature on or off. Changes persist in the database."""
+    """Toggle a feature on or off and/or update its A/B variant.
+
+    Accepts `enabled` (bool) and/or `variant` ('off'|'on_50'|'on_for_all').
+    At least one field must be provided. (#3601)
+    """
     from app.models.feature_flag import FeatureFlag
 
-    # Handle legacy config-based flags
+    if body.enabled is None and body.variant is None:
+        raise HTTPException(status_code=400, detail="Must provide 'enabled' and/or 'variant'")
+
+    if body.variant is not None and body.variant not in ALLOWED_VARIANTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid variant '{body.variant}'. Must be one of: {sorted(ALLOWED_VARIANTS)}",
+        )
+
+    # Handle legacy config-based flags (only support `enabled`, no variant)
     config_features = {"google_classroom": "google_classroom_enabled", "waitlist_enabled": "waitlist_enabled"}
     if feature_key in config_features:
+        if body.variant is not None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Config-based flag '{feature_key}' does not support variants",
+            )
         attr = config_features[feature_key]
         setattr(settings, attr, body.enabled)
         log_action(
@@ -656,26 +679,40 @@ def update_feature_toggle(
         )
         db.commit()
         logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
-        return {"feature": feature_key, "enabled": body.enabled}
+        return {"feature": feature_key, "enabled": body.enabled, "variant": None}
 
     # Handle DB-backed flags
     flag = db.query(FeatureFlag).filter(FeatureFlag.key == feature_key).first()
     if not flag:
         raise HTTPException(status_code=404, detail=f"Unknown feature: {feature_key}")
 
-    flag.enabled = body.enabled
+    details_parts: list[str] = []
+    if body.enabled is not None:
+        flag.enabled = body.enabled
+        details_parts.append(f"{feature_key}={'enabled' if body.enabled else 'disabled'}")
+    if body.variant is not None:
+        flag.variant = body.variant
+        details_parts.append(f"variant={body.variant}")
+
     flag.updated_at = datetime.now(timezone.utc)
     log_action(
         db,
         user_id=current_user.id,
         action="update",
         resource_type="feature_toggle",
-        details=f"{feature_key}={'enabled' if body.enabled else 'disabled'}",
+        details="; ".join(details_parts),
     )
     db.commit()
 
-    logger.info(f"Feature toggle '{feature_key}' set to {body.enabled} by admin {current_user.id}")
-    return {"feature": feature_key, "enabled": body.enabled}
+    logger.info(
+        f"Feature toggle '{feature_key}' updated by admin {current_user.id}: "
+        f"enabled={flag.enabled} variant={flag.variant}"
+    )
+    return {
+        "feature": feature_key,
+        "enabled": flag.enabled,
+        "variant": getattr(flag, "variant", None) or "off",
+    }
 
 
 # --- Storage limit admin endpoints (#1007) ---
@@ -874,3 +911,247 @@ async def run_migrations_manual(
         conn.commit()
 
     return {"migrations_run": len(migrations), "results": results}
+
+
+# ============================================
+# Demo Sessions — CB-DEMO-001 B4 (#3606)
+# ============================================
+
+from io import StringIO
+import csv as _csv
+
+from fastapi.responses import StreamingResponse
+
+from app.models.demo_session import DemoSession
+from app.schemas.demo import AdminDemoSessionRow
+
+
+_ALLOWED_DEMO_STATUSES = {"pending", "approved", "rejected", "blocklisted"}
+
+
+def _serialize_demo_row(session: DemoSession) -> dict:
+    """Build an AdminDemoSessionRow-compatible dict including moat summary."""
+    moat = session.moat_engagement_json or {}
+    moat_summary = {
+        "tm_beats_seen": int(moat.get("tm_beats_seen", 0) or 0),
+        "rs_roles_switched": int(moat.get("rs_roles_switched", 0) or 0),
+        "pw_viewport_reached": bool(moat.get("pw_viewport_reached", False)),
+    } if isinstance(moat, dict) else {
+        "tm_beats_seen": 0,
+        "rs_roles_switched": 0,
+        "pw_viewport_reached": False,
+    }
+
+    return {
+        "id": session.id,
+        "created_at": session.created_at,
+        "email": session.email,
+        "full_name": session.full_name,
+        "role": session.role,
+        "verified": bool(session.verified),
+        "verified_ts": session.verified_ts,
+        "generations_count": session.generations_count or 0,
+        "admin_status": session.admin_status,
+        "source_ip_hash": session.source_ip_hash,
+        "user_agent": session.user_agent,
+        "archived_at": session.archived_at,
+        "moat_engagement_json": session.moat_engagement_json,
+        "moat_summary": moat_summary,
+    }
+
+
+@router.get("/demo-sessions")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_demo_sessions(
+    request: Request,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    status: str | None = Query(None, description="Filter by admin_status"),
+    verified: bool | None = Query(None, description="Filter by verified"),
+    search: str | None = Query(None, description="Substring of email or full_name"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Paginated list of demo sessions for admin review (FR-065)."""
+    query = db.query(DemoSession)
+
+    if status is not None:
+        if status not in _ALLOWED_DEMO_STATUSES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {sorted(_ALLOWED_DEMO_STATUSES)}",
+            )
+        query = query.filter(DemoSession.admin_status == status)
+
+    if verified is not None:
+        query = query.filter(DemoSession.verified == verified)
+
+    if search:
+        pattern = f"%{escape_like(search)}%"
+        query = query.filter(
+            or_(
+                DemoSession.email.ilike(pattern),
+                DemoSession.full_name.ilike(pattern),
+            )
+        )
+
+    total = query.count()
+    offset = (page - 1) * per_page
+    rows = (
+        query.order_by(DemoSession.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+        .all()
+    )
+
+    return {
+        "items": [_serialize_demo_row(r) for r in rows],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+    }
+
+
+def _set_demo_status(
+    db: Session,
+    session_id: str,
+    new_status: str,
+    current_user: User,
+    request: Request,
+    action: str,
+) -> dict:
+    row = db.query(DemoSession).filter(DemoSession.id == session_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Demo session not found")
+
+    previous_status = row.admin_status
+    row.admin_status = new_status
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        action=action,
+        resource_type="demo_session",
+        resource_id=None,
+        details={
+            "demo_session_id": row.id,
+            "email": row.email,
+            "previous_status": previous_status,
+            "new_status": new_status,
+        },
+        ip_address=request.client.host if request.client else None,
+    )
+
+    db.commit()
+    db.refresh(row)
+    return _serialize_demo_row(row)
+
+
+@router.post("/demo-sessions/{session_id}/approve")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def approve_demo_session(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Mark a demo session as approved."""
+    return _set_demo_status(
+        db, session_id, "approved", current_user, request, "demo_session_approve"
+    )
+
+
+@router.post("/demo-sessions/{session_id}/reject")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def reject_demo_session(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Mark a demo session as rejected."""
+    return _set_demo_status(
+        db, session_id, "rejected", current_user, request, "demo_session_reject"
+    )
+
+
+@router.post("/demo-sessions/{session_id}/blocklist")
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def blocklist_demo_session(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Mark a demo session as blocklisted."""
+    return _set_demo_status(
+        db, session_id, "blocklisted", current_user, request, "demo_session_blocklist"
+    )
+
+
+@router.get("/demo-sessions/export.csv")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+def export_demo_sessions_csv(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+):
+    """Stream ALL demo session rows as CSV (FR-065).
+
+    Uses a server-side cursor via `yield_per` so we do not buffer the
+    entire table in memory.
+    """
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="demo_session_export_csv",
+        resource_type="demo_session",
+        resource_id=None,
+        details={},
+        ip_address=request.client.host if request.client else None,
+    )
+    db.commit()
+
+    columns = [
+        "id",
+        "created_at",
+        "email",
+        "full_name",
+        "role",
+        "verified",
+        "verified_ts",
+        "generations_count",
+        "admin_status",
+    ]
+
+    def row_iter():
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(columns)
+        yield buf.getvalue()
+        buf.seek(0)
+        buf.truncate(0)
+
+        query = db.query(DemoSession).order_by(DemoSession.created_at.desc())
+        for r in query.yield_per(500):
+            writer.writerow([
+                r.id,
+                r.created_at.isoformat() if r.created_at else "",
+                r.email or "",
+                r.full_name or "",
+                r.role or "",
+                "true" if r.verified else "false",
+                r.verified_ts.isoformat() if r.verified_ts else "",
+                int(r.generations_count or 0),
+                r.admin_status or "",
+            ])
+            yield buf.getvalue()
+            buf.seek(0)
+            buf.truncate(0)
+
+    filename = f"demo-sessions-{datetime.now().strftime('%Y-%m-%d')}.csv"
+    return StreamingResponse(
+        row_iter(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

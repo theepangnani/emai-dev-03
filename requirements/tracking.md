@@ -5,6 +5,13 @@
 - **Bugs fixed:** 410+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
+**Apr 18 — CB-DEMO-001 Instant Trial & Demo Experience kickoff (epic #3599):**
+- Epic #3599 opened for Instant Trial landing-page experience (AI Instant Trial + Tuesday Mirror + Role Switcher + Proof Wall); target launch May 13, 2026 with 50/50 A/B, sunset gate May 29 if M4 < 2.0×.
+- 13 child issues filed (#3600–#3612); C1 content stream (#3612) authors Tuesday Mirror scripts for 5 Ontario boards (YRDSB/TDSB/DDSB/PDSB/OCDSB), Role Switcher ROM field-trip script, Proof Wall placeholder testimonials + 4 compliance badges, 3 demo prompts (ask/study-guide/flash-tutor), compliance-claims audit, testimonials consent process, REQUIREMENTS §6.135.
+- Scope deltas from PRD v1.1: claude-haiku-4-5 (not GPT-4o-mini), Turnstile/PostHog/i18n deferred, "OECM procurement pathway" badge replaced with "Canadian-hosted", Tuesday Mirror names tools per mentor delta #8.
+- All 14 streams merged into `integrate/cb-demo-001` (F1/F2/F3/B1/B2/B3/B4/C1/FE1/FE2/FE3/FE4/FE5/#3618). 70+ fast-follow suggestions filed as `CB-DEMO-001-fast-follow`.
+- Snapshot date: 2026-04-18.
+
 **Apr 18 — WhatsApp Production Integration + Digest Quality Improvements (CB-PEDI-001):**
 
 *Production WhatsApp:*

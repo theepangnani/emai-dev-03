@@ -56,6 +56,7 @@ from app.models.ile_topic_mastery import ILETopicMastery
 from app.models.ile_question_bank import ILEQuestionBank
 from app.models.ile_student_calibration import ILEStudentCalibration
 from app.models.learning_history import LearningHistory
+from app.models.demo_session import DemoSession
 
 
 __all__ = [
@@ -144,4 +145,5 @@ __all__ = [
     "ILEQuestionBank",
     "ILEStudentCalibration",
     "LearningHistory",
+    "DemoSession",
 ]

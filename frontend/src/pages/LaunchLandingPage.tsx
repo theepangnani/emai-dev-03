@@ -1,11 +1,17 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useFeature } from '../hooks/useFeatureToggle';
+import { useVariantBucket } from '../hooks/useVariantBucket';
+import { TuesdayMirror } from '../components/demo/TuesdayMirror';
+import { InstantTrialSection } from '../components/demo/InstantTrialSection';
+import RoleSwitcher from '../components/demo/RoleSwitcher';
+import { ProofWall } from '../components/demo/ProofWall';
 import './LaunchLandingPage.css';
 
 export function LaunchLandingPage() {
   const { user } = useAuth();
   const waitlistEnabled = useFeature('waitlist_enabled');
+  const demoLandingVariant = useVariantBucket('demo_landing_v1_1');
 
   if (user) {
     return null; // App.tsx handles redirect for authenticated users
@@ -37,6 +43,17 @@ export function LaunchLandingPage() {
           <Link to="/survey" className="launch-btn-secondary launch-btn-lg">Take Our Survey</Link>
         </div>
       </section>
+
+      {demoLandingVariant === 'on' && (
+        <>
+          <TuesdayMirror />
+          <section id="instant-trial">
+            <InstantTrialSection />
+          </section>
+          <RoleSwitcher />
+          <ProofWall />
+        </>
+      )}
 
       <section className="launch-features">
         <h2>Why ClassBridge?</h2>

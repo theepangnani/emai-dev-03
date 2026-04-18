@@ -34,6 +34,9 @@ from app.api.routes import admin_contacts
 from app.api.routes import features as features_route
 from app.api.routes import ile
 from app.api.routes import asgf
+from app.api.routes import demo_verify  # CB-DEMO-001 B2 (#3604)
+from app.api.routes import public as public_routes  # CB-DEMO-001 B2 (#3604)
+from app.api.routes import demo  # CB-DEMO-001 B1 (#3603)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -66,6 +69,7 @@ from app.models.course_announcement import CourseAnnouncement  # noqa: F401
 from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
 from app.models.learning_history import LearningHistory  # noqa: F401 — ASGF learning history (#3391)
+from app.models.demo_session import DemoSession  # noqa: F401 — CB-DEMO-001 demo sessions (#3600)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -188,6 +192,111 @@ finally:
             except Exception:
                 pass
         _lh_lock_conn.close()
+
+# demo_sessions table (#3600 — CB-DEMO-001 Instant Trial & Demo Experience).
+# Wrapped with pg_try_advisory_lock for Cloud Run safety.
+_ds_lock_conn = None
+_ds_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _ds_time
+        _ds_lock_conn = engine.connect()
+        for _ds_attempt in range(1, 4):
+            _ds_result = _ds_lock_conn.execute(text("SELECT pg_try_advisory_lock(3600)"))
+            _ds_lock_acquired = _ds_result.scalar()
+            if _ds_lock_acquired:
+                logger.info("Acquired advisory lock 3600 for demo_sessions migration (attempt %d)", _ds_attempt)
+                break
+            logger.warning("Advisory lock 3600 held by another instance (attempt %d/3), retrying in 5s...", _ds_attempt)
+            _ds_time.sleep(5)
+        if not _ds_lock_acquired:
+            logger.warning("Could not acquire advisory lock 3600 after 3 attempts — running demo_sessions migration without lock")
+
+    with engine.connect() as _conn:
+        if _is_pg:
+            # Ensure pgcrypto is available for gen_random_uuid(); ignore if already present.
+            try:
+                _conn.execute(text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+            except Exception as _ext_err:
+                logger.warning("pgcrypto extension note: %s", _ext_err)
+            try:
+                # Required for CITEXT column below; citext is not installed
+                # by default on all PG distributions.
+                _conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+            except Exception as _ext_err:
+                logger.warning("citext extension note: %s", _ext_err)
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS demo_sessions (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    email_hash CHAR(64) NOT NULL,
+                    email CITEXT NOT NULL,
+                    full_name TEXT,
+                    role TEXT NOT NULL CHECK (role IN ('parent','student','teacher','other')),
+                    consent_ts TIMESTAMPTZ,
+                    verified BOOLEAN NOT NULL DEFAULT FALSE,
+                    verified_ts TIMESTAMPTZ,
+                    verification_token_hash CHAR(64),
+                    verification_expires_at TIMESTAMPTZ,
+                    fallback_code_hash CHAR(64),
+                    fallback_code_expires_at TIMESTAMPTZ,
+                    generations_count INTEGER NOT NULL DEFAULT 0,
+                    generations_json JSONB,
+                    moat_engagement_json JSONB,
+                    source_ip_hash CHAR(64),
+                    user_agent TEXT,
+                    admin_status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK (admin_status IN ('pending','approved','rejected','blocklisted')),
+                    archived_at TIMESTAMPTZ
+                )
+            """))
+            _conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_demo_sessions_email_hash "
+                "ON demo_sessions(email_hash)"
+            ))
+        else:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS demo_sessions (
+                    id VARCHAR(36) PRIMARY KEY,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    email_hash CHAR(64) NOT NULL,
+                    email TEXT COLLATE NOCASE NOT NULL,
+                    full_name TEXT,
+                    role VARCHAR(10) NOT NULL CHECK (role IN ('parent','student','teacher','other')),
+                    consent_ts DATETIME,
+                    verified BOOLEAN NOT NULL DEFAULT FALSE,
+                    verified_ts DATETIME,
+                    verification_token_hash CHAR(64),
+                    verification_expires_at DATETIME,
+                    fallback_code_hash CHAR(64),
+                    fallback_code_expires_at DATETIME,
+                    generations_count INTEGER NOT NULL DEFAULT 0,
+                    generations_json JSON,
+                    moat_engagement_json JSON,
+                    source_ip_hash CHAR(64),
+                    user_agent TEXT,
+                    admin_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                        CHECK (admin_status IN ('pending','approved','rejected','blocklisted')),
+                    archived_at DATETIME
+                )
+            """))
+            _conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_demo_sessions_email_hash "
+                "ON demo_sessions(email_hash)"
+            ))
+        _conn.commit()
+        logger.info("demo_sessions table migration completed (#3600)")
+except Exception as _ds_err:
+    logger.warning("demo_sessions table migration note: %s", _ds_err)
+finally:
+    if _ds_lock_conn is not None:
+        if _ds_lock_acquired:
+            try:
+                _ds_lock_conn.execute(text("SELECT pg_advisory_unlock(3600)"))
+                _ds_lock_conn.commit()
+            except Exception:
+                pass
+        _ds_lock_conn.close()
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
@@ -424,6 +533,9 @@ app.include_router(admin_outreach.router, prefix="/api")
 app.include_router(features_route.router, prefix="/api")
 app.include_router(ile.router, prefix="/api")
 app.include_router(asgf.router, prefix="/api")
+app.include_router(demo_verify.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
+app.include_router(public_routes.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
+app.include_router(demo.router, prefix="/api/v1")  # CB-DEMO-001 B1 (#3603)
 
 logger.info("API routes registered at /api")
 

@@ -65,6 +65,7 @@ const ForgotPasswordPage = lazyRetry(() => import('./pages/ForgotPasswordPage').
 const ResetPasswordPage = lazyRetry(() => import('./pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) => ({ default: m.PrivacyPolicy })));
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
+const CompliancePage = lazyRetry(() => import('./pages/CompliancePage').then((m) => ({ default: m.CompliancePage })));
 const LaunchLandingPage = lazyRetry(() => import('./pages/LaunchLandingPage').then((m) => ({ default: m.LaunchLandingPage })));
 const OnboardingPage = lazyRetry(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const VerifyEmailPage = lazyRetry(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
@@ -73,6 +74,7 @@ const FAQPage = lazyRetry(() => import('./pages/FAQPage').then((m) => ({ default
 const FAQDetailPage = lazyRetry(() => import('./pages/FAQDetailPage').then((m) => ({ default: m.FAQDetailPage })));
 const AdminFAQPage = lazyRetry(() => import('./pages/AdminFAQPage').then((m) => ({ default: m.AdminFAQPage })));
 const AdminWaitlistPage = lazyRetry(() => import('./pages/AdminWaitlistPage').then((m) => ({ default: m.AdminWaitlistPage })));
+const AdminDemoSessionsPage = lazyRetry(() => import('./pages/AdminDemoSessionsPage').then((m) => ({ default: m.AdminDemoSessionsPage })));
 const AdminContactsPage = lazyRetry(() => import('./pages/AdminContactsPage').then((m) => ({ default: m.AdminContactsPage })));
 const AdminAIUsagePage = lazyRetry(() => import('./pages/AdminAIUsagePage').then((m) => ({ default: m.AdminAIUsagePage })));
 const AnalyticsPage = lazyRetry(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
@@ -108,6 +110,7 @@ const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m)
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
 const ASGFPage = lazyRetry(() => import('./pages/ASGFPage').then((m) => ({ default: m.ASGFPage })));
+const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,9 +143,11 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/waitlist" element={<WaitlistPage />} />
+              <Route path="/demo/verified" element={<DemoVerifiedPage />} />
               <Route path="/survey" element={<SurveyPage />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/compliance" element={<CompliancePage />} />
               <Route path="/oauth/gmail/callback" element={<GmailOAuthCallbackPage />} />
               <Route
                 path="/dashboard"
@@ -441,6 +446,14 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminWaitlistPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/demo-sessions"
+                element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDemoSessionsPage />
                   </ProtectedRoute>
                 }
               />
