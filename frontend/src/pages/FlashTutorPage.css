@@ -39,6 +39,12 @@
   flex-shrink: 0;
 }
 
+.ft-header .asgf-entry-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .ft-header h1 {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
