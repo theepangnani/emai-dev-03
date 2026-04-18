@@ -30,6 +30,8 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
   const [toast, setToast] = useState<string | null>(null);
   const [justAppended, setJustAppended] = useState(false);
   const [parentEditing, setParentEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -345,6 +347,73 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
     setPreviewVersion(null);
   };
 
+  // Image upload handler
+  const handleImageUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      showToast('Only image files are supported');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image must be under 5 MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const result = await notesApi.uploadImage(file);
+      const imageMarkdown = `\n![image](/api/notes/images/${result.id})\n`;
+      const textarea = textareaRef.current;
+      let newContent: string;
+      if (textarea) {
+        const pos = textarea.selectionStart ?? content.length;
+        newContent = content.slice(0, pos) + imageMarkdown + content.slice(pos);
+      } else {
+        newContent = content + imageMarkdown;
+      }
+      setContent(newContent);
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => saveNote(newContent), 300);
+    } catch {
+      showToast('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
+  }, [content, saveNote]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) handleImageUpload(file);
+        return;
+      }
+    }
+  }, [handleImageUpload]);
+
+  const handleFileDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer?.files;
+    if (!files) return;
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('image/')) {
+        handleImageUpload(files[i]);
+        return;
+      }
+    }
+  }, [handleImageUpload]);
+
+  const handleDragOverEvent = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false);
+  }, []);
+
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     const now = new Date();
@@ -512,14 +581,39 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
           />
         </div>
       ) : (
-        <div className="notes-panel-body">
+        <div
+          className={`notes-panel-body${dragOver ? ' notes-drop-active' : ''}`}
+          onDrop={handleFileDrop}
+          onDragOver={handleDragOverEvent}
+          onDragLeave={handleDragLeave}
+        >
           <textarea
             ref={textareaRef}
             className={`notes-textarea${justAppended ? ' notes-textarea--appended' : ''}`}
             value={content}
             onChange={handleChange}
+            onPaste={handlePaste}
             placeholder="Type your notes here..."
           />
+          {uploading && <div className="notes-upload-indicator">Uploading image...</div>}
+          {/* Render inline image previews from content */}
+          {(() => {
+            const matches = [...content.matchAll(/!\[image\]\(\/api\/notes\/images\/(\d+)\)/g)];
+            if (matches.length === 0) return null;
+            return (
+              <div className="notes-image-preview">
+                {matches.map((m, i) => (
+                  <img
+                    key={`${m[1]}-${i}`}
+                    src={`/api/notes/images/${m[1]}`}
+                    alt="Note attachment"
+                    className="notes-image-thumb"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            );
+          })()}
           <div className="notes-panel-footer">
             {saving && <span className="notes-saving">Saving...</span>}
             {!saving && note && <span className="notes-saved">Saved</span>}

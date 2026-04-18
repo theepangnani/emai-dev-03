@@ -100,6 +100,15 @@ export const notesApi = {
     return response.data as NoteItem;
   },
 
+  uploadImage: async (file: File): Promise<{ id: number; image_url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/api/notes/images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
   createTask: async (noteId: number, courseContentId: number, data: NoteCreateTaskData) => {
     const response = await api.post('/api/tasks/', {
       title: data.title,

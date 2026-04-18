@@ -515,6 +515,61 @@
   opacity: 0.8;
 }
 
+/* Image upload indicator */
+.notes-upload-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px 6px;
+  font-size: 0.78rem;
+  color: var(--color-accent, #2a9fa8);
+}
+
+.notes-upload-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-accent, #2a9fa8);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: notes-spinner 0.6s linear infinite;
+}
+
+@keyframes notes-spinner {
+  to { transform: rotate(360deg); }
+}
+
+/* Image preview thumbnails */
+.notes-image-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 14px 8px;
+}
+
+.notes-image-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.notes-image-thumb:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Drop target highlight */
+.notes-drop-active {
+  outline: 2px dashed var(--color-accent, #2a9fa8);
+  outline-offset: -2px;
+  background: rgba(42, 159, 168, 0.04);
+}
+
 /* Mobile: full-width panel */
 
 /* ── Dark mode ── */
