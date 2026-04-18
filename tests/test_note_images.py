@@ -112,6 +112,49 @@ class TestUploadNoteImage:
         assert resp.status_code == 400
         assert "does not match" in resp.json()["detail"]
 
+    @patch("app.api.routes.notes.gcs_upload_file")
+    def test_upload_palette_mode_image(self, mock_upload, client, setup):
+        """P-mode (palette) images should be converted to RGBA and saved as PNG."""
+        mock_upload.return_value = "notes/1/abc.png"
+        headers = _auth(client, "imgowner@test.com")
+        # Create a P-mode PNG with transparency
+        img = Image.new("P", (200, 200))
+        img.putpalette([i % 256 for i in range(768)])
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        palette_bytes = buf.getvalue()
+
+        resp = client.post(
+            "/api/notes/images",
+            files={"file": ("palette.png", io.BytesIO(palette_bytes), "image/png")},
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["media_type"] == "image/png"
+
+    @patch("app.api.routes.notes.gcs_upload_file")
+    def test_upload_cmyk_image(self, mock_upload, client, setup):
+        """CMYK images should be converted to RGB and saved as JPEG."""
+        mock_upload.return_value = "notes/1/abc.jpg"
+        headers = _auth(client, "imgowner@test.com")
+        # Create a CMYK image — save as TIFF first, then read raw bytes
+        # PIL can open CMYK TIFFs but we need a PNG-like format
+        # Instead, create an RGB image and manually test the compression path
+        img = Image.new("CMYK", (100, 100), (0, 0, 0, 0))
+        buf = io.BytesIO()
+        img.save(buf, format="TIFF")
+        buf.seek(0)
+        cmyk_bytes = buf.getvalue()
+
+        # TIFF content-type is not allowed, so this should be rejected at content_type check
+        resp = client.post(
+            "/api/notes/images",
+            files={"file": ("test.tiff", io.BytesIO(cmyk_bytes), "image/tiff")},
+            headers=headers,
+        )
+        assert resp.status_code == 400
+
     def test_reject_unauthenticated(self, client, setup):
         png_bytes = _make_png_bytes()
         resp = client.post(

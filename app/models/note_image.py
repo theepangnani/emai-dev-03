@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func
+from sqlalchemy.orm import relationship
 
 from app.db.database import Base
 
@@ -13,3 +14,6 @@ class NoteImage(Base):
     media_type = Column(String(50), nullable=False)
     file_size = Column(Integer, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+    note = relationship("Note", back_populates="images")
+    user = relationship("User")

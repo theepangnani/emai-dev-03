@@ -355,11 +355,15 @@ def _compress_note_image(image_bytes: bytes, max_width: int = MAX_IMAGE_WIDTH) -
     # Re-open after verify (verify closes the image)
     img = Image.open(io.BytesIO(image_bytes))
 
+    # Convert palette mode to RGBA before any processing (resize + save)
+    if img.mode == "P":
+        img = img.convert("RGBA")
+
     if img.width > max_width:
         ratio = max_width / img.width
         img = img.resize((max_width, int(img.height * ratio)), Image.LANCZOS)
     # Keep PNG for images with transparency
-    if img.mode in ("RGBA", "LA", "P"):
+    if img.mode in ("RGBA", "LA"):
         buf = io.BytesIO()
         img.save(buf, format="PNG", optimize=True)
         return buf.getvalue(), "image/png"
