@@ -2357,6 +2357,23 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("Monitored emails data migration skipped: %s", e)
 
+    # --- Add sender_name column to monitored_emails (#3652) ---
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE parent_digest_monitored_emails ADD COLUMN IF NOT EXISTS sender_name VARCHAR(100)"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Migration add sender_name failed: {e}")
+
+    # --- Drop NOT NULL on email_address so name-only entries work (#3652, PG only) ---
+    if "sqlite" not in settings.database_url:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE parent_digest_monitored_emails ALTER COLUMN email_address DROP NOT NULL"))
+                conn.commit()
+        except Exception as e:
+            logger.warning(f"Migration drop NOT NULL on email_address failed: {e}")
+
     # --- ILE Sessions: ai_cost_estimate and flagged_reason columns (#3216) ---
     try:
         with engine.connect() as conn:

@@ -61,8 +61,9 @@ class ParentDigestMonitoredEmail(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     integration_id = Column(Integer, ForeignKey("parent_gmail_integrations.id", ondelete="CASCADE"), nullable=False, index=True)
-    email_address = Column(String(255), nullable=False)
+    email_address = Column(String(255), nullable=True)
     label = Column(String(100), nullable=True)
+    sender_name = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     integration = relationship("ParentGmailIntegration", back_populates="monitored_emails")
