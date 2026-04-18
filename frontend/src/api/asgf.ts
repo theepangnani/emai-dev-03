@@ -115,6 +115,12 @@ export interface ActiveSessionsResponse {
   sessions: ActiveSessionItem[];
 }
 
+export interface ContextDataResponse {
+  children: { id: string; name: string; grade: string; board: string }[];
+  courses: { id: string; name: string; teacher: string }[];
+  upcoming_tasks: { id: string; title: string; due_date: string }[];
+}
+
 export const asgfApi = {
   classifyIntent: async (question: string): Promise<IntentClassifyResponse> => {
     const response = await api.post<IntentClassifyResponse>('/api/asgf/classify-intent', { question });
@@ -262,6 +268,12 @@ export const asgfApi = {
     const response = await api.get<ActiveSessionsResponse>(
       '/api/asgf/active-sessions',
     );
+    return response.data;
+  },
+
+  /** Fetch context data (children, courses, tasks) for the ASGF context panel. */
+  async getContextData(): Promise<ContextDataResponse> {
+    const response = await api.get<ContextDataResponse>('/api/asgf/context-data');
     return response.data;
   },
 };

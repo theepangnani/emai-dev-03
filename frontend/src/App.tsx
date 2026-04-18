@@ -107,6 +107,7 @@ const StudyTimelinePage = lazyRetry(() => import('./pages/StudyTimelinePage').th
 const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m) => ({ default: m.ReportCardPage })));
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
+const ASGFPage = lazyRetry(() => import('./pages/ASGFPage').then((m) => ({ default: m.ASGFPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -256,6 +257,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <FlashcardsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ask"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                    <ASGFPage />
                   </ProtectedRoute>
                 }
               />

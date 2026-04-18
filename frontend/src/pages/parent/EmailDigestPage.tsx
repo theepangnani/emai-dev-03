@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
@@ -13,6 +13,8 @@ import {
   listMonitoredEmails,
   addMonitoredEmail,
   removeMonitoredEmail,
+  getGmailAuthUrl,
+  connectGmail,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
@@ -130,6 +132,41 @@ export function EmailDigestPage() {
     });
   };
 
+  // Gmail reconnect via popup (same pattern as setup wizard)
+  const oauthStateRef = useRef('');
+
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'gmail-oauth-callback' && event.data?.code) {
+        try {
+          const redirectUri = window.location.origin + '/oauth/gmail/callback';
+          await connectGmail(event.data.code, oauthStateRef.current, redirectUri);
+          // Refresh integration data — this will clear the reconnect banner
+          queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+        } catch {
+          // If reconnect fails, user can try again
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [queryClient]);
+
+  const handleReconnect = async () => {
+    try {
+      const redirectUri = window.location.origin + '/oauth/gmail/callback';
+      const res = await getGmailAuthUrl(redirectUri);
+      oauthStateRef.current = res.data.state;
+      const w = 500;
+      const h = 600;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      window.open(res.data.authorization_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    } catch {
+      navigate('/my-kids');
+    }
+  };
+
   const isLoading = intLoading;
 
   return (
@@ -176,6 +213,25 @@ export function EmailDigestPage() {
           </div>
         )}
 
+        {!isLoading && activeIntegration && !activeIntegration.is_active && (
+          <div className="ed-reconnect-banner">
+            <div className="ed-reconnect-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div className="ed-reconnect-text">
+              <h3>Gmail Connection Expired</h3>
+              <p>Your Gmail access has expired. Reconnect to continue receiving email digests.</p>
+            </div>
+            <button className="ed-primary-btn" onClick={handleReconnect}>
+              Reconnect Gmail
+            </button>
+          </div>
+        )}
+
         {!isLoading && activeIntegration && (
           <>
             {/* Quick Settings */}
@@ -216,7 +272,7 @@ export function EmailDigestPage() {
                 <button
                   className="ed-sync-btn"
                   onClick={() => syncMutation.mutate(activeIntegration.id)}
-                  disabled={syncMutation.isPending}
+                  disabled={syncMutation.isPending || !activeIntegration.is_active}
                 >
                   {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
                 </button>
@@ -226,7 +282,7 @@ export function EmailDigestPage() {
                     sendDigestMutation.reset();
                     sendDigestMutation.mutate(activeIntegration.id);
                   }}
-                  disabled={sendDigestMutation.isPending}
+                  disabled={sendDigestMutation.isPending || !activeIntegration.is_active}
                 >
                   {sendDigestMutation.isPending ? 'Sending...' : 'Send Digest Now'}
                 </button>
@@ -237,7 +293,9 @@ export function EmailDigestPage() {
                   <span className="ed-success-text">Sync complete!</span>
                 )}
                 {sendDigestMutation.isError && (
-                  <span className="ed-error-text">Failed to send digest. Please try again.</span>
+                  <span className="ed-error-text">
+                    {(sendDigestMutation.error as any)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
+                  </span>
                 )}
                 {sendDigestMutation.isSuccess && (
                   <span className="ed-success-text">{sendDigestMutation.data?.data?.message ?? 'Digest sent!'}</span>

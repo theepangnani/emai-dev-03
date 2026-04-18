@@ -125,32 +125,236 @@
   overflow: hidden;
 }
 
-.notes-textarea {
-  flex: 1;
-  width: 100%;
-  min-height: 200px;
+/* ── TipTap Toolbar ── */
+.notes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface-alt, #f8fafc);
+  overflow-x: auto;
+}
+
+.notes-tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
   border: none;
-  padding: 12px 14px;
-  font-size: 0.88rem;
-  line-height: 1.6;
-  resize: none;
-  font-family: inherit;
+  border-radius: 4px;
+  background: none;
+  color: var(--color-ink-muted, #64748b);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.notes-tb-btn:hover {
+  background: var(--color-border, #e2e8f0);
   color: var(--color-ink, #1e293b);
-  background: transparent;
+}
+
+.notes-tb-btn.active {
+  background: var(--color-accent, #2a9fa8);
+  color: #fff;
+}
+
+.notes-tb-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.notes-tb-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: var(--color-border, #e2e8f0);
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+.notes-tb-highlight-icon {
+  background: linear-gradient(180deg, transparent 50%, #fef08a 50%);
+  padding: 0 2px;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.notes-tb-dropdown-wrapper {
+  position: relative;
+}
+
+.notes-tb-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+}
+
+.notes-tb-color-btn {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--color-border, #e2e8f0);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.notes-tb-color-btn:hover {
+  transform: scale(1.15);
+}
+
+.notes-tb-color-clear {
+  background: var(--color-surface, #fff);
+  color: var(--color-ink-muted, #64748b);
+}
+
+.notes-tb-link-input {
+  display: flex;
+  gap: 4px;
+  min-width: 220px;
+  padding: 6px 8px;
+}
+
+.notes-tb-link-input input {
+  flex: 1;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  color: var(--color-ink, #1e293b);
+  background: var(--color-surface, #fff);
   outline: none;
 }
 
-.notes-textarea--appended {
+.notes-tb-link-input input:focus {
+  border-color: var(--color-accent, #2a9fa8);
+}
+
+.notes-tb-link-input button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: var(--color-accent, #2a9fa8);
+  color: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── TipTap Editor Content ── */
+.notes-editor-wrap {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 150px;
+}
+
+.notes-editor-wrap .tiptap {
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--color-ink, #1e293b);
+  outline: none;
+  min-height: 150px;
+}
+
+.notes-editor-wrap .tiptap p {
+  margin: 0 0 0.4em;
+}
+
+.notes-editor-wrap .tiptap h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.notes-editor-wrap .tiptap h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.3em;
+}
+
+.notes-editor-wrap .tiptap h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.4em 0 0.2em;
+}
+
+.notes-editor-wrap .tiptap ul,
+.notes-editor-wrap .tiptap ol {
+  padding-left: 1.4em;
+  margin: 0.3em 0;
+}
+
+.notes-editor-wrap .tiptap blockquote {
+  border-left: 3px solid var(--color-accent, #2a9fa8);
+  margin: 0.4em 0;
+  padding: 0.3em 0 0.3em 0.8em;
+  color: var(--color-ink-muted, #64748b);
+}
+
+.notes-editor-wrap .tiptap pre {
+  background: var(--color-surface-alt, #f1f5f9);
+  border-radius: 6px;
+  padding: 0.6em 0.8em;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  overflow-x: auto;
+  margin: 0.4em 0;
+}
+
+.notes-editor-wrap .tiptap code {
+  background: var(--color-surface-alt, #f1f5f9);
+  border-radius: 3px;
+  padding: 0.15em 0.3em;
+  font-size: 0.85em;
+}
+
+.notes-editor-wrap .tiptap a {
+  color: var(--color-accent, #2a9fa8);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.notes-editor-wrap .tiptap mark {
+  border-radius: 2px;
+  padding: 0.1em 0;
+}
+
+.notes-editor-wrap .tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-ink-muted, #94a3b8);
+  pointer-events: none;
+  height: 0;
+}
+
+.notes-editor--appended {
   animation: notes-append-flash 0.8s ease-out;
 }
 
 @keyframes notes-append-flash {
   0% { background-color: rgba(245, 158, 11, 0.15); }
   100% { background-color: transparent; }
-}
-
-.notes-textarea::placeholder {
-  color: var(--color-ink-muted, #94a3b8);
 }
 
 .notes-panel-footer {
@@ -182,9 +386,30 @@
   font-size: 0.88rem;
   line-height: 1.6;
   color: var(--color-ink, #1e293b);
-  white-space: pre-wrap;
   overflow-y: auto;
 }
+
+.notes-readonly-content p { margin: 0 0 0.4em; }
+.notes-readonly-content h1 { font-size: 1.4rem; font-weight: 700; margin: 0.6em 0 0.3em; }
+.notes-readonly-content h2 { font-size: 1.15rem; font-weight: 600; margin: 0.5em 0 0.3em; }
+.notes-readonly-content h3 { font-size: 1rem; font-weight: 600; margin: 0.4em 0 0.2em; }
+.notes-readonly-content ul,
+.notes-readonly-content ol { padding-left: 1.4em; margin: 0.3em 0; }
+.notes-readonly-content blockquote {
+  border-left: 3px solid var(--color-accent, #2a9fa8);
+  margin: 0.4em 0;
+  padding: 0.3em 0 0.3em 0.8em;
+  color: var(--color-ink-muted, #64748b);
+}
+.notes-readonly-content pre {
+  background: var(--color-surface-alt, #f1f5f9);
+  border-radius: 6px;
+  padding: 0.6em 0.8em;
+  font-size: 0.82rem;
+  overflow-x: auto;
+}
+.notes-readonly-content a { color: var(--color-accent, #2a9fa8); text-decoration: underline; }
+.notes-readonly-content mark { border-radius: 2px; padding: 0.1em 0; }
 
 .notes-empty {
   padding: 20px 14px;
@@ -534,7 +759,44 @@
   border: 1px solid var(--color-border);
 }
 
-[data-theme="dark"] .notes-textarea::placeholder {
+[data-theme="dark"] .notes-toolbar {
+  border-bottom: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .notes-tb-btn {
+  color: var(--color-ink-muted, var(--color-muted));
+}
+
+[data-theme="dark"] .notes-tb-btn:hover {
+  background: var(--color-border);
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .notes-tb-btn.active {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+
+[data-theme="dark"] .notes-tb-dropdown {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+[data-theme="dark"] .notes-tb-link-input input {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+[data-theme="dark"] .notes-editor-wrap .tiptap pre {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .notes-editor-wrap .tiptap code {
+  background: var(--color-surface-alt);
+}
+
+[data-theme="dark"] .notes-editor-wrap .tiptap p.is-editor-empty:first-child::before {
   color: var(--color-ink-muted, var(--color-muted));
 }
 
@@ -602,5 +864,16 @@
     right: 8px;
     bottom: 16px;
     width: auto;
+  }
+
+  .notes-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .notes-toolbar::-webkit-scrollbar {
+    display: none;
   }
 }

@@ -33,7 +33,7 @@ export function ASGFEntryButton({
     if (prefilledQuestion) params.set('question', prefilledQuestion);
     if (prefilledContext) params.set('context', prefilledContext);
     const qs = params.toString();
-    navigate(`/flash-tutor${qs ? `?${qs}` : ''}`);
+    navigate(`/ask${qs ? `?${qs}` : ''}`);
   };
 
   return (
