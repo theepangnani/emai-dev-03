@@ -136,7 +136,8 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
             channels=notification_channels,
         )
 
-    # WhatsApp delivery (#2987, #3585, #3586)
+    # WhatsApp delivery (#2987, #3585, #3586, #3620)
+    whatsapp_status: str | None = None
     if "whatsapp" in channels:
         if integration.whatsapp_verified and integration.whatsapp_phone:
             try:
@@ -159,7 +160,7 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 # Use Content API template if content_sid configured (#3585)
                 content_sid = settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
-                    send_whatsapp_template(
+                    wa_success = send_whatsapp_template(
                         integration.whatsapp_phone,
                         content_sid,
                         {"1": parent_name, "2": plain_text},
@@ -167,9 +168,13 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 else:
                     # Fallback: body-text matching (works in sandbox / session window)
                     template_msg = f"{header}{plain_text}{footer}"
-                    send_whatsapp_message(integration.whatsapp_phone, template_msg)
+                    wa_success = send_whatsapp_message(integration.whatsapp_phone, template_msg)
+                whatsapp_status = "sent" if wa_success else "failed"
             except Exception as e:
+                whatsapp_status = "failed"
                 logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
+        else:
+            whatsapp_status = "skipped"
 
     email_count = len(emails) if emails else 0
     log_entry = DigestDeliveryLog(
@@ -180,6 +185,7 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         digest_length_chars=len(digest_content) if digest_content else 0,
         channels_used=settings.delivery_channels,
         status="delivered",
+        whatsapp_delivery_status=whatsapp_status,
     )
     db.add(log_entry)
 

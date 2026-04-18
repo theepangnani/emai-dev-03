@@ -2402,3 +2402,25 @@ def _run_migrations_inner(engine, settings, logger):
                     logger.info("Added 'parent_hint_note' column to ile_question_attempts (#3212)")
     except Exception as e:
         logger.debug("ILE parent_hint_note migration skipped: %s", e)
+
+    # --- Digest: whatsapp_delivery_status column on digest_delivery_log (#3620) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "digest_delivery_log" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("digest_delivery_log")}
+                if "whatsapp_delivery_status" not in existing_cols:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE digest_delivery_log ADD COLUMN whatsapp_delivery_status VARCHAR(20)"
+                        ))
+                        conn.commit()
+                        logger.info("Added whatsapp_delivery_status column to digest_delivery_log (#3620)")
+                    except Exception as col_err:
+                        conn.rollback()
+                        logger.warning(
+                            "Failed to add whatsapp_delivery_status to digest_delivery_log (#3620): %s",
+                            col_err,
+                        )
+    except Exception as e:
+        logger.debug("whatsapp_delivery_status migration skipped (column likely exists): %s", e)
