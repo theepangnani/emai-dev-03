@@ -1,0 +1,84 @@
+.proof-wall {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 32px 16px;
+  color: var(--color-ink);
+}
+
+.proof-wall__counter {
+  text-align: center;
+}
+
+.proof-wall__counter-total {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-accent-strong);
+}
+
+.proof-wall__counter-label {
+  font-size: 18px;
+  margin-top: 8px;
+  color: var(--color-ink);
+}
+
+.proof-wall__counter-municipality {
+  font-size: 14px;
+  margin-top: 6px;
+  color: var(--color-ink-muted, var(--color-ink));
+}
+
+.proof-wall__testimonials {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.proof-wall__testimonial {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xs);
+  padding: 16px 20px;
+}
+
+.proof-wall__testimonial-quote {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 8px 0;
+}
+
+.proof-wall__testimonial-attribution {
+  font-size: 14px;
+  color: var(--color-ink-muted, var(--color-ink));
+  margin: 0;
+}
+
+.proof-wall__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.proof-wall__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  color: var(--color-ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.proof-wall__badge:hover,
+.proof-wall__badge:focus-visible {
+  border-color: var(--color-accent-strong);
+  color: var(--color-accent-strong);
+}
