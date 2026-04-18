@@ -4,37 +4,40 @@
     "parent": {
       "title": "Parent view",
       "content_items": [
-        "Digest card: ROM field trip, Oct 17 — permission form due Oct 10.",
-        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
-        "Action needed: sign and return permission form.",
-        "Cost: $18 (paid via school cash online)."
+        "Permission-slip deadline (sign and return).",
+        "$22 fee — Interac tap-to-pay button.",
+        "Dietary preferences confirmation.",
+        "Bus pickup time.",
+        "Emergency-contact confirmation."
       ]
     },
     "student": {
       "title": "Student view",
       "content_items": [
-        "Digest card: ROM field trip, Oct 17 — bring a bagged lunch.",
-        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, meet in homeroom.",
-        "What to bring: lunch, water bottle, notebook, pencil.",
-        "Post-trip assignment: 1-page reflection due Oct 21."
+        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
+        "Packing checklist.",
+        "Lunch option selector.",
+        "Which friends have confirmed yes."
       ]
     },
     "teacher": {
       "title": "Teacher view",
       "content_items": [
-        "Roster: 28 students, 24 confirmed, 4 pending permission.",
-        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
-        "Chaperones: 3 confirmed parent volunteers.",
-        "Reminder: final headcount to office by Oct 14."
+        "Roster: permission-status icons per student.",
+        "Fee-collection dashboard.",
+        "Bus seat assignment.",
+        "Allergy alerts.",
+        "One-tap reminder button."
       ]
     },
     "admin": {
-      "title": "Admin view",
+      "title": "School Admin view",
       "content_items": [
-        "Approval status: approved by principal Sept 28.",
-        "Calendar entry: Thu Oct 17, 9:00 AM – 2:30 PM, Royal Ontario Museum.",
-        "Bus booking: confirmed, 1 coach (50 seats).",
-        "Insurance & risk: field-trip form on file."
+        "Approval status.",
+        "Insurance documentation link.",
+        "Total collected vs. owed.",
+        "Opt-out count.",
+        "MFIPPA compliance checklist."
       ]
     }
   }

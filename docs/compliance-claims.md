@@ -4,6 +4,8 @@
 
 **Launch gate:** Any badge still marked "pending" on May 13, 2026 must be removed from the Proof Wall before the A/B test starts.
 
+**Dependency:** Each badge's `href` in `compliance-badges.json` points to an anchor on `/compliance` (e.g., `/compliance#hosting`). That page must exist before Proof Wall ships or clicks will 404 — tracked in issue #3618 (blocker for FE4 #3610).
+
 **Scope:** Public-facing marketing claims only. Internal DPIA and board-procurement responses live under `docs/DTAP_VASP_Compliance_Report_ClassBridge.docx`.
 
 ---

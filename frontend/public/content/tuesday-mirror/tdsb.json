@@ -1,7 +1,7 @@
 {
   "board": "TDSB",
   "display_name": "Toronto DSB",
-  "tools_named": ["Google Classroom", "Parent Portal", "Teams"],
+  "tools_named": ["Google Classroom", "TDSB Parent Portal", "Teams"],
   "beats": [
     {
       "index": 1,
@@ -11,27 +11,27 @@
     },
     {
       "index": 2,
-      "timestamp": "Tuesday evening",
-      "without": "A Parent Portal grade update drops overnight. Parent only finds it on Friday while clicking through the portal.",
-      "with": "Parent Portal delta surfaced in Tuesday's digest with a one-line 'what changed' summary."
+      "timestamp": "3:42 PM",
+      "without": "Parent discovers tomorrow is a PA day only because a neighbour mentions it in the parking lot.",
+      "with": "PA day surfaced in Monday evening's look-ahead digest."
     },
     {
       "index": 3,
-      "timestamp": "Wednesday 8:00 AM",
-      "without": "Teacher posts a Google Classroom assignment due Friday. Student forgets, parent never sees it, assignment turns in late.",
-      "with": "Assignment appears in the student's study plan and the parent's morning brief with a due-date countdown."
+      "timestamp": "4:15 PM",
+      "without": "Teacher posts an assignment to the TDSB Parent Portal; no one in the family sees it for two days.",
+      "with": "Assignment lands in the next morning's parent digest, already summarised."
     },
     {
       "index": 4,
-      "timestamp": "Thursday lunchtime",
-      "without": "A Teams meeting with a Resource teacher is rescheduled. Parent shows up to the old slot.",
-      "with": "Teams reschedule caught by the digest the same morning; calendar updated, parent arrives on time."
+      "timestamp": "5:30 PM",
+      "without": "Parent gets a Teams notification that swim lesson is cancelled — while the child is already at the pool.",
+      "with": "Cancellation cross-referenced against the student's schedule; priority push fired 90 minutes earlier."
     },
     {
       "index": 5,
-      "timestamp": "Friday 6:00 PM",
-      "without": "Weekend field-trip permission form was buried in Google Classroom three days ago. It's due Monday and the parent just found out.",
-      "with": "Permission form flagged in Tuesday's digest with a 'respond by' date. Signed and returned by Wednesday."
+      "timestamp": "7:20 PM",
+      "without": "Child casually mentions a community-program fee due tomorrow. Parent scrambles.",
+      "with": "Extracurricular commitments, including community programs, aggregated in the weekly digest."
     }
   ]
 }
