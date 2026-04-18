@@ -533,7 +533,7 @@ export function NotesPanel({ courseContentId, isOpen, onClose, appendText, onApp
               </div>
             </>
           )}
-          <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore' : 'Maximize'}>
+          <button className="notes-maximize-btn" onClick={toggleMaximize} title={maximized ? 'Restore' : 'Maximize'} aria-label={maximized ? 'Restore panel' : 'Maximize panel'} aria-expanded={maximized}>
             {maximized ? '\u2750' : '\u2B1C'}
           </button>
           <button className="notes-close-btn" onClick={onClose} title="Close notes" aria-label="Close notes">
