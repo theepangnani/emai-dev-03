@@ -46,7 +46,6 @@ from app.services.demo_rate_limit import (
     check_email_rate_limit,
     check_input_word_count,
     check_ip_rate_limit,
-    record_generation,  # noqa: F401 — kept as a fallback; see #3666
     reserve_generation_slot,
     update_generation_slot,
 )
@@ -235,8 +234,7 @@ async def create_demo_session(
             "| session_id=%s | %s",
             session.id, e,
         )
-        db.delete(session)
-        db.commit()
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={

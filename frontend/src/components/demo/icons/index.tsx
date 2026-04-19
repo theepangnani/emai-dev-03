@@ -1,5 +1,5 @@
 /**
- * Demo icon primitives — 17 inline SVG components for CB-DEMO-001.
+ * Demo icon primitives — 18 inline SVG components for CB-DEMO-001.
  * All stroke-based, 20px default, currentColor, stroke-width 1.75, rounded linecaps.
  * aria-hidden defaults to true; callers wrap in labelled buttons/links.
  */
