@@ -160,6 +160,9 @@ export function ASGFPage() {
   const handleStartSession = useCallback(async () => {
     if (!question.trim()) return;
     setError(null);
+    // Abort any prior session's SSE (handles Back → Start Again, retry races).
+    abortRef.current?.abort();
+    abortRef.current = null;
     setStage('processing');
     setProcessingStage(0);
 
