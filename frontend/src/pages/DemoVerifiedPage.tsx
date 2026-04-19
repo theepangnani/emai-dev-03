@@ -38,21 +38,21 @@ export function DemoVerifiedPage() {
 
         <ul className="demo-verified-benefits">
           <li>
-            <IconCheck size={20} aria-hidden="true" />
+            <IconCheck size={20} />
             <span>Your email is confirmed and your waitlist spot is locked in.</span>
           </li>
           <li>
-            <IconCheck size={20} aria-hidden="true" />
+            <IconCheck size={20} />
             <span>We'll email you the moment your role's invite wave opens.</span>
           </li>
           <li>
-            <IconCheck size={20} aria-hidden="true" />
+            <IconCheck size={20} />
             <span>Want to jump the queue? Forward our email to a friend who'd benefit.</span>
           </li>
         </ul>
 
         <Link to="/" className="launch-btn-primary launch-btn-lg demo-verified-cta">
-          <IconArrowRight size={18} aria-hidden="true" />
+          <IconArrowRight size={18} />
           <span>Back to ClassBridge</span>
         </Link>
       </section>
