@@ -106,7 +106,6 @@ describe('InstantTrialModal — step 1 validation', () => {
   });
 
   it('shows the under-13 notice when role=student', async () => {
-    const user = userEvent.setup();
     render(<InstantTrialModal onClose={() => {}} />);
     selectRole(/^Student$/);
     expect(screen.getByRole('note')).toHaveTextContent(/under 13/i);

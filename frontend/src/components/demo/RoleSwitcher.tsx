@@ -64,8 +64,6 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
     let cancelled = false;
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    setError(null);
-    setData(null);
     fetch(contentUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -151,6 +149,8 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
   };
 
   const handleRetry = useCallback(() => {
+    setError(null);
+    setData(null);
     setReloadKey((k) => k + 1);
   }, []);
 
