@@ -164,10 +164,7 @@ describe('FAQPage', () => {
     const { container } = renderFAQ()
 
     const faqHeader = container.querySelector('.faq-header') as HTMLElement
-    const askBtn = within(faqHeader).getByRole('button', { name: 'Ask a Question' })
-    await waitFor(() => {
-      expect(askBtn).toBeInTheDocument()
-    })
+    const askBtn = await within(faqHeader).findByRole('button', { name: 'Ask a Question' })
 
     await user.click(askBtn)
 
@@ -186,10 +183,7 @@ describe('FAQPage', () => {
     const { container } = renderFAQ()
 
     const faqHeader = container.querySelector('.faq-header') as HTMLElement
-    const askBtn = within(faqHeader).getByRole('button', { name: 'Ask a Question' })
-    await waitFor(() => {
-      expect(askBtn).toBeInTheDocument()
-    })
+    const askBtn = await within(faqHeader).findByRole('button', { name: 'Ask a Question' })
 
     await user.click(askBtn)
 
