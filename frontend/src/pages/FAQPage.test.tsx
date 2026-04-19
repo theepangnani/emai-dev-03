@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../test/helpers'
 
@@ -161,13 +161,15 @@ describe('FAQPage', () => {
 
   it('opens and closes ask question modal', async () => {
     const user = userEvent.setup()
-    renderFAQ()
+    const { container } = renderFAQ()
 
+    const faqHeader = container.querySelector('.faq-header') as HTMLElement
+    const askBtn = within(faqHeader).getByRole('button', { name: 'Ask a Question' })
     await waitFor(() => {
-      expect(screen.getByText('Ask a Question')).toBeInTheDocument()
+      expect(askBtn).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Ask a Question'))
+    await user.click(askBtn)
 
     expect(screen.getByPlaceholderText('What would you like to know?')).toBeInTheDocument()
     expect(screen.getByText('Cancel')).toBeInTheDocument()
@@ -181,13 +183,15 @@ describe('FAQPage', () => {
 
   it('submits a new question via modal', async () => {
     const user = userEvent.setup()
-    renderFAQ()
+    const { container } = renderFAQ()
 
+    const faqHeader = container.querySelector('.faq-header') as HTMLElement
+    const askBtn = within(faqHeader).getByRole('button', { name: 'Ask a Question' })
     await waitFor(() => {
-      expect(screen.getByText('Ask a Question')).toBeInTheDocument()
+      expect(askBtn).toBeInTheDocument()
     })
 
-    await user.click(screen.getByText('Ask a Question'))
+    await user.click(askBtn)
 
     await user.type(
       screen.getByPlaceholderText('What would you like to know?'),
