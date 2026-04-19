@@ -32,6 +32,8 @@ COPY scripts/ ./scripts/
 COPY main.py .
 COPY alembic.ini .
 COPY alembic/ ./alembic/
+# CB-DEMO-001 (#3717) — demo generation loads prompts/demo/*.md at runtime.
+COPY prompts/ ./prompts/
 
 # Run with gunicorn + uvicorn workers
 # Cloud Run sets $PORT (default 8080)
