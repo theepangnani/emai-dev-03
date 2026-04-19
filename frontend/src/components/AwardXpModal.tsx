@@ -67,14 +67,13 @@ export function AwardXpModal({
   const maxAward = remaining !== null ? Math.min(50, remaining) : 50;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-label="Award XP"
         ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
       >
         <h2>Award XP to {studentName}</h2>
         <p className="modal-desc">

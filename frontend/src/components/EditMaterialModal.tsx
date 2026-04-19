@@ -80,8 +80,8 @@ export function EditMaterialModal({ material, courses: externalCourses, onClose,
   const currentCourseName = courses.find(c => c.id === courseId)?.name || material.course_name || '';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal edit-material-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal edit-material-modal">
         <h2>Edit Material</h2>
         <p className="modal-desc">Edit material details or move to a different class.</p>
         {error && (

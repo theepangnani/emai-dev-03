@@ -110,8 +110,8 @@ export default function CreateClassModal({ open, onClose, onCreated }: CreateCla
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={modalRef} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal modal-lg" role="dialog" aria-modal="true" aria-label="Create Class" ref={modalRef}>
         <h2>Create Class</h2>
         <p className="modal-desc">Set up a new class with students and a teacher.</p>
         <div className="modal-form">

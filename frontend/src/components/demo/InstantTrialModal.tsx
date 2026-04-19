@@ -56,7 +56,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
     verifyShown ? 'complete' : step === 1 ? 'greeting' : 'thinking';
 
   return (
-    <div className="demo-modal-overlay" onMouseDown={onClose}>
+    <div className="demo-modal-overlay">
       <div
         ref={trapRef}
         className="demo-modal"
@@ -64,7 +64,6 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={subtitleId}
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="demo-modal-header">
           <div className="demo-mascot-header" aria-hidden="true">

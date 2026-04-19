@@ -72,8 +72,8 @@ export function CreateTaskModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div ref={trapRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div ref={trapRef} className="modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title">
         <h2 id="create-task-title">Create Task</h2>
         {linkedEntityLabel && (
           <div className="task-linked-context">

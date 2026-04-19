@@ -156,14 +156,13 @@ export function GenerateSubGuideModal({
   };
 
   return (
-    <div className="modal-overlay subguide-overlay" onClick={onClose} data-testid="generate-sub-guide-modal">
+    <div className="modal-overlay subguide-overlay" data-testid="generate-sub-guide-modal">
       <div
         ref={trapRef}
         className="subguide-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="subguide-title"
-        onClick={(e) => e.stopPropagation()}
         data-testid="subguide-modal"
       >
         {/* Header */}

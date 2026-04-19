@@ -69,14 +69,13 @@ export function StudyRequestModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-label="Request Study Session"
         ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
       >
         <h2>Request Study Session</h2>
         <p className="modal-desc">

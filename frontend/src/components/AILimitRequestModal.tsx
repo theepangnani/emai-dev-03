@@ -51,14 +51,13 @@ export function AILimitRequestModal({ open, onClose }: AILimitRequestModalProps)
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay">
       <div
         ref={trapRef}
         className="modal ai-limit-request-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-limit-request-title"
-        onClick={(e) => e.stopPropagation()}
       >
         {submitted ? (
           <>

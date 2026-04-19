@@ -190,8 +190,8 @@ export function BugReportModal({ open, onClose, prefillDescription, prefillPageU
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div className="modal" ref={mergedRef} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste} style={position ? { position: 'fixed', left: position.x, top: position.y, margin: 0, transform: 'none' } : undefined}>
+    <div className="modal-overlay">
+      <div className="modal" ref={mergedRef} role="dialog" aria-modal="true" aria-label="Report a Bug" onPaste={handlePaste} style={position ? { position: 'fixed', left: position.x, top: position.y, margin: 0, transform: 'none' } : undefined}>
         <div className={`bug-report-header${dragging ? ' bug-report-dragging' : ''}`} onMouseDown={handleDragStart}>
           <h2>Report a Bug</h2>
           <button className="bug-report-close" onClick={handleClose} aria-label="Close">&times;</button>
