@@ -4,7 +4,7 @@ import { PageNav } from '../components/PageNav';
 import { ListSkeleton } from '../components/Skeleton';
 import { useDebounce } from '../utils/useDebounce';
 import { useToast } from '../components/Toast';
-import { adminApi, type DemoSessionItem } from '../api/admin';
+import { adminApi, type DemoSessionItem, type DemoSessionStatusCounts } from '../api/admin';
 import './AdminWaitlistPage.css';
 import './AdminDemoSessionsPage.css';
 
@@ -16,6 +16,9 @@ export function AdminDemoSessionsPage() {
   const { toast } = useToast();
   const [items, setItems] = useState<DemoSessionItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<DemoSessionStatusCounts>({
+    pending: 0, approved: 0, rejected: 0, blocklisted: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
@@ -39,6 +42,9 @@ export function AdminDemoSessionsPage() {
       });
       setItems(data.items);
       setTotal(data.total);
+      if (data.counts) {
+        setCounts(data.counts);
+      }
     } catch {
       setError('Failed to load demo sessions.');
     } finally {
@@ -47,18 +53,6 @@ export function AdminDemoSessionsPage() {
   }, [page, statusFilter, verifiedFilter, debouncedSearch]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
-
-  const counts = items.reduce(
-    (acc, it) => {
-      const s = (it.admin_status || 'pending') as StatusFilter;
-      if (s === 'pending') acc.pending++;
-      else if (s === 'approved') acc.approved++;
-      else if (s === 'rejected') acc.rejected++;
-      else if (s === 'blocklisted') acc.blocklisted++;
-      return acc;
-    },
-    { pending: 0, approved: 0, rejected: 0, blocklisted: 0 },
-  );
 
   const runAction = async (
     id: string, fn: (id: string) => Promise<DemoSessionItem>, label: string,
@@ -104,7 +98,7 @@ export function AdminDemoSessionsPage() {
         <PageNav
           items={[
             { label: 'Home', to: '/dashboard' },
-            { label: 'Admin', to: '/dashboard' },
+            { label: 'Admin', to: '/admin/waitlist' },
             { label: 'Demo Sessions' },
           ]}
         />
@@ -115,15 +109,15 @@ export function AdminDemoSessionsPage() {
           </button>
         </div>
 
-        <div className="admin-waitlist-stats">
+        <div className="admin-waitlist-stats admin-demo-sessions-stats">
           <div className="admin-waitlist-stat-card"><h4>Total</h4><div className="stat-value">{total}</div></div>
-          <div className="admin-waitlist-stat-card pending"><h4>Pending (view)</h4><div className="stat-value">{counts.pending}</div></div>
-          <div className="admin-waitlist-stat-card approved"><h4>Approved (view)</h4><div className="stat-value">{counts.approved}</div></div>
-          <div className="admin-waitlist-stat-card declined"><h4>Rejected (view)</h4><div className="stat-value">{counts.rejected}</div></div>
-          <div className="admin-waitlist-stat-card"><h4>Blocklisted (view)</h4><div className="stat-value">{counts.blocklisted}</div></div>
+          <div className="admin-waitlist-stat-card pending"><h4>Pending</h4><div className="stat-value">{counts.pending}</div></div>
+          <div className="admin-waitlist-stat-card approved"><h4>Approved</h4><div className="stat-value">{counts.approved}</div></div>
+          <div className="admin-waitlist-stat-card declined"><h4>Rejected</h4><div className="stat-value">{counts.rejected}</div></div>
+          <div className="admin-waitlist-stat-card"><h4>Blocklisted</h4><div className="stat-value">{counts.blocklisted}</div></div>
         </div>
 
-        <div className="admin-waitlist-filters">
+        <div className="admin-waitlist-filters admin-demo-sessions-filters">
           <label htmlFor="demo-status-filter" className="sr-only">Filter by status</label>
           <select id="demo-status-filter" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }}>
             <option value="">All Statuses</option>
@@ -150,7 +144,7 @@ export function AdminDemoSessionsPage() {
           <div className="admin-waitlist-empty">No demo sessions found.</div>
         ) : (
           <>
-            <table className="admin-waitlist-table">
+            <table className="admin-waitlist-table admin-demo-sessions-table">
               <thead>
                 <tr>
                   <th>Email</th><th>Name</th><th>Role</th><th>Verified</th>

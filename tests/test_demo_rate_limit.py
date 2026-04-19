@@ -285,6 +285,153 @@ class TestRecordGeneration:
         assert session.generations_json[1]["demo_type"] == "flash_tutor"
 
 
+# ── reserve_generation_slot / update_generation_slot (#3666) ────────
+
+
+class TestReserveGenerationSlot:
+    def test_appends_placeholder(self, db_session):
+        session = _make_session(db_session, "reserve1@example.com")
+        assert (session.generations_json or []) == []
+        assert session.generations_count == 0
+
+        event = drl.reserve_generation_slot(db_session, session, demo_type="ask")
+
+        assert event.demo_type == "ask"
+        assert event.latency_ms == 0
+        assert event.input_tokens == 0
+        assert event.output_tokens == 0
+        assert event.cost_cents == 0
+
+        assert session.generations_count == 1
+        assert len(session.generations_json) == 1
+        stored = session.generations_json[0]
+        assert stored["demo_type"] == "ask"
+        assert stored["latency_ms"] == 0
+        assert stored["cost_cents"] == 0
+        assert "created_at" in stored
+
+    def test_preserves_existing_generations(self, db_session):
+        session = _make_session(db_session, "reserve2@example.com")
+        _record(db_session, session, cost_cents=5)
+
+        drl.reserve_generation_slot(db_session, session, demo_type="flash_tutor")
+
+        assert session.generations_count == 2
+        assert len(session.generations_json) == 2
+        # Older entry untouched; placeholder appended last.
+        assert session.generations_json[0]["demo_type"] == "ask"
+        assert session.generations_json[0]["cost_cents"] == 5
+        assert session.generations_json[1]["demo_type"] == "flash_tutor"
+        assert session.generations_json[1]["cost_cents"] == 0
+
+    def test_placeholder_counts_toward_email_rate_limit(self, db_session):
+        """Critical: reserving a slot must immediately update the count a
+        concurrent request would read — this is the whole point of #3666."""
+        session = _make_session(db_session, "race@example.com")
+        drl.reserve_generation_slot(db_session, session, demo_type="ask")
+        drl.reserve_generation_slot(db_session, session, demo_type="ask")
+        drl.reserve_generation_slot(db_session, session, demo_type="ask")
+
+        # Three placeholders = limit reached — fourth concurrent request
+        # must be blocked even though none of the streams have finished.
+        allowed, reason = drl.check_email_rate_limit(
+            db_session, session.email_hash
+        )
+        assert allowed is False
+        assert reason != ""
+
+    def test_placeholder_zero_cost_does_not_trip_cap(self, db_session):
+        """Placeholders must not inflate the $10 daily cap (cost_cents=0)."""
+        session = _make_session(db_session, "capokay@example.com")
+        for _ in range(5):
+            drl.reserve_generation_slot(db_session, session, demo_type="ask")
+
+        allowed, _ = drl.check_daily_cost_cap(db_session)
+        assert allowed is True
+
+
+class TestUpdateGenerationSlot:
+    def test_fills_last_event(self, db_session):
+        session = _make_session(db_session, "update1@example.com")
+        drl.reserve_generation_slot(db_session, session, demo_type="study_guide")
+
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=321,
+            input_tokens=50,
+            output_tokens=75,
+            cost_cents=7,
+        )
+
+        assert session.generations_count == 1
+        assert len(session.generations_json) == 1
+        stored = session.generations_json[0]
+        assert stored["demo_type"] == "study_guide"
+        assert stored["latency_ms"] == 321
+        assert stored["input_tokens"] == 50
+        assert stored["output_tokens"] == 75
+        assert stored["cost_cents"] == 7
+
+    def test_updates_only_last_entry(self, db_session):
+        session = _make_session(db_session, "update2@example.com")
+        _record(db_session, session, cost_cents=3)  # real completed row
+        drl.reserve_generation_slot(db_session, session, demo_type="ask")
+
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=100,
+            input_tokens=20,
+            output_tokens=30,
+            cost_cents=9,
+        )
+
+        # First entry untouched, second (placeholder) filled.
+        assert session.generations_count == 2
+        assert session.generations_json[0]["cost_cents"] == 3
+        assert session.generations_json[1]["cost_cents"] == 9
+        assert session.generations_json[1]["latency_ms"] == 100
+
+    def test_noop_when_no_generations(self, db_session):
+        """Defensive: updating a session with no generations must not crash."""
+        session = _make_session(db_session, "update3@example.com")
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=1,
+            input_tokens=1,
+            output_tokens=1,
+            cost_cents=1,
+        )
+        assert (session.generations_json or []) == []
+        assert session.generations_count == 0
+
+
+class TestReserveBeforeStreamPreventsRace:
+    def test_second_reserve_sees_first(self, db_session):
+        """#3666 — simulate two concurrent /generate requests. After the
+        first call to reserve_generation_slot (before any stream
+        completes), the second call must see count=1, not 0."""
+        session = _make_session(db_session, "racey@example.com")
+
+        # Request 1 arrives, passes rate check, reserves slot.
+        count_before_1 = drl._count_generations_since(
+            db_session, column="email_hash", value=session.email_hash,
+            since=drl._window_start(),
+        )
+        assert count_before_1 == 0
+        drl.reserve_generation_slot(db_session, session, demo_type="ask")
+
+        # Request 2 arrives before request 1's stream has finished —
+        # must now see count=1, not count=0.
+        count_before_2 = drl._count_generations_since(
+            db_session, column="email_hash", value=session.email_hash,
+            since=drl._window_start(),
+        )
+        assert count_before_2 == 1
+
+
 # ── Internal: column whitelist for _count_generations_since ─────────
 
 

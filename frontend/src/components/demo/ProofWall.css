@@ -10,6 +10,19 @@
   text-align: center;
 }
 
+.proof-wall__counter-row {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.proof-wall__counter-icon {
+  color: var(--color-accent-strong);
+  align-self: center;
+}
+
 .proof-wall__counter-total {
   font-size: 48px;
   font-weight: 700;
@@ -19,14 +32,24 @@
 
 .proof-wall__counter-label {
   font-size: 18px;
-  margin-top: 8px;
   color: var(--color-ink);
 }
 
 .proof-wall__counter-municipality {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
   margin-top: 6px;
   color: var(--color-ink-muted, var(--color-ink));
+}
+
+.proof-wall__municipality-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent-strong);
 }
 
 .proof-wall__testimonials {
@@ -39,10 +62,19 @@
 }
 
 .proof-wall__testimonial {
+  position: relative;
   background: var(--color-surface);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-xs);
-  padding: 16px 20px;
+  padding: 16px 20px 16px 44px;
+  margin: 0;
+}
+
+.proof-wall__testimonial-icon {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  color: var(--color-accent-strong);
 }
 
 .proof-wall__testimonial-quote {
@@ -62,11 +94,19 @@
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.proof-wall__badge-item {
+  display: inline-flex;
 }
 
 .proof-wall__badge {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   padding: 8px 14px;
   border-radius: var(--radius-sm);
   background: var(--color-surface);
@@ -77,8 +117,18 @@
   font-weight: 500;
 }
 
+.proof-wall__badge-icon {
+  color: var(--color-accent-strong);
+  flex-shrink: 0;
+}
+
 .proof-wall__badge:hover,
 .proof-wall__badge:focus-visible {
   border-color: var(--color-accent-strong);
+  color: var(--color-accent-strong);
+}
+
+.proof-wall__badge:hover .proof-wall__badge-icon,
+.proof-wall__badge:focus-visible .proof-wall__badge-icon {
   color: var(--color-accent-strong);
 }
