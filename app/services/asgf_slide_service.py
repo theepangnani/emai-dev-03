@@ -5,6 +5,7 @@ using Claude API with teacher vocabulary priority and source attribution.
 Issue: #3398
 """
 
+import asyncio
 import json
 from collections.abc import AsyncGenerator
 
@@ -72,34 +73,77 @@ class ASGFSlideService:
         system_prompt = self._build_slide_system_prompt(context_package)
         client = get_async_anthropic_client()
 
-        for slide_number in range(1, TOTAL_SLIDES + 1):
-            try:
-                slide = await self._generate_single_slide(
+        def _error_placeholder(slide_number: int) -> dict:
+            purpose, _ = _SLIDE_SPEC[slide_number - 1]
+            return {
+                "slide_number": slide_number,
+                "title": f"Slide {slide_number} — {purpose}",
+                "body": "Content generation failed. Please try again.",
+                "vocabulary_terms": [],
+                "source_attribution": None,
+                "read_more_content": None,
+                "bloom_tier": "understand",
+                "error": True,
+            }
+
+        # Slide #1 synchronously first for fastest time-to-first-paint.
+        try:
+            slide_one = await self._generate_single_slide(
+                client=client,
+                system_prompt=system_prompt,
+                learning_cycle_plan=learning_cycle_plan,
+                context_package=context_package,
+                slide_number=1,
+            )
+            yield slide_one
+        except Exception as e:
+            logger.error("ASGF slide generation failed for slide %d: %s", 1, e)
+            yield _error_placeholder(1)
+
+        if TOTAL_SLIDES < 2:
+            return
+
+        # Slides #2-7: bounded concurrency, in-order emission.
+        semaphore = asyncio.Semaphore(3)
+
+        async def _run_with_semaphore(slide_number: int) -> dict:
+            async with semaphore:
+                return await self._generate_single_slide(
                     client=client,
                     system_prompt=system_prompt,
                     learning_cycle_plan=learning_cycle_plan,
                     context_package=context_package,
                     slide_number=slide_number,
                 )
-                yield slide
-            except Exception as e:
-                logger.error(
-                    "ASGF slide generation failed for slide %d: %s",
-                    slide_number,
-                    e,
-                )
-                # Yield an error placeholder so the stream isn't silently broken
-                purpose, _ = _SLIDE_SPEC[slide_number - 1]
-                yield {
-                    "slide_number": slide_number,
-                    "title": f"Slide {slide_number} — {purpose}",
-                    "body": "Content generation failed. Please try again.",
-                    "vocabulary_terms": [],
-                    "source_attribution": None,
-                    "read_more_content": None,
-                    "bloom_tier": "understand",
-                    "error": True,
-                }
+
+        tasks: dict[asyncio.Task, int] = {}
+        for slide_number in range(2, TOTAL_SLIDES + 1):
+            task = asyncio.create_task(_run_with_semaphore(slide_number))
+            tasks[task] = slide_number
+
+        buffered: dict[int, dict] = {}
+        next_to_yield = 2
+        pending = set(tasks.keys())
+
+        while pending:
+            done, pending = await asyncio.wait(
+                pending, return_when=asyncio.FIRST_COMPLETED
+            )
+            for task in done:
+                slide_number = tasks[task]
+                try:
+                    buffered[slide_number] = task.result()
+                except Exception as e:
+                    logger.error(
+                        "ASGF slide generation failed for slide %d: %s",
+                        slide_number,
+                        e,
+                    )
+                    buffered[slide_number] = _error_placeholder(slide_number)
+
+            while next_to_yield in buffered:
+                yield buffered.pop(next_to_yield)
+                next_to_yield += 1
 
     # ------------------------------------------------------------------
     # Prompt builders
