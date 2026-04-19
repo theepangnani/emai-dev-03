@@ -232,6 +232,33 @@ class TestList:
         assert data["total"] == 1
         assert data["items"][0]["full_name"] == "Bob B"
 
+    def test_search_is_case_insensitive(self, client, admin_users, db_session):
+        """`search` should match regardless of case (#3650)."""
+        from app.models.demo_session import DemoSession
+
+        db_session.query(DemoSession).delete()
+        db_session.commit()
+
+        row = DemoSession(
+            email_hash=_email_hash("builder@example.com"),
+            email="builder@example.com",
+            full_name="Bob Builder",
+            role="parent",
+            admin_status="pending",
+        )
+        db_session.add(row)
+        db_session.commit()
+
+        headers = _auth(client, admin_users["admin"].email)
+        for needle in ("BOB", "bob", "Bob", "BuIlDeR"):
+            resp = client.get(
+                f"/api/admin/demo-sessions?search={needle}", headers=headers
+            )
+            assert resp.status_code == 200, resp.text
+            data = resp.json()
+            assert data["total"] == 1, f"search={needle} returned {data}"
+            assert data["items"][0]["full_name"] == "Bob Builder"
+
     def test_moat_engagement_surfaced(self, client, admin_users, seeded_sessions):
         """FR-065: list should expose moat engagement fields."""
         headers = _auth(client, admin_users["admin"].email)

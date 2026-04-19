@@ -188,3 +188,19 @@ class TestDemoSessionModel:
         with pytest.raises(Exception):
             db_session.commit()
         db_session.rollback()
+
+    def test_admin_status_check_constraint_rejects_invalid(self, db_session):
+        """admin_status must be one of pending|approved|rejected|blocklisted (#3623)."""
+        from app.models.demo_session import DemoSession
+
+        email = "badadminstatus@example.com"
+        session = DemoSession(
+            email_hash=_email_hash(email),
+            email=email,
+            role="parent",
+            admin_status="nonsense",  # invalid
+        )
+        db_session.add(session)
+        with pytest.raises(Exception):
+            db_session.commit()
+        db_session.rollback()

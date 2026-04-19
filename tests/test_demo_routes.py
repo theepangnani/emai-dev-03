@@ -7,7 +7,7 @@ by tests/test_ai_service_streaming.py.
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -347,3 +347,118 @@ class TestPromptAndCostHelpers:
 
         assert estimate_cost_cents(1, 1) >= 1
         assert estimate_cost_cents(1_000_000, 1_000_000) > 1
+
+
+# ── Missing coverage (#3668) ──────────────────────────────────────────
+
+
+class _RaisingStreamContext:
+    """Mimics ``client.messages.stream(...)`` but raises on __aenter__."""
+    def __init__(self, exc):
+        self._exc = exc
+
+    async def __aenter__(self):
+        raise self._exc
+
+    async def __aexit__(self, *args):
+        return False
+
+
+def _mock_client_that_raises(exc):
+    client = MagicMock()
+    client.messages.stream.return_value = _RaisingStreamContext(exc)
+    return client
+
+
+class TestGenerateStreamFailure:
+    def test_anthropic_stream_error_emits_sse_error_and_skips_record(
+        self, client, db_session
+    ):
+        """Anthropic raises APIStatusError → SSE 'event: error', no record_generation (#3668)."""
+        import anthropic
+        import httpx
+        from app.models.demo_session import DemoSession
+
+        session = _make_session_row(
+            db_session, email="err@example.com", ip_hash="ip-err"
+        )
+        assert session.generations_count == 0
+        token = _jwt_for(session.id)
+
+        # Build a real APIStatusError — it requires an httpx.Response + body.
+        response = httpx.Response(
+            status_code=500,
+            request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"),
+        )
+        stream_exc = anthropic.APIStatusError(
+            "upstream blew up", response=response, body=None
+        )
+        mock_client = _mock_client_that_raises(stream_exc)
+
+        with patch(
+            "app.services.demo_generation.get_async_anthropic_client",
+            return_value=mock_client,
+        ), patch(
+            "app.services.demo_rate_limit.record_generation"
+        ) as mock_record:
+            resp = client.post(
+                "/api/v1/demo/generate",
+                json={"demo_type": "ask", "question": "hi"},
+                headers={"X-Demo-Session": token},
+            )
+
+        assert resp.status_code == 200
+        body = resp.text
+        assert "event: error" in body
+        # No successful generation → record_generation must not fire.
+        assert mock_record.call_count == 0
+
+        db_session.expire_all()
+        refreshed = (
+            db_session.query(DemoSession)
+            .filter(DemoSession.id == session.id)
+            .first()
+        )
+        assert refreshed is not None
+        assert refreshed.generations_count == 0
+
+
+class TestLoadPromptUnknownTypeRaises:
+    def test_nonexistent_demo_type_raises_value_error(self):
+        """load_prompt('nonexistent_type') raises ValueError (#3668)."""
+        from app.services.demo_generation import load_prompt
+
+        with pytest.raises(ValueError):
+            load_prompt("nonexistent_type")
+
+
+class TestGenerateExpiredJwt:
+    def test_expired_jwt_returns_401(self, client, db_session):
+        """Expired demo session JWT → 401 (#3668)."""
+        from jose import jwt
+
+        from app.core.config import settings
+
+        session = _make_session_row(
+            db_session, email="exp@example.com", ip_hash="ip-exp"
+        )
+
+        # Hand-craft a demo session JWT with exp in the past.
+        past = datetime.now(timezone.utc) - timedelta(hours=1)
+        payload = {
+            "sub": str(session.id),
+            "exp": past,
+            "iat": past - timedelta(minutes=30),
+            "type": "demo_session",
+            "jti": "expired-test",
+        }
+        expired_token = jwt.encode(
+            payload, settings.secret_key, algorithm=settings.algorithm
+        )
+
+        resp = client.post(
+            "/api/v1/demo/generate",
+            json={"demo_type": "ask", "question": "hi"},
+            headers={"X-Demo-Session": expired_token},
+        )
+        assert resp.status_code == 401
