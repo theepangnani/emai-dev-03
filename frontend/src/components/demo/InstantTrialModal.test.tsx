@@ -234,18 +234,28 @@ describe('InstantTrialModal — 10s timeout fallback (#3700)', () => {
     vi.useRealTimers();
   });
 
-  // NOTE: full user-flow timeout test is flaky with fake timers + userEvent.
-  // The 10s timeout logic is exercised via the signup handler; direct unit
-  // coverage of the timer branch lives in the signup helper. Intentionally
-  // keeping this as a smoke test: we just assert the fallback link DOES
-  // appear when the form is in a `submitting` state and the hang hits 10s.
-  it.skip(
-    'surfaces "Join the waitlist instead" link when createSession hangs > 10s',
-    () => {
-      // Re-enable once a stable fake-timer + userEvent recipe is adopted in
-      // the repo. Production behavior preserved via SignupStep.timedOut state.
-    },
-  );
+  it('surfaces "Join the waitlist instead" link when createSession hangs > 10s', async () => {
+    vi.useFakeTimers();
+    try {
+      mockCreateSession.mockImplementation(() => new Promise(() => {}));
+      render(<InstantTrialModal onClose={() => {}} />);
+      fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Ada' } });
+      fireEvent.change(screen.getByLabelText(/^email$/i), { target: { value: 'a@b.com' } });
+      fireEvent.click(screen.getByText('Parent').closest('label')!);
+      fireEvent.click(screen.getByRole('checkbox'));
+      fireEvent.click(screen.getByRole('button', { name: /start demo/i }));
+
+      await act(async () => {
+        vi.advanceTimersByTime(10_100);
+      });
+
+      expect(
+        screen.getByRole('link', { name: /join the waitlist instead/i }),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('InstantTrialModal — switching tabs clears prior output (#3700)', () => {

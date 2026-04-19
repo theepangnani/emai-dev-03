@@ -43,13 +43,13 @@ const icons = [
 ] as const;
 
 describe('demo icons', () => {
-  it('exports 17 distinct icon components', () => {
-    // 17 as spec (close, quote, people, teacher, student, parent, other, mail, shield,
+  it('exports 18 distinct icon components', () => {
+    // 18 icons (close, quote, people, teacher, student, parent, other, mail, shield,
     // clock, send, copy, arrowRight, check, sparkles, flashTutor, studyGuide, ask = 18).
     // Per spec: Ask, StudyGuide, FlashTutor (3 tab) + Sparkles, Check, ArrowRight, Copy,
     // Send, Clock, Shield, Mail (8) + Parent, Student, Teacher, Other (4 role) + People,
-    // Quote, Close (3) = 18 total. Assert at least 17 as spec states.
-    expect(icons.length).toBeGreaterThanOrEqual(17);
+    // Quote, Close (3) = 18 total.
+    expect(icons.length).toBe(18);
   });
 
   it.each(icons)('renders %s as an SVG with viewBox 0 0 24 24', (_name, Component) => {
