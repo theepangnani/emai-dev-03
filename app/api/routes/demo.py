@@ -45,7 +45,9 @@ from app.services.demo_rate_limit import (
     check_email_rate_limit,
     check_input_word_count,
     check_ip_rate_limit,
-    record_generation,
+    record_generation,  # noqa: F401 — kept as a fallback; see #3666
+    reserve_generation_slot,
+    update_generation_slot,
 )
 from app.services.demo_verification import (
     create_fallback_code,
@@ -318,6 +320,13 @@ async def generate_demo(
     question = body.question
     session_id_capture = session.id
 
+    # #3666 — reserve a placeholder slot BEFORE streaming so concurrent
+    # requests see the incremented generations_count immediately and
+    # cannot slip past the rate limit. The placeholder has cost_cents=0
+    # so it doesn't falsely trip the cost cap. update_generation_slot
+    # fills in real metrics after the stream completes.
+    reserve_generation_slot(db, session, demo_type=demo_type)
+
     async def event_stream():
         # We use a fresh DB session inside the generator so the request-
         # scoped ``db`` from Depends is not held open while streaming.
@@ -363,7 +372,8 @@ async def generate_demo(
 
         cost_cents = estimate_cost_cents(input_tokens, output_tokens)
 
-        # Record on a new session so we don't race the request-scoped one.
+        # Update the reserved slot with real metrics on a fresh DB
+        # session (the request-scoped `db` is already closed by now).
         try:
             with SessionLocal() as record_db:
                 record_session = (
@@ -372,10 +382,9 @@ async def generate_demo(
                     .first()
                 )
                 if record_session is not None:
-                    record_generation(
+                    update_generation_slot(
                         record_db,
                         record_session,
-                        demo_type=demo_type,
                         latency_ms=latency_ms,
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
@@ -383,7 +392,7 @@ async def generate_demo(
                     )
         except Exception as e:
             logger.error(
-                "demo: record_generation failed | session_id=%s | %s: %s",
+                "demo: update_generation_slot failed | session_id=%s | %s: %s",
                 session_id_capture, type(e).__name__, e,
             )
 

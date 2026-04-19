@@ -192,6 +192,18 @@ def check_input_word_count(text: Optional[str]) -> tuple[bool, str]:
 # ── Recording ────────────────────────────────────────────────────────
 
 
+def _coerce_generations_list(existing) -> list:
+    """Normalise `generations_json` to a mutable list (handles None / SQLite str)."""
+    if existing is None:
+        return []
+    if isinstance(existing, str):
+        try:
+            return list(json.loads(existing))
+        except json.JSONDecodeError:
+            return []
+    return list(existing)
+
+
 def record_generation(
     db: Session,
     session: DemoSession,
@@ -203,6 +215,12 @@ def record_generation(
     cost_cents: int,
 ) -> DemoGenerateEvent:
     """Append a DemoGenerateEvent to `session.generations_json` and commit.
+
+    DEPRECATED for the main /generate path (race-prone because it writes
+    AFTER the stream completes — see #3666). Kept as a fallback and for
+    tests that seed generations directly. New code should use
+    ``reserve_generation_slot`` BEFORE streaming and
+    ``update_generation_slot`` AFTER streaming.
 
     Also increments `session.generations_count`. Returns the event model
     so callers can surface it in the API response.
@@ -219,18 +237,7 @@ def record_generation(
     # that matches the shape produced by the API and our SQL predicates.
     event_dict = event.model_dump(mode="json")
 
-    existing = session.generations_json
-    if existing is None:
-        existing_list = []
-    elif isinstance(existing, str):
-        # SQLite may round-trip JSON as a string depending on driver
-        try:
-            existing_list = json.loads(existing)
-        except json.JSONDecodeError:
-            existing_list = []
-    else:
-        existing_list = list(existing)
-
+    existing_list = _coerce_generations_list(session.generations_json)
     existing_list.append(event_dict)
     session.generations_json = existing_list
     session.generations_count = (session.generations_count or 0) + 1
@@ -239,3 +246,78 @@ def record_generation(
     db.commit()
     db.refresh(session)
     return event
+
+
+# ── Slot reservation (race-safe, #3666) ──────────────────────────────
+
+
+def reserve_generation_slot(
+    db: Session,
+    session: DemoSession,
+    *,
+    demo_type: str,
+) -> DemoGenerateEvent:
+    """Reserve a slot in `generations_json` BEFORE streaming starts.
+
+    Writes a placeholder row with zero metrics and increments
+    `generations_count`, so a concurrent request sees the updated count
+    immediately (closes the rate-limit race where both requests read the
+    same stale count before either has recorded its generation).
+
+    The stream generator must call ``update_generation_slot`` afterwards
+    to fill in real latency / token / cost values. If the stream fails,
+    the placeholder row still counts toward the user's rate limit — this
+    is intentional defensive cost accounting (FR-050/051).
+    """
+    placeholder = DemoGenerateEvent(
+        demo_type=demo_type,  # type: ignore[arg-type]
+        latency_ms=0,
+        input_tokens=0,
+        output_tokens=0,
+        cost_cents=0,
+        created_at=datetime.now(timezone.utc),
+    )
+    event_dict = placeholder.model_dump(mode="json")
+
+    existing_list = _coerce_generations_list(session.generations_json)
+    existing_list.append(event_dict)
+    session.generations_json = existing_list
+    session.generations_count = (session.generations_count or 0) + 1
+
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return placeholder
+
+
+def update_generation_slot(
+    db: Session,
+    session: DemoSession,
+    *,
+    latency_ms: int,
+    input_tokens: int,
+    output_tokens: int,
+    cost_cents: int,
+) -> None:
+    """UPDATE the most recent `generations_json` entry with real metrics.
+
+    Complements ``reserve_generation_slot`` — called after the SSE stream
+    finishes successfully to fill in actual latency / tokens / cost. No-op
+    if the session has no generations (defensive).
+    """
+    existing_list = _coerce_generations_list(session.generations_json)
+    if not existing_list:
+        return  # defensive — nothing to update
+    # Build a fresh list of fresh dicts so SQLAlchemy's change detection
+    # flags the column as dirty (the default JSON type only compares by
+    # value equality — mutating a nested dict in place is NOT seen).
+    updated = [dict(entry) for entry in existing_list]
+    updated[-1]["latency_ms"] = latency_ms
+    updated[-1]["input_tokens"] = input_tokens
+    updated[-1]["output_tokens"] = output_tokens
+    updated[-1]["cost_cents"] = cost_cents
+    session.generations_json = updated
+
+    db.add(session)
+    db.commit()
+    db.refresh(session)

@@ -316,6 +316,43 @@ class TestGenerateHappyPath:
         assert events[0]["output_tokens"] == 30
         assert events[0]["cost_cents"] >= 1
 
+    def test_uses_reserve_and_update_helpers(self, client, db_session):
+        """#3666 — /generate must reserve a slot BEFORE streaming and
+        update it AFTER, not call the legacy record_generation path."""
+        session = _make_session_row(
+            db_session, email="wire@example.com", ip_hash="ip-wire"
+        )
+        token = _jwt_for(session.id)
+
+        mock_client = _mock_anthropic_client(
+            ["a", "b"], input_tokens=5, output_tokens=7
+        )
+        with patch(
+            "app.services.demo_generation.get_async_anthropic_client",
+            return_value=mock_client,
+        ), patch(
+            "app.api.routes.demo.reserve_generation_slot",
+            wraps=__import__(
+                "app.services.demo_rate_limit",
+                fromlist=["reserve_generation_slot"],
+            ).reserve_generation_slot,
+        ) as mock_reserve, patch(
+            "app.api.routes.demo.update_generation_slot",
+            wraps=__import__(
+                "app.services.demo_rate_limit",
+                fromlist=["update_generation_slot"],
+            ).update_generation_slot,
+        ) as mock_update:
+            resp = client.post(
+                "/api/v1/demo/generate",
+                json={"demo_type": "ask", "question": "Q?"},
+                headers={"X-Demo-Session": token},
+            )
+
+        assert resp.status_code == 200
+        assert mock_reserve.call_count == 1
+        assert mock_update.call_count == 1
+
 
 # ── Prompt + cost helpers ─────────────────────────────────────────────
 
@@ -371,10 +408,17 @@ def _mock_client_that_raises(exc):
 
 
 class TestGenerateStreamFailure:
-    def test_anthropic_stream_error_emits_sse_error_and_skips_record(
+    def test_anthropic_stream_error_emits_sse_error_and_skips_update(
         self, client, db_session
     ):
-        """Anthropic raises APIStatusError → SSE 'event: error', no record_generation (#3668)."""
+        """Anthropic raises APIStatusError → SSE 'event: error'.
+
+        With the #3666 rate-limit race fix, the slot is RESERVED before
+        the stream starts (generations_count becomes 1). On stream error
+        the placeholder persists as defensive rate-limit accounting, but
+        ``update_generation_slot`` must NOT fire — so the placeholder
+        keeps ``cost_cents=0`` and does not falsely pad the daily cap.
+        """
         import anthropic
         import httpx
         from app.models.demo_session import DemoSession
@@ -399,8 +443,8 @@ class TestGenerateStreamFailure:
             "app.services.demo_generation.get_async_anthropic_client",
             return_value=mock_client,
         ), patch(
-            "app.services.demo_rate_limit.record_generation"
-        ) as mock_record:
+            "app.api.routes.demo.update_generation_slot"
+        ) as mock_update:
             resp = client.post(
                 "/api/v1/demo/generate",
                 json={"demo_type": "ask", "question": "hi"},
@@ -410,8 +454,9 @@ class TestGenerateStreamFailure:
         assert resp.status_code == 200
         body = resp.text
         assert "event: error" in body
-        # No successful generation → record_generation must not fire.
-        assert mock_record.call_count == 0
+        # Stream failed → update_generation_slot must not fire; the
+        # reserved placeholder row remains with cost_cents=0.
+        assert mock_update.call_count == 0
 
         db_session.expire_all()
         refreshed = (
@@ -420,7 +465,11 @@ class TestGenerateStreamFailure:
             .first()
         )
         assert refreshed is not None
-        assert refreshed.generations_count == 0
+        # #3666 — reserved placeholder persists (rate-limit race fix).
+        assert refreshed.generations_count == 1
+        events = refreshed.generations_json or []
+        assert len(events) == 1
+        assert events[0]["cost_cents"] == 0  # placeholder, never updated
 
 
 class TestLoadPromptUnknownTypeRaises:
