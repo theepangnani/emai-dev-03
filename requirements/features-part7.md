@@ -1307,6 +1307,20 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 
 **Issues:** #3531-#3539 | **Key PR:** #3555
 
+#### §6.137.11 Incremental Slide Streaming (NFR) — DEPLOYED (#3735)
+
+Non-functional requirement — slide generation must be **progressive and non-blocking**:
+
+- [x] **Eager streaming** — the slide SSE stream begins immediately after the session is created. The frontend must not gate SSE opening behind a progress-animation stage transition.
+- [x] **Time-to-first-slide** — the user transitions from the progress interstitial to the slides view as soon as the first slide event arrives, not after a pre-determined animation completes.
+- [x] **Background streaming** — slides 2-N continue streaming in the background while the user reads slide 1; subsequent slides append to the renderer as they arrive.
+- [x] **Bounded parallel generation (backend)** — slide #1 is generated synchronously for fastest first paint; slides #2-7 are generated with bounded concurrency (`asyncio.Semaphore`, max 3 in flight) and emitted to the SSE stream in slide-number order.
+- [x] **Per-slide error isolation** — a single slide's generation failure yields an error placeholder in its slot and does not abort the stream.
+
+**Why:** the previous implementation stalled the "Generating your lesson…" interstitial forever because `processingStage` never advanced to `4`, so `onComplete` never fired and the SSE was never opened. Even after the state-machine fix, sequential generation made the user wait for 7 × per-slide latency before seeing a complete lesson. Incremental streaming gives the user content to consume within ~1 slide-latency of starting.
+
+**Issues:** #3735 | **PR:** (integrate/3735-asgf-streaming)
+
 #### Key PRs
 
 | PR | Milestone | Description |
