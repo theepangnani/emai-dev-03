@@ -216,7 +216,7 @@ async def create_demo_session(
     # Send verification email — swallow failures so the signup still
     # completes (user can retry via "resend" flow).
     magic_link_url = (
-        f"{_app_base_url().rstrip('/')}/demo/verify?token={raw_token}"
+        f"{_app_base_url().rstrip('/')}/api/v1/demo/verify?token={raw_token}"
     )
     try:
         subject, html_body = build_demo_verification_email(
