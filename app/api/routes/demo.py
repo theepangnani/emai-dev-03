@@ -20,6 +20,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTClaimsError, JWTError
 from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -95,7 +96,7 @@ def _decode_demo_session_jwt(token: str) -> Optional[str]:
         payload = jwt.decode(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
-    except Exception:
+    except (ExpiredSignatureError, JWTClaimsError, JWTError):
         return None
     if payload.get("type") != _DEMO_JWT_TYPE:
         return None
@@ -213,8 +214,8 @@ async def create_demo_session(
 
     session_jwt = _create_demo_session_jwt(session.id)
 
-    # Send verification email — swallow failures so the signup still
-    # completes (user can retry via "resend" flow).
+    # Send verification email — if delivery fails we must not leave an
+    # orphan session row that the user can't actually verify (#3664).
     magic_link_url = (
         f"{_app_base_url().rstrip('/')}/api/v1/demo/verify?token={raw_token}"
     )
@@ -228,8 +229,21 @@ async def create_demo_session(
         send_email_sync(email, subject, html_body)
     except Exception as e:
         logger.warning(
-            "demo: verification email failed to send | session_id=%s | %s",
+            "demo: verification email failed to send — rolling back session "
+            "| session_id=%s | %s",
             session.id, e,
+        )
+        db.delete(session)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "email_delivery_failed",
+                "message": (
+                    "We couldn't send the verification email. "
+                    "Please try again shortly."
+                ),
+            },
         )
 
     preview_position = _waitlist_preview_position(db)
