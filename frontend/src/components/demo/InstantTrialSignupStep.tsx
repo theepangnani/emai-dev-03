@@ -1,11 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { createSession, type DemoRole, type CreateDemoSessionResponse } from '../../api/demo';
+import {
+  IconArrowRight,
+  IconOther,
+  IconParent,
+  IconShield,
+  IconStudent,
+  IconTeacher,
+} from './icons';
 
-const ROLES: { value: DemoRole; label: string }[] = [
-  { value: 'parent', label: 'Parent' },
-  { value: 'student', label: 'Student' },
-  { value: 'teacher', label: 'Teacher' },
-  { value: 'other', label: 'Other' },
+const ROLES: { value: DemoRole; label: string; Icon: typeof IconParent }[] = [
+  { value: 'parent', label: 'Parent', Icon: IconParent },
+  { value: 'student', label: 'Student', Icon: IconStudent },
+  { value: 'teacher', label: 'Teacher', Icon: IconTeacher },
+  { value: 'other', label: 'Other', Icon: IconOther },
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,7 +37,9 @@ export function InstantTrialSignupStep({ onSuccess }: Props) {
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.full_name = 'Please enter your full name.';
-    if (!email.trim() || !EMAIL_RE.test(email.trim())) errs.email = 'Please enter a valid email.';
+    if (!email.trim() || !EMAIL_RE.test(email.trim())) {
+      errs.email = 'That looks off. Try checking for a missing "@" or TLD.';
+    }
     if (!role) errs.role = 'Please pick the role that fits best.';
     if (!consent) errs.consent = 'Please accept the consent statement to continue.';
     setFieldErrors(errs);
@@ -86,6 +96,8 @@ export function InstantTrialSignupStep({ onSuccess }: Props) {
 
       {formError && <div className="demo-form-error" role="alert">{formError}</div>}
 
+      <p className="demo-signup-greeting">Hi! Who&rsquo;s trying the demo?</p>
+
       <div className="demo-form-group">
         <label htmlFor="demo-full-name">Full name</label>
         <input
@@ -116,33 +128,40 @@ export function InstantTrialSignupStep({ onSuccess }: Props) {
 
       <fieldset className="demo-form-group" aria-describedby={fieldErrors.role ? 'demo-err-role' : undefined}>
         <legend>I am a...</legend>
-        <div className="demo-role-group" role="radiogroup" aria-label="Role">
-          {ROLES.map((opt) => (
+        <div className="demo-role-grid" role="radiogroup" aria-label="Role">
+          {ROLES.map(({ value, label, Icon }) => (
             <label
-              key={opt.value}
-              className={`demo-role-option${role === opt.value ? ' is-checked' : ''}`}
+              key={value}
+              className={`demo-role-card${role === value ? ' is-checked' : ''}`}
             >
               <input
                 type="radio"
                 name="demo-role"
-                value={opt.value}
-                checked={role === opt.value}
-                onChange={() => setRole(opt.value)}
+                value={value}
+                checked={role === value}
+                onChange={() => setRole(value)}
               />
-              {opt.label}
+              <span className="demo-role-card__icon" aria-hidden="true">
+                <Icon size={22} aria-hidden />
+              </span>
+              <span className="demo-role-card__label">{label}</span>
             </label>
           ))}
         </div>
         {fieldErrors.role && <div id="demo-err-role" className="demo-field-error">{fieldErrors.role}</div>}
         {role === 'student' && (
           <div className="demo-student-notice" role="note">
-            If you're under 13, please ask a parent or guardian to try the demo with you.
+            <IconShield size={16} aria-hidden />
+            <span>
+              If you&rsquo;re under 13, please ask a parent or guardian to try the demo with you.
+            </span>
           </div>
         )}
       </fieldset>
 
       <div className="demo-form-group">
         <label className="demo-consent-row">
+          <IconShield size={16} aria-hidden />
           <input
             type="checkbox"
             checked={consent}
@@ -150,7 +169,7 @@ export function InstantTrialSignupStep({ onSuccess }: Props) {
             aria-invalid={!!fieldErrors.consent}
           />
           <span>
-            I agree to ClassBridge's <a href="/terms" target="_blank" rel="noreferrer">terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">privacy policy</a>. I understand this is a demo and my email will be added to the waitlist.
+            I agree to ClassBridge&rsquo;s <a href="/terms" target="_blank" rel="noreferrer">terms</a> and <a href="/privacy" target="_blank" rel="noreferrer">privacy policy</a>. I understand this is a demo and my email will be added to the waitlist.
           </span>
         </label>
         {fieldErrors.consent && <div className="demo-field-error">{fieldErrors.consent}</div>}
@@ -161,7 +180,14 @@ export function InstantTrialSignupStep({ onSuccess }: Props) {
           <a className="demo-btn-secondary" href="/waitlist">Join the waitlist instead</a>
         )}
         <button type="submit" className="demo-btn-primary" disabled={submitting}>
-          {submitting ? 'Setting up your demo...' : 'Start demo'}
+          {submitting ? (
+            'Setting up your demo...'
+          ) : (
+            <>
+              <span>Start demo</span>
+              <IconArrowRight size={18} aria-hidden />
+            </>
+          )}
         </button>
       </div>
     </form>

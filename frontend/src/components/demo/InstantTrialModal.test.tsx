@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InstantTrialModal } from './InstantTrialModal';
 
@@ -184,5 +184,123 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
 
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(/ai generation failed/i)).toBeInTheDocument();
+  });
+});
+
+// --- Fast-follow tests (#3700) -----------------------------------------
+
+describe('InstantTrialModal — SSE abort on unmount (#3700)', () => {
+  it('aborts the in-flight SSE stream when the modal unmounts mid-stream', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-unmount',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+
+    const aborted = { value: false };
+    mockStreamGenerate.mockImplementation(() => {
+      const controller = new AbortController();
+      controller.signal.addEventListener('abort', () => {
+        aborted.value = true;
+      });
+      return controller;
+    });
+
+    const { unmount } = render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    expect(mockStreamGenerate).toHaveBeenCalled();
+    unmount();
+    expect(aborted.value).toBe(true);
+  });
+});
+
+describe('InstantTrialModal — 10s timeout fallback (#3700)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('surfaces "Join the waitlist instead" link when createSession hangs > 10s', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    // Never resolves — simulates a hang.
+    mockCreateSession.mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    render(<InstantTrialModal onClose={() => {}} />);
+    await user.type(screen.getByLabelText(/full name/i), 'Ada Lovelace');
+    await user.type(screen.getByLabelText(/^email$/i), 'ada@example.com');
+    await user.click(screen.getByRole('radio', { name: /parent/i }));
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: /start demo/i }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_100);
+    });
+
+    expect(
+      await screen.findByRole('link', { name: /join the waitlist instead/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('InstantTrialModal — switching tabs clears prior output (#3700)', () => {
+  it('resets output text when a different tab is selected', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-tabs',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+    setupStreamMock([
+      { event: 'token', data: 'First output.' },
+      { event: 'done', data: { demo_type: 'ask', latency_ms: 5, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
+    ]);
+
+    render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/First output\./)).toBeInTheDocument();
+    });
+
+    // Switch to Study Guide tab — prior output should be cleared.
+    await user.click(screen.getByRole('tab', { name: /study guide/i }));
+    expect(screen.queryByText(/First output\./)).not.toBeInTheDocument();
+  });
+});
+
+describe('InstantTrialModal — handleVerify renders notice (#3700)', () => {
+  it('renders the verify-notice banner after the CTA is clicked', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-verify',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+    setupStreamMock([
+      { event: 'token', data: 'done' },
+      { event: 'done', data: { demo_type: 'ask', latency_ms: 1, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
+    ]);
+
+    render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    const verifyBtn = await screen.findByRole('button', { name: /verify my email/i });
+    await user.click(verifyBtn);
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(/verification link/i);
+    expect(status).toHaveTextContent(/ada@example.com/);
   });
 });
