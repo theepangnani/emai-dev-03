@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 // Mock the notes API
@@ -82,8 +82,19 @@ describe('NotesPanel', () => {
       expect(onAppendConsumed).toHaveBeenCalled();
     });
 
-    const textarea = screen.getByPlaceholderText('Type your notes here...');
-    expect((textarea as HTMLTextAreaElement).value).toContain('> some highlighted text');
+    // TipTap editor is contenteditable — verify via the auto-save payload
+    // rather than DOM placeholder inspection. Auto-save fires ~300ms after
+    // insertContent; the upsert payload contains the blockquote HTML.
+    await waitFor(() => {
+      const calls = mockUpsert.mock.calls;
+      expect(calls.some((call) => {
+        const payload = call[1];
+        const content = typeof payload === 'object' && payload !== null && 'content' in payload
+          ? String((payload as { content: unknown }).content)
+          : '';
+        return /<blockquote>[\s\S]*some highlighted text[\s\S]*<\/blockquote>/i.test(content);
+      })).toBe(true);
+    }, { timeout: 2000 });
   });
 
   it('processes addHighlight for parent readOnly after parentEditing switch (#1821)', async () => {
