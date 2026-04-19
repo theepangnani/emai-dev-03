@@ -91,6 +91,12 @@ if _is_pg:
         ("study_guides", "answer_key_markdown", "TEXT"),
         ("study_guides", "weak_topics", "TEXT"),
         ("study_guides", "ai_engine", "VARCHAR(20)"),
+        # CB-DEMO-001 F2 (#3601, #3711) — variant column must exist before
+        # the FeatureFlag model can SELECT. The background-thread migration
+        # in _run_migrations_inner ran too late / silently failed, leaving
+        # /api/features and /admin/features returning 500 after the
+        # CB-DEMO-001 deploy.
+        ("feature_flags", "variant", "VARCHAR(20) NOT NULL DEFAULT 'off'"),
     ]
     try:
         with engine.connect() as _conn:
