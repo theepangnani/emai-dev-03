@@ -174,6 +174,90 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
     expect(stageAtGeneratorCall).toBeLessThan(4);
   });
 
+  it('aborts prior SSE when a new session starts via retry', async () => {
+    const user = userEvent.setup();
+
+    mockCreateSession.mockResolvedValue(MOCK_SESSION);
+
+    // Capture the AbortSignal passed to each generateSlides call.
+    const capturedSignals: AbortSignal[] = [];
+
+    // Session A: emit an 'error' event (keeps us in processing stage with
+    // Try Again visible) and do NOT explicitly abort. Then block indefinitely
+    // unless the signal aborts — simulating a lingering connection.
+    function makeErrorThenBlockGenerator(signal: AbortSignal) {
+      return (async function* () {
+        yield { event: 'error', data: 'transient' };
+        await new Promise<void>((resolve) => {
+          if (signal.aborted) {
+            resolve();
+            return;
+          }
+          signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+      })();
+    }
+
+    mockGenerateSlides.mockImplementation((_sessionId: string, signal: AbortSignal) => {
+      capturedSignals.push(signal);
+      if (capturedSignals.length === 1) {
+        return makeErrorThenBlockGenerator(signal);
+      }
+      return makeSlideGenerator([
+        {
+          event: 'slide',
+          data: JSON.stringify({
+            slideNumber: 1,
+            title: 'Session B slide',
+            body: 'Second session body',
+          }),
+        },
+        { event: 'done', data: '' },
+      ])();
+    });
+
+    renderWithProviders(<ASGFPage />);
+
+    // Session A — fill textarea and start.
+    const textarea = await screen.findByRole('textbox');
+    await user.type(textarea, 'How do fractions work in math?');
+
+    const startBtn = screen.getByRole('button', { name: /Start Learning Session/i });
+    await act(async () => {
+      await user.click(startBtn);
+    });
+
+    // Session A's SSE opens.
+    await waitFor(() => {
+      expect(mockGenerateSlides).toHaveBeenCalledTimes(1);
+    });
+    // The error event surfaces the Try Again button in the processing stage.
+    const retryBtn = await screen.findByRole('button', { name: /Try Again/i });
+
+    // Session A's controller is still live at this point — streamSlides breaks
+    // on error but does not call .abort() itself.
+    expect(capturedSignals[0].aborted).toBe(false);
+
+    // Click Try Again — this invokes handleStartSession for session B while
+    // session A's controller is still unreferenced-but-alive.
+    await act(async () => {
+      await user.click(retryBtn);
+    });
+
+    // Session A's captured AbortSignal must now be aborted — the fix ensures
+    // handleStartSession aborts the prior controller before opening a new one.
+    await waitFor(() => {
+      expect(capturedSignals[0].aborted).toBe(true);
+    });
+
+    // Session B should have been opened with a fresh, unaborted signal.
+    await waitFor(() => {
+      expect(mockGenerateSlides).toHaveBeenCalledTimes(2);
+    });
+    expect(capturedSignals[1]).not.toBe(capturedSignals[0]);
+    expect(capturedSignals[1].aborted).toBe(false);
+  });
+
   it('advances processingStage to 4 and transitions to slides after first slide event', async () => {
     const user = userEvent.setup();
 
