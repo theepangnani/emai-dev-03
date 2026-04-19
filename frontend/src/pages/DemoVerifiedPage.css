@@ -1,0 +1,92 @@
+/* ========================================
+   Demo Verified Page — celebration layout
+   ======================================== */
+
+.demo-verified-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 56px 24px 72px;
+  min-height: calc(100vh - 68px);
+  max-width: 640px;
+  margin: 0 auto;
+  gap: var(--space-md);
+}
+
+.demo-verified-mascot {
+  margin-bottom: var(--space-xs);
+}
+
+.demo-verified-title {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--color-ink);
+  letter-spacing: -0.02em;
+}
+
+.demo-verified-position-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: 999px;
+  padding: 8px 20px;
+  margin: 0;
+}
+
+.demo-verified-benefits {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md) 0 var(--space-lg);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+  width: 100%;
+}
+
+.demo-verified-benefits li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--color-ink);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.demo-verified-benefits li svg {
+  flex-shrink: 0;
+  color: var(--color-success, var(--color-accent-strong));
+  margin-top: 2px;
+}
+
+.demo-verified-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.demo-verified-cta svg { flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .demo-verified-hero {
+    padding: 40px 20px 56px;
+  }
+  .demo-verified-title {
+    font-size: 1.9rem;
+  }
+  .demo-verified-position-pill {
+    font-size: 1.1rem;
+  }
+}

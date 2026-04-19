@@ -131,7 +131,7 @@ describe('InstantTrialModal — step 1 → step 2', () => {
 
     // Step 2 surfaces the tablist
     expect(await screen.findByRole('tablist')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^ask$/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /ask/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /study guide/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /flash tutor/i })).toBeInTheDocument();
   });
@@ -164,8 +164,8 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
     expect(screen.getByText('Demo sample')).toBeInTheDocument();
     // Conversion card appears after done
     expect(await screen.findByRole('button', { name: /verify my email/i })).toBeInTheDocument();
-    // Copy button is shown
-    expect(screen.getByRole('button', { name: /^copy$/i })).toBeInTheDocument();
+    // Copy button is shown (aria-label covers full intent)
+    expect(screen.getByRole('button', { name: /copy demo output/i })).toBeInTheDocument();
   });
 
   it('shows an error when the SSE stream emits error', async () => {
