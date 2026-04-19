@@ -4,6 +4,16 @@
   max-width: 1200px;
 }
 
+/* BEM-style alias selectors (#3705): these pair with the shared
+   `.admin-waitlist-*` classes in AdminWaitlistPage.css so the demo sessions
+   page has its own selector surface without duplicating styles. */
+.admin-demo-sessions-table,
+.admin-demo-sessions-stats,
+.admin-demo-sessions-filters {
+  /* shared — styles live on the `.admin-waitlist-*` siblings applied to the
+     same element; kept as empty rulesets so the class names are valid hooks. */
+}
+
 .admin-demo-sessions-header {
   display: flex;
   justify-content: space-between;

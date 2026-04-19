@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
@@ -89,10 +89,12 @@ const baseItem = {
   moat_summary: { tm_beats_seen: 3, rs_roles_switched: 2, pw_viewport_reached: true },
 }
 
+const baseCounts = { pending: 0, approved: 0, rejected: 0, blocklisted: 0 }
+
 describe('AdminDemoSessionsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockList.mockResolvedValue({ items: [baseItem], total: 1, page: 1, per_page: 50 })
+    mockList.mockResolvedValue({ items: [baseItem], total: 1, page: 1, per_page: 50, counts: baseCounts })
     mockApprove.mockResolvedValue({ ...baseItem, admin_status: 'approved' })
     mockReject.mockResolvedValue({ ...baseItem, admin_status: 'rejected' })
     mockBlocklist.mockResolvedValue({ ...baseItem, admin_status: 'blocklisted' })
@@ -163,8 +165,76 @@ describe('AdminDemoSessionsPage', () => {
     window.URL.revokeObjectURL = origRevoke
   })
 
+  // #3707 — CSV download triggers blob URL + downloadDemoSessionsCsv api call
+  it('csv download triggers blob api', async () => {
+    const origCreate = window.URL.createObjectURL
+    const origRevoke = window.URL.revokeObjectURL
+    const createSpy = vi.fn().mockReturnValue('blob:mock')
+    window.URL.createObjectURL = createSpy
+    window.URL.revokeObjectURL = vi.fn()
+
+    const user = userEvent.setup()
+    renderPage(<AdminDemoSessionsPage />)
+    await waitFor(() => expect(screen.getByText('demo@example.com')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: /Download CSV/i }))
+
+    await waitFor(() => {
+      expect(mockCsv).toHaveBeenCalledTimes(1)
+      expect(createSpy).toHaveBeenCalledTimes(1)
+      // argument should be the Blob returned by the mock
+      const arg = createSpy.mock.calls[0][0]
+      expect(arg).toBeInstanceOf(Blob)
+    })
+
+    window.URL.createObjectURL = origCreate
+    window.URL.revokeObjectURL = origRevoke
+  })
+
+  // #3707 — rapid typing should collapse into a single debounced API call.
+  // Uses fake timers just for the debounce window; userEvent is avoided here
+  // because it awaits real microtasks that fake timers don't schedule.
+  it('debounced search reduces api calls', async () => {
+    renderPage(<AdminDemoSessionsPage />)
+
+    // Let the initial load settle (one call with empty search).
+    await waitFor(() => expect(mockList).toHaveBeenCalled())
+    mockList.mockClear()
+
+    const searchInput = screen.getByPlaceholderText(
+      /Search by name or email/i,
+    ) as HTMLInputElement
+
+    vi.useFakeTimers()
+    try {
+      // Simulate rapid typing — five changes separated by <400ms.
+      // useDebounce (delay=400ms) should collapse these into one API call.
+      fireEvent.change(searchInput, { target: { value: 'a' } })
+      act(() => { vi.advanceTimersByTime(100) })
+      fireEvent.change(searchInput, { target: { value: 'al' } })
+      act(() => { vi.advanceTimersByTime(100) })
+      fireEvent.change(searchInput, { target: { value: 'ali' } })
+      act(() => { vi.advanceTimersByTime(100) })
+      fireEvent.change(searchInput, { target: { value: 'alic' } })
+      act(() => { vi.advanceTimersByTime(100) })
+      fireEvent.change(searchInput, { target: { value: 'alice' } })
+
+      // Before the 400ms debounce window elapses, no new API call.
+      expect(mockList).not.toHaveBeenCalled()
+
+      // Fast-forward past the debounce to let useDebounce fire.
+      act(() => { vi.advanceTimersByTime(500) })
+    } finally {
+      vi.useRealTimers()
+    }
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(1))
+    const call = mockList.mock.calls[0][0]
+    expect(call.search).toBe('alice')
+  })
+
   it('renders empty state when no items', async () => {
-    mockList.mockResolvedValueOnce({ items: [], total: 0, page: 1, per_page: 50 })
+    mockList.mockResolvedValueOnce({ items: [], total: 0, page: 1, per_page: 50, counts: baseCounts })
     renderPage(<AdminDemoSessionsPage />)
     await waitFor(() => {
       expect(screen.getByText('No demo sessions found.')).toBeInTheDocument()
