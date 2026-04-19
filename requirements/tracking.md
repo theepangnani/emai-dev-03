@@ -1,9 +1,21 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 14, 2026):** ~3,290 total issues — ~2,810 closed, ~480 open, 2,038 commits
-- **Features built:** 420+ enhancements closed
-- **Bugs fixed:** 410+ bugs closed
+**Summary (as of Apr 19, 2026):** ~3,750 total issues — ~3,270 closed, ~480 open, 2,100+ commits
+- **Features built:** 430+ enhancements closed
+- **Bugs fixed:** 440+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
+
+**Apr 19 — CB-DEMO-001 Production Launch + 30+ Fast-Follow Fixes:**
+- **CB-DEMO-001 epic merged to master (#3708):** Instant Trial landing-page experience deployed to production — AI Instant Trial, Tuesday Mirror, Role Switcher, Proof Wall, Compliance page all live at classbridge.ca.
+- **Production hotfixes:** feature_flags.variant column missing on prod (500 errors, #3713), redundant settings import shadowing (#3714), expose demo_landing_v1_1 variant to public /api/features (#3716), ship prompts/ in Docker image (demo Generate broken, #3718), demo verification magic link missing /api/v1 prefix (#3721), render demo output as markdown (was showing raw # and ** chars, #3723).
+- **UI redesign + polish (PRs #3725, #3727, #3728, #3732, #3733, #3734, #3736):** DemoMascot + SVG icons (Part A), RoleSwitcher SVG icons (UI5), UI3 Generate step + DemoVerifiedPage polish + Copy fallback, UI2 modal chrome + signup + ConversionCard redesign, UI4 TuesdayMirror redesign, UI6 ProofWall redesign, plus consolidated UI redesign + 30+ fast-follow fixes.
+- **Backend fast-follows:** indexes + test coverage (#3726), admin + compliance fast-follows bundle (#3729 → #3703/#3704/#3705/#3707/#3681/#3685), backend security fast-follows bundle (#3730 → #3640/#3665/#3655/#3629/#3664), rate-limit race — reserve slot before stream (#3731 → #3666).
+- **PR-review cleanup:** un-skip timeout test + cleanup (#3742 → #3737/#3738), GenerateSubGuideModal Router test fix (#3712).
+- **ASGF (CB-ASGF-001) issues filed (in-progress):** study guide generation stuck at 'Generating your lesson' — frontend never starts SSE (#3735, fixed via fix/3735a-asgf-stream-frontend, fix/3735b-asgf-slide-parallel), slide generator leaks pending tasks on early consumer close (#3740), frontend may leak previous session's SSE into new session (#3741), distinct visual treatment for failed ASGF slides (#3743).
+- **Email digest:** From-name filter + on-demand 24h lookback (#3661 → #3652/#3653).
+- **OAuth/Gmail:** correct OAuth scopes for parent Gmail service (#3597).
+- **Open enhancements still pending:** verify path double-commits (#3656), location column on waitlist_signups for Proof Wall by_municipality (#3657), demo magic-link token exposed in URL query (#3660), Anthropic pricing hardcoded (#3667), temperature=0.7 hardcoded in stream_demo_completion (#3669), _waitlist_preview_position runs full COUNT per signup (#3670), tighten demo_session.user_agent truncation to 256 chars (#3671), verify /privacy and /terms routes before launch (#3682), verify privacy@classbridge.ca inbox monitored (#3683), CompliancePage prefer Unicode over HTML entities (#3684), lazy-load InstantTrialModal (#3697), AdminDemoSessionsPage bulk-select approve/reject (#3706), /demo/verify-failed route missing (#3722), redesign demo UI (#3724).
+- Snapshot date: 2026-04-19.
 
 **Apr 18 — CB-DEMO-001 Instant Trial & Demo Experience kickoff (epic #3599):**
 - Epic #3599 opened for Instant Trial landing-page experience (AI Instant Trial + Tuesday Mirror + Role Switcher + Proof Wall); target launch May 13, 2026 with 50/50 A/B, sunset gate May 29 if M4 < 2.0×.
