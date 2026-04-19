@@ -14,7 +14,9 @@ describe('InstantTrialSection', () => {
     render(<InstantTrialSection />);
     expect(screen.getByText(/instant demo/i)).toBeInTheDocument();
     expect(screen.getByText(/^fast$/i)).toBeInTheDocument();
-    expect(screen.getByText(/no password/i)).toBeInTheDocument();
+    // "No password" appears in both the subheadline and the trust chip; use
+    // getAllByText to tolerate duplicates and just assert the chip is present.
+    expect(screen.getAllByText(/no password/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/^free$/i)).toBeInTheDocument();
   });
 
