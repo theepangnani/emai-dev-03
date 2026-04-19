@@ -23,6 +23,37 @@
   padding: 32px 24px;
 }
 
+.role-switcher__error-message {
+  margin: 0 0 12px;
+}
+
+.role-switcher__retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-strong);
+  color: var(--color-surface);
+  border: 2px solid var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.role-switcher__retry:hover {
+  background: var(--color-accent-dark);
+  border-color: var(--color-accent-dark);
+  box-shadow: var(--shadow-sm);
+}
+
+.role-switcher__retry:focus-visible {
+  outline: 2px solid var(--color-accent-strong);
+  outline-offset: 2px;
+}
+
 .role-switcher__event {
   font-family: var(--font-display);
   font-size: 18px;
@@ -74,14 +105,36 @@
 }
 
 .role-switcher__tab-icon {
-  font-size: 16px;
-  line-height: 1;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .role-switcher__panel {
+  position: relative;
   opacity: 1;
   transition: opacity 150ms ease-in-out;
   min-height: 180px;
+}
+
+.role-switcher__stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
+  pointer-events: none;
+}
+
+.role-switcher__stamp-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .role-switcher__panel:focus-visible {
