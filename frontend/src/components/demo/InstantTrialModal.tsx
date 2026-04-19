@@ -26,6 +26,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [verifyEmail, setVerifyEmail] = useState<string>('');
   const [verifyNotice, setVerifyNotice] = useState<string>('');
   const [verifyShown, setVerifyShown] = useState<boolean>(false);
+  const [maximized, setMaximized] = useState(false);
   const trapRef = useFocusTrap<HTMLDivElement>(true, onClose);
 
   const handleStep1Success = (res: CreateDemoSessionResponse, email: string) => {
@@ -59,7 +60,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
     <div className="demo-modal-overlay">
       <div
         ref={trapRef}
-        className="demo-modal"
+        className={`demo-modal${maximized ? ' demo-modal--maximized' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -87,6 +88,45 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
               />
             </div>
           </div>
+          <button
+            type="button"
+            className="demo-modal-maximize"
+            aria-label={maximized ? 'Restore size' : 'Maximize'}
+            title={maximized ? 'Restore size' : 'Maximize'}
+            onClick={() => setMaximized((v) => !v)}
+          >
+            {maximized ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                fill="none"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10 2v4h4" />
+                <path d="M6 14v-4H2" />
+              </svg>
+            ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                fill="none"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 2h5v5" />
+                <path d="M7 14H2V9" />
+              </svg>
+            )}
+          </button>
           <button
             type="button"
             className="demo-modal-close"

@@ -1449,3 +1449,23 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - Tuesday Mirror names the tools (Google Classroom, Teach Assist, Teams, etc.)
 
 **Epic:** #3599 — see for full PRD + plan.
+
+#### 6.135.1 Demo Scope Expansion — UNRESTRICTED (#3754)
+
+**Change:** The instant-trial demo (ask / study_guide / flash_tutor) no longer restricts topics to the Grade 8 Ontario curriculum. Users can submit any topic and receive a real response.
+
+**Why changed:** The original scope (PRD v1.1, via #3599) was chosen for cost control, brand safety, audience targeting, and abuse mitigation. After initial launch, the restriction was causing a poor UX — legitimate user questions outside Grade 8 were refused with a rigid "outside curriculum" message that felt at odds with the "try anything" landing-page framing.
+
+**Mitigations preserved:**
+- Token budgets (500 / 600 / 1200 per demo_type) bound Haiku output cost per request.
+- slowapi rate limiting + disposable-email blocklist + honeypot still apply.
+- `demo-safe` posture preserved: no persistence, no personalization, no user-data lookup.
+- Cost per verified signup monitored per M5 KPI; watch for post-change drift.
+
+**Acceptance criteria:**
+- [x] All 3 prompt files (`prompts/demo/*.md`) updated — curriculum-scope rules removed
+- [x] REQUIREMENTS updated to document the change
+- [ ] Post-deploy: spot-check that Grade 10 Algebra, Grade 12 Calculus, university-level topics now produce on-topic responses
+- [ ] Post-deploy: monitor M5 Cost per Verified Signup for >25% drift in first 14 days; revisit if so
+
+**Supersedes:** any earlier "Grade 8 Ontario curriculum only" language in CB-DEMO-001 docs.
