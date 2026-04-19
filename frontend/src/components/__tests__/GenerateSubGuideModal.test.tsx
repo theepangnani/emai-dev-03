@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { GenerateSubGuideModal } from '../GenerateSubGuideModal';
 
 const defaultProps = {
@@ -13,7 +14,11 @@ const defaultProps = {
 
 function renderModal(overrides: Partial<typeof defaultProps> = {}) {
   const props = { ...defaultProps, ...overrides };
-  return render(<GenerateSubGuideModal {...props} />);
+  return render(
+    <MemoryRouter>
+      <GenerateSubGuideModal {...props} />
+    </MemoryRouter>
+  );
 }
 
 describe('GenerateSubGuideModal', () => {
