@@ -163,7 +163,7 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
       </div>
 
       <p className="demo-panel-label demo-panel-label--iconed">
-        <IconStudyGuide size={16} aria-hidden="true" />
+        <IconStudyGuide size={16} />
         <span>Sample reading — Grade 8 Science</span>
       </p>
       <div className="demo-sample-panel" aria-label={`Pre-loaded sample: ${SAMPLE_TITLE}`} tabIndex={0}>
@@ -224,7 +224,7 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
             </>
           ) : (
             <>
-              <IconSparkles size={18} aria-hidden="true" />
+              <IconSparkles size={18} />
               <span>Generate {activeMeta.label}</span>
             </>
           )}
@@ -262,7 +262,7 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
             onClick={handleCopy}
             aria-label="Copy demo output to clipboard"
           >
-            <IconCopy size={16} aria-hidden="true" />
+            <IconCopy size={16} />
             <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
@@ -280,7 +280,7 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
                 className="demo-chip demo-chip--iconed"
                 onClick={() => selectTab(tab.id)}
               >
-                <ChipIcon size={14} aria-hidden="true" />
+                <ChipIcon size={14} />
                 <span>Try {meta.label}</span>
               </button>
             );

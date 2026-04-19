@@ -106,7 +106,7 @@ export function TuesdayMirror() {
       aria-hidden={!visible.includes(i)}
     >
       <span className="tm-time-chip">
-        <IconClock size={14} aria-hidden="true" />
+        <IconClock size={14} />
         <span className="tm-beat-time">{beat.timestamp}</span>
       </span>
       <span className="tm-beat-text">{variant === 'without' ? beat.without : beat.with}</span>
