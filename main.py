@@ -864,7 +864,6 @@ async def startup_event():
     # Initialize intent embedding service (anchor phrase embeddings)
     try:
         from app.services.intent_embedding_service import intent_embedding_service
-        from app.core.config import settings
         if settings.openai_api_key:
             intent_embedding_service.initialize(settings.openai_api_key)
     except Exception as e:
