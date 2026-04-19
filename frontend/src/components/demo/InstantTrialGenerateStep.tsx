@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamGenerate, type DemoType } from '../../api/demo';
 import { ConversionCard } from './ConversionCard';
+import { StreamingMarkdown } from '../StreamingMarkdown';
 import {
   DEFAULT_QUESTIONS,
   SAMPLE_TEXT,
@@ -28,7 +29,6 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
   const [error, setError] = useState<string>('');
   const [generatedTypes, setGeneratedTypes] = useState<Set<DemoType>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
-  const liveRegionRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -156,12 +156,17 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
       </div>
 
       {(status !== 'idle' || output) && (
-        <div className="demo-output-wrap" aria-busy={status === 'streaming'}>
+        <div
+          className="demo-output-wrap"
+          aria-busy={status === 'streaming'}
+          aria-live="polite"
+        >
           <span className="demo-watermark" aria-hidden="true">Demo sample</span>
-          <p className="demo-output-text" ref={liveRegionRef} aria-live="polite">
-            {output}
-            {status === 'streaming' && <span className="demo-typing-dot" aria-hidden="true" />}
-          </p>
+          <StreamingMarkdown
+            content={output}
+            isStreaming={status === 'streaming'}
+            className="demo-output-md"
+          />
         </div>
       )}
       {error && <div className="demo-output-error" role="alert">{error}</div>}
