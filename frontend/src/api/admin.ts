@@ -220,11 +220,19 @@ export interface DemoSessionItem {
   moat_summary: DemoMoatSummary;
 }
 
+export interface DemoSessionStatusCounts {
+  pending: number;
+  approved: number;
+  rejected: number;
+  blocklisted: number;
+}
+
 export interface DemoSessionListResponse {
   items: DemoSessionItem[];
   total: number;
   page: number;
   per_page: number;
+  counts: DemoSessionStatusCounts;
 }
 
 export interface UserStorageInfo {
