@@ -121,29 +121,38 @@ class ASGFSlideService:
             task = asyncio.create_task(_run_with_semaphore(slide_number))
             tasks[task] = slide_number
 
-        buffered: dict[int, dict] = {}
-        next_to_yield = 2
-        pending = set(tasks.keys())
+        try:
+            buffered: dict[int, dict] = {}
+            next_to_yield = 2
+            pending = set(tasks.keys())
 
-        while pending:
-            done, pending = await asyncio.wait(
-                pending, return_when=asyncio.FIRST_COMPLETED
-            )
-            for task in done:
-                slide_number = tasks[task]
-                try:
-                    buffered[slide_number] = task.result()
-                except Exception as e:
-                    logger.error(
-                        "ASGF slide generation failed for slide %d: %s",
-                        slide_number,
-                        e,
-                    )
-                    buffered[slide_number] = _error_placeholder(slide_number)
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    slide_number = tasks[task]
+                    try:
+                        buffered[slide_number] = task.result()
+                    except Exception as e:
+                        logger.error(
+                            "ASGF slide generation failed for slide %d: %s",
+                            slide_number,
+                            e,
+                        )
+                        buffered[slide_number] = _error_placeholder(slide_number)
 
-            while next_to_yield in buffered:
-                yield buffered.pop(next_to_yield)
-                next_to_yield += 1
+                while next_to_yield in buffered:
+                    yield buffered.pop(next_to_yield)
+                    next_to_yield += 1
+        finally:
+            # Cancel any tasks still running (e.g. generator closed early)
+            # to prevent Claude token leaks for slides the user won't see.
+            if tasks:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     # ------------------------------------------------------------------
     # Prompt builders

@@ -162,6 +162,59 @@ class TestGenerateSlidesConcurrency:
         assert collected[0].get("error") is True
 
     @pytest.mark.asyncio
+    async def test_pending_tasks_cancelled_on_generator_close(self):
+        """Closing the generator early must cancel in-flight slide-2..7 tasks."""
+
+        async def fake_generate(
+            client, system_prompt, learning_cycle_plan, context_package, slide_number
+        ):
+            if slide_number == 1:
+                return _slide_stub(slide_number)
+            # Slides 2-7 sleep long enough that they would still be pending
+            # at the time we call aclose().
+            await asyncio.sleep(2.0)
+            return _slide_stub(slide_number)
+
+        recorded_tasks: list[asyncio.Task] = []
+        real_create_task = asyncio.create_task
+
+        def recording_create_task(coro, *args, **kwargs):
+            task = real_create_task(coro, *args, **kwargs)
+            recorded_tasks.append(task)
+            return task
+
+        service = ASGFSlideService()
+
+        with patch.object(
+            ASGFSlideService, "_generate_single_slide", side_effect=fake_generate
+        ), patch(
+            "app.services.asgf_slide_service.get_async_anthropic_client",
+            return_value=object(),
+        ), patch(
+            "app.services.asgf_slide_service.asyncio.create_task",
+            new=recording_create_task,
+        ):
+            agen = service.generate_slides({}, {})
+            first = await agen.__anext__()
+            assert first["slide_number"] == 1
+
+            # Trigger dispatch of slides 2-7 by requesting the next slide,
+            # but bail out before any of them finish so tasks are in-flight.
+            try:
+                await asyncio.wait_for(agen.__anext__(), timeout=0.05)
+            except asyncio.TimeoutError:
+                pass
+
+            # Close early — simulates user abort / tab close.
+            await agen.aclose()
+
+        # Every task that was dispatched (slides 2-7) must be resolved,
+        # not still running in the background.
+        assert len(recorded_tasks) == TOTAL_SLIDES - 1
+        for task in recorded_tasks:
+            assert task.done(), f"task for slide not done after aclose(): {task}"
+
+    @pytest.mark.asyncio
     async def test_semaphore_bounds_concurrency_to_three(self):
         """Never more than 3 concurrent slide-2..7 generations in flight."""
         in_flight = 0
