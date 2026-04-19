@@ -259,4 +259,52 @@ describe('RoleSwitcher', () => {
     await user.click(screen.getByRole('button', { name: /See this in my own school/i }));
     expect(onCta).toHaveBeenCalledTimes(1);
   });
+
+  it('fetch rejects → renders role="alert" error UI and retry button refetches', async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('Network down'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => MOCK_DATA,
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    renderWithProviders(<RoleSwitcher />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Unable to load demo content/i);
+
+    const retry = screen.getByRole('button', { name: /Try again/i });
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(screen.getByText('Franklin St. PS, Grade 8 ROM field trip, October 17')).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows aria-busy="true" loading state before fetch resolves', async () => {
+    let resolveFetch: ((value: unknown) => void) | undefined;
+    const fetchPromise = new Promise((resolve) => {
+      resolveFetch = resolve;
+    });
+    global.fetch = vi.fn().mockReturnValue(fetchPromise) as unknown as typeof fetch;
+
+    renderWithProviders(<RoleSwitcher />);
+
+    const loading = await screen.findByText(/Loading demo/i);
+    expect(loading).toHaveAttribute('aria-busy', 'true');
+
+    resolveFetch?.({
+      ok: true,
+      status: 200,
+      json: async () => MOCK_DATA,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Franklin St. PS, Grade 8 ROM field trip, October 17')).toBeInTheDocument();
+    });
+  });
 });
