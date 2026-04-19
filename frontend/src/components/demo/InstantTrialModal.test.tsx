@@ -285,6 +285,36 @@ describe('InstantTrialModal — switching tabs clears prior output (#3700)', () 
   });
 });
 
+describe('InstantTrialModal — maximize toggle (#3755)', () => {
+  it('renders maximize button and toggles aria-label on click', async () => {
+    const user = userEvent.setup();
+    render(<InstantTrialModal onClose={() => {}} />);
+    const btn = screen.getByRole('button', { name: /maximize/i });
+    expect(btn).toHaveAttribute('aria-label', 'Maximize');
+    await user.click(btn);
+    expect(screen.getByRole('button', { name: /restore size/i })).toHaveAttribute(
+      'aria-label',
+      'Restore size',
+    );
+    await user.click(screen.getByRole('button', { name: /restore size/i }));
+    expect(screen.getByRole('button', { name: /maximize/i })).toHaveAttribute(
+      'aria-label',
+      'Maximize',
+    );
+  });
+
+  it('applies demo-modal--maximized class when toggled on', async () => {
+    const user = userEvent.setup();
+    render(<InstantTrialModal onClose={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(false);
+    await user.click(screen.getByRole('button', { name: /maximize/i }));
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(true);
+    await user.click(screen.getByRole('button', { name: /restore size/i }));
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(false);
+  });
+});
+
 describe('InstantTrialModal — handleVerify renders notice (#3700)', () => {
   it('renders the verify-notice banner after the CTA is clicked', async () => {
     const user = userEvent.setup();
