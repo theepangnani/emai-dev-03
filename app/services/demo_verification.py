@@ -12,6 +12,7 @@ cleared so the credential cannot be replayed.
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -147,6 +148,12 @@ def verify_magic_link(db: Session, raw_token: str) -> Optional[DemoSession]:
     )
     if candidate is None:
         return None
+    # Constant-time compare against stored hash to defeat timing attacks
+    # on the SQL equality predicate (#3640).
+    if not hmac.compare_digest(
+        candidate.verification_token_hash or "", token_hash
+    ):
+        return None
     if candidate.verified:
         # Already used — treat as replay attempt.
         return None
@@ -187,6 +194,9 @@ def verify_fallback_code(
         .first()
     )
     if candidate is None:
+        return None
+    # Constant-time compare on the stored fallback-code hash (#3640).
+    if not hmac.compare_digest(candidate.fallback_code_hash or "", code_hash):
         return None
     if candidate.verified:
         return None

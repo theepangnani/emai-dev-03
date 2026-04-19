@@ -174,6 +174,21 @@ def test_admin_update_variant_valid(client, db_session, admin_user):
     )
 
 
+def test_admin_update_config_based_flag_rejects_variant(client, db_session, admin_user):
+    """Config-based flags (e.g. google_classroom) must reject variant updates (#3629)."""
+    headers = _auth(client, admin_user.email)
+
+    resp = client.patch(
+        "/api/admin/features/google_classroom",
+        headers=headers,
+        json={"variant": "on_50"},
+    )
+    assert resp.status_code == 400, resp.text
+    detail = resp.json()["detail"]
+    assert "variant" in detail.lower()
+    assert "google_classroom" in detail or "config-based" in detail.lower()
+
+
 def test_admin_update_variant_rejects_invalid_value(client, db_session, admin_user):
     """Invalid variant values must return 400."""
     from app.services.feature_seed_service import seed_features

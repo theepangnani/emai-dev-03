@@ -175,6 +175,35 @@ class TestCreateSession:
             )
         assert resp.status_code == 201
 
+    def test_email_failure_rolls_back_session_row(self, client, db_session):
+        """Verification email delivery failure must not leave an orphan row (#3664)."""
+        from app.models.demo_session import DemoSession
+
+        with patch(
+            "app.api.routes.demo.send_email_sync",
+            side_effect=RuntimeError("smtp boom"),
+        ):
+            resp = client.post(
+                "/api/v1/demo/sessions",
+                json=self._payload(email="rollback@example.com"),
+            )
+
+        assert resp.status_code == 503, resp.text
+        body = resp.json()
+        # FastAPI wraps HTTPException.detail under 'detail'
+        detail = body.get("detail", body)
+        assert detail.get("error") == "email_delivery_failed"
+        assert "couldn't send" in detail.get("message", "").lower() or \
+               "try again" in detail.get("message", "").lower()
+
+        # No orphan row left behind.
+        assert (
+            db_session.query(DemoSession)
+            .filter(DemoSession.email == "rollback@example.com")
+            .count()
+            == 0
+        )
+
 
 # ── POST /generate — auth / validation ────────────────────────────────
 
