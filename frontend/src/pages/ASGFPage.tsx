@@ -118,6 +118,44 @@ export function ASGFPage() {
     setContext(ctx);
   }, []);
 
+  // Stream slides via SSE — advances processingStage to 4 on first slide event,
+  // which allows the interstitial's onComplete to fire.
+  const streamSlides = useCallback(async (sessionId: string) => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let firstSlideReceived = false;
+
+    try {
+      for await (const event of asgfApi.generateSlides(sessionId, controller.signal)) {
+        if (controller.signal.aborted) break;
+
+        if (event.event === 'slide') {
+          try {
+            const slideData = JSON.parse(event.data) as SlideData;
+            if (!firstSlideReceived) {
+              firstSlideReceived = true;
+              setProcessingStage(4);
+            }
+            setSlides((prev) => [...prev, slideData]);
+          } catch {
+            // Skip malformed slide data
+          }
+        } else if (event.event === 'done' || event.event === 'complete') {
+          break;
+        } else if (event.event === 'error') {
+          setError('An error occurred while generating slides. You can continue with what was generated.');
+          break;
+        }
+      }
+    } catch {
+      if (!controller.signal.aborted) {
+        setError('Connection lost while generating slides. You can continue with what was generated.');
+      }
+    } finally {
+      setIsGeneratingSlides(false);
+    }
+  }, []);
+
   // Start the learning session
   const handleStartSession = useCallback(async () => {
     if (!question.trim()) return;
@@ -144,6 +182,11 @@ export function ASGFPage() {
 
       // Stage 2-3: Slides generating
       setProcessingStage(3);
+      setSlides([]);
+      setIsGeneratingSlides(true);
+
+      // Kick off SSE immediately — first slide event advances stage to 4
+      void streamSlides(session.session_id);
     } catch (err: unknown) {
       const msg =
         err && typeof err === 'object' && 'response' in err
@@ -152,43 +195,12 @@ export function ASGFPage() {
       setError(msg || 'Failed to create session. Please try again.');
       setStage('input');
     }
-  }, [question, uploadedFiles, context, intentResult]);
+  }, [question, uploadedFiles, context, intentResult, streamSlides]);
 
-  // Transition from processing to slides
-  const handleProcessingComplete = useCallback(async () => {
+  // Transition from processing to slides — SSE is already open from handleStartSession.
+  const handleProcessingComplete = useCallback(() => {
     if (!sessionData) return;
     setStage('slides');
-    setIsGeneratingSlides(true);
-    setSlides([]);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      for await (const event of asgfApi.generateSlides(sessionData.session_id, controller.signal)) {
-        if (controller.signal.aborted) break;
-
-        if (event.event === 'slide') {
-          try {
-            const slideData = JSON.parse(event.data) as SlideData;
-            setSlides((prev) => [...prev, slideData]);
-          } catch {
-            // Skip malformed slide data
-          }
-        } else if (event.event === 'done' || event.event === 'complete') {
-          break;
-        } else if (event.event === 'error') {
-          setError('An error occurred while generating slides. You can continue with what was generated.');
-          break;
-        }
-      }
-    } catch {
-      if (!controller.signal.aborted) {
-        setError('Connection lost while generating slides. You can continue with what was generated.');
-      }
-    } finally {
-      setIsGeneratingSlides(false);
-    }
   }, [sessionData]);
 
   // Handle comprehension signal
