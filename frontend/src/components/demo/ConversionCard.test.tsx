@@ -5,10 +5,15 @@ import { ConversionCard } from './ConversionCard';
 
 describe('ConversionCard', () => {
   it('shows the waitlist position text and three benefit bullets', () => {
-    render(<ConversionCard position={347} totalPreview={1204} onVerify={() => {}} />);
-    expect(screen.getByText(/#347 of 1,204/)).toBeInTheDocument();
+    const { container } = render(
+      <ConversionCard position={347} totalPreview={1204} onVerify={() => {}} />,
+    );
+    expect(screen.getByText('#347')).toBeInTheDocument();
+    expect(screen.getByText(/of 1,204/)).toBeInTheDocument();
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(3);
+    // Each bullet is prefixed with a check icon; total SVGs include header + 3 bullets + CTA icons.
+    expect(container.querySelectorAll('li > svg').length).toBe(3);
   });
 
   it('hides the "of N" phrase when total is missing or smaller than position', () => {
