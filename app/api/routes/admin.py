@@ -899,6 +899,9 @@ async def run_migrations_manual(
         ("parent_gmail_integrations", "whatsapp_verified", "BOOLEAN DEFAULT FALSE"),
         ("parent_gmail_integrations", "whatsapp_otp_code", "VARCHAR(6)"),
         ("parent_gmail_integrations", "whatsapp_otp_expires_at", "TIMESTAMP"),
+        # CB-DEMO-001 F2 (#3601, #3711) — recovery for feature_flags.variant
+        # if the startup migration ever silently fails again.
+        ("feature_flags", "variant", "VARCHAR(20) NOT NULL DEFAULT 'off'"),
     ]
 
     with engine.connect() as conn:
