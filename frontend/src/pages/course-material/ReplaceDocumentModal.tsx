@@ -112,8 +112,8 @@ export function ReplaceDocumentModal({
   const isReplace = content.has_file;
 
   return (
-    <div className="upload-wizard-overlay" onClick={handleClose}>
-      <div className="upload-wizard-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="upload-wizard-overlay">
+      <div className="upload-wizard-modal">
         <div className="uw-header">
           <h2 style={{ flex: 1 }}>{isReplace ? 'Replace Document' : 'Upload Class Material'}</h2>
         </div>
