@@ -146,6 +146,10 @@
   margin-right: 2px;
 }
 .demo-modal-maximize:hover { color: var(--color-ink); }
+.demo-modal-maximize:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
 .demo-modal-maximize svg { display: block; }
 
 .demo-modal-body {
