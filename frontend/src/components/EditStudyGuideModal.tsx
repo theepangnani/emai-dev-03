@@ -61,8 +61,8 @@ export function EditStudyGuideModal({ guide, onClose, onSaved }: EditStudyGuideM
   const guideTypeLabel = GUIDE_TYPE_LABELS[guide.guide_type] || guide.guide_type;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal edit-sg-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal edit-sg-modal">
         <h2>Edit {guideTypeLabel}</h2>
         <p className="modal-desc">Edit properties of this {guideTypeLabel.toLowerCase()}.</p>
         {error && (

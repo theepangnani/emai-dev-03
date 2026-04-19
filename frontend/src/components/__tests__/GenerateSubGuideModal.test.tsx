@@ -108,10 +108,10 @@ describe('GenerateSubGuideModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onClose when overlay clicked', () => {
+  it('does not call onClose when overlay clicked (#3750)', () => {
     const onClose = vi.fn();
     renderModal({ onClose });
     fireEvent.click(screen.getByTestId('generate-sub-guide-modal'));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

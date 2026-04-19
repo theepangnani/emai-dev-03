@@ -52,7 +52,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-lg) var(--space-lg) var(--space-sm);
+  padding: var(--space-md) var(--space-lg) var(--space-sm);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -129,7 +129,7 @@
 }
 
 .demo-modal-body {
-  padding: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
   overflow-y: auto;
   flex: 1;
   min-height: 0;
@@ -168,15 +168,21 @@
 
 .demo-role-group {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-sm);
+}
+
+@media (max-width: 720px) {
+  .demo-role-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .demo-role-option {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;

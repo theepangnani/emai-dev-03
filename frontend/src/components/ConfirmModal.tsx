@@ -41,7 +41,7 @@ export function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay">
       <div
         ref={trapRef}
         className="modal confirm-modal"
@@ -49,7 +49,6 @@ export function ConfirmModal({
         aria-modal="true"
         aria-labelledby="confirm-title"
         aria-describedby="confirm-message"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="confirm-modal-icon">
           {variant === 'danger' ? '\u26A0\uFE0F' : '\u2728'}
