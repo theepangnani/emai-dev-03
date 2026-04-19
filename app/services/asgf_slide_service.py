@@ -148,6 +148,8 @@ class ASGFSlideService:
         finally:
             # Cancel any tasks still running (e.g. generator closed early)
             # to prevent Claude token leaks for slides the user won't see.
+            # The gather is intentional — fire-and-forget cancel leaves
+            # cancelled coroutines noisy at loop shutdown.
             if tasks:
                 for task in tasks:
                     if not task.done():

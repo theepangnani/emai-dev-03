@@ -174,6 +174,8 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
     expect(stageAtGeneratorCall).toBeLessThan(4);
   });
 
+  // Regression for #3741 — stale SSE from a previous session must not leak
+  // into a new session's slides state when the user clicks Try Again.
   it('aborts prior SSE when a new session starts via retry', async () => {
     const user = userEvent.setup();
 
