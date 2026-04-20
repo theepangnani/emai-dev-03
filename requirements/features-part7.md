@@ -1484,3 +1484,30 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 **Covered by:** #3759 (FlashcardDeck), #3760 (GatedActionBar), #3761 (scroll-clip fix), #3762 (integration — SourcePicker + per-tab cache + wiring).
 
 **Epic:** #3758.
+
+#### 6.135.3 Modal Maximize Toggle — Phase 1 (#3755)
+
+**Change:** `InstantTrialModal` now includes a maximize button in its header that toggles between the default size (`max-width: 640px; max-height: 92vh`) and a maximized size (`max-width: 95vw; max-height: 95vh`).
+
+**Why:** Step 2 of the modal ("Your instant demo") renders variable-length streaming output that often exceeded 92vh and showed a scrollbar even after the §6.135 sizing tightening (#3751). Users reported the scrollbar as visually distracting. A discoverable maximize control lets users expand on demand instead of hard-coding a larger default.
+
+**Design decisions:**
+- Toggle placement: header, immediately before the close (`×`) button — mirrors standard OS window chrome (max → close).
+- Icons: inline SVGs (~215 bytes each) — no icon-library dependency.
+- Hidden on mobile (`<640px`) — mobile already uses a full-screen bottom sheet, so the button is redundant and the carve-out preserves the native-app feel.
+- `:focus-visible` ring matches the close button for keyboard-a11y consistency.
+- State is in-memory (React `useState`); not persisted across modal-open cycles. If usage data shows strong preference for maximized, a future change can persist to `localStorage` (tracked as follow-up in #3772).
+
+**Acceptance criteria:**
+- [x] Maximize button in `InstantTrialModal` header, keyboard-accessible
+- [x] Toggles `.demo-modal--maximized` class between default and 95vw/95vh
+- [x] Mobile (<640px): button hidden, bottom-sheet unaffected
+- [x] Esc + close button still dismiss the modal
+- [x] `:focus-visible` ring matches other header buttons
+- [x] 2 regression tests (`aria-label` toggle + class application)
+
+**Phase 2 (deferred to #3772 / #3752):**
+- Migrate maximize into the shared `<Modal>` wrapper planned in #3752 (so any modal can opt-in via `maximizable` prop)
+- Optionally persist the maximized state in `localStorage`
+
+**Shipped:** PR #3757, merged 2026-04-19, deployed 2026-04-19 23:20 UTC.
