@@ -1,9 +1,21 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 19, 2026):** ~3,750 total issues — ~3,270 closed, ~480 open, 2,100+ commits
+**Summary (as of Apr 20, 2026):** ~3,770 total issues — ~3,290 closed, ~480 open, 2,110+ commits
 - **Features built:** 430+ enhancements closed
-- **Bugs fixed:** 440+ bugs closed
+- **Bugs fixed:** 445+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
+
+**Apr 20 — CB-DEMO-001 demo page re-plan (Mindgrasp-style UX):**
+- **Epic #3758 delivered via PR #3769 (merged to master as `ac2d8df6`):** Single-source picker (sample | paste | gated upload) replaces the always-visible sample + "Use my own text" toggle; per-tab cache preserves generated output when switching Ask ↔ Study Guide ↔ Flash Tutor (source changes clear output but preserve user-typed questions); Flash Tutor renders `FlashcardDeck` flip cards instead of raw JSON; `GatedActionBar` under each completed output (Download PDF / Save / Follow-up / More flashcards) opens inline waitlist upsells. Scrollbar clipping by rounded modal corners fixed.
+- **Classification:** Requirement Gap + Design Gap + 3 Bugs (mixed). Original CB-DEMO-001 spec didn't account for single-source UX, per-tab cache, flashcard UI, or gated extras.
+- **Delivery model:** 4 parallel worktree streams → `integrate/cb-demo-001-replan` → one master PR. Every child PR passed 2× `/pr-review` with all suggestions resolved or filed as fast-follows before merge. Final integration PR also passed 2× `/pr-review`.
+- **Issues closed:** #3758 (epic), #3759 (FlashcardDeck), #3760 (GatedActionBar), #3761 (scroll clip), #3762 (integration + REQUIREMENTS §6.135.2), #3724 (demo UI redesign — superseded by this work).
+- **PRs merged:** #3763 (scroll clip), #3764 (GatedActionBar), #3765 (FlashcardDeck), #3767 (integration into `integrate/cb-demo-001-replan`), #3769 (integrate → master).
+- **Fast-follows filed (open):** #3766 `waitlistHref` open-redirect guard; #3768 move `streamGenerate` side-effect out of `setTabState` updater (pre-StrictMode); #3770 wire `GatedActionBar.onUpsell` to analytics emitter; #3771 `FlashcardDeck.tsx` stale file-header comment.
+- **REQUIREMENTS update:** §6.135.2 "Demo page re-plan (2026-04-20)" added to `requirements/features-part7.md` documenting the Design Gap and shipped spec.
+- **Scope discipline:** Frontend-only. No backend, DB, schema, or env-var changes. Cloud Run deploy is a vanilla frontend-artifact swap.
+- **Deploy:** Triggered on merge (workflow_dispatch run 24694426427); traffic routing via `gcloud run services update-traffic classbridge --to-latest --project=emai-dev-01` to follow.
+- Snapshot date: 2026-04-20.
 
 **Apr 19 — CB-DEMO-001 Production Launch + 30+ Fast-Follow Fixes:**
 - **CB-DEMO-001 epic merged to master (#3708):** Instant Trial landing-page experience deployed to production — AI Instant Trial, Tuesday Mirror, Role Switcher, Proof Wall, Compliance page all live at classbridge.ca.
