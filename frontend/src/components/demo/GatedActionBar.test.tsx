@@ -12,6 +12,44 @@ describe('GatedActionBar', () => {
     expect(screen.queryByRole('button', { name: /more flashcards/i })).toBeNull();
   });
 
+  it('does not render the upsell region on initial mount', () => {
+    render(<GatedActionBar actions={['download', 'save']} />);
+    expect(
+      screen.queryByRole('region', { name: /unlock this feature/i }),
+    ).toBeNull();
+  });
+
+  it('toggles the upsell card closed when the same button is clicked twice and does not re-fire onUpsell', async () => {
+    const user = userEvent.setup();
+    const onUpsell = vi.fn<(id: GatedActionId) => void>();
+    render(<GatedActionBar actions={['download']} onUpsell={onUpsell} />);
+    const download = screen.getByRole('button', { name: /download pdf/i });
+    await user.click(download);
+    expect(
+      screen.getByRole('region', { name: /unlock this feature/i }),
+    ).toBeInTheDocument();
+    expect(onUpsell).toHaveBeenCalledTimes(1);
+    await user.click(download);
+    expect(
+      screen.queryByRole('region', { name: /unlock this feature/i }),
+    ).toBeNull();
+    expect(onUpsell).toHaveBeenCalledTimes(1);
+    expect(download).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('dismisses the upsell card when Escape is pressed', async () => {
+    const user = userEvent.setup();
+    render(<GatedActionBar actions={['download']} />);
+    await user.click(screen.getByRole('button', { name: /download pdf/i }));
+    expect(
+      screen.getByRole('region', { name: /unlock this feature/i }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(
+      screen.queryByRole('region', { name: /unlock this feature/i }),
+    ).toBeNull();
+  });
+
   it('opens upsell card with the download headline when download is clicked', async () => {
     const user = userEvent.setup();
     render(<GatedActionBar actions={['download', 'save']} />);
@@ -92,7 +130,6 @@ describe('GatedActionBar', () => {
     );
 
     rerender(<GatedActionBar actions={['download']} waitlistHref="/signup" />);
-    await user.click(screen.getByRole('button', { name: /download pdf/i }));
     expect(screen.getByRole('link', { name: /join the waitlist/i })).toHaveAttribute(
       'href',
       '/signup',

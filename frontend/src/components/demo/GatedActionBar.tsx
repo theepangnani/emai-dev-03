@@ -1,7 +1,13 @@
-import { useState, type ComponentType } from 'react';
-import { IconAsk, IconArrowRight, IconClose, IconFlashTutor, type IconProps } from './icons';
-import { IconDownload } from './icons/IconDownload';
-import { IconBookmark } from './icons/IconBookmark';
+import { useEffect, useState, type ComponentType } from 'react';
+import {
+  IconAsk,
+  IconArrowRight,
+  IconBookmark,
+  IconClose,
+  IconDownload,
+  IconFlashTutor,
+  type IconProps,
+} from './icons';
 
 export type GatedActionId = 'download' | 'save' | 'follow_up' | 'more_flashcards';
 
@@ -52,7 +58,20 @@ export function GatedActionBar({
 }: GatedActionBarProps) {
   const [activeUpsell, setActiveUpsell] = useState<GatedActionId | null>(null);
 
+  useEffect(() => {
+    if (!activeUpsell) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveUpsell(null);
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [activeUpsell]);
+
   const handleClick = (id: GatedActionId) => {
+    if (activeUpsell === id) {
+      setActiveUpsell(null);
+      return;
+    }
     onUpsell?.(id);
     setActiveUpsell(id);
   };
