@@ -13,6 +13,10 @@ import { InstantTrialModal } from './InstantTrialModal';
  * Note: jsdom does not meaningfully exercise the `@media (max-width: 640px)`
  * bottom-sheet path; mobile coverage relies on `border-radius: 0` there
  * eliminating the clipping bug by construction.
+ *
+ * This test now covers BOTH the `scrollbar-gutter` reservation AND the
+ * `::-webkit-scrollbar-track` margin fix (#3776 follow-up to #3761) that
+ * actually moves the native scrollbar track inside the rounded rectangle.
  */
 describe('InstantTrialModal — scrollbar not clipped by rounded corners (#3761)', () => {
   it('renders .demo-modal-body inside the rounded .demo-modal container', () => {
@@ -85,5 +89,98 @@ describe('InstantTrialModal — scrollbar not clipped by rounded corners (#3761)
       paddingRight.length > 0 ||
       /var\(--space-xl\)/.test(paddingShorthand);
     expect(hasGutter || hasPaddingFix).toBe(true);
+  });
+
+  it('demo-modal-body::-webkit-scrollbar-track has non-zero top/bottom margins (#3776)', () => {
+    render(<InstantTrialModal onClose={() => {}} />);
+
+    expect(document.styleSheets.length).toBeGreaterThan(0);
+
+    const sheets = Array.from(document.styleSheets) as CSSStyleSheet[];
+    let foundRule: CSSStyleRule | undefined;
+    for (const sheet of sheets) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(rules)) {
+        if (
+          rule instanceof CSSStyleRule &&
+          rule.selectorText === '.demo-modal-body::-webkit-scrollbar-track'
+        ) {
+          foundRule = rule;
+          break;
+        }
+      }
+      if (foundRule) break;
+    }
+
+    if (!foundRule) {
+      const styleText = Array.from(document.querySelectorAll('style'))
+        .map((s) => s.textContent || '')
+        .join('\n');
+      const hasMarginTop =
+        /\.demo-modal-body::-webkit-scrollbar-track\s*\{[^}]*margin-top\s*:\s*(?!0\b|0px|0em)[^;}]+/s.test(
+          styleText,
+        );
+      const hasMarginBottom =
+        /\.demo-modal-body::-webkit-scrollbar-track\s*\{[^}]*margin-bottom\s*:\s*(?!0\b|0px|0em)[^;}]+/s.test(
+          styleText,
+        );
+      expect(hasMarginTop).toBe(true);
+      expect(hasMarginBottom).toBe(true);
+      return;
+    }
+
+    const marginTop = foundRule.style.getPropertyValue('margin-top').trim();
+    const marginBottom = foundRule.style.getPropertyValue('margin-bottom').trim();
+    expect(marginTop.length).toBeGreaterThan(0);
+    expect(marginTop).not.toBe('0');
+    expect(marginTop).not.toBe('0px');
+    expect(marginBottom.length).toBeGreaterThan(0);
+    expect(marginBottom).not.toBe('0');
+    expect(marginBottom).not.toBe('0px');
+  });
+
+  it('demo-modal-body::-webkit-scrollbar has width: 8px (#3776)', () => {
+    render(<InstantTrialModal onClose={() => {}} />);
+
+    expect(document.styleSheets.length).toBeGreaterThan(0);
+
+    const sheets = Array.from(document.styleSheets) as CSSStyleSheet[];
+    let foundRule: CSSStyleRule | undefined;
+    for (const sheet of sheets) {
+      let rules: CSSRuleList;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      for (const rule of Array.from(rules)) {
+        if (
+          rule instanceof CSSStyleRule &&
+          rule.selectorText === '.demo-modal-body::-webkit-scrollbar'
+        ) {
+          foundRule = rule;
+          break;
+        }
+      }
+      if (foundRule) break;
+    }
+
+    if (!foundRule) {
+      const styleText = Array.from(document.querySelectorAll('style'))
+        .map((s) => s.textContent || '')
+        .join('\n');
+      const hasWidth =
+        /\.demo-modal-body::-webkit-scrollbar\s*\{[^}]*width\s*:\s*8px/s.test(styleText);
+      expect(hasWidth).toBe(true);
+      return;
+    }
+
+    const width = foundRule.style.getPropertyValue('width').trim();
+    expect(width).toBe('8px');
   });
 });
