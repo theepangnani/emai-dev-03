@@ -94,6 +94,35 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
     expect(screen.getByRole('button', { name: /generate ask/i })).toBeInTheDocument();
   });
 
+  it('preserves the Ask question when source changes', async () => {
+    const user = userEvent.setup();
+    setupStreamMock([
+      { event: 'token', data: 'Ask answer here.' },
+      { event: 'done', data: { demo_type: 'ask', latency_ms: 1, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
+    ]);
+
+    render(
+      <InstantTrialGenerateStep
+        sessionJwt="jwt"
+        waitlistPreviewPosition={10}
+        onVerify={() => {}}
+      />,
+    );
+
+    const questionInput = screen.getByLabelText(/your question/i) as HTMLInputElement;
+    await user.clear(questionInput);
+    await user.type(questionInput, 'What is photosynthesis?');
+    expect(questionInput.value).toBe('What is photosynthesis?');
+
+    // Switch source from sample to paste — cache clears but question must persist.
+    const pasteLabel = screen.getByText(/paste your own text/i).closest('label')!;
+    await user.click(pasteLabel);
+
+    expect((screen.getByLabelText(/your question/i) as HTMLInputElement).value).toBe(
+      'What is photosynthesis?',
+    );
+  });
+
   it('renders FlashcardDeck when flash_tutor is done', async () => {
     const user = userEvent.setup();
     const cards = JSON.stringify([
