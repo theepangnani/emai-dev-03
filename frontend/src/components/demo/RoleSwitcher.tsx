@@ -140,10 +140,6 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
     }
   };
 
-  const handleCtaClick = () => {
-    onCtaClick();
-  };
-
   const handleRetry = useCallback(() => {
     setError(null);
     setData(null);
@@ -230,7 +226,7 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
       <button
         type="button"
         className="role-switcher__cta"
-        onClick={handleCtaClick}
+        onClick={onCtaClick}
       >
         See this in my own school's context
       </button>
