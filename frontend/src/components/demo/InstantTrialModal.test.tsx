@@ -257,8 +257,8 @@ describe('InstantTrialModal — 10s timeout fallback (#3700)', () => {
   });
 });
 
-describe('InstantTrialModal — switching tabs clears prior output (#3700)', () => {
-  it('resets output text when a different tab is selected', async () => {
+describe('InstantTrialModal — per-tab cache (#3762)', () => {
+  it('preserves Ask output when switching to Study Guide and back', async () => {
     const user = userEvent.setup();
     mockCreateSession.mockResolvedValueOnce({
       session_jwt: 'jwt-tabs',
@@ -279,9 +279,15 @@ describe('InstantTrialModal — switching tabs clears prior output (#3700)', () 
       expect(screen.getByText(/First output\./)).toBeInTheDocument();
     });
 
-    // Switch to Study Guide tab — prior output should be cleared.
+    // Switch to Study Guide tab — Study Guide is idle, Ask output hidden.
     await user.click(screen.getByRole('tab', { name: /study guide/i }));
     expect(screen.queryByText(/First output\./)).not.toBeInTheDocument();
+
+    // Switch back to Ask — cached output still renders.
+    await user.click(screen.getByRole('tab', { name: /^ask/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/First output\./)).toBeInTheDocument();
+    });
   });
 });
 

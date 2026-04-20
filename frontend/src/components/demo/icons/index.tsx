@@ -12,7 +12,7 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, 'ref'> {
   'aria-hidden'?: boolean;
 }
 
-function baseProps(size: number, className?: string, rest?: Omit<IconProps, 'size' | 'className'>) {
+export function baseProps(size: number, className?: string, rest?: Omit<IconProps, 'size' | 'className'>) {
   return {
     width: size,
     height: size,
@@ -156,3 +156,6 @@ export const IconClose = ({ size = 20, className, ...rest }: IconProps) => (
     <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 );
+
+export { IconDownload } from './IconDownload';
+export { IconBookmark } from './IconBookmark';

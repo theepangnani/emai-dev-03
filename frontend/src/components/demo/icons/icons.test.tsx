@@ -19,6 +19,8 @@ import {
   IconPeople,
   IconQuote,
   IconClose,
+  IconDownload,
+  IconBookmark,
 } from './index';
 
 const icons = [
@@ -40,16 +42,13 @@ const icons = [
   ['IconPeople', IconPeople],
   ['IconQuote', IconQuote],
   ['IconClose', IconClose],
+  ['IconDownload', IconDownload],
+  ['IconBookmark', IconBookmark],
 ] as const;
 
 describe('demo icons', () => {
-  it('exports 18 distinct icon components', () => {
-    // 18 icons (close, quote, people, teacher, student, parent, other, mail, shield,
-    // clock, send, copy, arrowRight, check, sparkles, flashTutor, studyGuide, ask = 18).
-    // Per spec: Ask, StudyGuide, FlashTutor (3 tab) + Sparkles, Check, ArrowRight, Copy,
-    // Send, Clock, Shield, Mail (8) + Parent, Student, Teacher, Other (4 role) + People,
-    // Quote, Close (3) = 18 total.
-    expect(icons.length).toBe(18);
+  it('exports 20 distinct icon components', () => {
+    expect(icons.length).toBe(20);
   });
 
   it.each(icons)('renders %s as an SVG with viewBox 0 0 24 24', (_name, Component) => {
