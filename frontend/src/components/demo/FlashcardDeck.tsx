@@ -5,7 +5,7 @@
  * (see prompts/demo/flash-tutor.md) into a deck of {front, back} cards
  * with keyboard navigation and flip-on-click.
  *
- * Not integrated yet — see #3759 / #3762.
+ * Integrated via #3767. Parse order fixed in #3779.
  */
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
@@ -28,15 +28,14 @@ const FOOTER = 'This is a ClassBridge demo preview.';
 function cleanRawText(raw: string): string {
   let text = raw.trim();
 
-  // Strip surrounding ```json ... ``` or ``` ... ``` fences.
+  // Strip trailing footer FIRST — Haiku emits it on a new line AFTER the closing fence.
+  if (text.endsWith(FOOTER)) {
+    text = text.slice(0, -FOOTER.length).trim();
+  }
+
   const fenceMatch = text.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/i);
   if (fenceMatch) {
     text = fenceMatch[1].trim();
-  }
-
-  // Strip trailing footer line.
-  if (text.endsWith(FOOTER)) {
-    text = text.slice(0, -FOOTER.length).trim();
   }
 
   return text;

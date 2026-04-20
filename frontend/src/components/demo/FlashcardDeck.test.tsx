@@ -30,6 +30,12 @@ describe('FlashcardDeck — parsing', () => {
     expect(screen.getByText('What is a cell?')).toBeInTheDocument();
   });
 
+  it('strips fences AND footer when both are present (real Haiku output shape)', () => {
+    const real = '```json\n' + THREE_CARDS + '\n```\n\nThis is a ClassBridge demo preview.';
+    render(<FlashcardDeck rawText={real} />);
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+  });
+
   it('renders fallback <pre> when JSON is invalid', () => {
     const bad = 'not valid json at all { [ }';
     const { container } = render(<FlashcardDeck rawText={bad} />);
