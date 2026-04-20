@@ -157,8 +157,28 @@
   padding: var(--space-md) var(--space-xl) var(--space-md) var(--space-lg);
   overflow-y: auto;
   scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
   flex: 1;
   min-height: 0;
+}
+
+/* #3776: shorten scrollbar track by the corner-radius amount so it sits
+   inside the rounded rectangle instead of being clipped at top/bottom. */
+.demo-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.demo-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: var(--radius-xl);
+  margin-bottom: var(--radius-xl);
+}
+.demo-modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+.demo-modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-muted);
 }
 
 .demo-form-group {
