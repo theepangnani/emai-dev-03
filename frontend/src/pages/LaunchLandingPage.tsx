@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { useVariantBucket } from '../hooks/useVariantBucket';
 import { TuesdayMirror } from '../components/demo/TuesdayMirror';
 import { InstantTrialSection } from '../components/demo/InstantTrialSection';
+import { InstantTrialModal } from '../components/demo/InstantTrialModal';
 import RoleSwitcher from '../components/demo/RoleSwitcher';
 import { ProofWall } from '../components/demo/ProofWall';
 import './LaunchLandingPage.css';
@@ -12,6 +14,8 @@ export function LaunchLandingPage() {
   const { user } = useAuth();
   const waitlistEnabled = useFeature('waitlist_enabled');
   const demoLandingVariant = useVariantBucket('demo_landing_v1_1');
+  const [demoOpen, setDemoOpen] = useState(false);
+  const openDemo = () => setDemoOpen(true);
 
   if (user) {
     return null; // App.tsx handles redirect for authenticated users
@@ -48,9 +52,9 @@ export function LaunchLandingPage() {
         <>
           <TuesdayMirror />
           <section id="instant-trial">
-            <InstantTrialSection />
+            <InstantTrialSection onOpen={openDemo} />
           </section>
-          <RoleSwitcher />
+          <RoleSwitcher onCtaClick={openDemo} />
           <ProofWall />
         </>
       )}
@@ -89,6 +93,9 @@ export function LaunchLandingPage() {
         </div>
         <p className="launch-footer-copy">&copy; 2026 ClassBridge by EMAI. All rights reserved.</p>
       </footer>
+      {demoLandingVariant === 'on' && demoOpen && (
+        <InstantTrialModal onClose={() => setDemoOpen(false)} />
+      )}
     </div>
   );
 }
