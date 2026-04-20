@@ -153,8 +153,10 @@
 .demo-modal-maximize svg { display: block; }
 
 .demo-modal-body {
-  padding: var(--space-md) var(--space-lg);
+  /* #3761: stable gutter + --space-xl right padding keep the scrollbar inside the rounded corner (padding is the Safari <18.2 fallback). */
+  padding: var(--space-md) var(--space-xl) var(--space-md) var(--space-lg);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   flex: 1;
   min-height: 0;
 }
