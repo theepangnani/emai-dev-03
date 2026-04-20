@@ -8,7 +8,7 @@
  * Not integrated yet — see #3759 / #3762.
  */
 
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { DemoMascot } from './DemoMascot';
 
 export interface FlashcardDeckProps {
@@ -48,7 +48,10 @@ function parseFlashcards(raw: string): Flashcard[] | null {
   if (!cleaned) return null;
 
   try {
-    const parsed: unknown = JSON.parse(cleaned);
+    let parsed: unknown = JSON.parse(cleaned);
+    if (!Array.isArray(parsed) && parsed && Array.isArray((parsed as { cards?: unknown }).cards)) {
+      parsed = (parsed as { cards: unknown[] }).cards;
+    }
     if (!Array.isArray(parsed)) return null;
 
     const cards: Flashcard[] = [];
@@ -78,6 +81,15 @@ export function FlashcardDeck({ rawText, isStreaming, className }: FlashcardDeck
   const [flipped, setFlipped] = useState(false);
 
   const cards = useMemo(() => (isStreaming ? null : parseFlashcards(rawText)), [rawText, isStreaming]);
+
+  const cardsLength = cards?.length ?? 0;
+  useEffect(() => {
+    if (index >= cardsLength) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset when deck shrinks mid-session
+      setIndex(0);
+      setFlipped(false);
+    }
+  }, [cardsLength, index]);
 
   const rootClass = ['demo-flashcard-deck', className ?? ''].filter(Boolean).join(' ');
 
@@ -120,6 +132,7 @@ export function FlashcardDeck({ rawText, isStreaming, className }: FlashcardDeck
   const toggleFlip = () => setFlipped((f) => !f);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    // preventDefault on Arrow keys prevents page scroll and flip-button default handling.
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       goPrev();
@@ -150,7 +163,7 @@ export function FlashcardDeck({ rawText, isStreaming, className }: FlashcardDeck
         onClick={toggleFlip}
       >
         <span className="demo-flashcard-side-label">{flipped ? 'Back' : 'Front'}</span>
-        <span className="demo-flashcard-text">{flipped ? current.back : current.front}</span>
+        <span className="demo-flashcard-text" aria-live="polite">{flipped ? current.back : current.front}</span>
       </button>
 
       <div className="demo-flashcard-controls">
@@ -171,7 +184,7 @@ export function FlashcardDeck({ rawText, isStreaming, className }: FlashcardDeck
             />
           </svg>
         </button>
-        <span className="demo-flashcard-counter" aria-live="polite">
+        <span className="demo-flashcard-counter" role="status">
           {safeIndex + 1} / {cards.length}
         </span>
         <button

@@ -38,6 +38,27 @@ describe('FlashcardDeck — parsing', () => {
     expect(pre).toHaveTextContent('not valid json at all');
     expect(screen.queryByRole('region', { name: /flashcards/i })).not.toBeInTheDocument();
   });
+
+  it('parses a nested { cards: [...] } wrapper shape', () => {
+    const wrapped = JSON.stringify({
+      cards: [
+        { front: 'What is a cell?', back: 'The smallest living unit.' },
+        { front: 'What does the nucleus do?', back: 'Controls cell activities.' },
+      ],
+    });
+    render(<FlashcardDeck rawText={wrapped} />);
+    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('What is a cell?')).toBeInTheDocument();
+  });
+
+  it('falls back to <pre> when text is HTML-escaped JSON (JSON.parse fails)', () => {
+    const escaped = '[{&quot;front&quot;:&quot;Q1&quot;,&quot;back&quot;:&quot;A1&quot;}]';
+    const { container } = render(<FlashcardDeck rawText={escaped} />);
+    const pre = container.querySelector('pre.demo-flashcard-fallback');
+    expect(pre).not.toBeNull();
+    expect(pre).toHaveTextContent(escaped);
+    expect(screen.queryByRole('region', { name: /flashcards/i })).not.toBeInTheDocument();
+  });
 });
 
 describe('FlashcardDeck — interaction', () => {
@@ -95,6 +116,31 @@ describe('FlashcardDeck — interaction', () => {
 
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
     expect(screen.getByText('What is a cell?')).toBeInTheDocument();
+  });
+});
+
+describe('FlashcardDeck — accessibility', () => {
+  it('card body has aria-live="polite" so SRs announce flipped content', () => {
+    const { container } = render(<FlashcardDeck rawText={THREE_CARDS} />);
+    const body = container.querySelector('.demo-flashcard-text');
+    expect(body).not.toBeNull();
+    expect(body).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('counter has role="status"', () => {
+    render(<FlashcardDeck rawText={THREE_CARDS} />);
+    const counter = screen.getByRole('status');
+    expect(counter).toHaveTextContent('1 / 3');
+  });
+});
+
+describe('FlashcardDeck — single-card deck', () => {
+  it('shows 1 / 1 and disables both prev and next buttons', () => {
+    const one = JSON.stringify([{ front: 'Only', back: 'One' }]);
+    render(<FlashcardDeck rawText={one} />);
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /previous card/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /next card/i })).toBeDisabled();
   });
 });
 
