@@ -1138,3 +1138,142 @@
 .demo-gated-cta:hover {
   background: var(--color-accent-dark);
 }
+
+/* ── FlashcardDeck (#3759) ──────────────── */
+
+.demo-flashcard-deck {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.demo-flashcard-deck:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+  border-radius: var(--radius-md);
+}
+
+.demo-flashcard-placeholder {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-display);
+}
+
+.demo-flashcard-placeholder__text {
+  font-weight: 600;
+}
+
+.demo-flashcard-fallback {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.demo-flashcard-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  min-height: 160px;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-ink);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+
+.demo-flashcard-card:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+
+.demo-flashcard-card:focus-visible {
+  outline: none;
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.demo-flashcard-side-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+  font-family: var(--font-display);
+}
+
+.demo-flashcard-text {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+.demo-flashcard-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
+.demo-flashcard-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.demo-flashcard-nav:hover:not(:disabled) {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+.demo-flashcard-nav:focus-visible {
+  outline: none;
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.demo-flashcard-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.demo-flashcard-counter {
+  font-family: var(--font-display);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  min-width: 3.5em;
+  text-align: center;
+}
