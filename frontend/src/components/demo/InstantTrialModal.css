@@ -158,7 +158,7 @@
   overflow-y: auto;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--color-ink-muted) transparent;
   flex: 1;
   min-height: 0;
 }
@@ -174,11 +174,11 @@
   margin-bottom: var(--radius-xl);
 }
 .demo-modal-body::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--color-ink-muted);
   border-radius: 999px;
 }
 .demo-modal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink-muted);
+  background: var(--color-ink);
 }
 
 .demo-form-group {
