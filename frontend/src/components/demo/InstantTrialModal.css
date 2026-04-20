@@ -153,9 +153,7 @@
 .demo-modal-maximize svg { display: block; }
 
 .demo-modal-body {
-  /* Extra right padding + stable gutter keeps the scrollbar track visually
-     inside the rounded rectangle (#3761) — otherwise the track is clipped
-     by the modal's border-radius at the top-right corner. */
+  /* #3761: stable gutter + --space-xl right padding keep the scrollbar inside the rounded corner (padding is the Safari <18.2 fallback). */
   padding: var(--space-md) var(--space-xl) var(--space-md) var(--space-lg);
   overflow-y: auto;
   scrollbar-gutter: stable;

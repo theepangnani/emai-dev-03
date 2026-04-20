@@ -9,6 +9,10 @@ import { InstantTrialModal } from './InstantTrialModal';
  *
  * jsdom does not render scrollbars, so we assert on the DOM / stylesheet
  * state that guarantees the fix rather than on pixel geometry.
+ *
+ * Note: jsdom does not meaningfully exercise the `@media (max-width: 640px)`
+ * bottom-sheet path; mobile coverage relies on `border-radius: 0` there
+ * eliminating the clipping bug by construction.
  */
 describe('InstantTrialModal — scrollbar not clipped by rounded corners (#3761)', () => {
   it('renders .demo-modal-body inside the rounded .demo-modal container', () => {
@@ -27,6 +31,10 @@ describe('InstantTrialModal — scrollbar not clipped by rounded corners (#3761)
     // The actual CSS file is imported by the component, so it lives in one of
     // the document's stylesheets.
     render(<InstantTrialModal onClose={() => {}} />);
+
+    // Fail loudly if no stylesheets loaded at all — otherwise the fallback
+    // regex scan below would silently pass on an empty document.
+    expect(document.styleSheets.length).toBeGreaterThan(0);
 
     const sheets = Array.from(document.styleSheets) as CSSStyleSheet[];
     let foundRule: CSSStyleRule | undefined;
