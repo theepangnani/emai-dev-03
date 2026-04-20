@@ -1469,3 +1469,18 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - [ ] Post-deploy: monitor M5 Cost per Verified Signup for >25% drift in first 14 days; revisit if so
 
 **Supersedes:** any earlier "Grade 8 Ontario curriculum only" language in CB-DEMO-001 docs.
+
+#### 6.135.2 Demo page re-plan (2026-04-20, issue #3758)
+
+**Classification:** Design Gap — the original PRD v1.1 (#3599) shipped an always-on sample panel + optional "use my own text" toggle, a shared stream state, raw-JSON flash-tutor output, and no gated-extras surface. It did not account for a single-source picker, per-tab output cache, a flashcard UI, or an upsell path for non-live features (downloads, saves, follow-ups, more cards).
+
+**Design updates (frontend-only, no backend changes):**
+- **Single-source picker** — radio grid with `sample | paste | upload`. `upload` is gated: the input is disabled, clicking its label opens an inline upsell card ("Uploads unlock when you join the waitlist") and does NOT change the active source.
+- **Per-tab cache** — each of the 3 tabs (Ask / Study Guide / Flash Tutor) keeps its own `{output, status, question, error}`. Switching tabs preserves state so users can compare lenses without re-running. Source changes clear `output` / `status` / `error` across all tabs (user-typed questions are preserved so the user doesn't have to retype).
+- **Flash Tutor lens** — renders the Haiku JSON array via `FlashcardDeck` (flippable cards, keyboard-nav) instead of raw markdown.
+- **Gated action bar** — below each completed output, per-tab actions (`ask`: save + follow-up; `study_guide`: download + save + follow-up; `flash_tutor`: download + save + more-flashcards). Each opens an inline upsell pointing at `/waitlist`. Free `Copy` is retained.
+- **No backend changes in this phase** — `source_text` still strings through `POST /api/v1/demo/generate`. Upload remains gated; no file-upload endpoint is added.
+
+**Covered by:** #3759 (FlashcardDeck), #3760 (GatedActionBar), #3761 (scroll-clip fix), #3762 (integration — SourcePicker + per-tab cache + wiring).
+
+**Epic:** #3758.
