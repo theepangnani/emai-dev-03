@@ -40,7 +40,11 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
 
   const resetAllTabs = () => {
     abortRef.current?.abort();
-    setTabState(INITIAL_TAB_STATE);
+    setTabState((prev) => ({
+      ask: { ...prev.ask, output: '', status: 'idle', error: '' },
+      study_guide: { ...prev.study_guide, output: '', status: 'idle', error: '' },
+      flash_tutor: { ...prev.flash_tutor, output: '', status: 'idle', error: '' },
+    }));
   };
 
   const handleSourceChange = (next: SourceKind) => { setSource(next); resetAllTabs(); };
@@ -59,31 +63,30 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
   const runGenerate = useCallback(
     (tab: DemoType) => {
       abortRef.current?.abort();
-      const question = tabState[tab].question;
-      setTabState((prev) => ({
-        ...prev,
-        [tab]: { ...prev[tab], output: '', error: '', status: 'streaming' },
-      }));
-      const controller = streamGenerate(
-        sessionJwt,
-        {
-          demo_type: tab,
-          source_text: source === 'paste' && customText.trim() ? customText.trim() : SAMPLE_TEXT,
-          question: tab === 'ask' ? question : undefined,
-        },
-        {
-          onToken: (chunk: string) =>
-            setTabState((prev) => ({
-              ...prev,
-              [tab]: { ...prev[tab], output: prev[tab].output + chunk },
-            })),
-          onDone: () => updateTab(tab, { status: 'done' }),
-          onError: (message: string) => updateTab(tab, { status: 'error', error: message }),
-        },
-      );
-      abortRef.current = controller;
+      setTabState((prev) => {
+        const question = prev[tab].question;
+        const controller = streamGenerate(
+          sessionJwt,
+          {
+            demo_type: tab,
+            source_text: source === 'paste' && customText.trim() ? customText.trim() : SAMPLE_TEXT,
+            question: tab === 'ask' ? question : undefined,
+          },
+          {
+            onToken: (chunk: string) =>
+              setTabState((inner) => ({
+                ...inner,
+                [tab]: { ...inner[tab], output: inner[tab].output + chunk },
+              })),
+            onDone: () => updateTab(tab, { status: 'done' }),
+            onError: (message: string) => updateTab(tab, { status: 'error', error: message }),
+          },
+        );
+        abortRef.current = controller;
+        return { ...prev, [tab]: { ...prev[tab], output: '', error: '', status: 'streaming' } };
+      });
     },
-    [sessionJwt, source, customText, tabState],
+    [sessionJwt, source, customText],
   );
 
   const handleCopy = async () => {

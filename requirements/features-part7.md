@@ -1476,7 +1476,7 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 
 **Design updates (frontend-only, no backend changes):**
 - **Single-source picker** — radio grid with `sample | paste | upload`. `upload` is gated: the input is disabled, clicking its label opens an inline upsell card ("Uploads unlock when you join the waitlist") and does NOT change the active source.
-- **Per-tab cache** — each of the 3 tabs (Ask / Study Guide / Flash Tutor) keeps its own `{output, status, question, error}`. Switching tabs preserves state so users can compare lenses without re-running. Changing the source (sample ↔ paste, or editing pasted text while on `paste`) clears all three caches back to idle.
+- **Per-tab cache** — each of the 3 tabs (Ask / Study Guide / Flash Tutor) keeps its own `{output, status, question, error}`. Switching tabs preserves state so users can compare lenses without re-running. Source changes clear `output` / `status` / `error` across all tabs (user-typed questions are preserved so the user doesn't have to retype).
 - **Flash Tutor lens** — renders the Haiku JSON array via `FlashcardDeck` (flippable cards, keyboard-nav) instead of raw markdown.
 - **Gated action bar** — below each completed output, per-tab actions (`ask`: save + follow-up; `study_guide`: download + save + follow-up; `flash_tutor`: download + save + more-flashcards). Each opens an inline upsell pointing at `/waitlist`. Free `Copy` is retained.
 - **No backend changes in this phase** — `source_text` still strings through `POST /api/v1/demo/generate`. Upload remains gated; no file-upload endpoint is added.

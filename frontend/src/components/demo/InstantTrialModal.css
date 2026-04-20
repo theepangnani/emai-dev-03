@@ -520,20 +520,6 @@
   margin-bottom: var(--space-md);
 }
 
-.demo-toggle-text {
-  background: transparent;
-  border: 1px dashed var(--color-border);
-  color: var(--color-ink-muted);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  font-size: var(--text-xs);
-  cursor: pointer;
-  margin-bottom: var(--space-md);
-  width: 100%;
-  text-align: left;
-}
-.demo-toggle-text:hover { color: var(--color-ink); }
-
 .demo-textarea {
   width: 100%;
   min-height: 96px;

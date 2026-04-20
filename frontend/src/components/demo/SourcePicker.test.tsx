@@ -48,16 +48,17 @@ describe('SourcePicker', () => {
 
   it('clicking Upload opens the upsell, keeps radio unchecked, does NOT call onChange', async () => {
     const user = userEvent.setup();
-    const { onChange } = setup();
+    const { onChange, container } = setup();
     expect(screen.queryByRole('region', { name: /upload/i })).toBeNull();
     const uploadBtn = screen.getByRole('button', { name: /upload a document/i });
     await user.click(uploadBtn);
     expect(screen.getByRole('region', { name: /upload/i })).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
-    const radios = screen.getAllByRole('radio');
-    const uploadRadio = radios.find((r) => (r as HTMLInputElement).value === 'upload') as HTMLInputElement;
-    expect(uploadRadio.checked).toBe(false);
-    expect(uploadRadio).toBeDisabled();
+    const uploadRadio = container.querySelector<HTMLInputElement>('input[type="radio"][value="upload"]');
+    expect(uploadRadio).not.toBeNull();
+    expect(uploadRadio!.checked).toBe(false);
+    expect(uploadRadio!).toBeDisabled();
+    expect(uploadRadio!.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('dismiss button collapses the upload upsell', async () => {

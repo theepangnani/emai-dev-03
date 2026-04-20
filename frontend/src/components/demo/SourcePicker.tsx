@@ -62,6 +62,7 @@ export function SourcePicker({ value, onChange, customText, onCustomTextChange }
                 onChange={isUpload ? undefined : () => onChange(id as SourceKind)}
                 disabled={isUpload}
                 aria-disabled={isUpload || undefined}
+                aria-hidden={isUpload || undefined}
               />
               {isUpload && (
                 <button
