@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { InstantTrialModal } from './InstantTrialModal';
 import { DemoMascot } from './DemoMascot';
 import {
   IconArrowRight,
@@ -11,6 +9,8 @@ import {
 import './InstantTrialModal.css';
 
 interface InstantTrialSectionProps {
+  /** Callback fired when the CTA is clicked; parent owns modal state. */
+  onOpen: () => void;
   /** Optional override for the section headline. */
   headline?: string;
   /** Optional override for the sub-headline. */
@@ -20,19 +20,18 @@ interface InstantTrialSectionProps {
 }
 
 /**
- * Landing-page section that advertises the instant demo and opens the
- * Instant Trial modal when the CTA is clicked.
+ * Landing-page section that advertises the instant demo and notifies the
+ * parent to open the Instant Trial modal when the CTA is clicked.
  *
  * FE5 is responsible for mounting this behind the feature flag — this
- * component is intentionally self-contained and does not touch the page.
+ * component is purely presentational.
  */
 export function InstantTrialSection({
+  onOpen,
   headline = 'Try ClassBridge in 30 seconds',
   subheadline = 'No password, no download. Pick a sample, watch it stream, and see how ClassBridge turns class work into clear next steps.',
   ctaLabel = 'Try the demo',
 }: InstantTrialSectionProps) {
-  const [open, setOpen] = useState(false);
-
   return (
     <section
       id="instant-trial"
@@ -47,7 +46,7 @@ export function InstantTrialSection({
           <button
             type="button"
             className="instant-trial-cta"
-            onClick={() => setOpen(true)}
+            onClick={onOpen}
           >
             <IconSparkles size={18} aria-hidden />
             <span>{ctaLabel}</span>
@@ -72,7 +71,6 @@ export function InstantTrialSection({
           <DemoMascot size={72} mood="greeting" />
         </div>
       </div>
-      {open && <InstantTrialModal onClose={() => setOpen(false)} />}
     </section>
   );
 }

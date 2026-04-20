@@ -29,7 +29,7 @@ const FADE_MS = 150;
 const FETCH_TIMEOUT_MS = 10_000;
 
 interface RoleSwitcherProps {
-  onCtaClick?: () => void;
+  onCtaClick: () => void;
   contentUrl?: string;
 }
 
@@ -140,14 +140,6 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
     }
   };
 
-  const handleCtaClick = () => {
-    if (onCtaClick) {
-      onCtaClick();
-    } else if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('demo:open-modal'));
-    }
-  };
-
   const handleRetry = useCallback(() => {
     setError(null);
     setData(null);
@@ -234,7 +226,7 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
       <button
         type="button"
         className="role-switcher__cta"
-        onClick={handleCtaClick}
+        onClick={onCtaClick}
       >
         See this in my own school's context
       </button>

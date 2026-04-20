@@ -81,7 +81,7 @@ describe('RoleSwitcher', () => {
   });
 
   it('renders with Parent tab selected by default', async () => {
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Franklin St. PS, Grade 8 ROM field trip, October 17')).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('RoleSwitcher', () => {
   it('clicking a tab switches active tab and triggers fade transition', async () => {
     setReducedMotion(false); // enable motion so fade class applies
 
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByText('Franklin St. PS, Grade 8 ROM field trip, October 17')).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('RoleSwitcher', () => {
 
   it('ArrowRight moves to next tab', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Parent view/i })).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe('RoleSwitcher', () => {
 
   it('ArrowLeft wraps from first to last', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Parent view/i })).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('RoleSwitcher', () => {
 
   it('Home jumps to first tab, End jumps to last', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Parent view/i })).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('RoleSwitcher', () => {
 
   it('tabpanel has aria-labelledby pointing to selected tab', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Parent view/i })).toBeInTheDocument();
@@ -194,7 +194,7 @@ describe('RoleSwitcher', () => {
 
   it('renders teacher "Fee-collection dashboard" and admin "MFIPPA compliance checklist"', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Teacher view/i })).toBeInTheDocument();
@@ -215,7 +215,7 @@ describe('RoleSwitcher', () => {
     setReducedMotion(true);
     const user = userEvent.setup();
 
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: /Parent view/i })).toBeInTheDocument();
@@ -227,23 +227,6 @@ describe('RoleSwitcher', () => {
     const panel = screen.getByRole('tabpanel');
     expect(panel.className).not.toMatch(/role-switcher__panel--fading/);
     expect(studentTab).toHaveAttribute('aria-selected', 'true');
-  });
-
-  it('CTA button dispatches demo:open-modal custom event when no prop handler passed', async () => {
-    const user = userEvent.setup();
-    const listener = vi.fn();
-    window.addEventListener('demo:open-modal', listener);
-
-    renderWithProviders(<RoleSwitcher />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /See this in my own school/i })).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByRole('button', { name: /See this in my own school/i }));
-
-    expect(listener).toHaveBeenCalledTimes(1);
-    window.removeEventListener('demo:open-modal', listener);
   });
 
   it('CTA calls onCtaClick prop when provided', async () => {
@@ -271,7 +254,7 @@ describe('RoleSwitcher', () => {
       });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/Unable to load demo content/i);
@@ -292,7 +275,7 @@ describe('RoleSwitcher', () => {
     });
     global.fetch = vi.fn().mockReturnValue(fetchPromise) as unknown as typeof fetch;
 
-    renderWithProviders(<RoleSwitcher />);
+    renderWithProviders(<RoleSwitcher onCtaClick={vi.fn()} />);
 
     const loading = await screen.findByText(/Loading demo/i);
     expect(loading).toHaveAttribute('aria-busy', 'true');
