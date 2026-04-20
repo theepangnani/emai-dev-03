@@ -153,8 +153,12 @@
 .demo-modal-maximize svg { display: block; }
 
 .demo-modal-body {
-  padding: var(--space-md) var(--space-lg);
+  /* Extra right padding + stable gutter keeps the scrollbar track visually
+     inside the rounded rectangle (#3761) — otherwise the track is clipped
+     by the modal's border-radius at the top-right corner. */
+  padding: var(--space-md) var(--space-xl) var(--space-md) var(--space-lg);
   overflow-y: auto;
+  scrollbar-gutter: stable;
   flex: 1;
   min-height: 0;
 }
