@@ -33,26 +33,45 @@
  *   `.test.tsx` files that happen to match the glob) are skipped silently.
  * - Duplicate ids log a warning in dev; the first one wins.
  *
- * If bundle size becomes a concern later, swap the eager glob for a lazy
- * one and render each component inside `<Suspense>` — the public contract
- * (`{ id, order, component }`) stays identical.
+ * ### Lazy-loading (CB-LAND-001 S15 / #3815, §6.136.6)
+ * Sections render behind `React.lazy` + `<Suspense>` so below-fold code
+ * can be split into separate chunks. Each registry entry's `component`
+ * is a `LazyExoticComponent` that resolves to the section's own exported
+ * `section.component`. Callers (LandingPageV2) must wrap the tree in a
+ * `<Suspense>` boundary.
+ *
+ * The metadata (`id` / `order`) is still sourced from the eager glob so
+ * sort order resolves synchronously and the page doesn't flash a reorder
+ * on hydration. True per-section chunk splitting in production requires
+ * moving `section = { id, order }` metadata to a co-exported `sectionMeta`
+ * (so Vite can split the component body into its own chunk) — tracked in
+ * CB-LAND-001-fast-follow "true per-section chunk splitting".
  */
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
 export interface LandingSection {
   /** Stable kebab-case id, rendered as the section's DOM id. */
   id: string;
   /** Sort key — lower renders earlier. Leave gaps (10, 20, 30…). */
   order: number;
-  /** The section body. */
-  component: ComponentType;
+  /**
+   * The section body — wrapped in `React.lazy` by `buildSectionRegistry`
+   * so it only mounts once `<Suspense>` flushes. Authors still export the
+   * raw component via `section = { id, order, component: MyComponent }`;
+   * the registry takes care of the lazy wrapper.
+   */
+  component: LazyExoticComponent<ComponentType> | ComponentType;
 }
 
 /** Shape of a section module file — `section` is optional so helper files
  *  under `./sections/` that match the glob (e.g. `FeatureRow.tsx`) don't
  *  break type-checking. They're filtered out at build time. */
 interface SectionModule {
-  section?: LandingSection;
+  section?: {
+    id: string;
+    order: number;
+    component: ComponentType;
+  };
 }
 
 type SectionGlob = Record<string, SectionModule>;
@@ -79,6 +98,12 @@ const defaultSectionGlob = import.meta.glob<SectionModule>(
  *
  * Exposed as a pure function (rather than a module-level constant) so
  * tests can inject an empty or fake glob.
+ *
+ * Each returned `component` is wrapped in `React.lazy` so the section
+ * tree mounts behind a `<Suspense>` boundary (CB-LAND-001 S15). The
+ * lazy loader resolves to the same eagerly-imported module — so there's
+ * no extra network fetch — but defers rendering until the browser has
+ * committed the hero above-the-fold.
  */
 export function buildSectionRegistry(
   glob: SectionGlob = defaultSectionGlob,
@@ -106,7 +131,6 @@ export function buildSectionRegistry(
 
     if (seenIds.has(section.id)) {
       if (import.meta.env?.DEV) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[landing-v2] duplicate section id "${section.id}" in ${path} — keeping the first occurrence.`,
         );
@@ -114,7 +138,22 @@ export function buildSectionRegistry(
       continue;
     }
     seenIds.add(section.id);
-    sections.push(section);
+
+    // Close over the already-resolved component so `React.lazy` gets a
+    // synchronous Promise — no extra network request, just a microtask
+    // tick that lets React flush the initial paint before running the
+    // section body. When we migrate to true dynamic-import splitting
+    // (fast-follow), this closure changes to `() => import(path)`.
+    const resolved = section.component;
+    const LazyComponent: LazyExoticComponent<ComponentType> = lazy(() =>
+      Promise.resolve({ default: resolved }),
+    );
+
+    sections.push({
+      id: section.id,
+      order: section.order,
+      component: LazyComponent,
+    });
   }
 
   return sections.sort(

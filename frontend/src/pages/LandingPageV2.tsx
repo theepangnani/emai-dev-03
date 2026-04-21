@@ -8,12 +8,17 @@
  *
  * The outer wrapper sets `data-landing="v2"` so the scoped design tokens
  * from S1 (landing-v2 fonts / palette / motion) activate.
+ *
+ * S15 (#3815, §6.136.6): `<LandingSeo />` injects meta / OG / Twitter /
+ * JSON-LD into <head>, and all registered sections mount behind a shared
+ * `<Suspense>` boundary so the registry can ship lazy-wrapped components.
  */
-import { useMemo } from 'react';
+import { Suspense, useMemo } from 'react';
 import {
   buildSectionRegistry,
   type LandingSection,
 } from '../components/landing/sectionRegistry';
+import { LandingSeo } from '../components/landing/LandingSeo';
 
 interface LandingPageV2Props {
   /**
@@ -39,6 +44,16 @@ function EmptyRegistryNotice() {
   );
 }
 
+/**
+ * Suspense fallback for below-fold sections. Intentionally blank (not a
+ * spinner) — sections are lazy for code-split purposes, not because they
+ * block on network, so any visible skeleton would flash during the
+ * microtask tick that `React.lazy` imposes on pre-resolved components.
+ */
+function SectionSuspenseFallback() {
+  return <div aria-hidden="true" data-testid="landing-v2-section-fallback" />;
+}
+
 export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
   const registry = useMemo<LandingSection[]>(
     () => sections ?? buildSectionRegistry(),
@@ -47,17 +62,20 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
 
   return (
     <main data-landing="v2" className="landing-v2-root">
+      <LandingSeo />
       {registry.length === 0 ? (
         <EmptyRegistryNotice />
       ) : (
-        registry.map(({ id, component: Component }) => (
-          // Each section wrapper stamps the stable DOM id so anchor links
-          // (`/#hero`, `/#pricing`, …) work. Section components render
-          // their own <section> landmark underneath.
-          <div key={id} id={id} data-section-id={id}>
-            <Component />
-          </div>
-        ))
+        <Suspense fallback={<SectionSuspenseFallback />}>
+          {registry.map(({ id, component: Component }) => (
+            // Each section wrapper stamps the stable DOM id so anchor links
+            // (`/#hero`, `/#pricing`, …) work. Section components render
+            // their own <section> landmark underneath.
+            <div key={id} id={id} data-section-id={id}>
+              <Component />
+            </div>
+          ))}
+        </Suspense>
       )}
     </main>
   );
