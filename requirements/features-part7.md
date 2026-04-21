@@ -1777,3 +1777,42 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
   - `get_started` (added #3889): fired on secondary CTAs when `waitlist_enabled=false` (launch mode). Routes to `/register` instead of `/waitlist`.
 
 **Funnel:** `section_view(hero)` → `cta_click(demo | waitlist | get_started)` → demo completion / register / waitlist signup. The `waitlist` and `get_started` CTAs are mutually exclusive per session (gated by `waitlist_enabled`) — dashboards should union the two buckets when comparing landing → signup conversion across the `waitlist_enabled` flip.
+
+#### 6.140.8 Post-deploy hardening round (PR #3888, 2026-04-21) — SHIPPED
+
+One-day post-ship defect sweep after CB-LAND-001 hit production (revision `classbridge-01125-2sl`). Flag stayed `off` throughout — fixes landed before first ramp.
+
+| Issue | Defect | Fix |
+|-------|--------|-----|
+| #3885 | LandingPageV2 had no visible ClassBridge brand — no top nav, no logo | New `LandingNav` section (`order: 5`): sticky logo + Log In + primary CTA. Footer also gained a decorative logo. |
+| #3889 | Hero / FinalCTA / PricingTeaser / Nav hardcoded "Join Waitlist" CTAs — ignored `waitlist_enabled` admin toggle (regression of #1219 for legacy landing) | New `useLandingCtas()` hook — single source of truth for CTA label / href / pricing-mode branching on `waitlist_enabled`. All 4 consumers migrated. |
+| #3893 | `PricingTeaser` Family tier CTA routed to `/register` in launch mode with no subscription flow | Launch mode renders disabled "Coming soon" + "join the early-access list" sub-copy linking to `/register` only. |
+| #3895 | `useFeature('waitlist_enabled')` returned `false` during TanStack Query hydration → "Get Started" flicker on cold loads when admin had waitlist enabled | Per-key `DEFAULT_DURING_LOAD = { waitlist_enabled: true }` in `useFeatureToggle`. Applies to legacy `LaunchLandingPage` too. |
+| #3892 | §6.140.7 funnel docs missing `get_started` CTA enum | Added above (§6.140.7). |
+| #3897 | `LandingFooter.css` used `filter: brightness(0) invert(1)` to whiten the color logo on dark bg | Swapped to existing `/classbridge-logo-dark.png` asset; filter hack removed. |
+| #3898 | CTA copy duplicated per-consumer (nav "Join Waitlist" short vs hero "Join the waitlist" long) | `useLandingCtas` now exposes `secondaryLabel` (long) + `secondaryLabelShort` (short). |
+| #3899 | Section-id string literals scattered across registry / page split / section files | New `frontend/src/components/landing/sectionIds.ts` with `LANDING_SECTION_ID` const + `LandingSectionId` type. All 12 section files + `LandingPageV2` footer-split migrated. |
+
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 109/109 landing tests pass · 2× `/pr-review` per fix branch + 1× orchestrator-level review.
+
+**Workflow:** 6 parallel isolated-worktree streams (A/B/C/D + combined S2+S3) → integration into `fix/3885-landing-v2-logo` → PR #3888 (merged `49b62f4b`).
+
+#### 6.140.9 Open fast-follows (deferred polish — all `CB-LAND-001-fast-follow`)
+
+**Design / content:**
+- #3828 — S8 ProgressGrid headline font-face vs reference
+- #3829 — S12 footer: tokenize bg + gradient stop + real social SVG icons (superseded partially by #3897; see residual)
+- #3832 — S6 How It Works mobile preview pane UX
+- #3833 — S3 trust-bar boards should be sourced from `TuesdayMirror` data
+- #3834 — S3 swap hero mockup placeholder for real product screenshot
+- #3838 — S5 FeatureRow polish (safer headline, real icons/screenshots, RTL flip, test ordering)
+- #3875 — real 1200×630 `og-image.png` asset (OG currently points to `classbridge-hero-logo.png` as fallback)
+
+**Engineering:**
+- #3822 — S1 reduced-motion token semantics docs + render-blocking font-load revisit
+- #3850 — `HomeRedirect` calls `useVariantBucket` even for authed users + redundant `.test.` filter in `sectionRegistry`
+- #3852 — add `vitest-axe` + automated axe-core scan to landing-v2
+- #3853 — body-text contrast audit (cyan accents + pastel row bg) against WCAG AA
+- #3858 — S16 analytics: StrictMode-safe step_view + tab_change guards; ref-callback hook; section_view unit test
+
+All non-blocking for `landing_v2` ramp to 100%; epic #3800 tracks overall completion.
