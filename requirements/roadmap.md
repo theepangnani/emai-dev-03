@@ -1050,7 +1050,17 @@ Mindgrasp-inspired landing at `classbridge.ca`: 12-section persuasion architectu
 - [x] [CB-LAND-S17] Frontend tests — render / keyboard / reduced-motion / flag on-off (#3817, PR #3860)
 
 **Post-review fixes (filed + merged same-day):**
-- [x] [PR-review] #3872 og:image fallback (PR #3876) · #3873 font-load scope (PR #3878) · #3874 default SEO (PR #3877)
+- [x] [PR-review round 1] #3872 og:image fallback (PR #3876) · #3873 font-load scope (PR #3878) · #3874 default SEO (PR #3877)
+
+**Post-deploy hardening round (PR #3888, 2026-04-21) — see §6.140.8:**
+- [x] #3885 LandingNav with logo + Log In + primary CTA; footer logo
+- [x] #3889 `useLandingCtas()` hook — CTAs respect `waitlist_enabled` toggle (regression of #1219)
+- [x] #3893 PricingTeaser Family tier: "Coming soon" gate in launch mode
+- [x] #3895 `useFeatureToggle` defaults `waitlist_enabled=true` during query hydration
+- [x] #3892 §6.140.7 analytics funnel docs include `get_started` CTA
+- [x] #3897 Footer uses `/classbridge-logo-dark.png` (dropped CSS filter hack)
+- [x] #3898 `useLandingCtas` exposes `secondaryLabel` + `secondaryLabelShort`
+- [x] #3899 `sectionIds.ts` — `LANDING_SECTION_ID` type-safe constants across 12 section files
 
 **Open fast-follows** (tracked under `CB-LAND-001-fast-follow`): real 1200×630 OG asset (#3875) · real hero screenshot (#3834) · trust-bar data source (#3833) · footer tokens (#3829) · mobile How-It-Works preview (#3832) · S5 FeatureRow polish (#3838) · axe-core automation (#3852) · body-text contrast verification (#3853) · StrictMode-safe hooks (#3858) · headline font decision (#3828) · reduced-motion token docs (#3822) · HomeRedirect auth short-circuit (#3850).
 
