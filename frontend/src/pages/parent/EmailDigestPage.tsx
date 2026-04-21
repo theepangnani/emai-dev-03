@@ -15,12 +15,30 @@ import {
   removeMonitoredEmail,
   getGmailAuthUrl,
   connectGmail,
+  sendWhatsAppOTP,
+  verifyWhatsAppOTP,
+  disconnectWhatsApp,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
   type MonitoredEmail,
 } from '../../api/parentEmailDigest';
+import { useConfirm } from '../../components/ConfirmModal';
 import './EmailDigestPage.css';
+
+interface ApiErrorResponse {
+  response?: { data?: { detail?: string } };
+}
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  const e = err as ApiErrorResponse;
+  return e?.response?.data?.detail || fallback;
+}
+
+function isValidPhone(phone: string): boolean {
+  const trimmed = phone.trim();
+  return /^\+[1-9]\d{9,14}$/.test(trimmed);
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -41,7 +59,12 @@ function StatusBadge({ status }: { status: string }) {
 export function EmailDigestPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { confirm, confirmModal } = useConfirm();
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappOtp, setWhatsappOtp] = useState('');
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
+  const [whatsappSuccess, setWhatsappSuccess] = useState<string | null>(null);
 
   const { data: integrations = [], isLoading: intLoading, isError: intError } = useQuery<EmailDigestIntegration[]>({
     queryKey: ['email-digest', 'integrations'],
@@ -117,6 +140,100 @@ export function EmailDigestPage() {
       queryClient.invalidateQueries({ queryKey: ['email-digest', 'settings'] });
     },
   });
+
+  const sendOtpMutation = useMutation({
+    mutationFn: ({ id, phone }: { id: number; phone: string }) => sendWhatsAppOTP(id, phone),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess('OTP sent! Check your WhatsApp.');
+      setWhatsappOtp('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+    },
+    onError: (err: unknown) => {
+      setWhatsappSuccess(null);
+      setWhatsappError(getApiErrorMessage(err, 'Failed to send OTP. Please try again.'));
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: ({ id, otpCode }: { id: number; otpCode: string }) => verifyWhatsAppOTP(id, otpCode),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess('WhatsApp verified! Your digest will be delivered here.');
+      setWhatsappOtp('');
+      setWhatsappPhone('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'settings'] });
+    },
+    onError: (err: unknown) => {
+      setWhatsappSuccess(null);
+      setWhatsappError(getApiErrorMessage(err, 'Failed to verify OTP. Please try again.'));
+    },
+  });
+
+  const disconnectWhatsappMutation = useMutation({
+    mutationFn: (id: number) => disconnectWhatsApp(id),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess(null);
+      setWhatsappOtp('');
+      setWhatsappPhone('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'settings'] });
+    },
+    onError: (err: unknown) => {
+      setWhatsappError(getApiErrorMessage(err, 'Failed to disconnect WhatsApp.'));
+    },
+  });
+
+  const handleSendOtp = () => {
+    if (!activeIntegration) return;
+    const phone = whatsappPhone.trim();
+    if (!isValidPhone(phone)) {
+      setWhatsappError('Phone must be in E.164 format (e.g. +14165551234).');
+      return;
+    }
+    setWhatsappError(null);
+    sendOtpMutation.mutate({ id: activeIntegration.id, phone });
+  };
+
+  const handleResendOtp = () => {
+    if (!activeIntegration?.whatsapp_phone) return;
+    setWhatsappError(null);
+    setWhatsappSuccess(null);
+    sendOtpMutation.mutate({
+      id: activeIntegration.id,
+      phone: activeIntegration.whatsapp_phone,
+    });
+  };
+
+  const handleVerifyOtp = () => {
+    if (!activeIntegration) return;
+    const otp = whatsappOtp.trim();
+    if (!/^\d{6}$/.test(otp)) {
+      setWhatsappError('Enter the 6-digit code from WhatsApp.');
+      return;
+    }
+    setWhatsappError(null);
+    verifyOtpMutation.mutate({ id: activeIntegration.id, otpCode: otp });
+  };
+
+  const handleCancelOtp = () => {
+    if (!activeIntegration) return;
+    disconnectWhatsappMutation.mutate(activeIntegration.id);
+  };
+
+  const handleDisconnectWhatsapp = async () => {
+    if (!activeIntegration) return;
+    const confirmed = await confirm({
+      title: 'Disconnect WhatsApp',
+      message: 'Stop receiving your daily digest on WhatsApp? You can reconnect anytime.',
+      confirmLabel: 'Disconnect',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    disconnectWhatsappMutation.mutate(activeIntegration.id);
+  };
 
   const toggleDigest = () => {
     if (!activeIntegration || !settings) return;
@@ -382,6 +499,113 @@ export function EmailDigestPage() {
               )}
             </div>
 
+            {/* WhatsApp (#3592) */}
+            <div className="ed-settings-card ed-whatsapp-card">
+              <h2 className="ed-section-title">Receive Digest on WhatsApp</h2>
+
+              {/* State A: Not connected */}
+              {!activeIntegration.whatsapp_phone && (
+                <div className="ed-whatsapp-section">
+                  <p className="ed-whatsapp-description">
+                    Get your daily email digest delivered to WhatsApp instantly.
+                  </p>
+                  <div className="ed-whatsapp-row">
+                    <input
+                      type="tel"
+                      className="ed-input"
+                      placeholder="+14165551234"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                      aria-label="WhatsApp phone number"
+                      disabled={sendOtpMutation.isPending}
+                    />
+                    <button
+                      className="ed-primary-btn"
+                      onClick={handleSendOtp}
+                      disabled={sendOtpMutation.isPending || !whatsappPhone.trim()}
+                    >
+                      {sendOtpMutation.isPending ? 'Sending...' : 'Send OTP'}
+                    </button>
+                  </div>
+                  <p className="ed-whatsapp-note">
+                    We'll send a 6-digit code to verify your number.
+                  </p>
+                </div>
+              )}
+
+              {/* State B: OTP sent, awaiting verification */}
+              {activeIntegration.whatsapp_phone && !activeIntegration.whatsapp_verified && (
+                <div className="ed-whatsapp-section">
+                  <p className="ed-whatsapp-description">
+                    Code sent to <strong>{activeIntegration.whatsapp_phone}</strong>
+                  </p>
+                  <div className="ed-whatsapp-row">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="ed-input"
+                      placeholder="6-digit code"
+                      maxLength={6}
+                      value={whatsappOtp}
+                      onChange={(e) => setWhatsappOtp(e.target.value.replace(/\D/g, ''))}
+                      aria-label="Verification code"
+                      disabled={verifyOtpMutation.isPending}
+                    />
+                    <button
+                      className="ed-primary-btn"
+                      onClick={handleVerifyOtp}
+                      disabled={verifyOtpMutation.isPending || whatsappOtp.length !== 6}
+                    >
+                      {verifyOtpMutation.isPending ? 'Verifying...' : 'Verify'}
+                    </button>
+                  </div>
+                  <div className="ed-whatsapp-actions">
+                    <button
+                      className="ed-whatsapp-link"
+                      onClick={handleResendOtp}
+                      disabled={sendOtpMutation.isPending}
+                      type="button"
+                    >
+                      {sendOtpMutation.isPending ? 'Resending...' : 'Resend code'}
+                    </button>
+                    <button
+                      className="ed-whatsapp-link ed-whatsapp-link--cancel"
+                      onClick={handleCancelOtp}
+                      disabled={disconnectWhatsappMutation.isPending}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* State C: Connected */}
+              {activeIntegration.whatsapp_phone && activeIntegration.whatsapp_verified && (
+                <div className="ed-whatsapp-section">
+                  <p className="ed-whatsapp-connected">
+                    <span className="ed-whatsapp-check" aria-hidden="true">&#10003;</span>
+                    WhatsApp connected: <strong>{activeIntegration.whatsapp_phone}</strong>
+                  </p>
+                  <p className="ed-whatsapp-note">
+                    Your daily digest will be delivered to this number.
+                  </p>
+                  <button
+                    className="ed-sync-btn"
+                    onClick={handleDisconnectWhatsapp}
+                    disabled={disconnectWhatsappMutation.isPending}
+                  >
+                    {disconnectWhatsappMutation.isPending ? 'Disconnecting...' : 'Disconnect'}
+                  </button>
+                </div>
+              )}
+
+              {whatsappError && <p className="ed-error-text ed-whatsapp-message">{whatsappError}</p>}
+              {whatsappSuccess && (
+                <p className="ed-success-text ed-whatsapp-message">{whatsappSuccess}</p>
+              )}
+            </div>
+
             {/* Digest History */}
             <div className="ed-history-section">
               <h2 className="ed-section-title">Digest History</h2>
@@ -440,6 +664,7 @@ export function EmailDigestPage() {
           </>
         )}
       </div>
+      {confirmModal}
     </DashboardLayout>
   );
 }
