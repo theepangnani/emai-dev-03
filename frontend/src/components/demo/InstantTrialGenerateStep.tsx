@@ -51,10 +51,14 @@ function deriveStudyGuideTopic(source: SourceKind, customText: string): string {
   if (source === 'paste') {
     const trimmed = customText.trim();
     if (trimmed) {
-      const firstLine = trimmed.split('\n')[0].trim();
-      return firstLine.length > TOPIC_MAX_LEN
-        ? firstLine.slice(0, TOPIC_MAX_LEN - 1) + '\u2026'
-        : firstLine;
+      // Strip leading markdown heading markers (e.g. `# `, `## `) so a pasted
+      // title renders as "Study guide — My Topic" not "# My Topic".
+      const firstLine = trimmed.split('\n')[0].trim().replace(/^#+\s*/, '');
+      if (firstLine) {
+        return firstLine.length > TOPIC_MAX_LEN
+          ? firstLine.slice(0, TOPIC_MAX_LEN - 1) + '\u2026'
+          : firstLine;
+      }
     }
   }
   return SAMPLE_TITLE;
