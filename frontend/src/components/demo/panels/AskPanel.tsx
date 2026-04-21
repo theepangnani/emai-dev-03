@@ -9,7 +9,6 @@ import {
 } from 'react';
 import {
   streamGenerate,
-  type DemoHistoryTurn,
   type DemoType,
 } from '../../../api/demo';
 import { DemoMascot } from '../DemoMascot';
@@ -151,13 +150,11 @@ export function AskPanel({
       const question = questionText.trim();
       if (!question || isStreaming || capReached) return;
 
-      // Build the capped history from prior turns (≤2 turns =
-      // last user + last assistant so the total prompt stays ≤3 msgs).
-      const history: DemoHistoryTurn[] = turns
-        .filter((t) => t.status === 'done')
-        .slice(-2)
-        .map((t) => ({ role: t.role, content: t.content.slice(0, 500) }));
-
+      // Multi-turn Ask context is reconstructed server-side from the
+      // session's persisted generations log (#3819). The client no longer
+      // sends prior turns over the wire — this closed the prompt-injection
+      // vector where a crafted assistant history entry was treated by
+      // Haiku as its own prior utterance.
       const userTurn: AskTurn = {
         id: nextTurnId(),
         role: 'user',
@@ -181,7 +178,6 @@ export function AskPanel({
         {
           demo_type: 'ask',
           question,
-          history: history.length > 0 ? history : undefined,
         },
         {
           onToken: (chunk: string) => {
@@ -238,7 +234,6 @@ export function AskPanel({
     },
     [
       sessionJwt,
-      turns,
       isStreaming,
       capReached,
       assistantTurnCount,

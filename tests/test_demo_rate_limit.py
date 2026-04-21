@@ -407,6 +407,48 @@ class TestUpdateGenerationSlot:
         assert (session.generations_json or []) == []
         assert session.generations_count == 0
 
+    def test_persists_user_and_assistant_content_for_ask(self, db_session):
+        """#3819 — Ask turns persist user + assistant content so the next
+        turn can be reconstructed server-side."""
+        session = _make_session(db_session, "content@example.com")
+        drl.reserve_generation_slot(
+            db_session, session, demo_type="ask", user_content="Explain X simply"
+        )
+
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=50,
+            input_tokens=20,
+            output_tokens=30,
+            cost_cents=2,
+            assistant_content="X is…",
+        )
+
+        stored = session.generations_json[-1]
+        assert stored["user_content"] == "Explain X simply"
+        assert stored["assistant_content"] == "X is…"
+
+    def test_content_is_truncated_to_500_chars(self, db_session):
+        """#3819 — over-length content is hard-capped at 500 chars so the
+        persisted payload stays bounded."""
+        session = _make_session(db_session, "trunc@example.com")
+        drl.reserve_generation_slot(
+            db_session, session, demo_type="ask", user_content="u" * 800
+        )
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=1,
+            input_tokens=1,
+            output_tokens=1,
+            cost_cents=1,
+            assistant_content="a" * 800,
+        )
+        stored = session.generations_json[-1]
+        assert len(stored["user_content"]) == 500
+        assert len(stored["assistant_content"]) == 500
+
 
 class TestReserveBeforeStreamPreventsRace:
     def test_second_reserve_sees_first(self, db_session):

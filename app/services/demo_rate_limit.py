@@ -256,6 +256,7 @@ def reserve_generation_slot(
     session: DemoSession,
     *,
     demo_type: str,
+    user_content: Optional[str] = None,
 ) -> DemoGenerateEvent:
     """Reserve a slot in `generations_json` BEFORE streaming starts.
 
@@ -268,6 +269,10 @@ def reserve_generation_slot(
     to fill in real latency / token / cost values. If the stream fails,
     the placeholder row still counts toward the user's rate limit — this
     is intentional defensive cost accounting (FR-050/051).
+
+    ``user_content`` (#3819) — for Ask turns we capture the user question
+    immediately so that even if the stream fails midway the user side of
+    the turn is persisted. Truncated to 500 chars.
     """
     placeholder = DemoGenerateEvent(
         demo_type=demo_type,  # type: ignore[arg-type]
@@ -276,6 +281,7 @@ def reserve_generation_slot(
         output_tokens=0,
         cost_cents=0,
         created_at=datetime.now(timezone.utc),
+        user_content=(user_content[:500] if user_content else None),
     )
     event_dict = placeholder.model_dump(mode="json")
 
@@ -298,12 +304,18 @@ def update_generation_slot(
     input_tokens: int,
     output_tokens: int,
     cost_cents: int,
+    assistant_content: Optional[str] = None,
 ) -> None:
     """UPDATE the most recent `generations_json` entry with real metrics.
 
     Complements ``reserve_generation_slot`` — called after the SSE stream
     finishes successfully to fill in actual latency / tokens / cost. No-op
     if the session has no generations (defensive).
+
+    ``assistant_content`` (#3819) — for Ask turns we persist the final
+    assistant reply (truncated to 500 chars) so subsequent turns can be
+    reconstructed server-side without trusting any client-supplied
+    ``assistant`` history entries. Non-Ask demo types pass ``None``.
     """
     existing_list = _coerce_generations_list(session.generations_json)
     if not existing_list:
@@ -316,6 +328,8 @@ def update_generation_slot(
     updated[-1]["input_tokens"] = input_tokens
     updated[-1]["output_tokens"] = output_tokens
     updated[-1]["cost_cents"] = cost_cents
+    if assistant_content is not None:
+        updated[-1]["assistant_content"] = assistant_content[:500]
     session.generations_json = updated
 
     db.add(session)

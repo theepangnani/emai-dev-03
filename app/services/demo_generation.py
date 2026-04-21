@@ -170,8 +170,10 @@ async def stream_demo_completion(
     recording the generation (cost, counts) on success.
 
     For the Ask multi-turn chatbox (§6.135.5, #3785) the caller may pass a
-    short ``history`` list (≤2 prior turns, each {role, content}). History
-    is prepended to the message array before the current user turn.
+    short ``history`` list (each {role, content}). As of #3819 this list
+    is assembled server-side from ``DemoSession.generations_json`` — it is
+    never populated from the client request body — so the upstream prompt
+    cannot be poisoned with a forged ``assistant`` turn.
     """
     if demo_type not in _DEMO_TYPE_FILES:
         yield {"event": "error", "data": f"Unknown demo_type: {demo_type}"}
@@ -190,8 +192,10 @@ async def stream_demo_completion(
     )
     max_tokens = _MAX_TOKENS.get(demo_type, 600)
 
-    # Assemble the messages array. Only the Ask tab currently passes
-    # history; other demo types ignore it.
+    # Assemble the messages array. Only the Ask tab currently uses
+    # history; other demo types ignore it. History entries are trusted
+    # here because the caller reconstructs them from server-side state
+    # (DemoSession.generations_json) rather than the request body (#3819).
     messages: list[dict] = []
     if demo_type == "ask" and history:
         for turn in history:

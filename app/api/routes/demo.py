@@ -118,6 +118,51 @@ def _extract_demo_token(
     return None
 
 
+def _reconstruct_ask_history(generations_json) -> Optional[list[dict]]:
+    """Rebuild the Ask prior-turn history from a session's generations log.
+
+    Traverses ``generations_json`` (most recent last) and returns the
+    most recent completed Ask turn as ``[{role:user,...}, {role:assistant,...}]``.
+    A turn is considered completed when both ``user_content`` and a
+    non-empty ``assistant_content`` are present (a placeholder where the
+    stream failed before ``update_generation_slot`` ran is skipped).
+
+    Returns ``None`` when there is no prior Ask turn — matching the
+    previous semantics of ``history_payload is None``.
+
+    Security: this is the only producer of Haiku's ``history`` list in
+    the demo path (#3819). It reads exclusively from the server's own
+    persisted state; a compromised client cannot influence its output.
+    """
+    if not generations_json:
+        return None
+    entries = generations_json
+    if isinstance(entries, str):  # SQLite may hand back a raw JSON string
+        try:
+            entries = json.loads(entries)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(entries, list):
+        return None
+
+    for entry in reversed(entries):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("demo_type") != "ask":
+            continue
+        user_content = entry.get("user_content")
+        assistant_content = entry.get("assistant_content")
+        if not isinstance(user_content, str) or not user_content:
+            continue
+        if not isinstance(assistant_content, str) or not assistant_content:
+            continue
+        return [
+            {"role": "user", "content": user_content[:500]},
+            {"role": "assistant", "content": assistant_content[:500]},
+        ]
+    return None
+
+
 def _waitlist_preview_position(db: Session) -> int:
     """Best-effort ``COUNT(*) + 1`` for the waitlist preview badge."""
     try:
@@ -330,21 +375,30 @@ async def generate_demo(
     demo_type = body.demo_type
     source_text = body.source_text
     question = body.question
-    # Multi-turn Ask chatbox (§6.135.5, #3785) — convert the validated
-    # pydantic list of turns into plain dicts for the service helper.
+    # Multi-turn Ask chatbox (§6.135.5, #3785) — reconstruct prior turns
+    # server-side from the session's generations_json log (#3819). This
+    # replaces the previous client-supplied ``history`` field and closes
+    # the prompt-injection vector where a crafted ``assistant`` entry was
+    # treated by Haiku as its own prior utterance.
     history_payload: Optional[list[dict]] = None
-    if body.history:
-        history_payload = [
-            {"role": turn.role, "content": turn.content} for turn in body.history
-        ]
+    if demo_type == "ask":
+        history_payload = _reconstruct_ask_history(session.generations_json)
     session_id_capture = session.id
+
+    # User question captured at reservation time so the turn is persisted
+    # even if the stream fails midway. Only meaningful for Ask turns.
+    reserved_user_content: Optional[str] = None
+    if demo_type == "ask" and question:
+        reserved_user_content = question
 
     # #3666 — reserve a placeholder slot BEFORE streaming so concurrent
     # requests see the incremented generations_count immediately and
     # cannot slip past the rate limit. The placeholder has cost_cents=0
     # so it doesn't falsely trip the cost cap. update_generation_slot
     # fills in real metrics after the stream completes.
-    reserve_generation_slot(db, session, demo_type=demo_type)
+    reserve_generation_slot(
+        db, session, demo_type=demo_type, user_content=reserved_user_content
+    )
 
     async def event_stream():
         # We use a fresh DB session inside the generator so the request-
@@ -355,6 +409,10 @@ async def generate_demo(
         output_tokens = 0
         latency_ms = 0
         had_error = False
+        # Accumulate the streamed assistant text so the Ask turn can be
+        # persisted (#3819) and used to reconstruct history on the next
+        # turn. Non-Ask demo types leave this empty.
+        assistant_chunks: list[str] = []
         try:
             async for event in stream_demo_completion(
                 demo_type,
@@ -363,7 +421,10 @@ async def generate_demo(
                 history=history_payload,
             ):
                 if event["event"] == "chunk":
-                    yield _sse_frame("token", {"chunk": event["data"]})
+                    chunk_text = event["data"]
+                    if demo_type == "ask" and isinstance(chunk_text, str):
+                        assistant_chunks.append(chunk_text)
+                    yield _sse_frame("token", {"chunk": chunk_text})
                 elif event["event"] == "done":
                     data = event["data"]
                     input_tokens = int(data.get("input_tokens", 0))
@@ -391,6 +452,9 @@ async def generate_demo(
             return
 
         cost_cents = estimate_cost_cents(input_tokens, output_tokens)
+        assistant_content: Optional[str] = None
+        if demo_type == "ask" and assistant_chunks:
+            assistant_content = "".join(assistant_chunks)[:500]
 
         # Update the reserved slot with real metrics on a fresh DB
         # session (the request-scoped `db` is already closed by now).
@@ -409,6 +473,7 @@ async def generate_demo(
                         input_tokens=input_tokens,
                         output_tokens=output_tokens,
                         cost_cents=cost_cents,
+                        assistant_content=assistant_content,
                     )
         except Exception as e:
             logger.error(
