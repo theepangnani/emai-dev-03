@@ -54,11 +54,38 @@ export function useFeatureToggles() {
   return data ?? DEFAULTS;
 }
 
-/** Convenience check for a single feature (boolean). */
+/**
+ * Per-key defaults applied while the `/api/features` query is still
+ * hydrating (#3895). `waitlist_enabled` defaults to TRUE because the
+ * pre-launch production posture keeps waitlist on — flipping it off is
+ * a deliberate launch action, so defaulting to true prevents the
+ * "Get Started" flicker on cold loads while the query resolves.
+ * All other flags keep their implicit `false` default (opt-in features).
+ */
+const DEFAULT_DURING_LOAD: Partial<Record<keyof FeatureToggles, boolean>> = {
+  waitlist_enabled: true,
+};
+
+/**
+ * Convenience check for a single feature (boolean).
+ *
+ * Reads the raw query data directly (not `useFeatureToggles()`'s
+ * resolved-with-DEFAULTS shape) so we can distinguish "still loading"
+ * from "resolved to false" and apply the per-key `DEFAULT_DURING_LOAD`
+ * fallback. Currently only `waitlist_enabled` defaults to `true` during
+ * hydration; all other flags fall back to `false` (opt-in features).
+ * See #3895 for the landing-page "Get Started" flicker this guards against.
+ */
 export function useFeature(key: keyof FeatureToggles): boolean {
-  const toggles = useFeatureToggles();
-  const value = toggles[key];
-  return typeof value === 'boolean' ? value : false;
+  const { data } = useQuery({
+    queryKey: ['feature-toggles'],
+    queryFn: fetchFeatures,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const value = data?.[key];
+  if (typeof value === 'boolean') return value;
+  return DEFAULT_DURING_LOAD[key] ?? false;
 }
 
 /**
