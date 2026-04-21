@@ -26,7 +26,6 @@ const SELECTOR = 'link[data-landing-fonts]';
 export function useLandingFonts(): void {
   useEffect(() => {
     let link = document.head.querySelector<HTMLLinkElement>(SELECTOR);
-    let created = false;
     if (!link) {
       link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -34,16 +33,19 @@ export function useLandingFonts(): void {
       link.setAttribute('data-landing-fonts', '1');
       link.setAttribute('data-refs', '1');
       document.head.appendChild(link);
-      created = true;
     } else {
       const refs = Number(link.getAttribute('data-refs') ?? '0') + 1;
       link.setAttribute('data-refs', String(refs));
     }
     return () => {
+      // Every consumer decrements regardless of who created the tag. The
+      // creator's cleanup is NOT special — if a second consumer bumped refs
+      // to 2 and the creator unmounts first, the tag must survive until the
+      // second consumer unmounts too. Only the last cleanup evicts.
       const cur = document.head.querySelector<HTMLLinkElement>(SELECTOR);
       if (!cur) return;
       const refs = Number(cur.getAttribute('data-refs') ?? '0') - 1;
-      if (refs <= 0 || created) {
+      if (refs <= 0) {
         cur.remove();
       } else {
         cur.setAttribute('data-refs', String(refs));

@@ -63,8 +63,36 @@ describe('useLandingFonts', () => {
       document.head.querySelectorAll('link[data-landing-fonts]').length,
     ).toBe(1);
 
-    // Unmount the original creator — link is removed (created=true branch).
+    // Unmount the original creator — link is removed (refs dropped to 0).
     first.unmount();
+    expect(
+      document.head.querySelector('link[data-landing-fonts]'),
+    ).toBeNull();
+  });
+
+  it('survives creator-unmount-first when another consumer still holds a ref', () => {
+    // Regression guard: the cleanup MUST decrement based on ref count, not
+    // on which instance created the tag. If the first (creating) consumer
+    // unmounts before the second one, the tag must stick around until the
+    // second consumer unmounts too.
+    const first = render(<Probe />);
+    const second = render(<Probe />);
+
+    expect(
+      document.head.querySelector('link[data-landing-fonts]')
+        ?.getAttribute('data-refs'),
+    ).toBe('2');
+
+    // Creator unmounts first — link must survive.
+    first.unmount();
+    const link = document.head.querySelector<HTMLLinkElement>(
+      'link[data-landing-fonts]',
+    );
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('data-refs')).toBe('1');
+
+    // Second (non-creator) unmount evicts the tag.
+    second.unmount();
     expect(
       document.head.querySelector('link[data-landing-fonts]'),
     ).toBeNull();
