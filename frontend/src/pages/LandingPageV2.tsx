@@ -27,6 +27,7 @@ import {
 import { useScrollReveal } from '../components/landing/motion';
 import '../components/landing/motion.css';
 import { LandingSeo } from '../components/landing/LandingSeo';
+import { useLandingFonts } from '../components/landing/fonts';
 import './LandingPageV2.css';
 
 interface LandingPageV2Props {
@@ -89,6 +90,10 @@ function EmptyRegistryNotice() {
 }
 
 export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
+  // Inject landing-v2 Google Fonts on mount, remove on unmount (#3873).
+  // Keeps the 80-160 KB stylesheet off every non-landing route.
+  useLandingFonts();
+
   const registry = useMemo<LandingSection[]>(
     () => sections ?? buildSectionRegistry(),
     [sections],
