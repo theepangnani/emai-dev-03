@@ -112,6 +112,7 @@ class DigestDeliveryLogResponse(BaseModel):
     channels_used: Optional[str] = None
     status: str
     whatsapp_delivery_status: Optional[str] = None
+    email_delivery_status: Optional[str] = None  # #3880
 
     model_config = ConfigDict(from_attributes=True)
 

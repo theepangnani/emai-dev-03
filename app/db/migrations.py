@@ -2469,3 +2469,25 @@ def _run_migrations_inner(engine, settings, logger):
                         )
     except Exception as e:
         logger.debug("whatsapp_delivery_status migration skipped (column likely exists): %s", e)
+
+    # --- Digest: email_delivery_status column on digest_delivery_log (#3880) ---
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "digest_delivery_log" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("digest_delivery_log")}
+                if "email_delivery_status" not in existing_cols:
+                    try:
+                        conn.execute(text(
+                            "ALTER TABLE digest_delivery_log ADD COLUMN email_delivery_status VARCHAR(20)"
+                        ))
+                        conn.commit()
+                        logger.info("Added email_delivery_status column to digest_delivery_log (#3880)")
+                    except Exception as col_err:
+                        conn.rollback()
+                        logger.warning(
+                            "Failed to add email_delivery_status to digest_delivery_log (#3880): %s",
+                            col_err,
+                        )
+    except Exception as e:
+        logger.debug("email_delivery_status migration skipped (column likely exists): %s", e)

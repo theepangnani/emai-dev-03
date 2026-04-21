@@ -133,7 +133,7 @@ async def check_assignment_reminders():
 
                     # 3-day reminders: multi-channel with ACK via notification service
                     if days >= 3:
-                        notif = send_multi_channel_notification(
+                        result = send_multi_channel_notification(
                             db=db,
                             recipient=parent,
                             sender=None,
@@ -145,7 +145,8 @@ async def check_assignment_reminders():
                             source_type="assignment",
                             source_id=assignment.id,
                         )
-                        if notif:
+                        # #3880: return is now dict | None; count when in-app row created.
+                        if result and result.get("notification"):
                             notifications_created += 1
                     else:
                         # 1-day reminders: simple in-app only
