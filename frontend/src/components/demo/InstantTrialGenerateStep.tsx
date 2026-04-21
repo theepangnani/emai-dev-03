@@ -24,11 +24,14 @@ interface Props {
 
 type PerTabStreamState = Record<DemoType, PanelStreamState>;
 
-const INITIAL_STREAM_STATE: PerTabStreamState = {
-  ask: { ...INITIAL_PANEL_STREAM_STATE },
-  study_guide: { ...INITIAL_PANEL_STREAM_STATE },
-  flash_tutor: { ...INITIAL_PANEL_STREAM_STATE },
-};
+/** Factory so reset paths never accidentally share object identity. */
+function buildInitialStreams(): PerTabStreamState {
+  return {
+    ask: { ...INITIAL_PANEL_STREAM_STATE },
+    study_guide: { ...INITIAL_PANEL_STREAM_STATE },
+    flash_tutor: { ...INITIAL_PANEL_STREAM_STATE },
+  };
+}
 
 /**
  * Orchestrator for the three demo tabs.
@@ -50,7 +53,7 @@ export function InstantTrialGenerateStep({
   const [source, setSource] = useState<SourceKind>('sample');
   const [customText, setCustomText] = useState('');
   const [askQuestion, setAskQuestion] = useState(DEFAULT_QUESTIONS.ask);
-  const [streams, setStreams] = useState<PerTabStreamState>(INITIAL_STREAM_STATE);
+  const [streams, setStreams] = useState<PerTabStreamState>(buildInitialStreams());
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export function InstantTrialGenerateStep({
 
   const resetAllStreams = useCallback(() => {
     abortRef.current?.abort();
-    setStreams(INITIAL_STREAM_STATE);
+    setStreams(buildInitialStreams());
   }, []);
 
   const handleSourceChange = (next: SourceKind) => {
@@ -163,11 +166,8 @@ export function InstantTrialGenerateStep({
           state={activeState}
           question={askQuestion}
           onQuestionChange={setAskQuestion}
-          onGenerate={() => {
-            if (disableGenerate) return;
-            runGenerate('ask');
-          }}
-          onGenerated={onTabGenerated}
+          onGenerate={() => runGenerate('ask')}
+          generateDisabled={disableGenerate}
         />
       )}
       {activeTab === 'study_guide' && (
@@ -175,11 +175,8 @@ export function InstantTrialGenerateStep({
           sessionJwt={sessionJwt}
           sourceText={sourceText}
           state={activeState}
-          onGenerate={() => {
-            if (disableGenerate) return;
-            runGenerate('study_guide');
-          }}
-          onGenerated={onTabGenerated}
+          onGenerate={() => runGenerate('study_guide')}
+          generateDisabled={disableGenerate}
         />
       )}
       {activeTab === 'flash_tutor' && (
@@ -187,11 +184,8 @@ export function InstantTrialGenerateStep({
           sessionJwt={sessionJwt}
           sourceText={sourceText}
           state={activeState}
-          onGenerate={() => {
-            if (disableGenerate) return;
-            runGenerate('flash_tutor');
-          }}
-          onGenerated={onTabGenerated}
+          onGenerate={() => runGenerate('flash_tutor')}
+          generateDisabled={disableGenerate}
         />
       )}
 

@@ -9,12 +9,13 @@ import type { DemoPanelProps } from './panelTypes';
  * `InstantTrialGenerateStep.activeTab === 'flash_tutor'` branch, using the
  * existing `FlashcardDeck` component.
  */
-export function FlashTutorPanel({ state, onGenerate }: DemoPanelProps) {
+export function FlashTutorPanel({ state, onGenerate, generateDisabled }: DemoPanelProps) {
   return (
     <PanelFrame
       demoType="flash_tutor"
       state={state}
       onGenerate={onGenerate}
+      generateDisabled={generateDisabled}
       renderOutput={(s) => (
         <FlashcardDeck rawText={s.output} isStreaming={s.status === 'streaming'} />
       )}

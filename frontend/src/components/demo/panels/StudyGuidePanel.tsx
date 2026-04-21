@@ -7,12 +7,13 @@ import type { DemoPanelProps } from './panelTypes';
  * Foundation scaffold only — renders the same UI as the pre-refactor
  * `InstantTrialGenerateStep.activeTab === 'study_guide'` branch.
  */
-export function StudyGuidePanel({ state, onGenerate }: DemoPanelProps) {
+export function StudyGuidePanel({ state, onGenerate, generateDisabled }: DemoPanelProps) {
   return (
     <PanelFrame
       demoType="study_guide"
       state={state}
       onGenerate={onGenerate}
+      generateDisabled={generateDisabled}
       renderOutput={(s) => <MarkdownOutput state={s} />}
     />
   );

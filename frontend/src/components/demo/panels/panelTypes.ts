@@ -23,11 +23,19 @@ export const INITIAL_PANEL_STREAM_STATE: PanelStreamState = {
  * and `streamGenerate` invocation — this lets it preserve cache across tab
  * switches and pass a single `onGenerated(demoType)` callback for the
  * gamification hooks.
+ *
+ * `onGenerated` is wired at the panel prop level for forward-compatibility:
+ * today the orchestrator fires a single `onTabGenerated` via `runGenerate`'s
+ * `onDone`; Wave 2 feature streams that move streaming into individual
+ * panels will fire it from the panel itself (at which point the orchestrator
+ * must stop firing it to avoid a double-fire).
  */
 export interface DemoPanelProps {
   sessionJwt: string;
   sourceText: string;
   state: PanelStreamState;
   onGenerate: () => void;
+  /** Disable the Generate button (e.g. source over the 500-word limit). */
+  generateDisabled?: boolean;
   onGenerated?: (demoType: DemoType) => void;
 }

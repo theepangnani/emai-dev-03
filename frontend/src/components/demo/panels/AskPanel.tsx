@@ -18,6 +18,7 @@ export function AskPanel({
   question,
   onQuestionChange,
   onGenerate,
+  generateDisabled,
 }: AskPanelProps) {
   return (
     <>
@@ -36,6 +37,7 @@ export function AskPanel({
         demoType="ask"
         state={state}
         onGenerate={onGenerate}
+        generateDisabled={generateDisabled}
         renderOutput={(s) => <MarkdownOutput state={s} />}
       />
     </>
