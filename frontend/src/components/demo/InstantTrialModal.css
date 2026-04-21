@@ -2035,3 +2035,226 @@
     transform: none;
   }
 }
+
+
+/* ── Ask chatbox (§6.135.5, #3785) ───────── */
+
+.demo-ask-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.demo-ask-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 360px;
+  min-height: 180px;
+  overflow-y: auto;
+  padding: var(--space-sm) 2px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-muted) transparent;
+}
+
+.demo-ask-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: var(--space-md) var(--space-sm);
+  text-align: center;
+}
+
+.demo-ask-empty__mascot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-ask-empty__title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.demo-ask-empty__sub {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  margin: 0 0 8px;
+  max-width: 28rem;
+}
+
+.demo-ask-starter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.demo-ask-starter-chip {
+  font-family: var(--font-display);
+}
+
+.demo-ask-bubble {
+  position: relative;
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.demo-ask-bubble--user {
+  align-self: flex-end;
+  background: var(--color-ink);
+  color: var(--color-surface);
+  border-bottom-right-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+}
+
+.demo-ask-bubble--assistant {
+  align-self: flex-start;
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+}
+
+.demo-ask-bubble__text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.demo-ask-bubble__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+}
+
+.demo-ask-bubble__md {
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.demo-ask-bubble__md p:first-child { margin-top: 0; }
+.demo-ask-bubble__md p:last-child { margin-bottom: 0; }
+
+/* ── Input bar (pinned at the bottom of the panel) ──── */
+
+.demo-ask-inputbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.demo-ask-textarea {
+  flex: 1;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  /* resize: none — manual vertical drag would override max-height and
+     push the Send button off-screen inside the 92vh demo modal. */
+  resize: none;
+  line-height: 1.4;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.demo-ask-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.demo-ask-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--color-surface-alt);
+}
+
+.demo-ask-send {
+  flex-shrink: 0;
+  padding: 10px 18px;
+}
+
+.demo-ask-send:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Turn meter (3 pills) ──── */
+
+.demo-ask-turnmeter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.demo-ask-turnmeter__pill {
+  width: 20px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.demo-ask-turnmeter__pill--filled {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-ask-turnmeter__pill { transition: none; }
+}
+
+.demo-ask-turnmeter__label {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+/* ── Cap-reached upsell ──── */
+
+.demo-ask-upsell {
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo-ask-upsell__body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+}
+
+@media (max-width: 640px) {
+  .demo-ask-bubble { max-width: 92%; }
+  .demo-ask-thread { max-height: 260px; }
+  .demo-ask-send span { display: none; }
+  .demo-ask-send { padding: 10px 14px; }
+}

@@ -330,6 +330,13 @@ async def generate_demo(
     demo_type = body.demo_type
     source_text = body.source_text
     question = body.question
+    # Multi-turn Ask chatbox (§6.135.5, #3785) — convert the validated
+    # pydantic list of turns into plain dicts for the service helper.
+    history_payload: Optional[list[dict]] = None
+    if body.history:
+        history_payload = [
+            {"role": turn.role, "content": turn.content} for turn in body.history
+        ]
     session_id_capture = session.id
 
     # #3666 — reserve a placeholder slot BEFORE streaming so concurrent
@@ -353,6 +360,7 @@ async def generate_demo(
                 demo_type,
                 source_text=source_text,
                 question=question,
+                history=history_payload,
             ):
                 if event["event"] == "chunk":
                     yield _sse_frame("token", {"chunk": event["data"]})

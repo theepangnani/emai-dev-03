@@ -162,17 +162,15 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
     await fillAndSubmitStep1(user);
     await screen.findByRole('tablist');
 
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    // Ask tab is now a multi-turn chatbox (§6.135.5, #3785) — type + send.
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/Hello world\./)).toBeInTheDocument();
     });
-    // Watermark present
-    expect(screen.getByText('Demo sample')).toBeInTheDocument();
     // Conversion card appears after done
     expect(await screen.findByRole('button', { name: /verify my email/i })).toBeInTheDocument();
-    // Copy button is shown (aria-label covers full intent)
-    expect(screen.getByRole('button', { name: /copy demo output/i })).toBeInTheDocument();
   });
 
   it('shows an error when the SSE stream emits error', async () => {
@@ -187,7 +185,8 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
     render(<InstantTrialModal onClose={() => {}} />);
     await fillAndSubmitStep1(user);
     await screen.findByRole('tablist');
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
 
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(/ai generation failed/i)).toBeInTheDocument();
@@ -217,7 +216,8 @@ describe('InstantTrialModal — SSE abort on unmount (#3700)', () => {
     const { unmount } = render(<InstantTrialModal onClose={() => {}} />);
     await fillAndSubmitStep1(user);
     await screen.findByRole('tablist');
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'Hi?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
 
     expect(mockStreamGenerate).toHaveBeenCalled();
     unmount();
@@ -273,17 +273,21 @@ describe('InstantTrialModal — per-tab cache (#3762)', () => {
     render(<InstantTrialModal onClose={() => {}} />);
     await fillAndSubmitStep1(user);
     await screen.findByRole('tablist');
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/First output\./)).toBeInTheDocument();
     });
 
-    // Switch to Study Guide tab — Study Guide is idle, Ask output hidden.
+    // Switch to Study Guide tab — Study Guide is idle, Ask output is
+    // kept mounted but hidden (preserves thread across tab switches).
     await user.click(screen.getByRole('tab', { name: /study guide/i }));
-    expect(screen.queryByText(/First output\./)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /generate study guide/i }),
+    ).toBeInTheDocument();
 
-    // Switch back to Ask — cached output still renders.
+    // Switch back to Ask — cached thread still renders.
     await user.click(screen.getByRole('tab', { name: /^ask/i }));
     await waitFor(() => {
       expect(screen.getByText(/First output\./)).toBeInTheDocument();
@@ -337,7 +341,8 @@ describe('InstantTrialModal — handleVerify renders notice (#3700)', () => {
     render(<InstantTrialModal onClose={() => {}} />);
     await fillAndSubmitStep1(user);
     await screen.findByRole('tablist');
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
 
     const verifyBtn = await screen.findByRole('button', { name: /verify my email/i });
     await user.click(verifyBtn);
