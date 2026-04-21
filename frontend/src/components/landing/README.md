@@ -38,10 +38,10 @@ reference screenshots `04a`/`04b`/`04c` for row ordering.
 
 | Token                    | Hex       |
 | ------------------------ | --------- |
-| `--color-row-peach`      | `#FFF1E6` |
-| `--color-row-mint`       | `#E8F7F1` |
-| `--color-row-lavender`   | `#F1EDFE` |
-| `--color-row-pink`       | `#FDEBF1` |
+| `--color-row-peach`      | `#fff1e6` |
+| `--color-row-mint`       | `#e8f7f1` |
+| `--color-row-lavender`   | `#f1edfe` |
+| `--color-row-pink`       | `#fdebf1` |
 
 ### Accent hues
 
@@ -51,10 +51,10 @@ ink glyphs.
 
 | Token                   | Hex       |
 | ----------------------- | --------- |
-| `--color-accent-cyan`   | `#1FD8FF` |
-| `--color-accent-gold`   | `#FFB800` |
-| `--color-accent-mint`   | `#46D69A` |
-| `--color-accent-coral`  | `#FF5C5C` |
+| `--color-accent-cyan`   | `#1fd8ff` |
+| `--color-accent-gold`   | `#ffb800` |
+| `--color-accent-mint`   | `#46d69a` |
+| `--color-accent-coral`  | `#ff5c5c` |
 
 ### Motion
 
