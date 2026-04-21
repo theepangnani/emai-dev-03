@@ -1,0 +1,217 @@
+/*
+ * CB-LAND-001 §6.136.1 §5 — How It Works accordion + preview pane.
+ * Scoped under [data-landing="v2"] (wrapper section carries that attribute).
+ * Token source: frontend/src/index.css (search "CB-LAND-001 landing-v2 design tokens").
+ *
+ * DOM shape (matches WAI-ARIA Accordion pattern — panel is a sibling of the
+ * header button, never nested inside the button):
+ *
+ *   .landing-how__row[data-expanded="true|false"]
+ *     > h3.landing-how__row-heading
+ *         > button.landing-how__row-button
+ *             > span.landing-how__row-header
+ *                 > .landing-how__row-num
+ *                 > .landing-how__row-title
+ *             > span.landing-how__row-summary   (collapsed only)
+ *     > div.landing-how__row-body[role="region"][hidden?]
+ */
+
+.landing-how {
+  padding: 6rem 1.5rem;
+  background: var(--color-row-lavender);
+  color: var(--color-ink, #1a1a1a);
+  font-family: var(--font-landing-sans);
+}
+
+.landing-how__container {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.landing-how__headline {
+  margin: 0 0 3rem;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.landing-how__headline em {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+.landing-how__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .landing-how__grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3rem;
+  }
+}
+
+/* ─ Accordion (left column) ──────────────────────── */
+
+.landing-how__accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.landing-how__row {
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 4px solid transparent;
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+  transition:
+    border-left-color var(--motion-spring-fast),
+    box-shadow var(--motion-spring-fast),
+    transform var(--motion-spring-fast);
+}
+
+.landing-how__row[data-expanded='true'] {
+  border-left-color: var(--color-accent-cyan);
+  box-shadow: 0 6px 20px rgba(31, 216, 255, 0.18);
+  transform: translateY(-2px);
+}
+
+.landing-how__row-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.landing-how__row-button {
+  display: block;
+  width: 100%;
+  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.landing-how__row-button:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+.landing-how__row-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.landing-how__row-num {
+  flex: 0 0 auto;
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.25rem;
+  color: var(--color-accent-cyan);
+  min-width: 1.5rem;
+}
+
+.landing-how__row-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.landing-how__row-summary {
+  display: block;
+  margin: 0.35rem 0 0 2.25rem;
+  font-size: 0.95rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.landing-how__row-body {
+  margin: 0;
+  padding: 0 1.25rem 1.25rem 3.75rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: rgba(0, 0, 0, 0.78);
+}
+
+/* ─ Preview pane (right column) ──────────────────── */
+
+.landing-how__preview {
+  position: relative;
+  min-height: 320px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.landing-how__preview-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  transition: opacity var(--motion-spring-slow);
+  pointer-events: none;
+}
+
+.landing-how__preview-slide[data-active='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.landing-how__preview-mock {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-cyan) 0%,
+    var(--color-accent-mint) 100%
+  );
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.landing-how__preview-slide[data-step='organize'] .landing-how__preview-mock {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-gold) 0%,
+    var(--color-accent-coral) 100%
+  );
+}
+
+.landing-how__preview-slide[data-step='practice'] .landing-how__preview-mock {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-mint) 0%,
+    var(--color-accent-cyan) 100%
+  );
+}
+
+.landing-how__preview-slide[data-step='digest'] .landing-how__preview-mock {
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-coral) 0%,
+    var(--color-accent-gold) 100%
+  );
+}
