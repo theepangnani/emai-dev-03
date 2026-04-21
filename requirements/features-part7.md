@@ -1717,3 +1717,12 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
 - Frontend-only feature. Backend touched in #3849 only to add `landing_v2` to the feature-flag seed list and admin surface.
 - No database schema changes.
 - No new Python routes beyond the feature-flag enablement in S2.
+
+#### 6.140.7 Analytics funnel (CB-LAND-001)
+
+**Events:**
+- `landing_v2.section_view` — props: `section` (one of `hero` / `pain` / `features` / `how_it_works` / `old_vs_new` / `progress` / `segments` / `integrations` / `pricing` / `final_cta`).
+- `landing_v2.cta_click` — props: `cta` (`primary` / `secondary` / `demo` / `waitlist` / `get_started` / `board`), `section`.
+  - `get_started` (added #3889): fired on secondary CTAs when `waitlist_enabled=false` (launch mode). Routes to `/register` instead of `/waitlist`.
+
+**Funnel:** `section_view(hero)` → `cta_click(demo | waitlist | get_started)` → demo completion / register / waitlist signup. The `waitlist` and `get_started` CTAs are mutually exclusive per session (gated by `waitlist_enabled`) — dashboards should union the two buckets when comparing landing → signup conversion across the `waitlist_enabled` flip.
