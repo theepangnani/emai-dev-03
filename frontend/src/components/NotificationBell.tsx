@@ -12,6 +12,12 @@ import './NotificationBell.css';
 const NOTIF_MODAL_ALLOWED_TAGS = ['h1', 'h2', 'h3', 'h4', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'a', 'hr'];
 const NOTIF_MODAL_ALLOWED_ATTR = ['href', 'target', 'rel'];
 
+// #3896: Strip ALL tags to plain text for the dropdown list preview. Rendering
+// HTML in the tight list layout would break alignment and truncation, and
+// rendering it as text leaks literal `<h3>...</h3>` markup to users.
+const stripToPlainText = (html: string) =>
+  DOMPurify.sanitize(html, { ALLOWED_TAGS: [], KEEP_CONTENT: true });
+
 export function NotificationBell() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationResponse[]>([]);
@@ -223,9 +229,10 @@ export function NotificationBell() {
                         <span className="ack-badge">ACK</span>
                       )}
                     </div>
-                    {n.content && (
-                      <p className="notification-text">{n.content}</p>
-                    )}
+                    {n.content && (() => {
+                      const plainPreview = stripToPlainText(n.content);
+                      return plainPreview ? <p className="notification-text">{plainPreview}</p> : null;
+                    })()}
                     <div className="notification-meta-row">
                       <span className="notification-time">{formatTime(n.created_at)}</span>
                       <div className="notification-inline-actions" onClick={(e) => e.stopPropagation()}>

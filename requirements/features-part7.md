@@ -623,6 +623,17 @@ Per-field specifics:
 - `channel_status.email` — `true` if `send_email_sync` returned True without raising, `false` if it returned False or raised (SendGrid error, SMTP failure, etc.), `null` if `email` was not selected OR the recipient has no email on file / has `email_notifications=False` / preference-suppressed email for this notification type.
 - `channel_status.whatsapp` — `true` if the Twilio WhatsApp template/message send returned success, `false` if Twilio returned failure or the send raised, `null` if `whatsapp` was not selected OR WhatsApp is not verified / phone missing (parent hasn't completed setup — we cannot score this channel).
 
+**Machine-readable skip reason (`reason` on the response, #3894):**
+
+When `status="skipped"`, the response includes a `reason` field so that frontends can gate UI actions on the specific cause of the skip. When `status != "skipped"`, `reason` is `null` (or absent). Valid values:
+
+- `"already_delivered"` — a digest was already delivered earlier today for this integration (deduplication skip on the scheduled run)
+- `"no_settings"` — the integration has no `ParentDigestSettings` row configured
+- `"no_new_emails"` — Gmail returned zero messages and `notify_on_empty=False`
+- `"no_eligible_channels"` — the digest was generated but every selected channel was intentionally skipped (preference off, WhatsApp not verified, etc.). This is the only skip reason for which an "Open preferences" action is meaningful — the other three skips cannot be resolved by editing notification preferences.
+
+Frontends MUST gate "Open preferences" / "Change settings" style CTAs on `reason === "no_eligible_channels"` rather than `status === "skipped"` alone.
+
 **Persistence — `digest_delivery_log` table:**
 - `status` — top-level state (`delivered` / `partial` / `failed` / `skipped`)
 - `email_delivery_status` — `"sent"` / `"failed"` / `"skipped"` / `null` (`"skipped"` when email was selected but recipient has no email on file / preference off; `null` when email was not selected)

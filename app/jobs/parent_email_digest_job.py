@@ -37,11 +37,21 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
             .first()
         )
         if existing_log:
-            return {"status": "skipped", "email_count": 0, "message": "Already delivered today"}
+            return {
+                "status": "skipped",
+                "email_count": 0,
+                "message": "Already delivered today",
+                "reason": "already_delivered",
+            }
 
     settings = integration.digest_settings
     if not settings:
-        return {"status": "skipped", "email_count": 0, "message": "No digest settings configured"}
+        return {
+            "status": "skipped",
+            "email_count": 0,
+            "message": "No digest settings configured",
+            "reason": "no_settings",
+        }
 
     # Fetch child emails
     try:
@@ -78,7 +88,12 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         return {"status": "failed", "email_count": 0, "message": "Failed to fetch emails. Please try again or reconnect Gmail."}
 
     if not emails and not settings.notify_on_empty:
-        return {"status": "skipped", "email_count": 0, "message": "No new emails"}
+        return {
+            "status": "skipped",
+            "email_count": 0,
+            "message": "No new emails",
+            "reason": "no_new_emails",
+        }
 
     child_name = integration.child_first_name or "your child"
     parent = integration.parent
@@ -129,8 +144,14 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
     # delivery failure, None=not applicable (channel not requested OR
     # preference-suppressed / no email on file). None is explicitly NOT a
     # failure and is excluded from the overall-status computation.
-    in_app_ok: bool | None = None
-    email_ok: bool | None = None
+    #
+    # Channel-aware default: if a channel IS selected but the send code path
+    # is skipped (pathological: parent is None), register the channel as
+    # "tried but failed" (False) rather than "not applicable" (None). If the
+    # notification service actually runs, these are overwritten below with
+    # whatever the service returned — including None for preference-suppressed.
+    in_app_ok: bool | None = None if "in_app" not in channels else False
+    email_ok: bool | None = None if "email" not in channels else False
     delivery_result: dict | None = None
 
     if parent:
@@ -299,11 +320,23 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         "whatsapp": whatsapp_ok,
     }
 
+    # #3894: when overall_status == "skipped" AND at least one channel was
+    # actually selected (i.e., this is the "every selected channel intentionally
+    # skipped" branch, not a no-channels-selected edge case), surface the
+    # machine-readable reason "no_eligible_channels" so frontends can gate the
+    # "Open preferences" link on the situations where it's actionable.
+    reason: str | None = None
+    if overall_status == "skipped" and any(
+        c in channels for c in ("in_app", "email", "whatsapp")
+    ):
+        reason = "no_eligible_channels"
+
     return {
         "status": overall_status,
         "email_count": email_count,
         "message": message,
         "channel_status": channel_status,
+        "reason": reason,
     }
 
 
