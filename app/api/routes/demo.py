@@ -37,7 +37,11 @@ from app.core.rate_limit import (
 )
 from app.db.database import get_db
 from app.models.demo_session import DemoSession
-from app.schemas.demo import DemoGenerateRequest, DemoSessionCreate
+from app.schemas.demo import (
+    _DEMO_PERSISTED_CONTENT_MAX_CHARS,
+    DemoGenerateRequest,
+    DemoSessionCreate,
+)
 from app.services.demo_generation import (
     estimate_cost_cents,
     stream_demo_completion,
@@ -210,8 +214,8 @@ def _reconstruct_ask_history(generations_json) -> Optional[list[dict]]:
         if not safe_assistant:
             return None
         return [
-            {"role": "user", "content": user_content[:500]},
-            {"role": "assistant", "content": safe_assistant[:500]},
+            {"role": "user", "content": user_content[:_DEMO_PERSISTED_CONTENT_MAX_CHARS]},
+            {"role": "assistant", "content": safe_assistant[:_DEMO_PERSISTED_CONTENT_MAX_CHARS]},
         ]
     return None
 
@@ -510,12 +514,13 @@ async def generate_demo(
             # Sanitise Haiku's own reply BEFORE persisting (#3842). Any
             # role-like markers or fake system tags the model emits would
             # otherwise be replayed as prior assistant context on the
-            # next turn and influence model behaviour.
+            # next turn and influence model behaviour. Cap at the shared
+            # persisted-content limit (#3843) after sanitisation.
             assistant_content = _sanitize_assistant_content(
                 "".join(assistant_chunks)
             )
             if assistant_content is not None:
-                assistant_content = assistant_content[:500]
+                assistant_content = assistant_content[:_DEMO_PERSISTED_CONTENT_MAX_CHARS]
 
         # Update the reserved slot with real metrics on a fresh DB
         # session (the request-scoped `db` is already closed by now).

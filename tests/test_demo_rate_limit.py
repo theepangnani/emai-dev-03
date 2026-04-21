@@ -429,12 +429,16 @@ class TestUpdateGenerationSlot:
         assert stored["user_content"] == "Explain X simply"
         assert stored["assistant_content"] == "X is…"
 
-    def test_content_is_truncated_to_500_chars(self, db_session):
-        """#3819 — over-length content is hard-capped at 500 chars so the
-        persisted payload stays bounded."""
+    def test_content_is_truncated_to_cap(self, db_session):
+        """#3819 / #3843 — over-length content is hard-capped so the
+        persisted payload stays bounded. Cap tracks
+        ``app.schemas.demo._DEMO_PERSISTED_CONTENT_MAX_CHARS``."""
+        from app.schemas.demo import _DEMO_PERSISTED_CONTENT_MAX_CHARS
+
         session = _make_session(db_session, "trunc@example.com")
+        oversize = _DEMO_PERSISTED_CONTENT_MAX_CHARS + 300
         drl.reserve_generation_slot(
-            db_session, session, demo_type="ask", user_content="u" * 800
+            db_session, session, demo_type="ask", user_content="u" * oversize
         )
         drl.update_generation_slot(
             db_session,
@@ -443,11 +447,34 @@ class TestUpdateGenerationSlot:
             input_tokens=1,
             output_tokens=1,
             cost_cents=1,
-            assistant_content="a" * 800,
+            assistant_content="a" * oversize,
         )
         stored = session.generations_json[-1]
-        assert len(stored["user_content"]) == 500
-        assert len(stored["assistant_content"]) == 500
+        assert len(stored["user_content"]) == _DEMO_PERSISTED_CONTENT_MAX_CHARS
+        assert len(stored["assistant_content"]) == _DEMO_PERSISTED_CONTENT_MAX_CHARS
+
+    def test_content_at_cap_not_truncated(self, db_session):
+        """#3843 — content exactly at cap is persisted unchanged."""
+        from app.schemas.demo import _DEMO_PERSISTED_CONTENT_MAX_CHARS
+
+        session = _make_session(db_session, "atcap@example.com")
+        at_cap_user = "u" * _DEMO_PERSISTED_CONTENT_MAX_CHARS
+        at_cap_assistant = "a" * _DEMO_PERSISTED_CONTENT_MAX_CHARS
+        drl.reserve_generation_slot(
+            db_session, session, demo_type="ask", user_content=at_cap_user
+        )
+        drl.update_generation_slot(
+            db_session,
+            session,
+            latency_ms=1,
+            input_tokens=1,
+            output_tokens=1,
+            cost_cents=1,
+            assistant_content=at_cap_assistant,
+        )
+        stored = session.generations_json[-1]
+        assert stored["user_content"] == at_cap_user
+        assert stored["assistant_content"] == at_cap_assistant
 
 
 class TestReserveBeforeStreamPreventsRace:

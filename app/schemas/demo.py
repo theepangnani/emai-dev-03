@@ -19,6 +19,20 @@ DemoType = Literal["ask", "study_guide", "flash_tutor"]
 # - Only the most recent completed Ask turn is used for context (1 user +
 #   1 assistant) so the total prompt stays at 3 messages max. The
 #   invariant lives in ``app.api.routes.demo._reconstruct_ask_history``.
+# - Each persisted content string is capped at
+#   ``_DEMO_PERSISTED_CONTENT_MAX_CHARS`` chars to bound the tokens we
+#   replay on the next turn.
+#
+# Cap rationale (#3843): the Ask prompt targets ~200 words per turn at
+# max_tokens=300. A 20-sample Haiku measurement (c:/tmp/measure_ask_lengths.py,
+# ask prompt, temperature 0.7, mix of science/history/math/conversation
+# questions) produced p50=837, p95=1108, p99=1145 chars. 80% of typical
+# replies exceeded the previous 500-char cap, which truncated honest-user
+# answers mid-sentence when replayed as history on turn 2. New cap =
+# round(p99 * 1.1) = 1260, still well below the 2000-char "prompt is wrong"
+# ceiling. The user-side cap stays at the same value for symmetry — the
+# 500-word service-layer check (FR-052) is the real bound on user input.
+_DEMO_PERSISTED_CONTENT_MAX_CHARS = 1260
 
 
 class DemoSessionCreate(BaseModel):
@@ -84,14 +98,17 @@ class DemoGenerateEvent(BaseModel):
     cost_cents: int
     created_at: datetime
     # Server-reconstructed Ask history source (#3819). Both fields are
-    # capped to 500 chars at record time so the persisted payload stays
-    # bounded regardless of Haiku's output length.
-    # NOTE: the assistant reply may be mid-sentence truncated at 500 chars;
-    # this matches the previous client-side 500-char slice (§6.135.5) and
-    # is intentional for storage bounding. A future PR may lift the cap
-    # once realistic Haiku Ask output sizes are measured.
-    user_content: Optional[str] = Field(default=None, max_length=500)
-    assistant_content: Optional[str] = Field(default=None, max_length=500)
+    # capped at record time so the persisted payload stays bounded
+    # regardless of Haiku's output length. The cap was raised from 500
+    # to 1260 chars in #3843 after measurement showed 80% of typical
+    # Ask replies exceeded 500; see ``_DEMO_PERSISTED_CONTENT_MAX_CHARS``
+    # for the rationale.
+    user_content: Optional[str] = Field(
+        default=None, max_length=_DEMO_PERSISTED_CONTENT_MAX_CHARS
+    )
+    assistant_content: Optional[str] = Field(
+        default=None, max_length=_DEMO_PERSISTED_CONTENT_MAX_CHARS
+    )
 
 
 class AdminDemoSessionRow(BaseModel):
