@@ -5,6 +5,12 @@
 - **Bugs fixed:** 445+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
+**Apr 20 — CB-DEMO-001 demo modal re-plan (feature issues + §6.135 expansion):**
+- CB-DEMO-001 demo modal re-plan — 4 feature issues scoped (#3784 upload copy + dismiss, #3785 Ask chatbox, #3786 Flash Tutor short cycle, #3787 Study Guide chips) + §6.135 requirements expanded (new subsections §6.135.4–§6.135.9) + gamification layer scoped (client-side only; XP/level/streak/quests/achievements/mastery ring) + Path C brand-alignment committed (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex in demo CSS).
+- **REQUIREMENTS update:** §6.135.4 Demo Upload Gating Copy & Dismiss-on-Tab-Change (#3784), §6.135.5 Ask Tab as Conversational Chatbox (#3785), §6.135.6 Flash Tutor Tab as Short Learning Cycle (#3786), §6.135.7 Study Guide Tab as Overview + Suggestion Chips (#3787), §6.135.8 Demo Gamification Layer (cross-cutting), §6.135.9 Demo Visual Alignment Decision — Path C Blend — all added to `requirements/features-part7.md`.
+- **Scope discipline:** Ask-tab chatbox extends `POST /api/v1/demo/generate` (or adds `POST /api/v1/demo/ask/turn`) to accept a short conversation history; each turn counts against the existing rate-limit bucket. All other subsections are frontend-only. No new tables, no mastery/ILE persistence, no new content-safety surface.
+- Snapshot date: 2026-04-20.
+
 **Apr 20 — CB-DEMO-001 demo page re-plan (Mindgrasp-style UX):**
 - **Epic #3758 delivered via PR #3769 (merged to master as `ac2d8df6`):** Single-source picker (sample | paste | gated upload) replaces the always-visible sample + "Use my own text" toggle; per-tab cache preserves generated output when switching Ask ↔ Study Guide ↔ Flash Tutor (source changes clear output but preserve user-typed questions); Flash Tutor renders `FlashcardDeck` flip cards instead of raw JSON; `GatedActionBar` under each completed output (Download PDF / Save / Follow-up / More flashcards) opens inline waitlist upsells. Scrollbar clipping by rounded modal corners fixed.
 - **Classification:** Requirement Gap + Design Gap + 3 Bugs (mixed). Original CB-DEMO-001 spec didn't account for single-source UX, per-tab cache, flashcard UI, or gated extras.
