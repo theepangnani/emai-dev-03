@@ -125,9 +125,12 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
     if "email" in channels:
         notification_channels.append("email")
 
-    # Per-channel outcomes (#3880): True=sent, False=failed, None=not requested.
-    in_app_ok: bool | None = None if "in_app" not in channels else False
-    email_ok: bool | None = None if "email" not in channels else False
+    # Per-channel outcomes (#3880, refined #3887): True=sent, False=actual
+    # delivery failure, None=not applicable (channel not requested OR
+    # preference-suppressed / no email on file). None is explicitly NOT a
+    # failure and is excluded from the overall-status computation.
+    in_app_ok: bool | None = None
+    email_ok: bool | None = None
     delivery_result: dict | None = None
 
     if parent:
@@ -147,12 +150,15 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         )
 
     if delivery_result:
-        # send_multi_channel_notification returns per-channel bools keyed by channel id
-        # ("in_app" corresponds to the "app_notification" channel passed above).
+        # send_multi_channel_notification returns per-channel outcomes keyed by
+        # channel id ("in_app" corresponds to the "app_notification" channel
+        # passed above). Each value is True / False / None — preserve the None
+        # (preference-suppressed) so it is excluded from overall-status
+        # computation below (#3887).
         if "in_app" in channels:
-            in_app_ok = bool(delivery_result.get("in_app"))
+            in_app_ok = delivery_result.get("in_app")
         if "email" in channels:
-            email_ok = bool(delivery_result.get("email"))
+            email_ok = delivery_result.get("email")
 
     # WhatsApp delivery (#2987, #3585, #3586, #3620)
     whatsapp_status: str | None = None
@@ -206,33 +212,36 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
         else:
             whatsapp_status = "skipped"
-            # WhatsApp selected but not verified -> treated as a failure for overall status.
-            whatsapp_ok = False
+            # WhatsApp selected but not verified / phone missing → not
+            # applicable (None), NOT a failure (#3887). The parent hasn't
+            # finished WhatsApp setup, so we cannot score this channel.
+            whatsapp_ok = None
 
-    # Compute overall status from selected channels (#3880).
-    selected_results: list[bool] = []
-    if "in_app" in channels:
-        selected_results.append(bool(in_app_ok))
-    if "email" in channels:
-        selected_results.append(bool(email_ok))
-    if "whatsapp" in channels:
-        selected_results.append(bool(whatsapp_ok))
+    # Compute overall status from selected channels (#3880, refined #3887).
+    # Filter out None (not applicable / skipped) — only count actual outcomes.
+    outcomes = [x for x in (
+        in_app_ok if "in_app" in channels else None,
+        email_ok if "email" in channels else None,
+        whatsapp_ok if "whatsapp" in channels else None,
+    ) if x is not None]
 
-    if not selected_results:
-        # No channels selected at all — treat as skipped rather than delivered.
+    if not outcomes:
+        # Every selected channel was intentionally skipped (preference off,
+        # WhatsApp not verified, etc.) OR no channels selected at all.
         overall_status = "skipped"
-    elif all(selected_results):
+    elif all(outcomes):
         overall_status = "delivered"
-    elif not any(selected_results):
+    elif not any(outcomes):
         overall_status = "failed"
     else:
         overall_status = "partial"
 
     # Persisted per-channel email status (#3880) — mirrors whatsapp_delivery_status.
-    if "email" in channels:
-        email_delivery_status = "sent" if email_ok else "failed"
+    # True=sent, False=failed, None=skipped (not requested or preference off).
+    if "email" not in channels or email_ok is None:
+        email_delivery_status = None if "email" not in channels else "skipped"
     else:
-        email_delivery_status = None
+        email_delivery_status = "sent" if email_ok else "failed"
 
     email_count = len(emails) if emails else 0
     log_entry = DigestDeliveryLog(
@@ -251,12 +260,14 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
     integration.last_synced_at = now
     db.commit()
 
+    # failed_labels must only list channels with an actual failure (False),
+    # NOT channels that were skipped / not applicable (None) — #3887.
     failed_labels: list[str] = []
-    if "in_app" in channels and not in_app_ok:
+    if "in_app" in channels and in_app_ok is False:
         failed_labels.append("in-app")
-    if "email" in channels and not email_ok:
+    if "email" in channels and email_ok is False:
         failed_labels.append("email")
-    if "whatsapp" in channels and not whatsapp_ok:
+    if "whatsapp" in channels and whatsapp_ok is False:
         failed_labels.append("WhatsApp")
 
     if overall_status == "delivered":
@@ -270,6 +281,14 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         message = (
             f"Digest delivery failed on all channels ({email_count} emails). "
             f"Please try again or check your setup."
+        )
+    elif overall_status == "skipped" and any(c in channels for c in ("in_app", "email", "whatsapp")):
+        # Every selected channel was intentionally skipped — no failure, but
+        # nothing was delivered either (#3887). Guide the parent to fix
+        # preferences rather than "check your setup" (implies failure).
+        message = (
+            f"No eligible channels ({email_count} emails). "
+            f"Please verify WhatsApp or enable notifications in your preferences."
         )
     else:
         message = f"Digest skipped ({email_count} emails)."
