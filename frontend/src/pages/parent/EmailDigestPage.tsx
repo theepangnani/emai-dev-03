@@ -35,6 +35,12 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return e?.response?.data?.detail || fallback;
 }
 
+/**
+ * Validates E.164 phone format: '+' country-code (1-9) + 9-14 digits.
+ * Conservative minimum (10 total digits) covers North American numbers
+ * which are our primary user base. Some short international numbers
+ * (e.g., Belize +501XXXXXXX = 10 chars total) may be incorrectly rejected.
+ */
 function isValidPhone(phone: string): boolean {
   const trimmed = phone.trim();
   return /^\+[1-9]\d{9,14}$/.test(trimmed);
@@ -218,8 +224,14 @@ export function EmailDigestPage() {
     verifyOtpMutation.mutate({ id: activeIntegration.id, otpCode: otp });
   };
 
-  const handleCancelOtp = () => {
+  const handleCancelOtp = async () => {
     if (!activeIntegration) return;
+    const confirmed = await confirm({
+      title: 'Cancel verification',
+      message: 'This will clear your phone number. You can start over with the same or a different number.',
+      confirmLabel: 'Yes, cancel',
+    });
+    if (!confirmed) return;
     disconnectWhatsappMutation.mutate(activeIntegration.id);
   };
 
@@ -514,6 +526,7 @@ export function EmailDigestPage() {
                       type="tel"
                       className="ed-input"
                       placeholder="+14165551234"
+                      maxLength={16}
                       value={whatsappPhone}
                       onChange={(e) => setWhatsappPhone(e.target.value)}
                       aria-label="WhatsApp phone number"

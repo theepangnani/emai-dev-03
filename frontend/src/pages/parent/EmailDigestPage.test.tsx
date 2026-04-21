@@ -34,9 +34,10 @@ vi.mock('../../components/DashboardLayout', () => ({
   ),
 }));
 
+let confirmResolveValue = true;
 vi.mock('../../components/ConfirmModal', () => ({
   useConfirm: () => ({
-    confirm: () => Promise.resolve(true),
+    confirm: () => Promise.resolve(confirmResolveValue),
     confirmModal: null,
     getLastPromptValue: () => '',
   }),
@@ -65,6 +66,7 @@ function buildIntegration(overrides: Partial<EmailDigestIntegration> = {}): Emai
 
 beforeEach(() => {
   vi.clearAllMocks();
+  confirmResolveValue = true;
   mockGetSettings.mockResolvedValue({
     data: {
       id: 1,
@@ -214,6 +216,24 @@ describe('EmailDigestPage — WhatsApp section', () => {
     await waitFor(() => {
       expect(mockDisconnectWhatsApp).toHaveBeenCalledWith(1);
     });
+  });
+
+  it('does NOT call disconnectWhatsApp when user cancels confirmation', async () => {
+    confirmResolveValue = false;
+    mockListIntegrations.mockResolvedValue({
+      data: [buildIntegration({ whatsapp_phone: '+14165551234', whatsapp_verified: false })],
+    });
+    mockDisconnectWhatsApp.mockResolvedValue(undefined);
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // Wait a tick for the confirm promise to resolve
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockDisconnectWhatsApp).not.toHaveBeenCalled();
   });
 
   it('shows API error message when send-otp fails', async () => {
