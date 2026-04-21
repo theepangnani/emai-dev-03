@@ -605,3 +605,40 @@ class TestAhaMomentNotification:
         assert captured["content"].startswith("ILE was struggling with"), (
             captured.get("content")
         )
+
+    def test_aha_moment_notification_whitespace_full_name_falls_back(
+        self, db_session, ile_student,
+    ):
+        """#3845 — whitespace-only full_name must not IndexError; falls back to 'Your child'."""
+        import asyncio
+        from app.services import ile_service
+
+        ile_student.full_name = "   "
+        db_session.commit()
+
+        session = self._build_completed_session(db_session, ile_student.id)
+
+        captured = {}
+
+        def _capture_notify(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        with patch.object(
+            ile_service, "update_student_calibration", return_value=None,
+        ), patch(
+            "app.services.ile_mastery_service.update_mastery_after_session",
+            return_value=MagicMock(),
+        ), patch(
+            "app.services.ile_mastery_service.get_mastery_snapshot",
+            return_value={"accuracy": 0.2},
+        ), patch(
+            "app.services.ile_mastery_service.check_aha_moment", return_value=True,
+        ), patch(
+            "app.services.notification_service.notify_parents_of_student",
+            side_effect=_capture_notify,
+        ):
+            asyncio.run(ile_service.complete_session(db_session, session))
+
+        assert captured, "notify_parents_of_student was not called"
+        assert captured["title"].startswith("Your child "), captured.get("title")
