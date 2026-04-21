@@ -8,6 +8,7 @@ Sends notifications via up to 3 channels:
 Respects user preferences and suppression rules.
 """
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_
@@ -21,6 +22,13 @@ from app.models.message import Conversation, Message
 from app.services.email_service import send_email_sync
 
 logger = logging.getLogger(__name__)
+
+
+# #3884: Detect whether notification email content already starts with a
+# block-level HTML tag. If so, the caller has supplied pre-formatted HTML and
+# wrapping it in <p>...</p> would produce invalid nested-block markup (e.g.
+# <p><h3>...</h3></p>). We instead wrap in a <div> with matching styles.
+_BLOCK_TAG_RE = re.compile(r"^\s*<(h[1-6]|p|ul|ol|div|section|article|hr)\b", re.IGNORECASE)
 
 
 # Role-based deep link mappings: generic link → role-specific link
@@ -271,9 +279,17 @@ def _build_notification_email(title: str, content: str, link: str | None, recipi
             f'padding:12px 24px;border-radius:8px;font-weight:600;">View in ClassBridge</a></p>'
         )
 
+    # #3884: If content is already HTML (starts with a block-level tag), wrap in
+    # <div> to avoid invalid nested-block markup like <p><h3>...</h3></p>.
+    # Otherwise keep the <p> wrap so plain-text content renders identically.
+    if _BLOCK_TAG_RE.match(content or ""):
+        content_html = f'<div style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</div>'
+    else:
+        content_html = f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</p>'
+
     body = (
         f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">{title}</h2>'
-        f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</p>'
+        f'{content_html}'
         f'{link_html}'
     )
     return wrap_branded_email(body)
