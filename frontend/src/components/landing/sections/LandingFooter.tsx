@@ -34,8 +34,8 @@ export function LandingFooter() {
           src="/classbridge-logo-dark.png"
           alt=""
           aria-hidden="true"
-          width={60}
-          height={40}
+          width={120}
+          height={80}
           className="landing-footer__logo"
         />
         <div className="landing-footer__columns">
