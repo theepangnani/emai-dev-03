@@ -289,8 +289,55 @@
   font-size: var(--text-base);
   color: var(--color-ink);
   line-height: 1.6;
-  white-space: pre-wrap;
   word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* #3884: HTML content sanitised via DOMPurify renders real block elements, so
+   pre-wrap is neutralised via the descendant selectors below to avoid extra
+   vertical whitespace from source-code indentation. */
+.notif-modal-content:has(h1, h2, h3, h4, p, ul, ol, li, hr) {
+  white-space: normal;
+}
+
+/* #3884: Styling for sanitised HTML tags inside the notification modal body. */
+.notif-modal-content h1,
+.notif-modal-content h2,
+.notif-modal-content h3,
+.notif-modal-content h4 {
+  font-size: 1.05rem;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+
+.notif-modal-content p {
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.notif-modal-content ul,
+.notif-modal-content ol {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+
+.notif-modal-content li {
+  margin-bottom: 4px;
+}
+
+.notif-modal-content strong {
+  font-weight: 600;
+}
+
+.notif-modal-content hr {
+  border: 0;
+  border-top: 1px solid #e0e0e0;
+  margin: 12px 0;
+}
+
+.notif-modal-content a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 .notif-modal-time {

@@ -378,7 +378,7 @@ def send_decay_notifications(db: Session) -> int:
             continue
 
         try:
-            notif = send_multi_channel_notification(
+            result = send_multi_channel_notification(
                 db=db,
                 recipient=student_user,
                 sender=None,
@@ -390,7 +390,8 @@ def send_decay_notifications(db: Session) -> int:
                 source_type="ile_decay",
                 source_id=m.id,
             )
-            if notif:
+            # #3880: return is now dict | None. Count sends only when the in-app row was created.
+            if result and result.get("notification"):
                 sent += 1
         except Exception:
             db.rollback()

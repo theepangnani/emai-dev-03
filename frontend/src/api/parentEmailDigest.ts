@@ -106,8 +106,22 @@ export const triggerSync = (integrationId: number) =>
 export const verifyForwarding = (integrationId: number) =>
   api.post(`/api/parent/email-digest/integrations/${integrationId}/verify-forwarding`);
 
+export interface SendDigestChannelStatus {
+  in_app: boolean | null;
+  email: boolean | null;
+  whatsapp: boolean | null;
+}
+
+export interface SendDigestResponse {
+  status: string; // "delivered" | "partial" | "failed" | "skipped"
+  email_count: number;
+  message: string;
+  // #3880: per-channel outcomes. `null` = channel not requested, `true` = sent, `false` = failed.
+  channel_status?: SendDigestChannelStatus | null;
+}
+
 export const sendDigestNow = (integrationId: number) =>
-  api.post<{ status: string; email_count: number; message: string }>(
+  api.post<SendDigestResponse>(
     `/api/parent/email-digest/integrations/${integrationId}/send-digest`
   );
 

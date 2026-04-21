@@ -8,6 +8,7 @@ Sends notifications via up to 3 channels:
 Respects user preferences and suppression rules.
 """
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_
@@ -21,6 +22,13 @@ from app.models.message import Conversation, Message
 from app.services.email_service import send_email_sync
 
 logger = logging.getLogger(__name__)
+
+
+# #3884: Detect whether notification email content already starts with a
+# block-level HTML tag. If so, the caller has supplied pre-formatted HTML and
+# wrapping it in <p>...</p> would produce invalid nested-block markup (e.g.
+# <p><h3>...</h3></p>). We instead wrap in a <div> with matching styles.
+_BLOCK_TAG_RE = re.compile(r"^\s*<(h[1-6]|p|ul|ol|div|section|article|hr)\b", re.IGNORECASE)
 
 
 # Role-based deep link mappings: generic link → role-specific link
@@ -73,7 +81,7 @@ def send_multi_channel_notification(
     source_type: str | None = None,
     source_id: int | None = None,
     student_id: int | None = None,
-) -> Notification | None:
+) -> dict | None:
     """Send notification via multiple channels.
 
     Args:
@@ -91,7 +99,15 @@ def send_multi_channel_notification(
         student_id: Student context for ClassBridge messages
 
     Returns:
-        The created Notification record, or None if suppressed.
+        None if suppressed. Otherwise a dict with:
+          - "notification": Notification | None — the in-app row, if any
+          - "in_app": bool | None — True on create, False if preference-suppressed, None if not requested
+          - "email": bool | None — True on send success, False on failure/exception, None if not requested
+          - "classbridge_message": bool | None — per-channel outcome for the CB-message channel
+
+        Truthiness of the dict remains stable because a non-empty dict is always
+        truthy, but legacy callers that check ``if notif:`` should migrate to
+        ``if notif and notif.get("notification"):`` — see #3880.
     """
     if channels is None:
         channels = ["app_notification", "email", "classbridge_message"]
@@ -110,44 +126,73 @@ def send_multi_channel_notification(
             )
             return None
 
-    notification = None
+    notification: Notification | None = None
+    in_app_status: bool | None = None
+    email_status: bool | None = None
+    cb_message_status: bool | None = None
 
     # Resolve notification type value for preference checks
     notif_type_value = notification_type.value if hasattr(notification_type, 'value') else str(notification_type)
 
     # Channel 1: In-app notification bell
-    if "app_notification" in channels and recipient.should_notify(notif_type_value, "in_app"):
-        notification = Notification(
-            user_id=recipient.id,
-            type=notification_type,
-            title=title,
-            content=content[:500] if content else None,
-            link=link,
-            requires_ack=requires_ack,
-            source_type=source_type,
-            source_id=source_id,
-            reminder_count=0,
-        )
-        if requires_ack:
-            notification.next_reminder_at = datetime.now(timezone.utc) + timedelta(hours=24)
-        db.add(notification)
+    if "app_notification" in channels:
+        if recipient.should_notify(notif_type_value, "in_app"):
+            notification = Notification(
+                user_id=recipient.id,
+                type=notification_type,
+                title=title,
+                content=content[:500] if content else None,
+                link=link,
+                requires_ack=requires_ack,
+                source_type=source_type,
+                source_id=source_id,
+                reminder_count=0,
+            )
+            if requires_ack:
+                notification.next_reminder_at = datetime.now(timezone.utc) + timedelta(hours=24)
+            db.add(notification)
+            in_app_status = True
+        else:
+            in_app_status = False
 
     # Channel 2: Email
-    if "email" in channels and recipient.email and recipient.email_notifications and recipient.should_notify(notif_type_value, "email"):
-        try:
-            email_html = _build_notification_email(title, content, link, recipient.role)
-            send_email_sync(recipient.email, title, email_html)
-        except Exception as e:
-            logger.warning(f"Failed to send notification email to {recipient.email}: {e}")
+    if "email" in channels:
+        if recipient.email and recipient.email_notifications and recipient.should_notify(notif_type_value, "email"):
+            try:
+                email_html = _build_notification_email(title, content, link, recipient.role)
+                sent = send_email_sync(recipient.email, title, email_html)
+                if sent:
+                    email_status = True
+                else:
+                    logger.warning(
+                        f"send_email_sync returned False for notification email to {recipient.email} (#3880)"
+                    )
+                    email_status = False
+            except Exception as e:
+                logger.warning(f"Failed to send notification email to {recipient.email}: {e}")
+                email_status = False
+        else:
+            # Channel requested but recipient has no email / email disabled / preference off
+            email_status = False
 
     # Channel 3: ClassBridge message
-    if "classbridge_message" in channels and sender and sender.id != recipient.id:
-        try:
-            _send_as_classbridge_message(db, sender, recipient, content, student_id)
-        except Exception as e:
-            logger.warning(f"Failed to send ClassBridge message notification: {e}")
+    if "classbridge_message" in channels:
+        if sender and sender.id != recipient.id:
+            try:
+                _send_as_classbridge_message(db, sender, recipient, content, student_id)
+                cb_message_status = True
+            except Exception as e:
+                logger.warning(f"Failed to send ClassBridge message notification: {e}")
+                cb_message_status = False
+        else:
+            cb_message_status = False
 
-    return notification
+    return {
+        "notification": notification,
+        "in_app": in_app_status,
+        "email": email_status,
+        "classbridge_message": cb_message_status,
+    }
 
 
 def notify_parents_of_student(
@@ -192,7 +237,7 @@ def notify_parents_of_student(
 
     notifications = []
     for parent in parent_rows:
-        notif = send_multi_channel_notification(
+        result = send_multi_channel_notification(
             db=db,
             recipient=parent,
             sender=student_user,
@@ -205,6 +250,8 @@ def notify_parents_of_student(
             source_id=source_id,
             student_id=student.id,
         )
+        # #3880: return is now dict | None. Only append if an in-app Notification row was created.
+        notif = result.get("notification") if result else None
         if notif:
             notifications.append(notif)
 
@@ -232,9 +279,17 @@ def _build_notification_email(title: str, content: str, link: str | None, recipi
             f'padding:12px 24px;border-radius:8px;font-weight:600;">View in ClassBridge</a></p>'
         )
 
+    # #3884: If content is already HTML (starts with a block-level tag), wrap in
+    # <div> to avoid invalid nested-block markup like <p><h3>...</h3></p>.
+    # Otherwise keep the <p> wrap so plain-text content renders identically.
+    if _BLOCK_TAG_RE.match(content or ""):
+        content_html = f'<div style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</div>'
+    else:
+        content_html = f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</p>'
+
     body = (
         f'<h2 style="color:#1a1a2e;margin:0 0 16px 0;">{title}</h2>'
-        f'<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">{content}</p>'
+        f'{content_html}'
         f'{link_html}'
     )
     return wrap_branded_email(body)

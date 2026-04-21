@@ -125,12 +125,17 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
     if "email" in channels:
         notification_channels.append("email")
 
+    # Per-channel outcomes (#3880): True=sent, False=failed, None=not requested.
+    in_app_ok: bool | None = None if "in_app" not in channels else False
+    email_ok: bool | None = None if "email" not in channels else False
+    delivery_result: dict | None = None
+
     if parent:
         from app.services.notification_service import (
             send_multi_channel_notification,
         )
 
-        send_multi_channel_notification(
+        delivery_result = send_multi_channel_notification(
             db=db,
             recipient=parent,
             sender=None,
@@ -141,8 +146,17 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
             channels=notification_channels,
         )
 
+    if delivery_result:
+        # send_multi_channel_notification returns per-channel bools keyed by channel id
+        # ("in_app" corresponds to the "app_notification" channel passed above).
+        if "in_app" in channels:
+            in_app_ok = bool(delivery_result.get("in_app"))
+        if "email" in channels:
+            email_ok = bool(delivery_result.get("email"))
+
     # WhatsApp delivery (#2987, #3585, #3586, #3620)
     whatsapp_status: str | None = None
+    whatsapp_ok: bool | None = None
     if "whatsapp" in channels:
         if integration.whatsapp_verified and integration.whatsapp_phone:
             try:
@@ -185,11 +199,40 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     template_msg = f"{header}{plain_text}{footer}"
                     wa_success = send_whatsapp_message(integration.whatsapp_phone, template_msg)
                 whatsapp_status = "sent" if wa_success else "failed"
+                whatsapp_ok = bool(wa_success)
             except Exception as e:
                 whatsapp_status = "failed"
+                whatsapp_ok = False
                 logger.warning("WhatsApp delivery failed for integration %d: %s", integration.id, e)
         else:
             whatsapp_status = "skipped"
+            # WhatsApp selected but not verified -> treated as a failure for overall status.
+            whatsapp_ok = False
+
+    # Compute overall status from selected channels (#3880).
+    selected_results: list[bool] = []
+    if "in_app" in channels:
+        selected_results.append(bool(in_app_ok))
+    if "email" in channels:
+        selected_results.append(bool(email_ok))
+    if "whatsapp" in channels:
+        selected_results.append(bool(whatsapp_ok))
+
+    if not selected_results:
+        # No channels selected at all — treat as skipped rather than delivered.
+        overall_status = "skipped"
+    elif all(selected_results):
+        overall_status = "delivered"
+    elif not any(selected_results):
+        overall_status = "failed"
+    else:
+        overall_status = "partial"
+
+    # Persisted per-channel email status (#3880) — mirrors whatsapp_delivery_status.
+    if "email" in channels:
+        email_delivery_status = "sent" if email_ok else "failed"
+    else:
+        email_delivery_status = None
 
     email_count = len(emails) if emails else 0
     log_entry = DigestDeliveryLog(
@@ -199,15 +242,50 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         digest_content=digest_content,
         digest_length_chars=len(digest_content) if digest_content else 0,
         channels_used=settings.delivery_channels,
-        status="delivered",
+        status=overall_status,
         whatsapp_delivery_status=whatsapp_status,
+        email_delivery_status=email_delivery_status,
     )
     db.add(log_entry)
 
     integration.last_synced_at = now
     db.commit()
 
-    return {"status": "delivered", "email_count": email_count, "message": f"Digest delivered with {email_count} emails"}
+    failed_labels: list[str] = []
+    if "in_app" in channels and not in_app_ok:
+        failed_labels.append("in-app")
+    if "email" in channels and not email_ok:
+        failed_labels.append("email")
+    if "whatsapp" in channels and not whatsapp_ok:
+        failed_labels.append("WhatsApp")
+
+    if overall_status == "delivered":
+        message = f"Digest delivered with {email_count} emails"
+    elif overall_status == "partial":
+        message = (
+            f"Digest partially delivered ({email_count} emails). "
+            f"Failed channels: {', '.join(failed_labels)}. Check your setup."
+        )
+    elif overall_status == "failed":
+        message = (
+            f"Digest delivery failed on all channels ({email_count} emails). "
+            f"Please try again or check your setup."
+        )
+    else:
+        message = f"Digest skipped ({email_count} emails)."
+
+    channel_status = {
+        "in_app": in_app_ok,
+        "email": email_ok,
+        "whatsapp": whatsapp_ok,
+    }
+
+    return {
+        "status": overall_status,
+        "email_count": email_count,
+        "message": message,
+        "channel_status": channel_status,
+    }
 
 
 async def process_parent_email_digests():

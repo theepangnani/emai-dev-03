@@ -160,6 +160,7 @@ async def test_send_digest_for_integration_whitespace_only_full_name(db_session)
     assert result["status"] == "delivered"
 
 
+
 @pytest.mark.asyncio
 async def test_whatsapp_template_variables_sanitised(db_session):
     """#3879 — Twilio Content Variables reject newlines / >1024 char values.
@@ -283,3 +284,228 @@ async def test_whatsapp_template_variables_sanitised(db_session):
     # Variable "1" — parent_name: no newlines
     assert "\n" not in var1
     assert "\r" not in var1
+
+
+# ---------------------------------------------------------------------------
+# Per-channel delivery status (#3880)
+# ---------------------------------------------------------------------------
+
+def _seed_integration(db_session, email_suffix: str, delivery_channels: str = "in_app,email"):
+    """Create a parent + integration + digest settings fixture for #3880 tests."""
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email=f"digest_3880_{email_suffix}@test.com",
+        full_name="Priya Ramanathan",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.flush()
+
+    integration = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address=f"p_{email_suffix}@gmail.com",
+        google_id=f"g_3880_{email_suffix}",
+        access_token="enc_access",
+        refresh_token="enc_refresh",
+        child_school_email="child@school.ca",
+        child_first_name="Alex",
+    )
+    db_session.add(integration)
+    db_session.flush()
+
+    settings = ParentDigestSettings(
+        integration_id=integration.id,
+        delivery_channels=delivery_channels,
+    )
+    db_session.add(settings)
+    db_session.commit()
+    db_session.refresh(integration)
+    return parent, integration
+
+
+def _fetched_emails():
+    received_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    return [
+        {
+            "source_id": "x",
+            "sender_name": "School",
+            "sender_email": "s@s.ca",
+            "subject": "Hi",
+            "body": "Body",
+            "snippet": "Body",
+            "received_at": received_at,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_digest_delivered_when_email_succeeds_no_whatsapp(db_session):
+    """#3880 — email succeeds, WhatsApp not selected → status=delivered."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "delivered", "in_app,email")
+
+    # Return per-channel dict indicating both channels succeeded.
+    notify_success = MagicMock(
+        return_value={"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_success,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    assert result["channel_status"]["in_app"] is True
+    assert result["channel_status"]["email"] is True
+    assert result["channel_status"]["whatsapp"] is None
+    assert "Digest delivered" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_digest_partial_when_whatsapp_fails_but_email_succeeds(db_session):
+    """#3880 — email succeeds, WhatsApp fails → status=partial."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "partial", "in_app,email,whatsapp")
+    integration.whatsapp_verified = True
+    integration.whatsapp_phone = "+14165551234"
+    db_session.commit()
+
+    notify_success = MagicMock(
+        return_value={"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_success,
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message",
+        return_value=False,
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        return_value=False,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "partial"
+    assert result["channel_status"]["in_app"] is True
+    assert result["channel_status"]["email"] is True
+    assert result["channel_status"]["whatsapp"] is False
+    assert "partially delivered" in result["message"]
+    assert "WhatsApp" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_digest_failed_when_email_returns_false_and_whatsapp_fails(db_session):
+    """#3880 — every selected channel fails → status=failed."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "failed", "email,whatsapp")
+    integration.whatsapp_verified = True
+    integration.whatsapp_phone = "+14165551234"
+    db_session.commit()
+
+    # Notification service reports email=False (send_email_sync returned False).
+    notify_failure = MagicMock(
+        return_value={"notification": None, "in_app": None, "email": False, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_failure,
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message",
+        return_value=False,
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        return_value=False,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "failed"
+    assert result["channel_status"]["in_app"] is None
+    assert result["channel_status"]["email"] is False
+    assert result["channel_status"]["whatsapp"] is False
+    assert "failed on all channels" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_digest_persists_email_delivery_status_in_log(db_session):
+    """#3880 — DigestDeliveryLog.email_delivery_status is populated with sent/failed."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    _, integration = _seed_integration(db_session, "emailstatus", "in_app,email")
+
+    notify_failure = MagicMock(
+        return_value={"notification": None, "in_app": True, "email": False, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_failure,
+    ):
+        await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    log_entry = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.integration_id == integration.id)
+        .order_by(DigestDeliveryLog.id.desc())
+        .first()
+    )
+    assert log_entry is not None
+    assert log_entry.email_delivery_status == "failed"
+    assert log_entry.status == "partial"

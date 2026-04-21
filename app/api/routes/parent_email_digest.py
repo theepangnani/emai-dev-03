@@ -118,6 +118,8 @@ class SendDigestResponse(BaseModel):
     status: str
     email_count: int
     message: str
+    # #3880: per-channel outcomes; None = channel not requested, True = sent, False = failed.
+    channel_status: dict[str, bool | None] | None = None
 
 
 # ---------------------------------------------------------------------------

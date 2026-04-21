@@ -237,6 +237,60 @@
   color: var(--color-success, #10b981);
 }
 
+/* Per-channel digest status banner (#3880) */
+.ed-digest-status {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8125rem;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  max-width: 520px;
+}
+.ed-digest-status--delivered {
+  color: #065f46;
+  background: #d1fae5;
+  border-color: #a7f3d0;
+}
+.ed-digest-status--partial {
+  color: #92400e;
+  background: #fef3c7;
+  border-color: #fde68a;
+}
+.ed-digest-status--failed {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+.ed-digest-status__icon {
+  margin-right: 4px;
+  font-weight: 700;
+}
+.ed-digest-status__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ed-digest-status__retry {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: inherit;
+}
+.ed-digest-status__retry:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.ed-digest-status__retry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* History */
 .ed-history-section {
   margin-top: 8px;
