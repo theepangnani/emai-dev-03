@@ -552,6 +552,9 @@ async def test_digest_skipped_when_whatsapp_unverified_is_only_selected_channel(
     assert "No eligible channels" in result["message"]
     # Must NOT imply a delivery failure — no "Failed channels" text, no "check your setup".
     assert "Failed channels" not in result["message"]
+    # #3894 — machine-readable reason for skipped state. Frontends use this
+    # to gate the "Open preferences" link (only actionable for this reason).
+    assert result["reason"] == "no_eligible_channels"
 
 
 @pytest.mark.asyncio
@@ -634,3 +637,131 @@ async def test_digest_failed_labels_exclude_none_channels(db_session):
     # re-inspecting the per-channel record: only email is False.
     assert result["channel_status"]["email"] is False
     assert result["channel_status"]["whatsapp"] is not False, "WhatsApp (skipped) must not be counted as a failure"
+
+
+# ---------------------------------------------------------------------------
+# Machine-readable skip reason (#3894)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_digest_reason_no_new_emails(db_session):
+    """#3894 — no emails + notify_on_empty=False → status=skipped, reason=no_new_emails."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "reason_empty", "in_app,email")
+    # notify_on_empty defaults to False.
+    assert integration.digest_settings.notify_on_empty is False
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=[]),
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "skipped", result
+    assert result["reason"] == "no_new_emails"
+    assert result["email_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_digest_reason_already_delivered(db_session):
+    """#3894 — delivery log from earlier today + no skip_dedup → reason=already_delivered."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    _, integration = _seed_integration(db_session, "reason_dedup", "in_app,email")
+
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    earlier_log = DigestDeliveryLog(
+        parent_id=integration.parent_id,
+        integration_id=integration.id,
+        email_count=3,
+        digest_content="earlier digest",
+        status="delivered",
+        channels_used="in_app,email",
+        delivered_at=today_start + timedelta(hours=1),
+    )
+    db_session.add(earlier_log)
+    db_session.commit()
+
+    # skip_dedup=False (default) — dedup check must trigger.
+    result = await send_digest_for_integration(
+        db_session,
+        integration,
+        since=datetime.now(timezone.utc) - timedelta(hours=24),
+    )
+
+    assert result["status"] == "skipped", result
+    assert result["reason"] == "already_delivered"
+
+
+@pytest.mark.asyncio
+async def test_digest_reason_no_eligible_channels(db_session):
+    """#3894 — whatsapp-only-unverified → status=skipped, reason=no_eligible_channels.
+
+    Parallel coverage to test_digest_skipped_when_whatsapp_unverified_is_only_selected_channel,
+    kept as a dedicated test so the reason-field contract is visible at a glance.
+    """
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "reason_no_eligible", "whatsapp")
+    assert not integration.whatsapp_verified
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"notification": None, "in_app": None, "email": None, "classbridge_message": None}),
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "skipped"
+    assert result["reason"] == "no_eligible_channels"
+
+
+@pytest.mark.asyncio
+async def test_digest_no_reason_when_delivered(db_session):
+    """#3894 — delivered status has reason=None (None/absent, never a string)."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "reason_none_delivered", "in_app,email")
+
+    notify_success = MagicMock(
+        return_value={"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_success,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    assert result.get("reason") is None

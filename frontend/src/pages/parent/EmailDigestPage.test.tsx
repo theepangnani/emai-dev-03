@@ -384,9 +384,9 @@ describe('EmailDigestPage — per-channel digest status (#3880)', () => {
 
 // #3887: skipped status — every selected channel intentionally skipped
 // (preference off / WhatsApp unverified). No retry CTA, info-style banner,
-// link to preferences.
-describe('EmailDigestPage — skipped digest status (#3887)', () => {
-  it('renders info-style skipped status with preferences link and NO retry button', async () => {
+// link to preferences (#3894: only when reason="no_eligible_channels").
+describe('EmailDigestPage — skipped digest status (#3887, #3894)', () => {
+  it('renders info-style skipped status with preferences link for reason=no_eligible_channels', async () => {
     mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
     mockSendDigestNow.mockResolvedValue({
       data: {
@@ -395,6 +395,7 @@ describe('EmailDigestPage — skipped digest status (#3887)', () => {
         message:
           'No eligible channels (2 emails). Please verify WhatsApp or enable notifications in your preferences.',
         channel_status: { in_app: null, email: null, whatsapp: null },
+        reason: 'no_eligible_channels',
       },
     });
 
@@ -422,5 +423,34 @@ describe('EmailDigestPage — skipped digest status (#3887)', () => {
     const prefsLink = screen.getByRole('link', { name: 'Open preferences' });
     expect(prefsLink).toBeInTheDocument();
     expect(prefsLink.getAttribute('href')).toBe('/settings/notifications');
+  });
+
+  it('does NOT render preferences link for skipped with reason=no_new_emails (#3894)', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 0,
+        message: 'No new emails',
+        channel_status: { in_app: null, email: null, whatsapp: null },
+        reason: 'no_new_emails',
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('No new emails')).toBeInTheDocument();
+    });
+
+    // "Open preferences" is meaningful only when the channels themselves
+    // were ineligible — not when there was nothing to deliver.
+    expect(screen.queryByRole('link', { name: 'Open preferences' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 });

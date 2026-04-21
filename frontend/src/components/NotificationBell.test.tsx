@@ -407,6 +407,71 @@ describe('NotificationBell', () => {
     })
   })
 
+  // #3896: The dropdown list preview renders notification content as PLAIN
+  // TEXT (not HTML). Literal tag markup must never appear.
+  describe('Dropdown list preview sanitisation (#3896)', () => {
+    it('strips HTML tags to plain text in the list preview', async () => {
+      const notification = createMockNotification({
+        id: 200,
+        title: 'Email Digest for Alex',
+        content: '<h3>Hello</h3><p>Body</p>',
+      })
+      mockList.mockResolvedValue([notification])
+      const user = userEvent.setup()
+
+      renderWithProviders(<NotificationBell />)
+
+      // Open dropdown (do NOT click the notification — that would open the modal).
+      await user.click(screen.getByRole('button', { name: /notifications/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Email Digest for Alex')).toBeInTheDocument()
+      })
+
+      // The list preview paragraph should contain only "HelloBody"
+      // (DOMPurify with ALLOWED_TAGS:[] + KEEP_CONTENT:true concatenates
+      // inner text of stripped tags).
+      const preview = document.querySelector('.notification-text')
+      expect(preview).not.toBeNull()
+      expect(preview!.textContent).toBe('HelloBody')
+
+      // Literal tag markup must NOT appear anywhere in the dropdown.
+      expect(screen.queryByText(/<h3>Hello<\/h3>/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/<p>Body<\/p>/)).not.toBeInTheDocument()
+
+      // And the preview element itself must be a <p> with plain text children
+      // (no nested <h3> / <p> rendered via dangerouslySetInnerHTML).
+      expect(preview!.querySelector('h3')).toBeNull()
+      expect(preview!.querySelector('p')).toBeNull()
+    })
+
+    it('drops <script> payloads from the list preview', async () => {
+      const notification = createMockNotification({
+        id: 201,
+        title: 'Malicious List Item',
+        content: '<script>alert(1)</script>Clean text',
+      })
+      mockList.mockResolvedValue([notification])
+      const user = userEvent.setup()
+
+      renderWithProviders(<NotificationBell />)
+
+      await user.click(screen.getByRole('button', { name: /notifications/i }))
+      await waitFor(() => {
+        expect(screen.getByText('Malicious List Item')).toBeInTheDocument()
+      })
+
+      // The preview must show only "Clean text" — the script tag and its
+      // contents are dropped by DOMPurify (script is a forbidden tag,
+      // KEEP_CONTENT doesn't resurrect its body).
+      const preview = document.querySelector('.notification-text')
+      expect(preview).not.toBeNull()
+      expect(preview!.textContent).toBe('Clean text')
+
+      // "alert(1)" must not appear as visible text anywhere in the dropdown.
+      expect(screen.queryByText(/alert\(1\)/)).not.toBeInTheDocument()
+    })
+  })
+
   it('polls unread count every 60 seconds', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockGetUnreadCount.mockResolvedValue({ count: 0 })
