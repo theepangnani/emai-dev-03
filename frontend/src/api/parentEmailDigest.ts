@@ -106,8 +106,27 @@ export const triggerSync = (integrationId: number) =>
 export const verifyForwarding = (integrationId: number) =>
   api.post(`/api/parent/email-digest/integrations/${integrationId}/verify-forwarding`);
 
+export interface SendDigestChannelStatus {
+  in_app: boolean | null;
+  email: boolean | null;
+  whatsapp: boolean | null;
+}
+
+export interface SendDigestResponse {
+  status: string; // "delivered" | "partial" | "failed" | "skipped"
+  email_count: number;
+  message: string;
+  // #3880: per-channel outcomes. `null` = channel not requested, `true` = sent, `false` = failed.
+  channel_status?: SendDigestChannelStatus | null;
+  // #3894: machine-readable reason for skipped status. One of
+  // "already_delivered", "no_settings", "no_new_emails", "no_eligible_channels",
+  // or null/undefined when status != "skipped". Frontends use this to gate UI —
+  // e.g., the "Open preferences" link only makes sense for "no_eligible_channels".
+  reason?: string | null;
+}
+
 export const sendDigestNow = (integrationId: number) =>
-  api.post<{ status: string; email_count: number; message: string }>(
+  api.post<SendDigestResponse>(
     `/api/parent/email-digest/integrations/${integrationId}/send-digest`
   );
 

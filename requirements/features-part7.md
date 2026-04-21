@@ -590,6 +590,57 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
   - Bypasses the "already delivered today" deduplication check (parent may want a fresh digest after new emails arrive)
   - Rate-limited to 10 requests per minute per parent to prevent abuse
 
+#### §6.127.1 Per-Channel Delivery Status Contract (#3880, refined #3887)
+
+**Added:** 2026-04-21 | **GitHub Issues:** #3880 (initial), #3887 (skip-vs-failure refinement)
+
+Prior to #3880, the `POST /api/parent/email-digest/integrations/{id}/send-digest` endpoint always returned `status="delivered"` with the message `"Digest delivered with N emails"` — regardless of whether the email send actually succeeded or the WhatsApp delivery failed. Parents saw a green success toast even when they received nothing. #3880 fixed this with three states (delivered / partial / failed) but still conflated intentional skips (preference off, WhatsApp not verified) with actual delivery failures — parents saw "Failed channels: WhatsApp — check your setup" when they had simply not yet verified the channel. #3887 introduces a fourth state (`skipped`) and a three-valued per-channel convention so that intentional skips never masquerade as failures.
+
+**Four delivery states (top-level `status`):**
+- `delivered` — every selected channel with an actual outcome succeeded
+- `partial` — at least one channel succeeded and at least one actually failed
+- `failed` — every selected channel with an actual outcome failed
+- `skipped` — every selected channel was intentionally skipped (preference off, WhatsApp not verified, no email on file) OR no channels were selected at all. Nothing was delivered, but nothing actually failed either.
+
+"Selected channels" are parsed from `ParentDigestSettings.delivery_channels` (comma-separated subset of `in_app`, `email`, `whatsapp`). "Actual outcome" means `true` or `false` — channels with a `null` per-channel status are excluded from the overall-state computation entirely.
+
+**Parent-facing copy (rendered on the Email Digest page):**
+- `delivered` → green toast: `"Digest delivered with {N} emails"`
+- `partial` → amber toast: `"Digest partially delivered ({N} emails). Failed channels: {list}. Check your setup."` — `{list}` contains only channels where the per-channel status was `false`, never channels that were skipped.
+- `failed` → red toast with retry CTA: `"Digest delivery failed on all channels ({N} emails). Please try again or check your setup."`
+- `skipped` → info toast (neutral blue) with a link to preferences, no retry CTA: `"No eligible channels ({N} emails). Please verify WhatsApp or enable notifications in your preferences."`
+
+**Three-valued per-channel convention (`channel_status` dict on the response):**
+
+Every per-channel field uses the same `true` / `false` / `null` semantics:
+
+- `true` — channel was requested and delivery succeeded
+- `false` — channel was requested and delivery actually failed (exception raised, or underlying send helper returned False)
+- `null` — not applicable: channel was not requested, OR was requested but intentionally skipped (recipient preference off, no email on file, WhatsApp not verified / phone missing, no valid sender for the classbridge_message channel, etc.). `null` is explicitly NOT a failure. Frontends and analytics MUST NOT count `null` as a delivery failure.
+
+Per-field specifics:
+- `channel_status.in_app` — `true` if the in-app Notification row was created, `null` if `in_app` was not selected OR was selected but the recipient's notification preferences suppressed in-app delivery, `false` only on actual create-side exceptions.
+- `channel_status.email` — `true` if `send_email_sync` returned True without raising, `false` if it returned False or raised (SendGrid error, SMTP failure, etc.), `null` if `email` was not selected OR the recipient has no email on file / has `email_notifications=False` / preference-suppressed email for this notification type.
+- `channel_status.whatsapp` — `true` if the Twilio WhatsApp template/message send returned success, `false` if Twilio returned failure or the send raised, `null` if `whatsapp` was not selected OR WhatsApp is not verified / phone missing (parent hasn't completed setup — we cannot score this channel).
+
+**Machine-readable skip reason (`reason` on the response, #3894):**
+
+When `status="skipped"`, the response includes a `reason` field so that frontends can gate UI actions on the specific cause of the skip. When `status != "skipped"`, `reason` is `null` (or absent). Valid values:
+
+- `"already_delivered"` — a digest was already delivered earlier today for this integration (deduplication skip on the scheduled run)
+- `"no_settings"` — the integration has no `ParentDigestSettings` row configured
+- `"no_new_emails"` — Gmail returned zero messages and `notify_on_empty=False`
+- `"no_eligible_channels"` — the digest was generated but every selected channel was intentionally skipped (preference off, WhatsApp not verified, etc.). This is the only skip reason for which an "Open preferences" action is meaningful — the other three skips cannot be resolved by editing notification preferences.
+
+Frontends MUST gate "Open preferences" / "Change settings" style CTAs on `reason === "no_eligible_channels"` rather than `status === "skipped"` alone.
+
+**Persistence — `digest_delivery_log` table:**
+- `status` — top-level state (`delivered` / `partial` / `failed` / `skipped`)
+- `email_delivery_status` — `"sent"` / `"failed"` / `"skipped"` / `null` (`"skipped"` when email was selected but recipient has no email on file / preference off; `null` when email was not selected)
+- `whatsapp_delivery_status` — unchanged (`"sent"` / `"failed"` / `"skipped"` / `null`)
+
+Both per-channel columns enable analytics on channel reliability independent of the top-level summary status. Analytics queries distinguishing "delivery reliability" from "parent setup completeness" should filter on the column values: `"failed"` for reliability, `"skipped"` for setup completeness.
+
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)

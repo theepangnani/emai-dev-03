@@ -1,11 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, Link } from 'react-router-dom';
+import DOMPurify from 'dompurify';
 import { notificationsApi } from '../api/client';
 import type { NotificationResponse } from '../api/client';
 import { usePageVisible } from '../hooks/usePageVisible';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import './NotificationBell.css';
+
+// #3884: Allowlist for sanitising HTML in the notification modal body.
+const NOTIF_MODAL_ALLOWED_TAGS = ['h1', 'h2', 'h3', 'h4', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'a', 'hr'];
+const NOTIF_MODAL_ALLOWED_ATTR = ['href', 'target', 'rel'];
+
+// #3896: Strip ALL tags to plain text for the dropdown list preview. Rendering
+// HTML in the tight list layout would break alignment and truncation, and
+// rendering it as text leaks literal `<h3>...</h3>` markup to users.
+const stripToPlainText = (html: string) =>
+  DOMPurify.sanitize(html, { ALLOWED_TAGS: [], KEEP_CONTENT: true });
 
 export function NotificationBell() {
   const navigate = useNavigate();
@@ -218,9 +229,10 @@ export function NotificationBell() {
                         <span className="ack-badge">ACK</span>
                       )}
                     </div>
-                    {n.content && (
-                      <p className="notification-text">{n.content}</p>
-                    )}
+                    {n.content && (() => {
+                      const plainPreview = stripToPlainText(n.content);
+                      return plainPreview ? <p className="notification-text">{plainPreview}</p> : null;
+                    })()}
                     <div className="notification-meta-row">
                       <span className="notification-time">{formatTime(n.created_at)}</span>
                       <div className="notification-inline-actions" onClick={(e) => e.stopPropagation()}>
@@ -284,7 +296,15 @@ export function NotificationBell() {
           </div>
           <div className="notif-modal-body">
             {modalNotification.content && (
-              <p className="notif-modal-content">{modalNotification.content}</p>
+              <div
+                className="notif-modal-content"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(modalNotification.content, {
+                    ALLOWED_TAGS: NOTIF_MODAL_ALLOWED_TAGS,
+                    ALLOWED_ATTR: NOTIF_MODAL_ALLOWED_ATTR,
+                  }),
+                }}
+              />
             )}
             <span className="notif-modal-time">{formatTime(modalNotification.created_at)}</span>
           </div>

@@ -11,6 +11,7 @@ const mockListMonitoredEmails = vi.fn();
 const mockSendWhatsAppOTP = vi.fn();
 const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
+const mockSendDigestNow = vi.fn();
 
 vi.mock('../../api/parentEmailDigest', async () => {
   const actual = await vi.importActual<typeof import('../../api/parentEmailDigest')>(
@@ -25,6 +26,7 @@ vi.mock('../../api/parentEmailDigest', async () => {
     sendWhatsAppOTP: (...args: unknown[]) => mockSendWhatsAppOTP(...args),
     verifyWhatsAppOTP: (...args: unknown[]) => mockVerifyWhatsAppOTP(...args),
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
+    sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
   };
 });
 
@@ -272,5 +274,183 @@ describe('EmailDigestPage — WhatsApp section', () => {
     await waitFor(() => {
       expect(screen.getByText('Rate limit exceeded')).toBeInTheDocument();
     });
+  });
+});
+
+// #3880: Per-channel delivery status — three variants of the Send Digest Now toast.
+describe('EmailDigestPage — per-channel digest status (#3880)', () => {
+  it('renders green delivered status on success', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'delivered',
+        email_count: 3,
+        message: 'Digest delivered with 3 emails',
+        channel_status: { in_app: true, email: true, whatsapp: null },
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Digest delivered with 3 emails')).toBeInTheDocument();
+    });
+    const banner = screen.getByText('Digest delivered with 3 emails').closest(
+      '.ed-digest-status',
+    ) as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.className).toContain('ed-digest-status--delivered');
+    expect(banner.getAttribute('data-status')).toBe('delivered');
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('renders amber partial status with failed-channel list', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'partial',
+        email_count: 2,
+        message:
+          'Digest partially delivered (2 emails). Failed channels: WhatsApp. Check your setup.',
+        channel_status: { in_app: true, email: true, whatsapp: false },
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Digest partially delivered/)).toBeInTheDocument();
+    });
+    const banner = screen.getByText(/Digest partially delivered/).closest(
+      '.ed-digest-status',
+    ) as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.className).toContain('ed-digest-status--partial');
+    expect(banner.getAttribute('data-status')).toBe('partial');
+    expect(banner.textContent).toContain('WhatsApp');
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('renders red failed status with a Try again retry button', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'failed',
+        email_count: 2,
+        message:
+          'Digest delivery failed on all channels (2 emails). Please try again or check your setup.',
+        channel_status: { in_app: false, email: false, whatsapp: null },
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed on all channels/)).toBeInTheDocument();
+    });
+    const banner = screen.getByText(/failed on all channels/).closest(
+      '.ed-digest-status',
+    ) as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.className).toContain('ed-digest-status--failed');
+    expect(banner.getAttribute('data-status')).toBe('failed');
+
+    const retryBtn = screen.getByRole('button', { name: 'Try again' });
+    expect(retryBtn).toBeInTheDocument();
+
+    mockSendDigestNow.mockClear();
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(mockSendDigestNow).toHaveBeenCalledWith(1);
+    });
+  });
+});
+
+// #3887: skipped status — every selected channel intentionally skipped
+// (preference off / WhatsApp unverified). No retry CTA, info-style banner,
+// link to preferences (#3894: only when reason="no_eligible_channels").
+describe('EmailDigestPage — skipped digest status (#3887, #3894)', () => {
+  it('renders info-style skipped status with preferences link for reason=no_eligible_channels', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 2,
+        message:
+          'No eligible channels (2 emails). Please verify WhatsApp or enable notifications in your preferences.',
+        channel_status: { in_app: null, email: null, whatsapp: null },
+        reason: 'no_eligible_channels',
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/No eligible channels/)).toBeInTheDocument();
+    });
+    const banner = screen.getByText(/No eligible channels/).closest(
+      '.ed-digest-status',
+    ) as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.className).toContain('ed-digest-status--skipped');
+    expect(banner.getAttribute('data-status')).toBe('skipped');
+
+    // No retry CTA for skipped — retrying won't help; parent must fix prefs.
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+
+    // Preferences link points to /settings/notifications.
+    const prefsLink = screen.getByRole('link', { name: 'Open preferences' });
+    expect(prefsLink).toBeInTheDocument();
+    expect(prefsLink.getAttribute('href')).toBe('/settings/notifications');
+  });
+
+  it('does NOT render preferences link for skipped with reason=no_new_emails (#3894)', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 0,
+        message: 'No new emails',
+        channel_status: { in_app: null, email: null, whatsapp: null },
+        reason: 'no_new_emails',
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('No new emails')).toBeInTheDocument();
+    });
+
+    // "Open preferences" is meaningful only when the channels themselves
+    // were ineligible — not when there was nothing to deliver.
+    expect(screen.queryByRole('link', { name: 'Open preferences' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 });

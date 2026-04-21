@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
 import { DashboardLayout } from '../../components/DashboardLayout';
@@ -429,9 +429,68 @@ export function EmailDigestPage() {
                     {(sendDigestMutation.error as any)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
                   </span>
                 )}
-                {sendDigestMutation.isSuccess && (
-                  <span className="ed-success-text">{sendDigestMutation.data?.data?.message ?? 'Digest sent!'}</span>
-                )}
+                {sendDigestMutation.isSuccess && (() => {
+                  // #3880 + #3887: render per-channel digest status with four
+                  // variants: delivered / partial / failed / skipped.
+                  const payload = sendDigestMutation.data?.data;
+                  const status = payload?.status ?? 'delivered';
+                  const message = payload?.message ?? 'Digest sent!';
+                  const variant =
+                    status === 'delivered'
+                      ? 'ed-digest-status--delivered'
+                      : status === 'partial'
+                      ? 'ed-digest-status--partial'
+                      : status === 'failed'
+                      ? 'ed-digest-status--failed'
+                      : status === 'skipped'
+                      ? 'ed-digest-status--skipped'
+                      : 'ed-digest-status--delivered';
+                  const icon =
+                    status === 'delivered'
+                      ? '\u2713'
+                      : status === 'partial'
+                      ? '\u26A0'
+                      : status === 'failed'
+                      ? '\u2715'
+                      : status === 'skipped'
+                      ? '\u2139'
+                      : '\u2713';
+                  return (
+                    <div
+                      className={`ed-digest-status ${variant}`}
+                      role={status === 'failed' ? 'alert' : 'status'}
+                      data-status={status}
+                    >
+                      <div className="ed-digest-status__row">
+                        <span className="ed-digest-status__icon" aria-hidden="true">
+                          {icon}
+                        </span>
+                        <span>{message}</span>
+                      </div>
+                      {status === 'failed' && (
+                        <button
+                          type="button"
+                          className="ed-digest-status__retry"
+                          onClick={() => {
+                            sendDigestMutation.reset();
+                            sendDigestMutation.mutate(activeIntegration.id);
+                          }}
+                          disabled={sendDigestMutation.isPending}
+                        >
+                          Try again
+                        </button>
+                      )}
+                      {status === 'skipped' && payload?.reason === 'no_eligible_channels' && (
+                        <Link
+                          to="/settings/notifications"
+                          className="ed-digest-status__prefs-link"
+                        >
+                          Open preferences
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
