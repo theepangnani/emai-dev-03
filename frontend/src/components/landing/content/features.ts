@@ -32,6 +32,13 @@ export interface FeatureRowContent {
   screenshotLabel: string;
   /** Pastel row variant — cycles peach / mint / pink / lavender / peach / mint. */
   variant: FeatureRowVariant;
+  /**
+   * CB-LAND-001 S13 — opt-in cyan scanline overlay on the product mockup.
+   * Flip on for rows that should feel "live" (e.g. real-time AI features).
+   * Scanline loop is fully disabled under `prefers-reduced-motion: reduce`
+   * per §6.136.5.
+   */
+  scanline?: boolean;
 }
 
 export const features: FeatureRowContent[] = [
@@ -58,6 +65,7 @@ export const features: FeatureRowContent[] = [
     learnMoreLabel: 'Learn more',
     screenshotLabel: 'Screenshot: Flash Tutor session',
     variant: 'mint',
+    scanline: true,
   },
   {
     id: 'adaptive-quizzes',

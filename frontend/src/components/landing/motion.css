@@ -22,13 +22,23 @@
   transition:
     opacity var(--motion-spring-slow),
     transform var(--motion-spring-slow);
-  will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   [data-landing='v2'] .landing-reveal--hidden {
     opacity: 0;
     transform: translate3d(0, 16px, 0);
+    /* Scope `will-change` to the hidden variant only. Keeping it on the rest
+       state promotes every section to its own compositor layer for the whole
+       page lifetime — wasted GPU memory since the reveal transition only
+       fires once. Browser drops the hint automatically once the class flips. */
+    will-change: opacity, transform;
+  }
+
+  /* I4: pause the hero bob while the reveal wrapper is hidden so the keyframed
+     transform doesn't race against / override the reveal transform transition. */
+  [data-landing='v2'] .landing-reveal--hidden .landing-hero__mockup {
+    animation-play-state: paused;
   }
 }
 

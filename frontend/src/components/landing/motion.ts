@@ -14,7 +14,7 @@
  * reduced motion). This keeps the motion contract single-sourced in CSS
  * per §6.136.5.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type RevealTarget = HTMLElement | null;
 
@@ -69,6 +69,13 @@ export interface UseScrollRevealOptions {
   rootMargin?: string;
   /** Only reveal once, then disconnect. Default `true`. */
   once?: boolean;
+  /**
+   * Start in the revealed state (skip the hidden → rest transition). Used when
+   * the target is a deep-link / hash anchor (e.g. `/#pricing`) so the browser's
+   * scroll-to-anchor doesn't land on a hidden element that never re-fires IO.
+   * Default `false`.
+   */
+  initiallyRevealed?: boolean;
 }
 
 export interface UseScrollRevealResult<T extends HTMLElement = HTMLElement> {
@@ -102,7 +109,12 @@ export interface UseScrollRevealResult<T extends HTMLElement = HTMLElement> {
 export function useScrollReveal<T extends HTMLElement = HTMLElement>(
   options: UseScrollRevealOptions = {},
 ): UseScrollRevealResult<T> {
-  const { threshold = 0.12, rootMargin = '0px 0px -8% 0px', once = true } = options;
+  const {
+    threshold = 0.12,
+    rootMargin = '0px 0px -8% 0px',
+    once = true,
+    initiallyRevealed = false,
+  } = options;
 
   const prefersReduced = usePrefersReducedMotion();
   const hasIO =
@@ -111,8 +123,9 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>(
   // enter the viewport?). The returned `revealed` value is derived below —
   // it's forced to `true` under reduced-motion or when IO is unavailable so
   // we never need to setState-in-effect to flip modes.
-  const [intersected, setIntersected] = useState<boolean>(false);
+  const [intersected, setIntersected] = useState<boolean>(initiallyRevealed);
   const nodeRef = useRef<RevealTarget>(null);
+  const observedRef = useRef<RevealTarget>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -132,6 +145,7 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>(
             if (once) {
               observer.disconnect();
               observerRef.current = null;
+              observedRef.current = null;
             }
           } else if (!once) {
             setIntersected(false);
@@ -142,21 +156,30 @@ export function useScrollReveal<T extends HTMLElement = HTMLElement>(
     );
     observer.observe(node);
     observerRef.current = observer;
+    observedRef.current = node;
 
     return () => {
       observer.disconnect();
       observerRef.current = null;
+      observedRef.current = null;
     };
     // Re-run if the reduced-motion preference changes or options mutate.
   }, [prefersReduced, hasIO, threshold, rootMargin, once]);
 
-  const ref = (node: T | null) => {
-    nodeRef.current = node;
-    // If the element mounts later, make sure the current observer picks it up.
-    if (node && observerRef.current) {
-      observerRef.current.observe(node);
+  // Stable ref callback: React invokes ref callbacks on every render when the
+  // callback identity changes, which would otherwise re-observe an unchanged
+  // node each render. `useCallback([])` pins identity; `observedRef` dedupes
+  // repeat observations of the same node and unobserves the previous one when
+  // the node swaps (remount / key change).
+  const ref = useCallback((node: T | null) => {
+    const obs = observerRef.current;
+    if (observedRef.current && observedRef.current !== node && obs) {
+      obs.unobserve(observedRef.current);
     }
-  };
+    nodeRef.current = node;
+    observedRef.current = node;
+    if (node && obs) obs.observe(node);
+  }, []);
 
   // Derive the public `revealed` flag so runtime transitions between reduced-
   // motion / no-IO / intersection states never require setState-in-effect.
