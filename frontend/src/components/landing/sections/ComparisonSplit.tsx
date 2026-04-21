@@ -12,6 +12,7 @@
  */
 
 import { DemoMascot } from '../../demo/DemoMascot';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './ComparisonSplit.css';
 
 interface ComparisonRow {
@@ -28,8 +29,9 @@ const ROWS: ComparisonRow[] = [
 ];
 
 export function ComparisonSplit() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('compare');
   return (
-    <section data-landing="v2" className="landing-compare">
+    <section ref={sectionRef} data-landing="v2" className="landing-compare">
       <div className="landing-compare__inner">
         <h2 className="landing-compare__title">
           The old homework routine <em>vs</em> ClassBridge.
