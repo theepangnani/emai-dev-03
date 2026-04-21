@@ -105,13 +105,14 @@ export function AskPanel({
   // intentional: the external ``resetKey`` is the "dependency change" the
   // effect is responding to, and we need to abort any in-flight stream
   // before clearing state.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (resetKey === undefined) return;
     abortRef.current?.abort();
+    /* eslint-disable react-hooks/set-state-in-effect -- intentional reset on source change (#3785 per-tab cache contract) */
     setTurns([]);
     setInput('');
     setIsStreaming(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [resetKey]);
 
   // Cleanup on unmount.

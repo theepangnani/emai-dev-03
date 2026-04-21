@@ -93,5 +93,9 @@ def generate_otp() -> str:
 
 def send_otp(phone: str, otp_code: str) -> bool:
     """Send OTP verification code via WhatsApp."""
+    content_sid = settings.twilio_whatsapp_otp_content_sid
+    if content_sid:
+        return send_whatsapp_template(phone, content_sid, {"1": otp_code})
+    # Fallback for sandbox/dev: freeform body
     message = f"Your ClassBridge verification code is: {otp_code}\n\nThis code expires in 10 minutes."
     return send_whatsapp_message(phone, message)
