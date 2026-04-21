@@ -26,6 +26,7 @@ describe('useLandingCtas', () => {
     const { result } = renderHook(() => useLandingCtas());
     expect(result.current).toEqual({
       secondaryLabel: 'Join the waitlist',
+      secondaryLabelShort: 'Join Waitlist',
       secondaryHref: '/waitlist',
       pricingMode: 'waitlist',
       waitlistEnabled: true,
@@ -38,6 +39,7 @@ describe('useLandingCtas', () => {
     const { result } = renderHook(() => useLandingCtas());
     expect(result.current).toEqual({
       secondaryLabel: 'Get Started',
+      secondaryLabelShort: 'Get Started',
       secondaryHref: '/register',
       pricingMode: 'launch',
       waitlistEnabled: false,
@@ -51,6 +53,7 @@ describe('useLandingCtas', () => {
     useFeatureMock.mockReturnValue(true);
     const { result } = renderHook(() => useLandingCtas());
     expect(result.current.secondaryLabel).toBe('Join the waitlist');
+    expect(result.current.secondaryLabelShort).toBe('Join Waitlist');
     expect(result.current.secondaryHref).toBe('/waitlist');
     expect(result.current.pricingMode).toBe('waitlist');
     expect(result.current.waitlistEnabled).toBe(true);

@@ -39,9 +39,9 @@ export function LandingNav() {
   // of #1219): pre-launch it routes to `/waitlist` and says "Join Waitlist"
   // (short form chosen to keep the top-nav compact vs. the hero's longer
   // "Join the waitlist" label); at launch it routes to `/register` and says
-  // "Get Started".
-  const { secondaryHref, waitlistEnabled } = useLandingCtas();
-  const ctaLabel = waitlistEnabled ? 'Join Waitlist' : 'Get Started';
+  // "Get Started". The short/long label split lives in `useLandingCtas`
+  // (#3898) so copy stays in one place.
+  const { secondaryHref, secondaryLabelShort } = useLandingCtas();
   return (
     <nav
       data-landing="v2"
@@ -67,7 +67,7 @@ export function LandingNav() {
             Log In
           </Link>
           <Link to={secondaryHref} className="landing-nav__waitlist">
-            {ctaLabel}
+            {secondaryLabelShort}
           </Link>
         </div>
       </div>

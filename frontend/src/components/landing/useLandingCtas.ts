@@ -17,7 +17,17 @@ import { useFeature } from '../../hooks/useFeatureToggle';
 export type LandingPricingMode = 'waitlist' | 'launch';
 
 export interface LandingCtas {
+  /**
+   * Long-form CTA label — used by hero / final CTA / pricing copy where
+   * horizontal space allows a full sentence ("Join the waitlist").
+   */
   secondaryLabel: string;
+  /**
+   * Short-form CTA label — used by the top nav where the button sits in a
+   * compact actions row ("Join Waitlist"). In launch mode both forms
+   * collapse to the same "Get Started" string.
+   */
+  secondaryLabelShort: string;
   secondaryHref: string;
   pricingMode: LandingPricingMode;
   waitlistEnabled: boolean;
@@ -28,12 +38,14 @@ export function useLandingCtas(): LandingCtas {
   return waitlistEnabled
     ? {
         secondaryLabel: 'Join the waitlist',
+        secondaryLabelShort: 'Join Waitlist',
         secondaryHref: '/waitlist',
         pricingMode: 'waitlist',
         waitlistEnabled: true,
       }
     : {
         secondaryLabel: 'Get Started',
+        secondaryLabelShort: 'Get Started',
         secondaryHref: '/register',
         pricingMode: 'launch',
         waitlistEnabled: false,
