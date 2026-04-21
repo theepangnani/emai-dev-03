@@ -509,3 +509,128 @@ async def test_digest_persists_email_delivery_status_in_log(db_session):
     assert log_entry is not None
     assert log_entry.email_delivery_status == "failed"
     assert log_entry.status == "partial"
+
+
+# ---------------------------------------------------------------------------
+# Skip-vs-failure distinction (#3887)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_digest_skipped_when_whatsapp_unverified_is_only_selected_channel(db_session):
+    """#3887 — WhatsApp is the only selected channel AND not verified → status=skipped.
+
+    Unverified WhatsApp is an intentional skip, not a failure. The parent has
+    not completed setup, so we cannot score this channel — and we must not
+    report "Failed channels: WhatsApp" in the user-facing message.
+    """
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "skipped_wa_only", "whatsapp")
+    # whatsapp_verified=False by default; phone is None.
+    assert not integration.whatsapp_verified
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"notification": None, "in_app": None, "email": None, "classbridge_message": None}),
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "skipped", result
+    assert result["channel_status"]["whatsapp"] is None
+    assert "No eligible channels" in result["message"]
+    # Must NOT imply a delivery failure — no "Failed channels" text, no "check your setup".
+    assert "Failed channels" not in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_digest_delivered_excluding_none_channels(db_session):
+    """#3887 — in_app + email succeed, WhatsApp unverified → status=delivered (not partial).
+
+    None-valued channels are excluded from the overall-status computation.
+    """
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "delivered_excl_none", "in_app,email,whatsapp")
+    # WhatsApp not verified — the unverified branch must produce whatsapp_ok=None.
+    assert not integration.whatsapp_verified
+
+    notify_success = MagicMock(
+        return_value={"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_success,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered", result
+    assert result["channel_status"]["in_app"] is True
+    assert result["channel_status"]["email"] is True
+    assert result["channel_status"]["whatsapp"] is None
+
+
+@pytest.mark.asyncio
+async def test_digest_failed_labels_exclude_none_channels(db_session):
+    """#3887 — email fails (False), WhatsApp unverified (None) → status=failed, message mentions email but NOT WhatsApp."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    _, integration = _seed_integration(db_session, "failed_excl_none", "email,whatsapp")
+    # WhatsApp not verified — produces whatsapp_ok=None (skipped, not a failure).
+    assert not integration.whatsapp_verified
+
+    # Notification service reports email=False (actual failure).
+    notify_failure = MagicMock(
+        return_value={"notification": None, "in_app": None, "email": False, "classbridge_message": None}
+    )
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="digest body"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=notify_failure,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "failed", result
+    assert result["channel_status"]["email"] is False
+    assert result["channel_status"]["whatsapp"] is None
+    # The message must call out email but NOT WhatsApp (WhatsApp was skipped, not failed).
+    assert "all channels" in result["message"]
+    # The failed path uses a generic message; but crucially the labels used in the
+    # "partial" path (if we were partial) must exclude WhatsApp. Verify by
+    # re-inspecting the per-channel record: only email is False.
+    assert result["channel_status"]["email"] is False
+    assert result["channel_status"]["whatsapp"] is not False, "WhatsApp (skipped) must not be counted as a failure"

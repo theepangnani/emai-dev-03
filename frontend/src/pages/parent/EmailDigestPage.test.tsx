@@ -381,3 +381,46 @@ describe('EmailDigestPage — per-channel digest status (#3880)', () => {
     });
   });
 });
+
+// #3887: skipped status — every selected channel intentionally skipped
+// (preference off / WhatsApp unverified). No retry CTA, info-style banner,
+// link to preferences.
+describe('EmailDigestPage — skipped digest status (#3887)', () => {
+  it('renders info-style skipped status with preferences link and NO retry button', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 2,
+        message:
+          'No eligible channels (2 emails). Please verify WhatsApp or enable notifications in your preferences.',
+        channel_status: { in_app: null, email: null, whatsapp: null },
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/No eligible channels/)).toBeInTheDocument();
+    });
+    const banner = screen.getByText(/No eligible channels/).closest(
+      '.ed-digest-status',
+    ) as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.className).toContain('ed-digest-status--skipped');
+    expect(banner.getAttribute('data-status')).toBe('skipped');
+
+    // No retry CTA for skipped — retrying won't help; parent must fix prefs.
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+
+    // Preferences link points to /settings/notifications.
+    const prefsLink = screen.getByRole('link', { name: 'Open preferences' });
+    expect(prefsLink).toBeInTheDocument();
+    expect(prefsLink.getAttribute('href')).toBe('/settings/notifications');
+  });
+});

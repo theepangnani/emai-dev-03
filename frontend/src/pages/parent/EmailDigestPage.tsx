@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
 import { DashboardLayout } from '../../components/DashboardLayout';
@@ -430,7 +430,8 @@ export function EmailDigestPage() {
                   </span>
                 )}
                 {sendDigestMutation.isSuccess && (() => {
-                  // #3880: render per-channel digest status with three variants.
+                  // #3880 + #3887: render per-channel digest status with four
+                  // variants: delivered / partial / failed / skipped.
                   const payload = sendDigestMutation.data?.data;
                   const status = payload?.status ?? 'delivered';
                   const message = payload?.message ?? 'Digest sent!';
@@ -441,6 +442,8 @@ export function EmailDigestPage() {
                       ? 'ed-digest-status--partial'
                       : status === 'failed'
                       ? 'ed-digest-status--failed'
+                      : status === 'skipped'
+                      ? 'ed-digest-status--skipped'
                       : 'ed-digest-status--delivered';
                   const icon =
                     status === 'delivered'
@@ -449,6 +452,8 @@ export function EmailDigestPage() {
                       ? '\u26A0'
                       : status === 'failed'
                       ? '\u2715'
+                      : status === 'skipped'
+                      ? '\u2139'
                       : '\u2713';
                   return (
                     <div
@@ -474,6 +479,14 @@ export function EmailDigestPage() {
                         >
                           Try again
                         </button>
+                      )}
+                      {status === 'skipped' && (
+                        <Link
+                          to="/settings/notifications"
+                          className="ed-digest-status__prefs-link"
+                        >
+                          Open preferences
+                        </Link>
                       )}
                     </div>
                   );
