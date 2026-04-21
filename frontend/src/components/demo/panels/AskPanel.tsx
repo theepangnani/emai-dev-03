@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -140,6 +141,10 @@ export function AskPanel({
     turns[turns.length - 1].role === 'assistant' &&
     turns[turns.length - 1].status === 'done';
 
+  // ``sendTurn`` relies on its closure's ``isStreaming`` + ``capReached``
+  // snapshots being fresh — both are in the useCallback deps below. A
+  // future refactor that moves them behind a ref must keep the early
+  // return guard valid, or the cap can be bypassed.
   const sendTurn = useCallback(
     (questionText: string) => {
       const question = questionText.trim();
@@ -269,7 +274,12 @@ export function AskPanel({
       <div
         className="demo-ask-thread"
         role="log"
-        aria-live="polite"
+        // Mute live-region announcements while tokens are arriving so
+        // VoiceOver/JAWS don't re-announce the bubble on every chunk;
+        // re-enable on turn completion so the final reply gets a clean
+        // pass.
+        aria-live={isStreaming ? 'off' : 'polite'}
+        aria-busy={isStreaming}
         aria-label="Conversation with ClassBridge Demo Tutor"
       >
         {isEmpty ? (
@@ -293,7 +303,9 @@ export function AskPanel({
                   type="button"
                   className="demo-chip demo-ask-starter-chip"
                   onClick={() => handleChipClick(chip)}
-                  disabled={isStreaming}
+                  // Mirror the Send-button predicate so future refactors
+                  // can't let a chip bypass the cap.
+                  disabled={isStreaming || capReached}
                 >
                   {chip}
                 </button>
@@ -362,7 +374,13 @@ interface ChatBubbleProps {
   turn: AskTurn;
 }
 
-function ChatBubble({ turn }: ChatBubbleProps) {
+/**
+ * Memoized so that streaming tokens arriving into one bubble don't cause
+ * prior finished bubbles to re-render (every `setTurns` returns a new
+ * array but the other turn objects are identity-preserved by the
+ * `.map(t => t.id === ... ? {...t, content: ...} : t)` pattern).
+ */
+const ChatBubble = memo(function ChatBubble({ turn }: ChatBubbleProps) {
   const isUser = turn.role === 'user';
   const classes = [
     'demo-ask-bubble',
@@ -388,7 +406,7 @@ function ChatBubble({ turn }: ChatBubbleProps) {
       )}
     </div>
   );
-}
+});
 
 interface TurnMeterProps {
   used: number;
