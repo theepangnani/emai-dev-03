@@ -94,10 +94,13 @@ export function buildSectionRegistry(
     if (
       !section ||
       typeof section.id !== 'string' ||
+      section.id.trim().length === 0 ||
       typeof section.order !== 'number' ||
+      !Number.isFinite(section.order) ||
       typeof section.component !== 'function'
     ) {
-      // Helpers without a `section` export — skip silently.
+      // Helpers without a `section` export — or malformed metadata
+      // (empty id, NaN order) — skip silently.
       continue;
     }
 
