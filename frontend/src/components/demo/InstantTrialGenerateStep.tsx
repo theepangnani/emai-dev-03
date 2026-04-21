@@ -158,6 +158,7 @@ export function InstantTrialGenerateStep({
         onChange={handleSourceChange}
         customText={customText}
         onCustomTextChange={handleCustomTextChange}
+        activeTab={activeTab}
       />
 
       {activeTab === 'ask' && (
