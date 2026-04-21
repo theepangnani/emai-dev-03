@@ -5,8 +5,9 @@ import { SourcePicker, type SourceKind } from './SourcePicker';
 import { AskPanel } from './panels/AskPanel';
 import { StudyGuidePanel } from './panels/StudyGuidePanel';
 import { FlashTutorPanel } from './panels/FlashTutorPanel';
+import type { ChipId } from './panels/study/DemoStudyGuideChips';
 import { INITIAL_PANEL_STREAM_STATE, type PanelStreamState } from './panels/panelTypes';
-import { DEFAULT_QUESTIONS, SAMPLE_TEXT, TABS, countWords } from './demoSamples';
+import { DEFAULT_QUESTIONS, SAMPLE_TEXT, SAMPLE_TITLE, TABS, countWords } from './demoSamples';
 import { TAB_META } from './instantTrialHelpers';
 
 interface Props {
@@ -20,6 +21,12 @@ interface Props {
    * mark quests, and trigger achievements from here.
    */
   onTabGenerated?: (tab: DemoType) => void;
+  /**
+   * Study-guide-specific curiosity reward hook (#3787) — fires when the
+   * user opens a gated chip's scoped upsell. Max once per chip per session
+   * is enforced inside `DemoStudyGuideChips`.
+   */
+  onStudyGuideChipCuriosity?: (id: Exclude<ChipId, 'followup'>) => void;
 }
 
 type PerTabStreamState = Record<DemoType, PanelStreamState>;
@@ -48,6 +55,7 @@ export function InstantTrialGenerateStep({
   waitlistPreviewPosition,
   onVerify,
   onTabGenerated,
+  onStudyGuideChipCuriosity,
 }: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
   const [source, setSource] = useState<SourceKind>('sample');
@@ -178,6 +186,10 @@ export function InstantTrialGenerateStep({
           state={activeState}
           onGenerate={() => runGenerate('study_guide')}
           generateDisabled={disableGenerate}
+          topic={source === 'paste' && customText.trim() ? 'your source' : SAMPLE_TITLE}
+          activeTab={activeTab}
+          onChipCuriosity={onStudyGuideChipCuriosity}
+          onNavigateToTab={setActiveTab}
         />
       )}
       {activeTab === 'flash_tutor' && (
