@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { useSectionViewTracker } from '../useSectionViewTracker';
 import './LandingNav.css';
 
 /**
@@ -28,19 +27,29 @@ import './LandingNav.css';
  *   distinguish it from the footer landmark.
  */
 export function LandingNav() {
-  const sectionRef = useSectionViewTracker<HTMLElement>('nav');
+  // NOTE: intentionally does NOT call useSectionViewTracker. The nav is
+  // sticky at the top of the page and is guaranteed >50% visible on first
+  // paint — firing `landing_v2.section_view` for it on every render would
+  // duplicate page-view signal and pollute the §6.136.7 funnel dashboards
+  // that group by section_id. Scroll-engagement tracking is reserved for
+  // content sections below the fold.
   return (
     <nav
-      ref={sectionRef}
       data-landing="v2"
       className="landing-nav"
       aria-label="Landing navigation"
     >
       <div className="landing-nav__inner">
         <Link to="/" className="landing-nav__brand" aria-label="ClassBridge home">
+          {/* width/height match the intrinsic 1536×1024 (3:2) ratio of
+              the public logo so the browser reserves space before decode,
+              eliminating above-the-fold CLS. CSS (`height: 36px;
+              width: auto`) still controls the rendered size. */}
           <img
             src="/classbridge-logo.png"
             alt="ClassBridge"
+            width={54}
+            height={36}
             className="landing-nav__logo"
           />
         </Link>
