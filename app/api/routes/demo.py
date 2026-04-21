@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -118,6 +119,39 @@ def _extract_demo_token(
     return None
 
 
+# Denylist of literal injection-shaped tokens to strip from Haiku's own
+# output before it is persisted + replayed as prior assistant context on
+# the next Ask turn (#3842, defense-in-depth follow-up to #3819).
+#
+# The Anthropic messages API already treats role=assistant content as a
+# plain string (role-tag tokens do not structurally split the turn), but a
+# Haiku reply containing these patterns could still be quoted back on the
+# next turn and nudge the model toward instruction-following behaviour.
+# Stripping them before persistence keeps the stored transcript clean and
+# removes the replay vector. The list is intentionally conservative —
+# legitimate Haiku Ask answers never contain these markers.
+_ASSISTANT_CONTENT_DENYLIST = re.compile(
+    r"<\|im_start\|>|<\|im_end\|>|<\|system\|>|"
+    r"<\s*/?\s*system\s*>|\[\s*/?\s*system\s*\]|"
+    r"^\s*(?:Human|Assistant|System)\s*:",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _sanitize_assistant_content(text: Optional[str]) -> Optional[str]:
+    """Strip injection-shaped tokens from Haiku's assistant reply (#3842).
+
+    Applied BEFORE the reply is written to ``generations_json`` so that
+    the replayed context on subsequent turns cannot carry fabricated role
+    markers or fake system tags forward. Returns the cleaned string or
+    ``None`` if the input was falsy / fully stripped.
+    """
+    if not text:
+        return None
+    cleaned = _ASSISTANT_CONTENT_DENYLIST.sub("", text).strip()
+    return cleaned or None
+
+
 def _reconstruct_ask_history(generations_json) -> Optional[list[dict]]:
     """Rebuild the Ask prior-turn history from a session's generations log.
 
@@ -133,6 +167,9 @@ def _reconstruct_ask_history(generations_json) -> Optional[list[dict]]:
     Security: this is the only producer of Haiku's ``history`` list in
     the demo path (#3819). It reads exclusively from the server's own
     persisted state; a compromised client cannot influence its output.
+    ``assistant_content`` is additionally sanitised at write time
+    (#3842) so the replayed context cannot re-inject role-like markers
+    even if Haiku ever emits them.
     """
     if not generations_json:
         return None
@@ -156,9 +193,15 @@ def _reconstruct_ask_history(generations_json) -> Optional[list[dict]]:
             continue
         if not isinstance(assistant_content, str) or not assistant_content:
             continue
+        # Re-apply sanitisation on replay (#3842) as belt-and-braces for
+        # any row persisted before the write-time sanitiser landed. If the
+        # sanitised assistant string is empty, fall back to single-shot.
+        safe_assistant = _sanitize_assistant_content(assistant_content)
+        if not safe_assistant:
+            return None
         return [
             {"role": "user", "content": user_content[:500]},
-            {"role": "assistant", "content": assistant_content[:500]},
+            {"role": "assistant", "content": safe_assistant[:500]},
         ]
     return None
 
@@ -454,7 +497,15 @@ async def generate_demo(
         cost_cents = estimate_cost_cents(input_tokens, output_tokens)
         assistant_content: Optional[str] = None
         if demo_type == "ask" and assistant_chunks:
-            assistant_content = "".join(assistant_chunks)[:500]
+            # Sanitise Haiku's own reply BEFORE persisting (#3842). Any
+            # role-like markers or fake system tags the model emits would
+            # otherwise be replayed as prior assistant context on the
+            # next turn and influence model behaviour.
+            assistant_content = _sanitize_assistant_content(
+                "".join(assistant_chunks)
+            )
+            if assistant_content is not None:
+                assistant_content = assistant_content[:500]
 
         # Update the reserved slot with real metrics on a fresh DB
         # session (the request-scoped `db` is already closed by now).
