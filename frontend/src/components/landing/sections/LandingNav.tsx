@@ -36,10 +36,12 @@ export function LandingNav() {
   // content sections below the fold.
   //
   // The trailing CTA branches on `waitlist_enabled` (#3889 regression guard
-  // of #1219): pre-launch it routes to `/waitlist` and says "Join Waitlist";
-  // at launch it routes to `/register` and says "Get Started".
-  const { secondaryLabel, secondaryHref, waitlistEnabled } = useLandingCtas();
-  const ctaLabel = waitlistEnabled ? 'Join Waitlist' : secondaryLabel;
+  // of #1219): pre-launch it routes to `/waitlist` and says "Join Waitlist"
+  // (short form chosen to keep the top-nav compact vs. the hero's longer
+  // "Join the waitlist" label); at launch it routes to `/register` and says
+  // "Get Started".
+  const { secondaryHref, waitlistEnabled } = useLandingCtas();
+  const ctaLabel = waitlistEnabled ? 'Join Waitlist' : 'Get Started';
   return (
     <nav
       data-landing="v2"

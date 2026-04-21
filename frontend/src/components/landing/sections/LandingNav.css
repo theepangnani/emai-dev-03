@@ -101,9 +101,13 @@
   .landing-nav__logo {
     height: 30px;
   }
-  /* Drop the waitlist CTA on narrow viewports — the hero retains the
-     Waitlist CTA so we avoid double-CTA clutter in the top nav. */
+  /* Shrink the CTA on narrow viewports but keep it visible. In waitlist
+     mode the hero also carries a "Join the waitlist" CTA, but in launch
+     mode (#3889) the nav CTA is the only above-the-fold /register entry
+     on mobile — hiding it there would silently drop the mobile signup
+     path. */
   .landing-nav__waitlist {
-    display: none;
+    padding: 8px 14px;
+    font-size: 0.875rem;
   }
 }
