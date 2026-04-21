@@ -24,6 +24,8 @@ export interface EmailDigestIntegration {
   created_at: string;
   updated_at: string;
   monitored_emails: MonitoredEmail[];
+  whatsapp_phone: string | null;
+  whatsapp_verified: boolean;
 }
 
 export interface EmailDigestSettings {
@@ -118,3 +120,35 @@ export const addMonitoredEmail = (integrationId: number, data: { email_address?:
 
 export const removeMonitoredEmail = (integrationId: number, emailId: number) =>
   api.delete(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails/${emailId}`);
+
+// WhatsApp (#3592)
+export interface WhatsAppOTPResponse {
+  message: string;
+  phone: string;
+}
+
+export async function sendWhatsAppOTP(
+  integrationId: number,
+  phone: string,
+): Promise<WhatsAppOTPResponse> {
+  const res = await api.post<WhatsAppOTPResponse>(
+    `/api/parent/email-digest/integrations/${integrationId}/whatsapp/send-otp`,
+    { phone },
+  );
+  return res.data;
+}
+
+export async function verifyWhatsAppOTP(
+  integrationId: number,
+  otpCode: string,
+): Promise<WhatsAppOTPResponse> {
+  const res = await api.post<WhatsAppOTPResponse>(
+    `/api/parent/email-digest/integrations/${integrationId}/whatsapp/verify-otp`,
+    { otp_code: otpCode },
+  );
+  return res.data;
+}
+
+export async function disconnectWhatsApp(integrationId: number): Promise<void> {
+  await api.delete(`/api/parent/email-digest/integrations/${integrationId}/whatsapp`);
+}

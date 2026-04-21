@@ -5,6 +5,13 @@
 - **Bugs fixed:** 445+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
+**Apr 21 — WhatsApp Digest UI + OTP End-to-End:**
+- **#3592 WhatsApp Digest UI:** Added 3-state UI on parent Email Digest page (not connected → pending verification → connected). Phone input with E.164 validation, OTP send/verify, useConfirm-guarded disconnect. 10 vitest tests cover all states + validation + confirm-cancel path. (PR #3796)
+- **#3797 Cancel UX hardening (PR review):** Cancel button on pending state now shows confirm modal before deleting phone+delivery_channels server-side. Added maxLength=16 to phone input. JSDoc on isValidPhone documenting NA-centric assumption. (Bundled in PR #3796)
+- **#3591 OTP Authentication Template:** otp_verification template approved on Meta + Twilio (Twilio Content SID HXeeae316fca7d20de264b9fa7edbf5005). send_otp() now uses Content API template when configured, freeform fallback for sandbox. (PR #3791)
+- **End-to-end production verified:** OTP delivery + digest delivery both confirmed via direct test from production WhatsApp Business sender +16478008533.
+- **Meta Business Verification: APPROVED Apr 18, 2026** — unlocked authentication templates + sending to any user (no longer sandbox-limited).
+
 **Apr 20 — CB-DEMO-001 demo modal re-plan (feature issues + §6.135 expansion):**
 - CB-DEMO-001 demo modal re-plan — 4 feature issues scoped (#3784 upload copy + dismiss, #3785 Ask chatbox, #3786 Flash Tutor short cycle, #3787 Study Guide chips) + §6.135 requirements expanded (new subsections §6.135.4–§6.135.9) + gamification layer scoped (client-side only; XP/level/streak/quests/achievements/mastery ring) + Path C brand-alignment committed (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex in demo CSS).
 - **REQUIREMENTS update:** §6.135.4 Demo Upload Gating Copy & Dismiss-on-Tab-Change (#3784), §6.135.5 Ask Tab as Conversational Chatbox (#3785), §6.135.6 Flash Tutor Tab as Short Learning Cycle (#3786), §6.135.7 Study Guide Tab as Overview + Suggestion Chips (#3787), §6.135.8 Demo Gamification Layer (cross-cutting), §6.135.9 Demo Visual Alignment Decision — Path C Blend — all added to `requirements/features-part7.md`.
