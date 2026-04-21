@@ -1,0 +1,194 @@
+.landing-pricing {
+  background: var(--color-row-lavender);
+  color: var(--color-ink);
+  font-family: var(--font-landing-sans);
+  padding: clamp(3rem, 6vw, 5.5rem) clamp(1rem, 4vw, 2.5rem);
+}
+
+.landing-pricing__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.landing-pricing__headline {
+  font-family: var(--font-landing-sans);
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+  text-align: center;
+  color: var(--color-ink);
+}
+
+.landing-pricing__headline em {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.landing-pricing__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(1rem, 2vw, 1.5rem);
+  align-items: stretch;
+}
+
+.landing-pricing__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid rgba(27, 30, 43, 0.08);
+  border-radius: 20px;
+  padding: clamp(1.5rem, 2.5vw, 2rem);
+  transition: transform var(--motion-spring-fast), box-shadow var(--motion-spring-fast);
+}
+
+.landing-pricing__card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(27, 30, 43, 0.08);
+}
+
+.landing-pricing__card--featured {
+  border: 2px solid var(--color-accent-gold);
+  box-shadow: 0 8px 24px rgba(255, 184, 0, 0.15);
+  transform: translateY(-8px);
+}
+
+.landing-pricing__card--featured:hover {
+  transform: translateY(-12px);
+}
+
+.landing-pricing__ribbon {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-accent-gold);
+  color: var(--color-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.landing-pricing__card-head {
+  margin-bottom: 1.25rem;
+}
+
+.landing-pricing__tier {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--color-ink);
+}
+
+.landing-pricing__price {
+  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.landing-pricing__price-amount {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.landing-pricing__price-period {
+  font-size: 0.95rem;
+  color: var(--color-ink-muted);
+}
+
+.landing-pricing__tagline {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-ink-muted);
+  line-height: 1.4;
+}
+
+.landing-pricing__bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.landing-pricing__bullets li {
+  position: relative;
+  padding-left: 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--color-ink);
+}
+
+.landing-pricing__bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  width: 0.85rem;
+  height: 0.5rem;
+  border-left: 2px solid var(--color-accent-mint);
+  border-bottom: 2px solid var(--color-accent-mint);
+  transform: rotate(-45deg);
+}
+
+.landing-pricing__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  font-family: var(--font-landing-sans);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: transform var(--motion-spring-fast), background-color var(--motion-spring-fast);
+  text-align: center;
+}
+
+.landing-pricing__cta--primary {
+  background: var(--color-ink);
+  color: #ffffff;
+}
+
+.landing-pricing__cta--primary:hover {
+  transform: translateY(-2px);
+  background: #000000;
+}
+
+.landing-pricing__cta--secondary {
+  background: transparent;
+  color: var(--color-ink);
+  border: 1.5px solid var(--color-ink);
+}
+
+.landing-pricing__cta--secondary:hover {
+  transform: translateY(-2px);
+  background: var(--color-ink);
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .landing-pricing__grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .landing-pricing__card--featured {
+    transform: none;
+    margin-top: 0.5rem;
+  }
+
+  .landing-pricing__card--featured:hover {
+    transform: translateY(-4px);
+  }
+}
