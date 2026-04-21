@@ -154,16 +154,18 @@ function CycleRunner({ state, gameActions }: CycleRunnerProps) {
           hasFiredBullseyeRef.current = true;
           gameActions.earnAchievement('bullseye');
         }
-        // Streak of 2 → Warming Up achievement (first time only).
-        const streakNow = nextGrades.filter((g) => g === 'got_it').length;
-        if (streakNow >= 2 && !hasFiredWarmupRef.current) {
-          // Only if the last two were both got_it (true consecutive streak).
-          const last = nextGrades[nextGrades.length - 1];
-          const prev = nextGrades[nextGrades.length - 2];
-          if (last === 'got_it' && prev === 'got_it') {
-            hasFiredWarmupRef.current = true;
-            gameActions.earnAchievement('warmup');
-          }
+        // Two consecutive got_it grades → Warming Up achievement (fires
+        // once per session). §6.135.8 also defines Warming Up at the
+        // tabs-touched layer; follow-up #3795 reconciles the two.
+        const last = nextGrades[nextGrades.length - 1];
+        const prev = nextGrades[nextGrades.length - 2];
+        if (
+          !hasFiredWarmupRef.current &&
+          last === 'got_it' &&
+          prev === 'got_it'
+        ) {
+          hasFiredWarmupRef.current = true;
+          gameActions.earnAchievement('warmup');
         }
       } else {
         gameActions.resetStreak();
@@ -199,7 +201,7 @@ function CycleRunner({ state, gameActions }: CycleRunnerProps) {
   const gotItCount = grades.filter((g) => g === 'got_it').length;
 
   return (
-    <div className="demo-flash-cycle" aria-live="polite">
+    <div className="demo-flash-cycle">
       <div className="demo-flash-cycle-header">
         <MasteryRing completed={grades.length} total={total} />
         <div
@@ -246,29 +248,29 @@ function CycleRunner({ state, gameActions }: CycleRunnerProps) {
         </>
       )}
 
+      {confetti && (
+        <div className="demo-flash-confetti" aria-hidden="true">
+          {confetti.map((p) => (
+            <span
+              key={p.id}
+              className="demo-flash-confetti__piece"
+              style={{
+                left: `${p.left}%`,
+                background: p.color,
+                animationDelay: `${p.delay}ms`,
+                animationDuration: `${p.duration}ms`,
+                transform: `rotate(${p.rotate}deg)`,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {done && (
         <div
           className="demo-flash-completion"
           role="status"
-          aria-live="polite"
         >
-          {confetti && (
-            <div className="demo-flash-confetti" aria-hidden="true">
-              {confetti.map((p) => (
-                <span
-                  key={p.id}
-                  className="demo-flash-confetti__piece"
-                  style={{
-                    left: `${p.left}%`,
-                    background: p.color,
-                    animationDelay: `${p.delay}ms`,
-                    animationDuration: `${p.duration}ms`,
-                    transform: `rotate(${p.rotate}deg)`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
           <h4 className="demo-flash-completion__headline">
             Nice run — you mastered {gotItCount} of {total}.
           </h4>

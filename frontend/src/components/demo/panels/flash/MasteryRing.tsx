@@ -20,12 +20,17 @@ export function MasteryRing({
   size = 64,
   strokeWidth = 6,
 }: MasteryRingProps) {
+  // ARIA 1.2 requires valuemax > valuemin — don't render a zero-range
+  // progressbar. Callers typically gate on parse-success before reaching
+  // here, but the component protects itself as a defensive contract.
+  if (total <= 0) return null;
+
   const clampedCompleted = Math.max(0, Math.min(total, completed));
-  const pct = total === 0 ? 0 : clampedCompleted / total;
+  const pct = clampedCompleted / total;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - pct);
-  const isMastered = total > 0 && clampedCompleted >= total;
+  const isMastered = clampedCompleted >= total;
 
   const ringClass = `demo-flash-mastery-ring${
     isMastered ? ' demo-flash-mastery-ring--mastered' : ''

@@ -48,7 +48,7 @@ export function FlashCycleCard({
 
   return (
     <div className="demo-flash-cycle-card-wrap">
-      <div className="demo-flash-cycle-card-meta" aria-live="polite">
+      <div className="demo-flash-cycle-card-meta">
         Card {index} of {total}
       </div>
       <div
