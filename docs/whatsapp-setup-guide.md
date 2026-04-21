@@ -286,8 +286,10 @@ Templates must also exist in Twilio's Content Template Builder:
   ```
 
 #### otp_verification (Authentication)
-- **Status:** Blocked until Meta business verification approved
-- **Body:** `Your ClassBridge verification code is: {{1}}. This code expires in 10 minutes.`
+- **Meta status:** Approved (Apr 19, 2026)
+- **Twilio Content SID:** `HXeeae316fca7d20de264b9fa7edbf5005`
+- **Variables:** `{{1}}` = OTP code
+- **Body:** `{{1}} is your verification code. For your security, do not share this code.` (with Copy Code button, 10 min expiration)
 
 ---
 
@@ -301,6 +303,7 @@ Set via `gcloud run services update` or in the deploy workflow. Values marked "G
 |----------|------|--------|-------|
 | `TWILIO_WHATSAPP_FROM` | env var | GitHub Actions secret | `+16478008533` |
 | `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` | env var | GitHub Actions secret | `HX5fb1ebf94a75f33d1f88a2955f5f7234` |
+| `TWILIO_WHATSAPP_OTP_CONTENT_SID` | env var | GitHub Actions secret | `HXeeae316fca7d20de264b9fa7edbf5005` |
 | `TWILIO_ACCOUNT_SID` | secret | GCP Secret Manager | `ACbf7497fc27cd1d588cb30a6aba30d748` |
 | `TWILIO_AUTH_TOKEN` | secret | GCP Secret Manager | (stored in GCP Secret Manager) |
 
