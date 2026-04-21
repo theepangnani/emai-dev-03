@@ -112,10 +112,7 @@ export function LearnerSegmentTabs() {
                 <span className="landing-segment-tab__title">
                   {segment.title}
                   {segment.comingPhase4 ? (
-                    <span
-                      className="landing-segment-tab__pill"
-                      aria-label="Coming Phase 4"
-                    >
+                    <span className="landing-segment-tab__pill">
                       Coming Phase 4
                     </span>
                   ) : null}
