@@ -4,7 +4,11 @@ import { InstantTrialSignupStep } from './InstantTrialSignupStep';
 import { InstantTrialGenerateStep } from './InstantTrialGenerateStep';
 import { DemoMascot } from './DemoMascot';
 import { IconClose } from './icons';
-import type { CreateDemoSessionResponse } from '../../api/demo';
+import { DemoXPBar } from './gamification/DemoXPBar';
+import { DemoQuestTracker } from './gamification/DemoQuestTracker';
+import { DemoStreakFlame } from './gamification/DemoStreakFlame';
+import { useDemoGameState } from './gamification/useDemoGameState';
+import type { CreateDemoSessionResponse, DemoType } from '../../api/demo';
 import './InstantTrialModal.css';
 
 interface InstantTrialModalProps {
@@ -18,6 +22,10 @@ type Step = 1 | 2;
  *   Step 1 — signup (full_name, email, role, consent, honeypot).
  *   Step 2 — tabs (Ask / Study Guide / Flash Tutor) + streaming output.
  * Esc closes, focus is trapped, aria-modal + aria-labelledby per WCAG 2.1 AA.
+ *
+ * Gamification (CB-DEMO-001 foundation, epic #3599): XP bar, quest tracker,
+ * and streak flame live in the step-2 header, driven by `useDemoGameState`.
+ * Wave 2 feature streams (#3784–#3787) will enrich the visual layer.
  */
 export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -28,6 +36,8 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [verifyShown, setVerifyShown] = useState<boolean>(false);
   const [maximized, setMaximized] = useState(false);
   const trapRef = useFocusTrap<HTMLDivElement>(true, onClose);
+
+  const { state: gameState, actions: gameActions } = useDemoGameState();
 
   const handleStep1Success = (res: CreateDemoSessionResponse, email: string) => {
     setSessionJwt(res.session_jwt);
@@ -43,6 +53,14 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
         'Click the link in your email to confirm your waitlist spot.',
     );
     setVerifyShown(true);
+  };
+
+  /**
+   * Foundation-only: when a tab completes, mark its quest. Wave 2 feature
+   * streams will layer XP awards, streaks, and achievement triggers here.
+   */
+  const handleTabGenerated = (tab: DemoType) => {
+    gameActions.markQuest(tab);
   };
 
   const titleId = 'demo-modal-title';
@@ -87,6 +105,13 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 aria-hidden="true"
               />
             </div>
+            {step === 2 && (
+              <div className="demo-game-header">
+                <DemoXPBar xp={gameState.xp} level={gameState.level} />
+                <DemoQuestTracker completedQuests={gameState.completedQuests} />
+                <DemoStreakFlame streak={gameState.streak} />
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -146,6 +171,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 sessionJwt={sessionJwt}
                 waitlistPreviewPosition={waitlistPreview}
                 onVerify={handleVerify}
+                onTabGenerated={handleTabGenerated}
               />
               {verifyNotice && (
                 <div className="demo-form-success" role="status">

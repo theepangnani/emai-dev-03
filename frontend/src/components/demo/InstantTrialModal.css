@@ -1349,3 +1349,112 @@
   gap: 8px;
   margin-bottom: var(--space-md);
 }
+
+/* ── Gamification primitives (CB-DEMO-001 foundation, epic #3599) ───────
+   Scaffolds only — Wave 2 feature streams (#3784–#3787) will polish
+   animations + level-up overlay. All values reference existing brand
+   tokens — no new palette. */
+
+.demo-game-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.demo-xp-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  color: var(--color-ink);
+}
+
+.demo-xp-bar__level {
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  letter-spacing: 0.02em;
+}
+
+.demo-xp-bar__track {
+  position: relative;
+  display: inline-block;
+  width: 96px;
+  height: 8px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.demo-xp-bar__fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  background: var(--color-accent);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-xp-bar__fill { transition: none; }
+}
+
+.demo-xp-bar__count {
+  font-weight: 600;
+  color: var(--color-ink-muted);
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.demo-quest-tracker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-quest-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transform: rotate(45deg);
+  display: inline-block;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.demo-quest-dot--done {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-quest-dot { transition: none; }
+}
+
+.demo-streak-flame {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-ink-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.demo-streak-flame--active {
+  color: var(--color-accent-warm);
+  background: var(--color-warning-light);
+  border-color: var(--color-accent-warm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-streak-flame { transition: none; }
+}
