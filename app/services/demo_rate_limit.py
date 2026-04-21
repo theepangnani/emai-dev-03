@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging_config import get_logger
 from app.models.demo_session import DemoSession
-from app.schemas.demo import DemoGenerateEvent
+from app.schemas.demo import _DEMO_PERSISTED_CONTENT_MAX_CHARS, DemoGenerateEvent
 
 logger = get_logger(__name__)
 
@@ -272,7 +272,8 @@ def reserve_generation_slot(
 
     ``user_content`` (#3819) — for Ask turns we capture the user question
     immediately so that even if the stream fails midway the user side of
-    the turn is persisted. Truncated to 500 chars.
+    the turn is persisted. Truncated to ``_DEMO_PERSISTED_CONTENT_MAX_CHARS``
+    (see `app.schemas.demo` for cap rationale).
     """
     placeholder = DemoGenerateEvent(
         demo_type=demo_type,  # type: ignore[arg-type]
@@ -281,7 +282,10 @@ def reserve_generation_slot(
         output_tokens=0,
         cost_cents=0,
         created_at=datetime.now(timezone.utc),
-        user_content=(user_content[:500] if user_content else None),
+        user_content=(
+            user_content[:_DEMO_PERSISTED_CONTENT_MAX_CHARS]
+            if user_content else None
+        ),
     )
     event_dict = placeholder.model_dump(mode="json")
 
@@ -313,9 +317,10 @@ def update_generation_slot(
     if the session has no generations (defensive).
 
     ``assistant_content`` (#3819) — for Ask turns we persist the final
-    assistant reply (truncated to 500 chars) so subsequent turns can be
-    reconstructed server-side without trusting any client-supplied
-    ``assistant`` history entries. Non-Ask demo types pass ``None``.
+    assistant reply (truncated to ``_DEMO_PERSISTED_CONTENT_MAX_CHARS``)
+    so subsequent turns can be reconstructed server-side without trusting
+    any client-supplied ``assistant`` history entries. Non-Ask demo types
+    pass ``None``. See `app.schemas.demo` for cap rationale.
     """
     existing_list = _coerce_generations_list(session.generations_json)
     if not existing_list:
@@ -329,7 +334,9 @@ def update_generation_slot(
     updated[-1]["output_tokens"] = output_tokens
     updated[-1]["cost_cents"] = cost_cents
     if assistant_content is not None:
-        updated[-1]["assistant_content"] = assistant_content[:500]
+        updated[-1]["assistant_content"] = (
+            assistant_content[:_DEMO_PERSISTED_CONTENT_MAX_CHARS]
+        )
     session.generations_json = updated
 
     db.add(session)

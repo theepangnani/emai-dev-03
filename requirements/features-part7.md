@@ -1551,6 +1551,8 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - [ ] Each turn counts against the demo rate-limit bucket (email + IP + daily $ cap)
 - [ ] `prefers-reduced-motion` respected on bubble/stream animations
 
+**Design note — persisted content cap (#3843, 2026-04-20):** `DemoGenerateEvent.user_content` and `DemoGenerateEvent.assistant_content` (the server-reconstructed history source introduced in #3819) are capped via `_DEMO_PERSISTED_CONTENT_MAX_CHARS` in `app/schemas/demo.py`. The cap was raised from 500 to **1260 chars** after measurement. A 20-sample Haiku sweep of diverse Ask questions (`ask` prompt at `max_tokens=300`, temperature 0.7) produced p50=837, p95=1108, p99=1145 chars; 80% of typical replies exceeded the original 500-char cap, which truncated honest-user turns mid-sentence when replayed as history on turn 2. New cap = `round(p99 * 1.1) = 1260`, still well below the 2000-char "prompt is wrong" ceiling. Input-side abuse is still bounded — only the last completed Ask turn is replayed (§6.135.5, #3819) and each user turn is independently capped at 500 words via the rate-limit layer.
+
 #### 6.135.6 Flash Tutor Tab as Short Learning Cycle (#3786)
 
 **Change:** The Flash Tutor tab replaces the current static 5-card deck with a **3-card adaptive Short Learning Cycle** that mirrors the authenticated Flash Tutor session loop from CB-ILE-001 (§6.134): card front → reveal back → self-grade (`Missed` / `Almost` / `Got it`) → next card. A mastery ring in the modal chrome tracks per-session progress; on completion, the panel shows a confetti burst + score summary + waitlist upsell ("Save your streak — join the waitlist").
