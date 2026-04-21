@@ -1606,7 +1606,7 @@ Non-functional requirement — slide generation must be **progressive and non-bl
   - **Bullseye** — `id: 'bullseye'` — first `Got it` grade in Flash Tutor. Owner: `FlashTutorPanel`.
   - **Warming Up** — `id: 'warmup'` — streak ≥ 2 consecutive `Got it` grades in Flash Tutor (same streak that activates the Streak flame). Owner: `FlashTutorPanel`. Note: an earlier draft defined this as "all 3 tabs touched" at the quest-tracker layer; the shipped trigger is the Flash-streak semantic — see follow-up #3795.
   - **Triple Threat** — `id: 'triple'` — 3 Ask turns used in the same session. Owner: `AskPanel` (reserved; not yet wired — tracked separately).
-  - **Level Up** — `id: 'levelup'` — hit Lv.2 (XP reaches 100). Owner: XP-bar / level-up overlay.
+  - **Level Up** — `id: 'levelup'` — hit Lv.2 (XP reaches 100). Owner: XP-bar / level-up overlay (reserved; not yet wired — tracked separately in #3862).
 - **Mastery ring** — visible on Flash Tutor tab, reflects session mastery (see §6.135.6).
 - **Confetti + level-up overlay** — fire at 100 XP with a waitlist CTA ("Save your streak — join the waitlist").
 
@@ -1624,7 +1624,7 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - [ ] XP bar + level counter visible in modal header; updates on tab interactions
 - [ ] Quest tracker dots light up as user engages each tab
 - [ ] Streak flame lights up at streak ≥ 2; dims on reset (`Missed`)
-- [ ] 4 achievement stickers (First Spark, Bullseye, Warming Up, Level Up) pop onto the modal edge as earned — Triple Threat is reserved and tracked separately in #3857
+- [ ] 3 achievement stickers (First Spark, Bullseye, Warming Up) pop onto the modal edge as earned — Triple Threat and Level Up are reserved and tracked separately in #3857 and #3862
 - [ ] Mastery ring visible on Flash Tutor tab (feeds from §6.135.6 state)
 - [ ] Confetti + level-up overlay with waitlist CTA fire at 100 XP
 - [ ] `prefers-reduced-motion` disables all animations + confetti
