@@ -71,9 +71,7 @@ describe('LaunchLandingPage (#3895 hydration flicker)', () => {
   });
 
   it('renders "Get Started" only when waitlist_enabled resolves to false', () => {
-    useFeatureMock.mockImplementation((key) =>
-      key === 'waitlist_enabled' ? false : false,
-    );
+    useFeatureMock.mockReturnValue(false);
 
     renderWithProviders(<LaunchLandingPage />);
 

@@ -41,16 +41,26 @@ export async function fetchFeatures(): Promise<FeatureToggles> {
 }
 
 /**
- * Fetch feature toggles from the backend.
- * Caches for 5 minutes and returns safe defaults while loading.
+ * Shared `useQuery` hook for the feature-toggle endpoint. Kept private so
+ * both `useFeatureToggles` and `useFeature` read from a single source of
+ * truth (same query key + staleTime + retry policy). Changing it once
+ * updates both consumers.
  */
-export function useFeatureToggles() {
-  const { data } = useQuery({
+function useFeatureQuery() {
+  return useQuery({
     queryKey: ['feature-toggles'],
     queryFn: fetchFeatures,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+}
+
+/**
+ * Fetch feature toggles from the backend.
+ * Caches for 5 minutes and returns safe defaults while loading.
+ */
+export function useFeatureToggles() {
+  const { data } = useFeatureQuery();
   return data ?? DEFAULTS;
 }
 
@@ -77,12 +87,7 @@ const DEFAULT_DURING_LOAD: Partial<Record<keyof FeatureToggles, boolean>> = {
  * See #3895 for the landing-page "Get Started" flicker this guards against.
  */
 export function useFeature(key: keyof FeatureToggles): boolean {
-  const { data } = useQuery({
-    queryKey: ['feature-toggles'],
-    queryFn: fetchFeatures,
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
+  const { data } = useFeatureQuery();
   const value = data?.[key];
   if (typeof value === 'boolean') return value;
   return DEFAULT_DURING_LOAD[key] ?? false;
