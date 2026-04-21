@@ -76,7 +76,6 @@
 
 .landing-final-cta__btn--primary:hover,
 .landing-final-cta__btn--primary:focus-visible {
-  transform: translateY(-2px);
   box-shadow: 0 12px 28px rgba(10, 42, 51, 0.24);
 }
 
@@ -89,7 +88,17 @@
 .landing-final-cta__btn--ghost:hover,
 .landing-final-cta__btn--ghost:focus-visible {
   background: rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
+}
+
+/* Transform-based hover lift is motion — gate behind no-preference so
+   prefers-reduced-motion users see a pure color/shadow shift (WCAG 2.3.3). */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-final-cta__btn--primary:hover,
+  .landing-final-cta__btn--primary:focus-visible,
+  .landing-final-cta__btn--ghost:hover,
+  .landing-final-cta__btn--ghost:focus-visible {
+    transform: translateY(-2px);
+  }
 }
 
 .landing-final-cta__btn:focus-visible {
