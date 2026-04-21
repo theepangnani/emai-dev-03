@@ -172,6 +172,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 waitlistPreviewPosition={waitlistPreview}
                 onVerify={handleVerify}
                 onTabGenerated={handleTabGenerated}
+                gameActions={gameActions}
               />
               {verifyNotice && (
                 <div className="demo-form-success" role="status">

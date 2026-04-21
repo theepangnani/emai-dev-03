@@ -123,11 +123,12 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
     );
   });
 
-  it('renders FlashcardDeck when flash_tutor is done', async () => {
+  it('renders the Flash Tutor short learning cycle when flash_tutor is done (#3786)', async () => {
     const user = userEvent.setup();
     const cards = JSON.stringify([
       { front: 'Q1', back: 'A1' },
       { front: 'Q2', back: 'A2' },
+      { front: 'Q3', back: 'A3' },
     ]);
     setupStreamMock([
       { event: 'token', data: cards },
@@ -145,8 +146,8 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
     await user.click(screen.getByRole('tab', { name: /flash tutor/i }));
     await user.click(screen.getByRole('button', { name: /generate flash tutor/i }));
 
-    const region = await screen.findByRole('region', { name: /flashcards/i });
-    expect(region).toBeInTheDocument();
+    // Short learning cycle: mastery ring + first card front.
+    expect(await screen.findByRole('progressbar', { name: /mastery/i })).toBeInTheDocument();
     expect(screen.getByText('Q1')).toBeInTheDocument();
   });
 

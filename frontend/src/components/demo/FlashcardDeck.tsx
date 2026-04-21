@@ -17,7 +17,7 @@ export interface FlashcardDeckProps {
   className?: string;
 }
 
-interface Flashcard {
+export interface Flashcard {
   front: string;
   back: string;
 }
@@ -42,6 +42,10 @@ function cleanRawText(raw: string): string {
 }
 
 /** Parse the cleaned raw text into an array of valid Flashcard entries. */
+export function parseFlashcardsFromRaw(raw: string): Flashcard[] | null {
+  return parseFlashcards(raw);
+}
+
 function parseFlashcards(raw: string): Flashcard[] | null {
   const cleaned = cleanRawText(raw);
   if (!cleaned) return null;

@@ -8,6 +8,7 @@ import { FlashTutorPanel } from './panels/FlashTutorPanel';
 import { INITIAL_PANEL_STREAM_STATE, type PanelStreamState } from './panels/panelTypes';
 import { DEFAULT_QUESTIONS, SAMPLE_TEXT, TABS, countWords } from './demoSamples';
 import { TAB_META } from './instantTrialHelpers';
+import type { DemoGameActions } from './gamification/useDemoGameState';
 
 interface Props {
   sessionJwt: string;
@@ -20,6 +21,12 @@ interface Props {
    * mark quests, and trigger achievements from here.
    */
   onTabGenerated?: (tab: DemoType) => void;
+  /**
+   * Optional gamification actions passed through to panels that drive
+   * finer-grained side-effects (per-card XP + streaks + achievements in
+   * FlashTutorPanel, #3786). Panels that don't accept it simply ignore it.
+   */
+  gameActions?: DemoGameActions;
 }
 
 type PerTabStreamState = Record<DemoType, PanelStreamState>;
@@ -48,6 +55,7 @@ export function InstantTrialGenerateStep({
   waitlistPreviewPosition,
   onVerify,
   onTabGenerated,
+  gameActions,
 }: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
   const [source, setSource] = useState<SourceKind>('sample');
@@ -187,6 +195,7 @@ export function InstantTrialGenerateStep({
           state={activeState}
           onGenerate={() => runGenerate('flash_tutor')}
           generateDisabled={disableGenerate}
+          gameActions={gameActions}
         />
       )}
 

@@ -19,7 +19,7 @@ export interface TabState {
 export const TAB_META: Record<DemoType, { label: string; sub: string; Icon: typeof IconAsk }> = {
   ask: { label: 'Ask', sub: 'Get an answer', Icon: IconAsk },
   study_guide: { label: 'Study Guide', sub: 'Key points + Q&A', Icon: IconStudyGuide },
-  flash_tutor: { label: 'Flash Tutor', sub: '5 flashcards', Icon: IconFlashTutor },
+  flash_tutor: { label: 'Flash Tutor', sub: '3-card mastery loop', Icon: IconFlashTutor },
 };
 
 export const GATED_ACTIONS: Record<DemoType, GatedActionId[]> = {
