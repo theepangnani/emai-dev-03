@@ -1019,6 +1019,41 @@ See [docs/CB-PEDI-001-setup-guide.md](../docs/CB-PEDI-001-setup-guide.md) for fu
 - [x] **M3: Parent Teaching + Polish** — Parent Teaching Mode, Private Practice, Career Connect, ILE in email digest, Aha Moments + Knowledge Decay (PRs #3273, #3276, #3277, #3279) (IMPLEMENTED Apr 14)
 - [x] **M4: Hardening + Analytics** — Cost logging, anti-gaming, admin analytics, response caching, quiz migration, study guide integration, 12 ILE tests (PRs #3274, #3275, #3278) (IMPLEMENTED Apr 14)
 
+#### CB-LAND-001 — Landing Page Redesign (Phase 2, §6.140) — SHIPPED (2026-04-21)
+
+Mindgrasp-inspired landing at `classbridge.ca`: 12-section persuasion architecture (Hero · Pain · Feature rows · How-It-Works accordion · Old-vs-New split · Progress grid · Cross-device bar · Learner-segment tabs · Pricing teaser · Proof Wall · Final CTA · Footer). Coexists with CB-DEMO-001 (§6.135) — reuses `InstantTrialModal` / `TuesdayMirror` / `ProofWall`; replaces landing mount of `RoleSwitcher` with `LearnerSegmentTabs`. Gated by `landing_v2` flag; kill-switch renders legacy `LaunchLandingPage`. Full spec in §6.140.
+
+**Epic:** #3800 · **Integration PR:** #3871 (merged 2026-04-21)
+**Reference screenshots:** [docs/design/landing-v2-reference/](../docs/design/landing-v2-reference/) (12 annotated Mindgrasp screenshots)
+
+**Foundations:**
+- [x] [CB-LAND-S1] Design spec — typography (Fraunces + Instrument Sans), pastel row palette, motion tokens (#3801, PR #3821)
+- [x] [CB-LAND-S2] LandingPageV2 scaffold + section registry + `landing_v2` feature flag (#3802, PR #3849)
+
+**Sections:**
+- [x] [CB-LAND-S3] Hero — serif-italic headline, demo CTA, Ontario-board trust bar (#3803, PR #3831)
+- [x] [CB-LAND-S4] Pain — 4 role-quote cards + "better way" strip (#3804, PR #3823)
+- [x] [CB-LAND-S5] Feature rows — 6 alternating pastel rows with product mockups (#3805, PR #3837)
+- [x] [CB-LAND-S6] How It Works — 4-step accordion + synced preview (#3806, PR #3824)
+- [x] [CB-LAND-S7] Old vs New comparison split (#3807, PR #3825)
+- [x] [CB-LAND-S8] Progress tracking grid — 2×2 (#3808, PR #3826)
+- [x] [CB-LAND-S9] Learner-segment tabs — left-stack + right-detail (#3809, PR #3836)
+- [x] [CB-LAND-S10] Cross-device + integrations bar (#3810, PR #3835)
+- [x] [CB-LAND-S11] Pricing teaser — Free / Family / Board (#3811, PR #3830)
+- [x] [CB-LAND-S12] Final CTA band + footer polish (#3812, PR #3827)
+
+**Cross-cutting polish:**
+- [x] [CB-LAND-S13] Motion + microinteractions — spring, scanline, reduced-motion (#3813, PR #3866)
+- [x] [CB-LAND-S14] Accessibility pass — WCAG 2.1 AA (#3814, PR #3854)
+- [x] [CB-LAND-S15] SEO + meta — OG, JSON-LD, lazy-load (#3815, PR #3865)
+- [x] [CB-LAND-S16] Analytics — section-view + CTA click events (#3816, PR #3856)
+- [x] [CB-LAND-S17] Frontend tests — render / keyboard / reduced-motion / flag on-off (#3817, PR #3860)
+
+**Post-review fixes (filed + merged same-day):**
+- [x] [PR-review] #3872 og:image fallback (PR #3876) · #3873 font-load scope (PR #3878) · #3874 default SEO (PR #3877)
+
+**Open fast-follows** (tracked under `CB-LAND-001-fast-follow`): real 1200×630 OG asset (#3875) · real hero screenshot (#3834) · trust-bar data source (#3833) · footer tokens (#3829) · mobile How-It-Works preview (#3832) · S5 FeatureRow polish (#3838) · axe-core automation (#3852) · body-text contrast verification (#3853) · StrictMode-safe hooks (#3858) · headline font decision (#3828) · reduced-motion token docs (#3822) · HomeRedirect auth short-circuit (#3850).
+
 
 ---
 
