@@ -12,6 +12,7 @@
  */
 
 import { DemoMascot } from '../../demo/DemoMascot';
+import { useScrollReveal } from '../motion';
 import './ComparisonSplit.css';
 
 interface ComparisonRow {
@@ -28,6 +29,10 @@ const ROWS: ComparisonRow[] = [
 ];
 
 export function ComparisonSplit() {
+  // S13: one-shot spring bounce on the mascot once it enters the viewport.
+  // The reveal wrapper on LandingPageV2 also fades the whole section in;
+  // this adds a second, mascot-only beat per §6.136.2.
+  const { ref: mascotRef, hidden: mascotHidden } = useScrollReveal<HTMLDivElement>();
   return (
     <section data-landing="v2" className="landing-compare">
       <div className="landing-compare__inner">
@@ -55,7 +60,11 @@ export function ComparisonSplit() {
             </ul>
           </div>
 
-          <div className="landing-compare__mascot" aria-hidden="true">
+          <div
+            ref={mascotRef}
+            className={`landing-compare__mascot ${mascotHidden}`.trim()}
+            aria-hidden="true"
+          >
             <DemoMascot size={72} mood="greeting" />
           </div>
 

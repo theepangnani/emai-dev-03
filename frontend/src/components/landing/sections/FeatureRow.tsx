@@ -19,9 +19,17 @@ export interface FeatureRowProps {
   content: FeatureRowContent;
   /** When true, text sits on the right and the mockup sits on the left. */
   reversed?: boolean;
+  /**
+   * CB-LAND-001 S13 — opt-in cyan scanline overlay on the product mockup.
+   * Defaults to `false` so existing rows keep their calm pastel look;
+   * flip on for rows that should feel "live" (e.g. AI-powered features).
+   * Scanline loop is driven by `--motion-scanline-loop` and fully disabled
+   * under `prefers-reduced-motion: reduce` per §6.136.5.
+   */
+  scanline?: boolean;
 }
 
-export function FeatureRow({ content, reversed = false }: FeatureRowProps) {
+export function FeatureRow({ content, reversed = false, scanline = false }: FeatureRowProps) {
   const { id, kicker, headlineHtml, body, learnMoreLabel, screenshotLabel, variant } = content;
 
   return (
@@ -47,6 +55,7 @@ export function FeatureRow({ content, reversed = false }: FeatureRowProps) {
         </div>
         <div
           className="feature-row__mockup"
+          data-scanline={scanline ? 'true' : undefined}
           role="img"
           aria-label={screenshotLabel}
         >
