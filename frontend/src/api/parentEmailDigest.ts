@@ -118,6 +118,11 @@ export interface SendDigestResponse {
   message: string;
   // #3880: per-channel outcomes. `null` = channel not requested, `true` = sent, `false` = failed.
   channel_status?: SendDigestChannelStatus | null;
+  // #3894: machine-readable reason for skipped status. One of
+  // "already_delivered", "no_settings", "no_new_emails", "no_eligible_channels",
+  // or null/undefined when status != "skipped". Frontends use this to gate UI —
+  // e.g., the "Open preferences" link only makes sense for "no_eligible_channels".
+  reason?: string | null;
 }
 
 export const sendDigestNow = (integrationId: number) =>

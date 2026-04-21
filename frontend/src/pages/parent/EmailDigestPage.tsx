@@ -480,7 +480,7 @@ export function EmailDigestPage() {
                           Try again
                         </button>
                       )}
-                      {status === 'skipped' && (
+                      {status === 'skipped' && payload?.reason === 'no_eligible_channels' && (
                         <Link
                           to="/settings/notifications"
                           className="ed-digest-status__prefs-link"
