@@ -21,15 +21,17 @@
  *
  * On unmount:
  *   - Removes the JSON-LD scripts it owns (tagged via `data-landing-seo`).
- *   - Leaves the meta tags in place — they're harmless on any route and
- *     removing them would cause a flash of empty `<head>` during client-
- *     side navigation.
+ *   - Re-applies the SeoDefaults baseline (#3874) so `/login`,
+ *     `/dashboard`, etc. don't inherit landing copy. A flash of empty
+ *     `<head>` is avoided because SeoDefaults values are reinstated
+ *     in the same synchronous cleanup tick.
  *
  * The component is intentionally synchronous/effect-based so there's no
  * visible output for tests to chase through `<Suspense>`. Tests assert
  * on `document.title` / `document.querySelector('meta[...]')` directly.
  */
 import { useEffect } from 'react';
+import { applySeoDefaults } from '../SeoDefaults';
 
 /** Stable id used to recognise and clean up our injected JSON-LD blocks. */
 const SEO_SCRIPT_ATTR = 'data-landing-seo';
@@ -206,7 +208,6 @@ const FAQPAGE_LD: Record<string, unknown> = {
 export function LandingSeo() {
   useEffect(() => {
     // Title + base description.
-    const prevTitle = document.title;
     document.title = TITLE;
 
     setMeta('name', 'description', DESCRIPTION);
@@ -235,18 +236,16 @@ export function LandingSeo() {
     const faqScript = injectJsonLd(FAQPAGE_LD);
 
     return () => {
-      // Leave meta in place (harmless on other routes) but clean up our
-      // JSON-LD so a subsequent route doesn't carry stale structured data.
+      // Clean up the JSON-LD we injected so a subsequent route doesn't
+      // carry stale structured data.
       organizationScript.remove();
       productScript.remove();
       faqScript.remove();
-      // Only restore the prior title if nothing else has claimed it in
-      // between. In React 18+ concurrent mode the NEXT route's mount
-      // effects may run BEFORE our unmount cleanup — if they already set
-      // their own title, we must not stomp on it here.
-      if (document.title === TITLE) {
-        document.title = prevTitle;
-      }
+      // Restore the SeoDefaults baseline (#3874). Previously we left the
+      // landing meta / OG / canonical in place, so `/login`, `/dashboard`,
+      // etc. kept showing the landing description and canonical URL. The
+      // baseline is the same set of tags SeoDefaults applied at App mount.
+      applySeoDefaults();
     };
   }, []);
 

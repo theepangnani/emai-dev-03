@@ -9,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
+import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
 import './App.css';
 
@@ -135,6 +136,7 @@ function App() {
         <BrowserRouter>
           <FABProvider>
           <ErrorBoundary>
+          <SeoDefaults />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<Login />} />

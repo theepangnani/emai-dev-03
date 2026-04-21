@@ -9,6 +9,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { LandingSeo } from './LandingSeo';
+import { SEO_DEFAULTS } from '../SeoDefaults';
 
 afterEach(() => {
   cleanup();
@@ -115,5 +116,42 @@ describe('LandingSeo', () => {
     expect(
       document.querySelectorAll('script[data-landing-seo]').length,
     ).toBe(0);
+  });
+
+  it('restores the SeoDefaults meta/OG/canonical baseline on unmount (#3874)', () => {
+    const { unmount } = render(<LandingSeo />);
+    // Sanity — landing copy is active while mounted.
+    expect(document.title).toMatch(/homework gap/i);
+
+    unmount();
+
+    // Cleanup should reinstate the generic SeoDefaults values so that
+    // routes like /login or /dashboard don't show landing meta.
+    expect(document.title).toBe(SEO_DEFAULTS.title);
+    expect(
+      document
+        .querySelector<HTMLMetaElement>('meta[name="description"]')
+        ?.getAttribute('content'),
+    ).toBe(SEO_DEFAULTS.description);
+    expect(
+      document
+        .querySelector<HTMLMetaElement>('meta[property="og:title"]')
+        ?.getAttribute('content'),
+    ).toBe(SEO_DEFAULTS.title);
+    expect(
+      document
+        .querySelector<HTMLMetaElement>('meta[property="og:description"]')
+        ?.getAttribute('content'),
+    ).toBe(SEO_DEFAULTS.description);
+    expect(
+      document
+        .querySelector<HTMLMetaElement>('meta[property="og:image"]')
+        ?.getAttribute('content'),
+    ).toBe(SEO_DEFAULTS.ogImage);
+    expect(
+      document
+        .querySelector<HTMLLinkElement>('link[rel="canonical"]')
+        ?.getAttribute('href'),
+    ).toBe(SEO_DEFAULTS.siteUrl);
   });
 });
