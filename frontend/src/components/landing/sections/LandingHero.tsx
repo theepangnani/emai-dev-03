@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { InstantTrialModal } from '../../demo/InstantTrialModal';
 import { emitCtaClick } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { useLandingCtas } from '../useLandingCtas';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './LandingHero.css';
 
 /**
@@ -26,6 +28,7 @@ const TRUST_BAR_BOARDS = ['YRDSB', 'TDSB', 'DDSB', 'PDSB', 'OCDSB'] as const;
 export function LandingHero() {
   const [demoOpen, setDemoOpen] = useState<boolean>(false);
   const sectionRef = useSectionViewTracker<HTMLElement>('hero');
+  const { secondaryLabel, secondaryHref, waitlistEnabled } = useLandingCtas();
 
   return (
     <section
@@ -55,11 +58,13 @@ export function LandingHero() {
               Try the 30-second demo
             </button>
             <Link
-              to="/waitlist"
+              to={secondaryHref}
               className="landing-hero__cta landing-hero__cta--ghost"
-              onClick={() => emitCtaClick('waitlist', 'hero')}
+              onClick={() =>
+                emitCtaClick(waitlistEnabled ? 'waitlist' : 'get_started', 'hero')
+              }
             >
-              Join the waitlist
+              {secondaryLabel}
             </Link>
           </div>
         </div>
@@ -88,4 +93,4 @@ export function LandingHero() {
  * Section-registry entry. S2 (scaffold) consumes `{ id, order, component }`
  * to render sections in-order. Exporting here is harmless if S2 hasn't merged.
  */
-export const section = { id: 'hero', order: 10, component: LandingHero };
+export const section = { id: LANDING_SECTION_ID.hero, order: 10, component: LandingHero };

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './LandingFooter.css';
 
 /**
@@ -25,6 +26,18 @@ export function LandingFooter() {
         ClassBridge footer
       </h2>
       <div className="landing-footer__inner">
+        {/* Brand mark above the column grid. alt="" because the section is
+            already announced by the "ClassBridge footer" sr-only <h2> above —
+            an additional label would double up for screen-reader users
+            (#3885). */}
+        <img
+          src="/classbridge-logo-dark.png"
+          alt=""
+          aria-hidden="true"
+          width={60}
+          height={40}
+          className="landing-footer__logo"
+        />
         <div className="landing-footer__columns">
           <section
             className="landing-footer__col"
@@ -154,7 +167,7 @@ export function LandingFooter() {
 }
 
 export const section = {
-  id: 'footer',
+  id: LANDING_SECTION_ID.footer,
   order: 9999,
   component: LandingFooter,
 };

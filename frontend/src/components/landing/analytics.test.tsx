@@ -28,6 +28,13 @@ vi.mock('../demo/InstantTrialModal', () => ({
   ),
 }));
 
+// #3889 — LandingHero now reads `useLandingCtas()` → `useFeature('waitlist_enabled')`
+// which triggers a `useQuery`. Mock the feature hook so this funnel test stays
+// on `renderWithRouter` (no QueryClientProvider).
+vi.mock('../../hooks/useFeatureToggle', () => ({
+  useFeature: () => true,
+}));
+
 interface DataLayerWindow extends Window {
   dataLayer?: Array<Record<string, unknown>>;
 }

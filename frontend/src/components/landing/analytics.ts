@@ -47,12 +47,15 @@ export const LANDING_V2_EVENT_PREFIX = 'landing_v2' as const;
  */
 export const LANDING_V2_ANALYTICS_SAMPLE_RATE = 1.0;
 
-/** Enumerated CTA ids — keep in sync with the funnel docs in §6.136.7. */
+/** Enumerated CTA ids — keep in sync with the funnel docs in §6.136.7.
+ *  `get_started` was added in #3889 for launch-mode (waitlist_enabled=false):
+ *  when the nav/hero/final CTAs route to `/register` instead of `/waitlist`. */
 export type LandingCtaKind =
   | 'primary'
   | 'secondary'
   | 'demo'
   | 'waitlist'
+  | 'get_started'
   | 'board';
 
 interface DataLayerWindow extends Window {

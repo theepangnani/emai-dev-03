@@ -10,6 +10,7 @@ import type { IconProps } from '../../demo/icons';
 import { InstantTrialModal } from '../../demo/InstantTrialModal';
 import { emitCtaClick } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './PainGrid.css';
 
 /**
@@ -116,4 +117,4 @@ export function PainGrid() {
 }
 
 // Glob-registry contract for landing-v2 sections.
-export const section = { id: 'pain', order: 20, component: PainGrid };
+export const section = { id: LANDING_SECTION_ID.pain, order: 20, component: PainGrid };

@@ -4,7 +4,7 @@
  * The scaffold test at `../LandingPageV2.test.tsx` covers the empty-registry
  * case. This file covers the page as a composed unit:
  *
- *   1. Flag-on render            — all 11 registered sections mount in order
+ *   1. Flag-on render            — all 12 registered sections mount in order
  *   2. Flag-off render           — legacy LaunchLandingPage renders
  *   3. Demo CTA smoke            — hero CTA mounts InstantTrialModal (mocked)
  *   4. Reduced-motion            — ComparisonSplit renders without bounce
@@ -65,8 +65,10 @@ import { LandingPageV2 } from '../LandingPageV2';
 import { LaunchLandingPage } from '../LaunchLandingPage';
 import { buildSectionRegistry } from '../../components/landing/sectionRegistry';
 
-/** All 11 section IDs expected from the CB-LAND-001 registry. */
+/** Section IDs expected from the CB-LAND-001 registry. `nav` was added in
+ *  #3885 so the v2 page carries the ClassBridge brand in a sticky top bar. */
 const EXPECTED_SECTION_IDS = [
+  'nav',
   'hero',
   'pain',
   'feature-rows',
@@ -81,7 +83,7 @@ const EXPECTED_SECTION_IDS = [
 ] as const;
 
 /** Matching ascending order values per §6.136 sequencing. */
-const EXPECTED_ORDER_VALUES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 9999];
+const EXPECTED_ORDER_VALUES = [5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 9999];
 
 // Page-level renders import the full section tree (incl. mascot SVGs) which
 // is heavy for jsdom — bump the per-test timeout so the CI default of 5s
@@ -107,9 +109,9 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
     });
   });
 
-  // ─── 1. Flag-on: all 11 sections render ──────────────────────────────
+  // ─── 1. Flag-on: all 12 sections render ──────────────────────────────
   describe('flag-on render (landing_v2 = on_100)', () => {
-    it('renders LandingPageV2 with all 11 sections via the registry', () => {
+    it('renders LandingPageV2 with all 12 sections via the registry', () => {
       mockVariantBucket.mockReturnValue('on');
 
       const { container } = renderWithProviders(<LandingPageV2 />);
@@ -118,7 +120,7 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
       expect(root).not.toBeNull();
 
       // Each section wrapper stamps a stable DOM id + data-section-id
-      // attribute (see LandingPageV2.tsx). Assert all 11 are present.
+      // attribute (see LandingPageV2.tsx). Assert all 12 are present.
       for (const id of EXPECTED_SECTION_IDS) {
         const wrapper = container.querySelector(`[data-section-id="${id}"]`);
         expect(wrapper, `expected section wrapper for "${id}"`).not.toBeNull();
@@ -128,6 +130,18 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
       // No extra sections leak in.
       const allSectionWrappers = container.querySelectorAll('[data-section-id]');
       expect(allSectionWrappers.length).toBe(EXPECTED_SECTION_IDS.length);
+    });
+
+    it('does NOT render any /waitlist links when waitlist_enabled is false (#3889)', () => {
+      // The module-level vi.mock returns `useFeature: () => false`, so this
+      // renders in launch-mode. Regression guard: without the #3889 fix the
+      // nav, hero, final CTA, and pricing cards all hardcoded /waitlist.
+      mockVariantBucket.mockReturnValue('on');
+
+      const { container } = renderWithProviders(<LandingPageV2 />);
+
+      const waitlistAnchors = container.querySelectorAll('a[href="/waitlist"]');
+      expect(waitlistAnchors.length).toBe(0);
     });
   });
 
@@ -253,14 +267,18 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
 
   // ─── 6. Keyboard focus order ─────────────────────────────────────────
   describe('keyboard tab sequence', () => {
-    it('places the skip-to-content link first and the hero primary CTA second', () => {
+    it('places the skip-to-content link first and the hero primary CTA among the first five focusables', () => {
       mockVariantBucket.mockReturnValue('on');
 
       const { container } = renderWithProviders(<LandingPageV2 />);
 
       // S14 (#3814) prepends a WCAG skip-to-content link as the first
-      // focusable element; the hero primary CTA follows it. `userEvent.tab()`
-      // can exceed the 5s per-test budget on this 11-section DOM under
+      // focusable element. After #3885 the LandingNav (logo + Log In +
+      // Join Waitlist) sits between the skip link and the hero — so the
+      // hero primary CTA is no longer at focusables[1]. We assert the
+      // skip link is still first and the hero CTA lands within the first
+      // five focusables (skip + 3 nav links + hero CTA). `userEvent.tab()`
+      // can exceed the 5s per-test budget on this 12-section DOM under
       // jsdom, so we walk the DOM directly — the assertion is equivalent.
       const focusableSelector = [
         'a[href]',
@@ -281,9 +299,8 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
       expect(skipLink.getAttribute('href')).toBe('#main');
       expect(skipLink.classList.contains('landing-v2-skip-link')).toBe(true);
 
-      // focusables[1] = hero primary CTA. The hero CTA has a unique class
-      // across the page (other sections that share the "30 second demo"
-      // label use different class names).
+      // Hero primary CTA should appear within the first five focusables
+      // (skip link + nav logo + Log In + Join Waitlist + hero CTA).
       const heroWrapper = container.querySelector<HTMLElement>(
         '[data-section-id="hero"]',
       );
@@ -291,7 +308,9 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
         'button.landing-hero__cta--primary',
       );
       expect(heroCta).not.toBeNull();
-      expect(focusables[1]).toBe(heroCta);
+      const heroCtaIndex = focusables.indexOf(heroCta!);
+      expect(heroCtaIndex).toBeGreaterThan(0);
+      expect(heroCtaIndex).toBeLessThanOrEqual(4);
     });
 
     it('ends keyboard traversal on a footer social link', () => {

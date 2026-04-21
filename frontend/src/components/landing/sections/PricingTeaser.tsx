@@ -1,18 +1,28 @@
 import './PricingTeaser.css'
 import { emitCtaClick } from '../analytics'
 import { useSectionViewTracker } from '../useSectionViewTracker'
+import { useLandingCtas } from '../useLandingCtas'
+import { LANDING_SECTION_ID } from '../sectionIds'
 
 // TODO: drive from /api/pricing-tiers
 const FAMILY_TIER_MONTHLY = '$9.99'
 
 function PricingTeaser() {
   const sectionRef = useSectionViewTracker<HTMLElement>('pricing')
+  const { secondaryLabel, secondaryHref, pricingMode } = useLandingCtas()
+  const isWaitlist = pricingMode === 'waitlist'
   return (
     <section ref={sectionRef} data-landing="v2" className="landing-pricing">
       <div className="landing-pricing__inner">
         <h2 className="landing-pricing__headline">
-          Free while you&rsquo;re on the waitlist.{' '}
-          <em>Premium when you&rsquo;re ready.</em>
+          {isWaitlist ? (
+            <>
+              Free while you&rsquo;re on the waitlist.{' '}
+              <em>Premium when you&rsquo;re ready.</em>
+            </>
+          ) : (
+            <em>Premium when you&rsquo;re ready.</em>
+          )}
         </h2>
 
         <div className="landing-pricing__grid" role="list">
@@ -22,7 +32,11 @@ function PricingTeaser() {
               <p className="landing-pricing__price">
                 <span className="landing-pricing__price-amount">$0</span>
               </p>
-              <p className="landing-pricing__tagline">During waitlist. AI usage limits apply.</p>
+              <p className="landing-pricing__tagline">
+                {isWaitlist
+                  ? 'During waitlist. AI usage limits apply.'
+                  : 'Free tier with daily AI usage limits.'}
+              </p>
             </header>
             <ul className="landing-pricing__bullets">
               <li>Core ClassBridge access</li>
@@ -31,10 +45,10 @@ function PricingTeaser() {
             </ul>
             <a
               className="landing-pricing__cta landing-pricing__cta--secondary"
-              href="/waitlist"
+              href={secondaryHref}
               onClick={() => emitCtaClick('secondary', 'pricing')}
             >
-              Join Waitlist
+              {secondaryLabel}
             </a>
           </article>
 
@@ -59,13 +73,29 @@ function PricingTeaser() {
               <li>Flash Tutor for the whole family</li>
               <li>Priority support</li>
             </ul>
-            <a
-              className="landing-pricing__cta landing-pricing__cta--primary"
-              href="/waitlist"
-              onClick={() => emitCtaClick('primary', 'pricing')}
-            >
-              Join Waitlist
-            </a>
+            {isWaitlist ? (
+              <a
+                className="landing-pricing__cta landing-pricing__cta--primary"
+                href={secondaryHref}
+                onClick={() => emitCtaClick('primary', 'pricing')}
+              >
+                {secondaryLabel}
+              </a>
+            ) : (
+              <>
+                <span
+                  className="landing-pricing__cta landing-pricing__cta--primary landing-pricing__cta--disabled"
+                  role="button"
+                  aria-disabled="true"
+                >
+                  Coming soon
+                </span>
+                <p className="landing-pricing__coming-soon-note">
+                  Billing launches with Family tier &mdash;{' '}
+                  <a href="/register">join the early-access list</a>
+                </p>
+              </>
+            )}
           </article>
 
           <article className="landing-pricing__card" role="listitem">
@@ -97,4 +127,4 @@ function PricingTeaser() {
 
 export default PricingTeaser
 
-export const section = { id: 'pricing', order: 90, component: PricingTeaser }
+export const section = { id: LANDING_SECTION_ID.pricing, order: 90, component: PricingTeaser }

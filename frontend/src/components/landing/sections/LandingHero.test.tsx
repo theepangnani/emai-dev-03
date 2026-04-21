@@ -1,9 +1,24 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import { renderWithRouter } from '../../../test/helpers';
+
+// Mock useFeature so we can exercise both waitlist-on and waitlist-off
+// branches of `useLandingCtas` (#3889). Hero itself imports only
+// `useLandingCtas`, but the hook reaches into `useFeatureToggle`.
+const useFeatureMock = vi.fn<(key: string) => boolean>();
+vi.mock('../../../hooks/useFeatureToggle', () => ({
+  useFeature: (key: string) => useFeatureMock(key),
+}));
+
 import { LandingHero } from './LandingHero';
 
 describe('LandingHero', () => {
+  beforeEach(() => {
+    useFeatureMock.mockReset();
+    // Default: waitlist ON (pre-launch posture).
+    useFeatureMock.mockReturnValue(true);
+  });
+
   it('renders headline, both CTAs, and all five trust-bar chips', () => {
     renderWithRouter(<LandingHero />);
 
@@ -29,5 +44,18 @@ describe('LandingHero', () => {
     for (const name of ['YRDSB', 'TDSB', 'DDSB', 'PDSB', 'OCDSB']) {
       expect(screen.getByText(name)).toBeInTheDocument();
     }
+  });
+
+  it('routes secondary CTA to /register with "Get Started" label when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false);
+    renderWithRouter(<LandingHero />);
+
+    // No waitlist link should exist in launch mode.
+    expect(
+      screen.queryByRole('link', { name: /join the waitlist/i }),
+    ).not.toBeInTheDocument();
+
+    const registerLink = screen.getByRole('link', { name: /get started/i });
+    expect(registerLink.getAttribute('href')).toBe('/register');
   });
 });

@@ -12,6 +12,9 @@ import './LaunchLandingPage.css';
 
 export function LaunchLandingPage() {
   const { user } = useAuth();
+  // #3895 — hydration flicker is handled centrally in `useFeature`:
+  // `waitlist_enabled` defaults to `true` during the feature-toggle query
+  // load, so "Get Started" no longer flashes before the server response.
   const waitlistEnabled = useFeature('waitlist_enabled');
   const demoLandingVariant = useVariantBucket('demo_landing_v1_1');
   const [demoOpen, setDemoOpen] = useState(false);
