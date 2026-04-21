@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { InstantTrialModal } from '../../demo/InstantTrialModal';
+import { emitCtaClick } from '../analytics';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './FinalCTA.css';
 
 /**
@@ -15,10 +17,12 @@ import './FinalCTA.css';
  */
 export function FinalCTA() {
   const [demoOpen, setDemoOpen] = useState(false);
+  const sectionRef = useSectionViewTracker<HTMLElement>('final-cta');
 
   return (
     <>
       <section
+        ref={sectionRef}
         data-landing="v2"
         className="landing-final-cta"
         aria-labelledby="landing-final-cta-heading"
@@ -37,13 +41,17 @@ export function FinalCTA() {
             <button
               type="button"
               className="landing-final-cta__btn landing-final-cta__btn--primary"
-              onClick={() => setDemoOpen(true)}
+              onClick={() => {
+                emitCtaClick('demo', 'final-cta');
+                setDemoOpen(true);
+              }}
             >
               Try the 30-second demo
             </button>
             <Link
               to="/waitlist"
               className="landing-final-cta__btn landing-final-cta__btn--ghost"
+              onClick={() => emitCtaClick('waitlist', 'final-cta')}
             >
               Join the Waitlist
             </Link>

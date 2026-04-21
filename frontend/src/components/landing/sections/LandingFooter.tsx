@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './LandingFooter.css';
 
 /**
@@ -12,8 +13,10 @@ import './LandingFooter.css';
  * (Company/Legal pages tracked under separate CB-LAND-001 follow-ups).
  */
 export function LandingFooter() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('footer');
   return (
     <footer
+      ref={sectionRef}
       data-landing="v2"
       className="landing-footer"
       aria-labelledby="landing-footer-heading"
