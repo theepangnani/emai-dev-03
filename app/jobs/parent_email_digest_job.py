@@ -82,7 +82,9 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
 
     child_name = integration.child_first_name or "your child"
     parent = integration.parent
-    parent_name = parent.first_name if parent and parent.first_name else "Parent"
+    parent_name = "Parent"
+    if parent and parent.full_name:
+        parent_name = parent.full_name.split()[0] or "Parent"
 
     try:
         from app.services.parent_digest_ai_service import (
