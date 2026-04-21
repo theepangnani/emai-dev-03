@@ -13,6 +13,7 @@
 
 import { DemoMascot } from '../../demo/DemoMascot';
 import { useScrollReveal } from '../motion';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './ComparisonSplit.css';
 
 interface ComparisonRow {
@@ -29,12 +30,15 @@ const ROWS: ComparisonRow[] = [
 ];
 
 export function ComparisonSplit() {
+  // S16: fire `landing_v2.section_view` once per mount via an IO on the
+  // <section> landmark.
+  const sectionRef = useSectionViewTracker<HTMLElement>('compare');
   // S13: one-shot spring bounce on the mascot once it enters the viewport.
   // The reveal wrapper on LandingPageV2 also fades the whole section in;
   // this adds a second, mascot-only beat per §6.136.2.
   const { ref: mascotRef, hidden: mascotHidden } = useScrollReveal<HTMLDivElement>();
   return (
-    <section data-landing="v2" className="landing-compare">
+    <section ref={sectionRef} data-landing="v2" className="landing-compare">
       <div className="landing-compare__inner">
         <h2 className="landing-compare__title">
           The old homework routine <em>vs</em> ClassBridge.

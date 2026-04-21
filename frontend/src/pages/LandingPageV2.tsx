@@ -8,6 +8,16 @@
  *
  * The outer wrapper sets `data-landing="v2"` so the scoped design tokens
  * from S1 (landing-v2 fonts / palette / motion) activate.
+ *
+ * S14 (#3814) — WCAG 2.1 AA: a skip-to-content link precedes <main>, the
+ * main landmark carries id="main" for the link target, and the footer
+ * section (if present in the registry) is rendered OUTSIDE <main> so the
+ * page has a single top-level <footer> landmark.
+ *
+ * S15 (#3815, §6.136.6): `<LandingSeo />` injects meta / OG / Twitter /
+ * JSON-LD into <head>. Sections still ship in one chunk — see
+ * `sectionRegistry.ts` for the fast-follow that moves each section
+ * behind a dynamic import.
  */
 import { useMemo, type ComponentType } from 'react';
 import {
@@ -16,6 +26,8 @@ import {
 } from '../components/landing/sectionRegistry';
 import { useScrollReveal } from '../components/landing/motion';
 import '../components/landing/motion.css';
+import { LandingSeo } from '../components/landing/LandingSeo';
+import './LandingPageV2.css';
 
 interface LandingPageV2Props {
   /**
@@ -82,20 +94,39 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
     [sections],
   );
 
+  // Split footer (id === 'footer') out of <main> so the <footer> landmark
+  // sits at the page level rather than nested inside main. Any non-footer
+  // entries stay in registry order.
+  const mainSections = registry.filter((s) => s.id !== 'footer');
+  const footerSection = registry.find((s) => s.id === 'footer');
+
   return (
-    <main data-landing="v2" className="landing-v2-root">
-      {registry.length === 0 ? (
-        <EmptyRegistryNotice />
-      ) : (
-        registry.map(({ id, component }) => (
-          // Each section wrapper stamps the stable DOM id so anchor links
-          // (`/#hero`, `/#pricing`, …) work. Section components render
-          // their own <section> landmark underneath. S13 adds scroll-reveal
-          // via the wrapper — see `RevealedSection` above.
-          <RevealedSection key={id} id={id} component={component} />
-        ))
-      )}
-    </main>
+    <>
+      <a href="#main" className="landing-v2-skip-link">
+        Skip to main content
+      </a>
+      <main id="main" data-landing="v2" className="landing-v2-root">
+        <LandingSeo />
+        {registry.length === 0 ? (
+          <EmptyRegistryNotice />
+        ) : (
+          mainSections.map(({ id, component }) => (
+            // Each section wrapper stamps the stable DOM id so anchor links
+            // (`/#hero`, `/#pricing`, …) work. Section components render
+            // their own <section> landmark underneath. S13 adds scroll-reveal
+            // via the wrapper — see `RevealedSection` above.
+            <RevealedSection key={id} id={id} component={component} />
+          ))
+        )}
+      </main>
+      {footerSection ? (
+        <RevealedSection
+          key={footerSection.id}
+          id={footerSection.id}
+          component={footerSection.component}
+        />
+      ) : null}
+    </>
   );
 }
 

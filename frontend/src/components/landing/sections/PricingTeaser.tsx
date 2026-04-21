@@ -1,11 +1,14 @@
 import './PricingTeaser.css'
+import { emitCtaClick } from '../analytics'
+import { useSectionViewTracker } from '../useSectionViewTracker'
 
 // TODO: drive from /api/pricing-tiers
 const FAMILY_TIER_MONTHLY = '$9.99'
 
 function PricingTeaser() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('pricing')
   return (
-    <section data-landing="v2" className="landing-pricing">
+    <section ref={sectionRef} data-landing="v2" className="landing-pricing">
       <div className="landing-pricing__inner">
         <h2 className="landing-pricing__headline">
           Free while you&rsquo;re on the waitlist.{' '}
@@ -29,6 +32,7 @@ function PricingTeaser() {
             <a
               className="landing-pricing__cta landing-pricing__cta--secondary"
               href="/waitlist"
+              onClick={() => emitCtaClick('secondary', 'pricing')}
             >
               Join Waitlist
             </a>
@@ -58,6 +62,7 @@ function PricingTeaser() {
             <a
               className="landing-pricing__cta landing-pricing__cta--primary"
               href="/waitlist"
+              onClick={() => emitCtaClick('primary', 'pricing')}
             >
               Join Waitlist
             </a>
@@ -79,6 +84,7 @@ function PricingTeaser() {
             <a
               className="landing-pricing__cta landing-pricing__cta--secondary"
               href="mailto:partners@classbridge.ca"
+              onClick={() => emitCtaClick('board', 'pricing')}
             >
               Contact for Board Partnership
             </a>

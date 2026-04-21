@@ -8,6 +8,8 @@ import {
 } from '../../demo/icons';
 import type { IconProps } from '../../demo/icons';
 import { InstantTrialModal } from '../../demo/InstantTrialModal';
+import { emitCtaClick } from '../analytics';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './PainGrid.css';
 
 /**
@@ -62,9 +64,15 @@ const CARDS: PainCard[] = [
 
 export function PainGrid() {
   const [demoOpen, setDemoOpen] = useState(false);
+  const sectionRef = useSectionViewTracker<HTMLElement>('pain');
 
   return (
-    <section data-landing="v2" className="landing-pain" aria-labelledby="landing-pain-heading">
+    <section
+      ref={sectionRef}
+      data-landing="v2"
+      className="landing-pain"
+      aria-labelledby="landing-pain-heading"
+    >
       <div className="landing-pain__inner">
         <p className="landing-pain__kicker">Sound familiar?</p>
         <h2 id="landing-pain-heading" className="landing-pain__heading">
@@ -91,7 +99,10 @@ export function PainGrid() {
           <button
             type="button"
             className="landing-pain__cta"
-            onClick={() => setDemoOpen(true)}
+            onClick={() => {
+              emitCtaClick('demo', 'pain');
+              setDemoOpen(true);
+            }}
           >
             Try the 30-second demo
             <IconArrowRight size={18} className="landing-pain__cta-arrow" />

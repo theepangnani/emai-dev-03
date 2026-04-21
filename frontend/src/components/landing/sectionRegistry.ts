@@ -33,9 +33,21 @@
  *   `.test.tsx` files that happen to match the glob) are skipped silently.
  * - Duplicate ids log a warning in dev; the first one wins.
  *
- * If bundle size becomes a concern later, swap the eager glob for a lazy
- * one and render each component inside `<Suspense>` — the public contract
- * (`{ id, order, component }`) stays identical.
+ * ### Lazy-loading status (CB-LAND-001 S15 / #3815, §6.136.6)
+ * Sections currently ship eagerly — the LandingPageV2 bundle includes
+ * all 11 section components in one chunk. An earlier S15 iteration
+ * wrapped each component in `React.lazy(() => Promise.resolve(...))`,
+ * but that added a visible Suspense flash on first paint without any
+ * real code-split benefit (the promise resolves synchronously so Vite
+ * cannot split the chunk). True per-section chunk splitting requires
+ * each section file to co-export `sectionMeta = { id, order }` AND the
+ * component via `default` export, so the registry can discover metadata
+ * eagerly while loading component bodies via `() => import(path)`. That
+ * refactor touches every section file and is tracked as
+ * CB-LAND-001-fast-follow "true per-section chunk splitting".
+ *
+ * The page keeps a `<Suspense>` boundary around the section list so the
+ * fast-follow can flip to lazy components without changing callers.
  */
 import type { ComponentType } from 'react';
 
@@ -106,7 +118,6 @@ export function buildSectionRegistry(
 
     if (seenIds.has(section.id)) {
       if (import.meta.env?.DEV) {
-        // eslint-disable-next-line no-console
         console.warn(
           `[landing-v2] duplicate section id "${section.id}" in ${path} — keeping the first occurrence.`,
         );

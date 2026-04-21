@@ -15,10 +15,13 @@
 import './FeatureRows.css';
 import { FeatureRow } from './FeatureRow';
 import { features } from '../content/features';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 
 export function FeatureRows() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('feature-rows');
   return (
     <section
+      ref={sectionRef}
       data-landing="v2"
       className="landing-feature-rows"
       aria-labelledby="feature-rows-heading"
