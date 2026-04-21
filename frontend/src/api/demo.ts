@@ -18,10 +18,20 @@ export interface CreateDemoSessionResponse {
   waitlist_preview_position: number;
 }
 
+export interface DemoHistoryTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface GeneratePayload {
   demo_type: DemoType;
   source_text?: string;
   question?: string;
+  /**
+   * Optional prior turns for the Ask multi-turn chatbox (§6.135.5, #3785).
+   * Capped at 2 prior turns by the backend (`DemoGenerateRequest.history`).
+   */
+  history?: DemoHistoryTurn[];
 }
 
 export interface GenerateDoneData {

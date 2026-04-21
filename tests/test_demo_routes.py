@@ -510,6 +510,141 @@ class TestLoadPromptUnknownTypeRaises:
             load_prompt("nonexistent_type")
 
 
+class TestGenerateAskMultiTurn:
+    """Multi-turn Ask chatbox history support (§6.135.5, #3785)."""
+
+    def test_history_is_forwarded_to_stream_demo_completion(
+        self, client, db_session
+    ):
+        """When ``history`` is present, it is prepended to the messages array."""
+        session = _make_session_row(
+            db_session, email="hist@example.com", ip_hash="ip-hist"
+        )
+        token = _jwt_for(session.id)
+
+        captured_kwargs: dict = {}
+
+        async def fake_stream(demo_type, *, source_text=None, question=None, history=None):
+            captured_kwargs["demo_type"] = demo_type
+            captured_kwargs["history"] = history
+            captured_kwargs["question"] = question
+            yield {"event": "chunk", "data": "ok"}
+            yield {
+                "event": "done",
+                "data": {"input_tokens": 1, "output_tokens": 1, "latency_ms": 1},
+            }
+
+        with patch(
+            "app.api.routes.demo.stream_demo_completion",
+            side_effect=fake_stream,
+        ):
+            resp = client.post(
+                "/api/v1/demo/generate",
+                json={
+                    "demo_type": "ask",
+                    "question": "What about photosynthesis in winter?",
+                    "history": [
+                        {"role": "user", "content": "Explain photosynthesis simply"},
+                        {"role": "assistant", "content": "Plants make food from light."},
+                    ],
+                },
+                headers={"X-Demo-Session": token},
+            )
+
+        assert resp.status_code == 200
+        assert captured_kwargs["demo_type"] == "ask"
+        assert captured_kwargs["question"] == "What about photosynthesis in winter?"
+        assert captured_kwargs["history"] == [
+            {"role": "user", "content": "Explain photosynthesis simply"},
+            {"role": "assistant", "content": "Plants make food from light."},
+        ]
+
+    def test_history_over_two_turns_rejected(self, client, db_session):
+        """>2 prior turns → 422 validation error."""
+        session = _make_session_row(
+            db_session, email="histbad@example.com", ip_hash="ip-histbad"
+        )
+        token = _jwt_for(session.id)
+        resp = client.post(
+            "/api/v1/demo/generate",
+            json={
+                "demo_type": "ask",
+                "question": "Q?",
+                "history": [
+                    {"role": "user", "content": "a"},
+                    {"role": "assistant", "content": "b"},
+                    {"role": "user", "content": "c"},
+                ],
+            },
+            headers={"X-Demo-Session": token},
+        )
+        assert resp.status_code == 422
+
+    def test_history_content_over_500_chars_rejected(self, client, db_session):
+        """Any single history content > 500 chars → 422 validation error."""
+        session = _make_session_row(
+            db_session, email="histlong@example.com", ip_hash="ip-histlong"
+        )
+        token = _jwt_for(session.id)
+        resp = client.post(
+            "/api/v1/demo/generate",
+            json={
+                "demo_type": "ask",
+                "question": "Q?",
+                "history": [{"role": "user", "content": "x" * 501}],
+            },
+            headers={"X-Demo-Session": token},
+        )
+        assert resp.status_code == 422
+
+    def test_history_unknown_role_rejected(self, client, db_session):
+        """Role outside 'user'/'assistant' → 422 validation error."""
+        session = _make_session_row(
+            db_session, email="histrole@example.com", ip_hash="ip-histrole"
+        )
+        token = _jwt_for(session.id)
+        resp = client.post(
+            "/api/v1/demo/generate",
+            json={
+                "demo_type": "ask",
+                "question": "Q?",
+                "history": [{"role": "system", "content": "hack"}],
+            },
+            headers={"X-Demo-Session": token},
+        )
+        assert resp.status_code == 422
+
+    def test_missing_history_is_treated_as_single_turn(self, client, db_session):
+        """Omitting ``history`` is fine — service is called with history=None."""
+        session = _make_session_row(
+            db_session, email="histnone@example.com", ip_hash="ip-histnone"
+        )
+        token = _jwt_for(session.id)
+
+        captured_kwargs: dict = {}
+
+        async def fake_stream(demo_type, *, source_text=None, question=None, history=None):
+            captured_kwargs["history"] = history
+            yield {"event": "chunk", "data": "ok"}
+            yield {
+                "event": "done",
+                "data": {"input_tokens": 1, "output_tokens": 1, "latency_ms": 1},
+            }
+
+        with patch(
+            "app.api.routes.demo.stream_demo_completion",
+            side_effect=fake_stream,
+        ):
+            resp = client.post(
+                "/api/v1/demo/generate",
+                json={"demo_type": "ask", "question": "Hi?"},
+                headers={"X-Demo-Session": token},
+            )
+
+        assert resp.status_code == 200
+        assert captured_kwargs["history"] is None
+
+
 class TestGenerateExpiredJwt:
     def test_expired_jwt_returns_401(self, client, db_session):
         """Expired demo session JWT → 401 (#3668)."""
