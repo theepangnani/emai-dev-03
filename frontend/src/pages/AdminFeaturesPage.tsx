@@ -8,7 +8,17 @@ import { useToast } from '../components/Toast';
 import { PageNav } from '../components/PageNav';
 import './AdminFeaturesPage.css';
 
-const VARIANT_OPTIONS: FeatureVariantValue[] = ['off', 'on_50', 'on_for_all'];
+// Both variant schemes are supported server-side; new flags (e.g. landing_v2)
+// use the percentage-ramp scheme. We expose the full union so any flag can
+// switch between them via the admin dropdown.
+const VARIANT_OPTIONS: FeatureVariantValue[] = [
+  'off',
+  'on_5',
+  'on_25',
+  'on_50',
+  'on_100',
+  'on_for_all',
+];
 
 export function AdminFeaturesPage() {
   const [features, setFeatures] = useState<FeatureFlagItem[]>([]);

@@ -1,7 +1,15 @@
 import { api } from './client';
 
 // Feature Flag Types
-export type FeatureVariantValue = 'off' | 'on_50' | 'on_for_all';
+// Legacy CB-DEMO-001 scheme: 'on_50' | 'on_for_all' (#3601)
+// CB-LAND-001 percentage-ramp scheme: 'on_5' | 'on_25' | 'on_100' (#3802)
+export type FeatureVariantValue =
+  | 'off'
+  | 'on_50'
+  | 'on_for_all'
+  | 'on_5'
+  | 'on_25'
+  | 'on_100';
 
 export interface FeatureFlagItem {
   key: string;

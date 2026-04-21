@@ -1,7 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 
-export type FeatureVariant = 'off' | 'on_50' | 'on_for_all';
+// CB-DEMO-001 used the legacy 'on_50'|'on_for_all' scheme (#3601).
+// CB-LAND-001 added percentage-ramp variants 'on_5'|'on_25'|'on_100' (#3802).
+// Both schemes coexist — new flags should use the percentage-ramp scheme.
+export type FeatureVariant =
+  | 'off'
+  | 'on_50'
+  | 'on_for_all'
+  | 'on_5'
+  | 'on_25'
+  | 'on_100';
 
 export interface FeatureToggles {
   google_classroom: boolean;

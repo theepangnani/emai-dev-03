@@ -9,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
+import { useVariantBucket } from './hooks/useVariantBucket';
 import './App.css';
 
 // Retry lazy imports to handle stale chunks after deployment.
@@ -67,6 +68,7 @@ const PrivacyPolicy = lazyRetry(() => import('./pages/PrivacyPolicy').then((m) =
 const TermsOfService = lazyRetry(() => import('./pages/TermsOfService').then((m) => ({ default: m.TermsOfService })));
 const CompliancePage = lazyRetry(() => import('./pages/CompliancePage').then((m) => ({ default: m.CompliancePage })));
 const LaunchLandingPage = lazyRetry(() => import('./pages/LaunchLandingPage').then((m) => ({ default: m.LaunchLandingPage })));
+const LandingPageV2 = lazyRetry(() => import('./pages/LandingPageV2').then((m) => ({ default: m.LandingPageV2 })));
 const OnboardingPage = lazyRetry(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const VerifyEmailPage = lazyRetry(() => import('./pages/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const HelpPage = lazyRetry(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
@@ -610,10 +612,15 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
 
 function HomeRedirect() {
   const { user, isLoading } = useAuth();
+  // CB-LAND-001 kill-switch (#3802, §6.136.8): anonymous visitors see
+  // LandingPageV2 only when the `landing_v2` flag's sticky variant bucket
+  // resolves to 'on'. Otherwise the legacy LaunchLandingPage renders —
+  // flipping the flag off instantly reverts everyone.
+  const landingV2 = useVariantBucket('landing_v2');
   if (isLoading) return <PageLoader />;
   if (user && (user.needs_onboarding || !user.onboarding_completed)) return <Navigate to="/onboarding" replace />;
   if (user) return <Navigate to="/dashboard" replace />;
-  return <LaunchLandingPage />;
+  return landingV2 === 'on' ? <LandingPageV2 /> : <LaunchLandingPage />;
 }
 
 export default App;

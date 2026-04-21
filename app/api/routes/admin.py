@@ -599,12 +599,17 @@ def send_admin_message(
 
 # ── Feature Toggles ──────────────────────────────────────────────────
 
-ALLOWED_VARIANTS = {"off", "on_50", "on_for_all"}
+ALLOWED_VARIANTS = {
+    # Legacy CB-DEMO-001 scheme (#3601)
+    "off", "on_50", "on_for_all",
+    # CB-LAND-001 percentage-ramp scheme (#3802) — used by landing_v2
+    "on_5", "on_25", "on_100",
+}
 
 
 class FeatureToggleUpdate(BaseModel):
     enabled: bool | None = None
-    variant: str | None = None  # 'off' | 'on_50' | 'on_for_all' (#3601)
+    variant: str | None = None  # 'off' | 'on_50' | 'on_for_all' (#3601) | 'on_5' | 'on_25' | 'on_100' (#3802)
 
 
 @router.get("/features")
