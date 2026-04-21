@@ -177,6 +177,26 @@
   color: #ffffff;
 }
 
+.landing-pricing__cta--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-pricing__coming-soon-note {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+  margin-top: 10px;
+}
+
+.landing-pricing__coming-soon-note a {
+  color: var(--color-accent-strong);
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .landing-pricing__grid {
     grid-template-columns: 1fr;

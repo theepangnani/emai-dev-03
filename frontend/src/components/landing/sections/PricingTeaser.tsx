@@ -72,13 +72,29 @@ function PricingTeaser() {
               <li>Flash Tutor for the whole family</li>
               <li>Priority support</li>
             </ul>
-            <a
-              className="landing-pricing__cta landing-pricing__cta--primary"
-              href={secondaryHref}
-              onClick={() => emitCtaClick('primary', 'pricing')}
-            >
-              {secondaryLabel}
-            </a>
+            {isWaitlist ? (
+              <a
+                className="landing-pricing__cta landing-pricing__cta--primary"
+                href={secondaryHref}
+                onClick={() => emitCtaClick('primary', 'pricing')}
+              >
+                {secondaryLabel}
+              </a>
+            ) : (
+              <>
+                <span
+                  className="landing-pricing__cta landing-pricing__cta--primary landing-pricing__cta--disabled"
+                  role="button"
+                  aria-disabled="true"
+                >
+                  Coming soon
+                </span>
+                <p className="landing-pricing__coming-soon-note">
+                  Billing launches with Family tier &mdash;{' '}
+                  <a href="/register">join the early-access list</a>
+                </p>
+              </>
+            )}
           </article>
 
           <article className="landing-pricing__card" role="listitem">
