@@ -5,6 +5,13 @@
 - **Bugs fixed:** 445+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
 
+**Apr 21 — WhatsApp Digest UI + OTP End-to-End:**
+- **#3592 WhatsApp Digest UI:** Added 3-state UI on parent Email Digest page (not connected → pending verification → connected). Phone input with E.164 validation, OTP send/verify, useConfirm-guarded disconnect. 10 vitest tests cover all states + validation + confirm-cancel path. (PR #3796)
+- **#3797 Cancel UX hardening (PR review):** Cancel button on pending state now shows confirm modal before deleting phone+delivery_channels server-side. Added maxLength=16 to phone input. JSDoc on isValidPhone documenting NA-centric assumption. (Bundled in PR #3796)
+- **#3591 OTP Authentication Template:** otp_verification template approved on Meta + Twilio (Twilio Content SID HXeeae316fca7d20de264b9fa7edbf5005). send_otp() now uses Content API template when configured, freeform fallback for sandbox. (PR #3791)
+- **End-to-end production verified:** OTP delivery + digest delivery both confirmed via direct test from production WhatsApp Business sender +16478008533.
+- **Meta Business Verification: APPROVED Apr 18, 2026** — unlocked authentication templates + sending to any user (no longer sandbox-limited).
+
 **Apr 20 — CB-DEMO-001 demo page re-plan (Mindgrasp-style UX):**
 - **Epic #3758 delivered via PR #3769 (merged to master as `ac2d8df6`):** Single-source picker (sample | paste | gated upload) replaces the always-visible sample + "Use my own text" toggle; per-tab cache preserves generated output when switching Ask ↔ Study Guide ↔ Flash Tutor (source changes clear output but preserve user-typed questions); Flash Tutor renders `FlashcardDeck` flip cards instead of raw JSON; `GatedActionBar` under each completed output (Download PDF / Save / Follow-up / More flashcards) opens inline waitlist upsells. Scrollbar clipping by rounded modal corners fixed.
 - **Classification:** Requirement Gap + Design Gap + 3 Bugs (mixed). Original CB-DEMO-001 spec didn't account for single-source UX, per-tab cache, flashcard UI, or gated extras.
