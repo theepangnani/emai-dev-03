@@ -24,7 +24,9 @@ export const TAB_META: Record<DemoType, { label: string; sub: string; Icon: type
 
 export const GATED_ACTIONS: Record<DemoType, GatedActionId[]> = {
   ask: ['save', 'follow_up'],
-  study_guide: ['download', 'save', 'follow_up'],
+  // #3787 — the Study Guide tab now renders its own suggestion chips
+  // (`DemoStudyGuideChips`) in place of the generic gated action bar.
+  study_guide: [],
   flash_tutor: ['download', 'save', 'more_flashcards'],
 };
 

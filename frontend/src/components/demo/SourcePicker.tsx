@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   IconArrowRight,
   IconClose,
@@ -15,6 +15,12 @@ export interface SourcePickerProps {
   onChange: (next: SourceKind) => void;
   customText: string;
   onCustomTextChange: (text: string) => void;
+  /**
+   * Active demo tab id. When it changes, any open waitlist upsell on the
+   * upload card is dismissed so the overlay does not persist across tabs
+   * (#3784).
+   */
+  activeTab?: string;
 }
 
 interface OptionDef {
@@ -27,11 +33,18 @@ interface OptionDef {
 const OPTIONS: OptionDef[] = [
   { id: 'sample', label: 'Try a sample', sub: 'Grade 8 Cells reading', Icon: IconStudyGuide },
   { id: 'paste', label: 'Paste your own text', sub: 'Up to 500 words', Icon: IconSparkles },
-  { id: 'upload', label: 'Upload a document', sub: 'PDF, DOCX (coming soon)', Icon: IconMail },
+  { id: 'upload', label: 'Upload a document', sub: 'PDF, DOCX — unlocks with waitlist', Icon: IconMail },
 ];
 
-export function SourcePicker({ value, onChange, customText, onCustomTextChange }: SourcePickerProps) {
+export function SourcePicker({ value, onChange, customText, onCustomTextChange, activeTab }: SourcePickerProps) {
   const [uploadUpsellOpen, setUploadUpsellOpen] = useState(false);
+
+  // #3784 — dismiss the upload upsell when the demo tab changes so it
+  // never persists across Ask / Study Guide / Flash Tutor.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional dismiss-on-tab-change (#3784)
+    setUploadUpsellOpen(false);
+  }, [activeTab]);
 
   const wordCount = countWords(customText);
   const overLimit = wordCount > 500;

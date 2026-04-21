@@ -58,9 +58,29 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   /**
    * Foundation-only: when a tab completes, mark its quest. Wave 2 feature
    * streams will layer XP awards, streaks, and achievement triggers here.
+   *
+   * Study Guide (#3787) gamification: on first completion, award 10 XP,
+   * mark the quest, and pop the First Spark achievement if this is the
+   * user's first generation of the session.
    */
   const handleTabGenerated = (tab: DemoType) => {
+    const wasFirstGeneration = gameState.completedQuests.size === 0;
     gameActions.markQuest(tab);
+    if (tab === 'study_guide') {
+      gameActions.awardXP(10);
+      if (wasFirstGeneration) {
+        gameActions.earnAchievement('first-spark');
+      }
+    }
+  };
+
+  /**
+   * #3787 curiosity reward — user opens a scoped chip upsell on the Study
+   * Guide tab. Awards a small XP bump the first time each chip is opened.
+   * Per-chip once-per-session enforcement lives in `DemoStudyGuideChips`.
+   */
+  const handleStudyGuideChipCuriosity = () => {
+    gameActions.awardXP(5);
   };
 
   const titleId = 'demo-modal-title';
@@ -173,6 +193,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 onVerify={handleVerify}
                 onTabGenerated={handleTabGenerated}
                 gameActions={gameActions}
+                onStudyGuideChipCuriosity={handleStudyGuideChipCuriosity}
               />
               {verifyNotice && (
                 <div className="demo-form-success" role="status">

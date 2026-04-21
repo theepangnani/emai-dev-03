@@ -43,9 +43,11 @@ _DEMO_TYPE_FILES: dict[str, str] = {
 }
 
 # Token budgets per demo_type (PRD §11.6).
+# study_guide dropped from 1200 → 600 when the tab switched from
+# "5 key points + 3 Q&A" to a ≤150-word overview paragraph (#3787).
 _MAX_TOKENS: dict[str, int] = {
     "ask": 600,
-    "study_guide": 1200,
+    "study_guide": 600,
     "flash_tutor": 500,
 }
 
