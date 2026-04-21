@@ -231,9 +231,28 @@ describe('EmailDigestPage — WhatsApp section', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
-    // Wait a tick for the confirm promise to resolve
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(mockDisconnectWhatsApp).not.toHaveBeenCalled();
+    // Wait a microtask for the confirm promise to resolve
+    await waitFor(() => {
+      // Confirmation rejected, so disconnect should not have been called
+      expect(mockDisconnectWhatsApp).not.toHaveBeenCalled();
+    });
+  });
+
+  it('calls sendWhatsAppOTP with saved phone when "Resend code" clicked', async () => {
+    mockListIntegrations.mockResolvedValue({
+      data: [buildIntegration({ whatsapp_phone: '+14165551234', whatsapp_verified: false })],
+    });
+    mockSendWhatsAppOTP.mockResolvedValue({ message: 'OTP sent', phone: '+14165551234' });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Resend code' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resend code' }));
+
+    await waitFor(() => {
+      expect(mockSendWhatsAppOTP).toHaveBeenCalledWith(1, '+14165551234');
+    });
   });
 
   it('shows API error message when send-otp fails', async () => {

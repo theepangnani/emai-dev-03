@@ -207,6 +207,7 @@ export function EmailDigestPage() {
     if (!activeIntegration?.whatsapp_phone) return;
     setWhatsappError(null);
     setWhatsappSuccess(null);
+    setWhatsappOtp('');
     sendOtpMutation.mutate({
       id: activeIntegration.id,
       phone: activeIntegration.whatsapp_phone,
@@ -587,7 +588,7 @@ export function EmailDigestPage() {
                       disabled={disconnectWhatsappMutation.isPending}
                       type="button"
                     >
-                      Cancel
+                      {disconnectWhatsappMutation.isPending ? 'Cancelling...' : 'Cancel'}
                     </button>
                   </div>
                 </div>
