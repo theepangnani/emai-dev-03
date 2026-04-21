@@ -77,7 +77,7 @@ describe('PricingTeaser', () => {
     expect(boardCta).toHaveAttribute('href', 'mailto:partners@classbridge.ca')
   })
 
-  it('routes Free + Family CTAs to /register with "Get Started" copy when waitlist_enabled is false (#3889)', () => {
+  it('routes Free CTA to /register with "Get Started" copy when waitlist_enabled is false (#3889)', () => {
     useFeatureMock.mockReturnValue(false)
     render(<PricingTeaser />)
     // No /waitlist anywhere in the tree.
@@ -85,9 +85,33 @@ describe('PricingTeaser', () => {
       screen.queryByRole('link', { name: /Join Waitlist/i }),
     ).not.toBeInTheDocument()
     const launchCtas = screen.getAllByRole('link', { name: /Get Started/i })
-    expect(launchCtas).toHaveLength(2)
+    // #3893 — Family-tier CTA is now a disabled "Coming soon" span in launch
+    // mode, so only the Free-tier "Get Started" link routes to /register.
+    expect(launchCtas).toHaveLength(1)
     launchCtas.forEach((link) => {
       expect(link).toHaveAttribute('href', '/register')
+    })
+  })
+
+  it('gates Family-tier CTA as disabled "Coming soon" in launch mode (#3893)', () => {
+    useFeatureMock.mockReturnValue(false)
+    const { container } = render(<PricingTeaser />)
+    const familyCard = screen.getByLabelText(/Family plan, most popular/i)
+    const disabledCta = familyCard.querySelector(
+      '[role="button"][aria-disabled="true"]',
+    )
+    expect(disabledCta).not.toBeNull()
+    expect(disabledCta?.textContent).toMatch(/Coming soon/i)
+    // The "early-access list" phrase links to /register.
+    const earlyAccessLink = screen.getByRole('link', {
+      name: /early-access list/i,
+    })
+    expect(earlyAccessLink).toHaveAttribute('href', '/register')
+    // No /waitlist links anywhere in any tier card.
+    const tierCards = container.querySelectorAll('.landing-pricing__card')
+    tierCards.forEach((card) => {
+      const waitlistLinks = card.querySelectorAll('a[href="/waitlist"]')
+      expect(waitlistLinks).toHaveLength(0)
     })
   })
 
