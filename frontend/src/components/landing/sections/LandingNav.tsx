@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useLandingCtas } from '../useLandingCtas';
 import './LandingNav.css';
 
 /**
@@ -33,6 +34,12 @@ export function LandingNav() {
   // duplicate page-view signal and pollute the §6.136.7 funnel dashboards
   // that group by section_id. Scroll-engagement tracking is reserved for
   // content sections below the fold.
+  //
+  // The trailing CTA branches on `waitlist_enabled` (#3889 regression guard
+  // of #1219): pre-launch it routes to `/waitlist` and says "Join Waitlist";
+  // at launch it routes to `/register` and says "Get Started".
+  const { secondaryLabel, secondaryHref, waitlistEnabled } = useLandingCtas();
+  const ctaLabel = waitlistEnabled ? 'Join Waitlist' : secondaryLabel;
   return (
     <nav
       data-landing="v2"
@@ -57,8 +64,8 @@ export function LandingNav() {
           <Link to="/login" className="landing-nav__login">
             Log In
           </Link>
-          <Link to="/waitlist" className="landing-nav__waitlist">
-            Join Waitlist
+          <Link to={secondaryHref} className="landing-nav__waitlist">
+            {ctaLabel}
           </Link>
         </div>
       </div>

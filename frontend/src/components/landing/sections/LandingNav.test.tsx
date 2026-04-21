@@ -1,6 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+
+// #3889 — mock useFeature so we can exercise both waitlist-on and waitlist-off
+// branches of the trailing nav CTA.
+const useFeatureMock = vi.fn<(key: string) => boolean>();
+vi.mock('../../../hooks/useFeatureToggle', () => ({
+  useFeature: (key: string) => useFeatureMock(key),
+}));
+
 import { LandingNav, section } from './LandingNav';
 
 function renderNav() {
@@ -12,6 +20,11 @@ function renderNav() {
 }
 
 describe('LandingNav (#3885)', () => {
+  beforeEach(() => {
+    useFeatureMock.mockReset();
+    useFeatureMock.mockReturnValue(true); // default pre-launch posture
+  });
+
   it('renders the ClassBridge logo with non-empty alt text', () => {
     renderNav();
     const logo = screen.getByAltText('ClassBridge');
@@ -32,10 +45,20 @@ describe('LandingNav (#3885)', () => {
     expect(login).toHaveAttribute('href', '/login');
   });
 
-  it('renders a Join Waitlist link pointing at /waitlist', () => {
+  it('renders a Join Waitlist link pointing at /waitlist when waitlist_enabled is true', () => {
     renderNav();
     const waitlist = screen.getByRole('link', { name: /join waitlist/i });
     expect(waitlist).toHaveAttribute('href', '/waitlist');
+  });
+
+  it('renders a Get Started link pointing at /register when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false);
+    renderNav();
+    expect(
+      screen.queryByRole('link', { name: /join waitlist/i }),
+    ).not.toBeInTheDocument();
+    const cta = screen.getByRole('link', { name: /get started/i });
+    expect(cta).toHaveAttribute('href', '/register');
   });
 
   it('renders a <nav> landmark with aria-label="Landing navigation" and data-landing="v2"', () => {

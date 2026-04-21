@@ -131,6 +131,18 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
       const allSectionWrappers = container.querySelectorAll('[data-section-id]');
       expect(allSectionWrappers.length).toBe(EXPECTED_SECTION_IDS.length);
     });
+
+    it('does NOT render any /waitlist links when waitlist_enabled is false (#3889)', () => {
+      // The module-level vi.mock returns `useFeature: () => false`, so this
+      // renders in launch-mode. Regression guard: without the #3889 fix the
+      // nav, hero, final CTA, and pricing cards all hardcoded /waitlist.
+      mockVariantBucket.mockReturnValue('on');
+
+      const { container } = renderWithProviders(<LandingPageV2 />);
+
+      const waitlistAnchors = container.querySelectorAll('a[href="/waitlist"]');
+      expect(waitlistAnchors.length).toBe(0);
+    });
   });
 
   // ─── 2. Flag-off: legacy LaunchLandingPage ──────────────────────────

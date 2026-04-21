@@ -1,8 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+
+// #3889 — mock useFeature so we can exercise both waitlist-on and waitlist-off
+// branches of the PricingTeaser headline + tagline + CTA copy.
+const useFeatureMock = vi.fn<(key: string) => boolean>()
+vi.mock('../../../hooks/useFeatureToggle', () => ({
+  useFeature: (key: string) => useFeatureMock(key),
+}))
+
 import PricingTeaser, { section } from './PricingTeaser'
 
 describe('PricingTeaser', () => {
+  beforeEach(() => {
+    useFeatureMock.mockReset()
+    useFeatureMock.mockReturnValue(true) // default pre-launch posture
+  })
+
   it('renders 3 tier cards (Free, Family, School Board)', () => {
     const { container } = render(<PricingTeaser />)
     expect(screen.getByRole('heading', { name: /^Free$/ })).toBeInTheDocument()
@@ -20,7 +33,7 @@ describe('PricingTeaser', () => {
     expect(familyCard.textContent).toMatch(/Most popular/i)
   })
 
-  it('renders headline with italic second sentence', () => {
+  it('renders headline with italic second sentence (waitlist-on)', () => {
     const { container } = render(<PricingTeaser />)
     const headline = container.querySelector('.landing-pricing__headline')
     expect(headline).toBeInTheDocument()
@@ -30,20 +43,52 @@ describe('PricingTeaser', () => {
     expect(em?.textContent).toMatch(/Premium when you.?re ready\./)
   })
 
+  it('renders launch-mode headline without the waitlist sentence when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false)
+    const { container } = render(<PricingTeaser />)
+    const headline = container.querySelector('.landing-pricing__headline')
+    expect(headline).toBeInTheDocument()
+    expect(headline?.textContent).not.toMatch(/waitlist/i)
+    const em = headline?.querySelector('em')
+    expect(em?.textContent).toMatch(/Premium when you.?re ready\./)
+  })
+
+  it('swaps the Free-tier tagline to the launch-mode copy when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false)
+    render(<PricingTeaser />)
+    expect(screen.getByText(/free tier with daily ai usage limits\./i)).toBeInTheDocument()
+    expect(screen.queryByText(/during waitlist\./i)).not.toBeInTheDocument()
+  })
+
   it('renders $9.99 placeholder for Family tier', () => {
     render(<PricingTeaser />)
     expect(screen.getByText('$9.99')).toBeInTheDocument()
   })
 
-  it('Join Waitlist CTAs link to /waitlist; Board CTA uses mailto', () => {
+  it('waitlist CTAs link to /waitlist when waitlist_enabled is true; Board CTA uses mailto', () => {
     render(<PricingTeaser />)
-    const waitlistCtas = screen.getAllByRole('link', { name: /Join Waitlist/i })
+    // Copy is now driven by `useLandingCtas` — "Join the waitlist".
+    const waitlistCtas = screen.getAllByRole('link', { name: /Join the waitlist/i })
     expect(waitlistCtas).toHaveLength(2)
     waitlistCtas.forEach((link) => {
       expect(link).toHaveAttribute('href', '/waitlist')
     })
     const boardCta = screen.getByRole('link', { name: /Contact for Board Partnership/i })
     expect(boardCta).toHaveAttribute('href', 'mailto:partners@classbridge.ca')
+  })
+
+  it('routes Free + Family CTAs to /register with "Get Started" copy when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false)
+    render(<PricingTeaser />)
+    // No /waitlist anywhere in the tree.
+    expect(
+      screen.queryByRole('link', { name: /Join Waitlist/i }),
+    ).not.toBeInTheDocument()
+    const launchCtas = screen.getAllByRole('link', { name: /Get Started/i })
+    expect(launchCtas).toHaveLength(2)
+    launchCtas.forEach((link) => {
+      expect(link).toHaveAttribute('href', '/register')
+    })
   })
 
   it('wraps content in <section data-landing="v2" class="landing-pricing">', () => {

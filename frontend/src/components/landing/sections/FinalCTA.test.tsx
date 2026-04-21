@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { FinalCTA, section } from './FinalCTA';
 
 // The demo modal pulls in network + focus-trap plumbing that is out of scope
 // for this stripe — stub it so the CTA-band tests stay fast and isolated.
@@ -14,6 +13,15 @@ vi.mock('../../demo/InstantTrialModal', () => ({
   ),
 }));
 
+// #3889 — mock the feature toggle so we can exercise both waitlist-on and
+// waitlist-off branches without spinning up the query client.
+const useFeatureMock = vi.fn<(key: string) => boolean>();
+vi.mock('../../../hooks/useFeatureToggle', () => ({
+  useFeature: (key: string) => useFeatureMock(key),
+}));
+
+import { FinalCTA, section } from './FinalCTA';
+
 function renderFinalCTA() {
   return render(
     <MemoryRouter>
@@ -23,6 +31,11 @@ function renderFinalCTA() {
 }
 
 describe('FinalCTA', () => {
+  beforeEach(() => {
+    useFeatureMock.mockReset();
+    useFeatureMock.mockReturnValue(true); // default pre-launch posture
+  });
+
   it('renders the headline with the italic serif accent fragment', () => {
     renderFinalCTA();
     const heading = screen.getByRole('heading', { level: 2 });
@@ -35,7 +48,7 @@ describe('FinalCTA', () => {
     expect(em).toHaveTextContent(/ClassBridge advantage\./i);
   });
 
-  it('renders both CTAs — demo primary and waitlist ghost', () => {
+  it('renders both CTAs — demo primary and waitlist ghost (waitlist-on)', () => {
     renderFinalCTA();
     expect(
       screen.getByRole('button', { name: /try the 30-second demo/i }),
@@ -44,6 +57,16 @@ describe('FinalCTA', () => {
       name: /join the waitlist/i,
     });
     expect(waitlistLink).toHaveAttribute('href', '/waitlist');
+  });
+
+  it('routes secondary CTA to /register with "Get Started" when waitlist_enabled is false (#3889)', () => {
+    useFeatureMock.mockReturnValue(false);
+    renderFinalCTA();
+    expect(
+      screen.queryByRole('link', { name: /join the waitlist/i }),
+    ).not.toBeInTheDocument();
+    const registerLink = screen.getByRole('link', { name: /get started/i });
+    expect(registerLink).toHaveAttribute('href', '/register');
   });
 
   it('opens the InstantTrialModal when the demo CTA is clicked', async () => {
