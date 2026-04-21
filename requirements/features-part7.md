@@ -1769,6 +1769,12 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
 - No database schema changes.
 - No new Python routes beyond the feature-flag enablement in S2.
 
+#### 6.140.2 Visual system (CB-LAND-001)
+
+Inherits §6.135.9 Path C tokens (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex). Section-specific visual conventions:
+
+- **Brand logo sizing (#3902):** nav 64px desktop / 44px mobile; footer 80px. Intrinsic img width/height must match CSS height × 1.5 (asset is 3:2 ratio) to preserve CLS.
+
 #### 6.140.7 Analytics funnel (CB-LAND-001)
 
 **Events:**

@@ -53,13 +53,13 @@ export function LandingNav() {
         <Link to="/" className="landing-nav__brand" aria-label="ClassBridge home">
           {/* width/height match the intrinsic 1536×1024 (3:2) ratio of
               the public logo so the browser reserves space before decode,
-              eliminating above-the-fold CLS. CSS (`height: 36px;
+              eliminating above-the-fold CLS. CSS (`height: 64px;
               width: auto`) still controls the rendered size. */}
           <img
             src="/classbridge-logo.png"
             alt="ClassBridge"
-            width={54}
-            height={36}
+            width={96}
+            height={64}
             className="landing-nav__logo"
           />
         </Link>

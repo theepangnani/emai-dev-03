@@ -42,7 +42,7 @@
 
 .landing-nav__logo {
   display: block;
-  height: 36px;
+  height: 64px;
   width: auto;
 }
 
@@ -99,7 +99,7 @@
     padding: 12px 16px;
   }
   .landing-nav__logo {
-    height: 30px;
+    height: 44px;
   }
   /* Shrink the CTA on narrow viewports but keep it visible. In waitlist
      mode the hero also carries a "Join the waitlist" CTA, but in launch
