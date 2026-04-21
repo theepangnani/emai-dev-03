@@ -30,7 +30,7 @@ export function LandingFooter() {
             an additional label would double up for screen-reader users
             (#3885). */}
         <img
-          src="/classbridge-logo.png"
+          src="/classbridge-logo-dark.png"
           alt=""
           aria-hidden="true"
           width={60}

@@ -64,7 +64,7 @@ describe('LandingFooter', () => {
       'img.landing-footer__logo',
     );
     expect(logo).not.toBeNull();
-    expect(logo!.getAttribute('src')).toBe('/classbridge-logo.png');
+    expect(logo!.getAttribute('src')).toBe('/classbridge-logo-dark.png');
     // Footer logo is decorative — the sr-only <h2> "ClassBridge footer"
     // already announces the section, so the image is aria-hidden / alt="".
     expect(logo!.getAttribute('alt')).toBe('');

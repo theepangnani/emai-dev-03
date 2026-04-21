@@ -20,14 +20,11 @@
 }
 
 .landing-footer__logo {
-  /* Brand mark above the column grid (#3885). The public logo renders on
-     a dark background here, so we lift it via brightness/invert-safe
-     filter rather than swap to a dedicated dark-mode asset. */
+  /* Brand mark above the column grid (#3885/#3897). Uses the dedicated
+     dark-mode asset (classbridge-logo-dark.png) rather than a CSS filter. */
   display: block;
   height: 40px;
   width: auto;
-  filter: brightness(0) invert(1);
-  opacity: 0.92;
 }
 
 .landing-footer__columns {
