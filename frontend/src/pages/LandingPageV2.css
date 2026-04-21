@@ -1,0 +1,35 @@
+/**
+ * LandingPageV2 — CB-LAND-001 S14 (#3814) a11y styles.
+ *
+ * Skip-to-content link: visually hidden until keyboard-focused, then
+ * reveals a high-contrast pill at the top-left corner. Follows the
+ * WCAG 2.4.1 "Bypass Blocks" pattern.
+ */
+.landing-v2-skip-link {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.75rem 1.25rem;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+  z-index: 1000;
+  /* Hide off-screen until focused. */
+  transform: translateY(-100%);
+  transition: transform 150ms ease;
+}
+
+.landing-v2-skip-link:focus,
+.landing-v2-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 3px solid #1fd8ff;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-v2-skip-link {
+    transition: none;
+  }
+}
