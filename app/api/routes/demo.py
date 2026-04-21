@@ -131,7 +131,8 @@ def _extract_demo_token(
 # removes the replay vector. The list is intentionally conservative —
 # legitimate Haiku Ask answers never contain these markers.
 _ASSISTANT_CONTENT_DENYLIST = re.compile(
-    r"<\|im_start\|>|<\|im_end\|>|<\|system\|>|"
+    r"<\|im_start\|>|<\|im_end\|>|"
+    r"<\|(?:system|user|assistant|human)\|>|"
     r"<\s*/?\s*system\s*>|\[\s*/?\s*system\s*\]|"
     r"^\s*(?:Human|Assistant|System)\s*:",
     re.IGNORECASE | re.MULTILINE,
@@ -145,6 +146,15 @@ def _sanitize_assistant_content(text: Optional[str]) -> Optional[str]:
     the replayed context on subsequent turns cannot carry fabricated role
     markers or fake system tags forward. Returns the cleaned string or
     ``None`` if the input was falsy / fully stripped.
+
+    Trust-model note: the denylist matches ``Human:`` / ``Assistant:`` /
+    ``System:`` only at the start of a line (``^\\s*...``) so that the
+    word ``human`` (and similar) occurring mid-sentence in legitimate
+    prose is preserved. A mid-line ``. Human:`` separator is therefore
+    not stripped — this is an intentional tradeoff to avoid over-stripping
+    educational content. The primary structural defence against forged
+    role context is the server-side history reconstruction from #3819;
+    this sanitiser is a secondary layer against quoted role tokens.
     """
     if not text:
         return None
