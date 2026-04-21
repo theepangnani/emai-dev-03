@@ -155,8 +155,8 @@ function CycleRunner({ state, gameActions }: CycleRunnerProps) {
           gameActions.earnAchievement('bullseye');
         }
         // Two consecutive got_it grades → Warming Up achievement (fires
-        // once per session). §6.135.8 also defines Warming Up at the
-        // tabs-touched layer; follow-up #3795 reconciles the two.
+        // once per session). This is the canonical trigger per §6.135.8
+        // after the #3795 reconciliation (Flash-streak semantic).
         const last = nextGrades[nextGrades.length - 1];
         const prev = nextGrades[nextGrades.length - 2];
         if (
