@@ -95,8 +95,8 @@
 
 .landing-hero__cta--primary:hover,
 .landing-hero__cta--primary:focus-visible {
-  /* Darker cyan shade for hover — keeps ink text accessible (AAA on 1fd8ff
-     and this darker #0bb8de variant) */
+  /* Darker cyan shade for hover — ink text on this variant clears WCAG AA
+     for large/bold CTA copy (contrast ratio ~6.3:1). */
   background-color: #0bb8de;
   border-color: #0bb8de;
 }
