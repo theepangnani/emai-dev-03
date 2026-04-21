@@ -9,7 +9,6 @@ import {
 } from 'react';
 import {
   streamGenerate,
-  type DemoHistoryTurn,
   type DemoType,
 } from '../../../api/demo';
 import { DemoMascot } from '../DemoMascot';
@@ -142,22 +141,22 @@ export function AskPanel({
     turns[turns.length - 1].role === 'assistant' &&
     turns[turns.length - 1].status === 'done';
 
-  // ``sendTurn`` relies on its closure's ``isStreaming`` + ``capReached``
-  // snapshots being fresh — both are in the useCallback deps below. A
-  // future refactor that moves them behind a ref must keep the early
-  // return guard valid, or the cap can be bypassed.
+  // ``sendTurn`` relies on ``isStreaming`` / ``capReached`` / ``assistantTurnCount``
+  // snapshots being fresh via the useCallback deps below. ``turns`` is no
+  // longer a direct dep — history assembly moved server-side (#3819) — and
+  // the turn count is propagated through ``assistantTurnCount`` (a useMemo
+  // of ``turns``). A future refactor that moves the cap/streaming state
+  // behind a ref must keep the early return guard valid.
   const sendTurn = useCallback(
     (questionText: string) => {
       const question = questionText.trim();
       if (!question || isStreaming || capReached) return;
 
-      // Build the capped history from prior turns (≤2 turns =
-      // last user + last assistant so the total prompt stays ≤3 msgs).
-      const history: DemoHistoryTurn[] = turns
-        .filter((t) => t.status === 'done')
-        .slice(-2)
-        .map((t) => ({ role: t.role, content: t.content.slice(0, 500) }));
-
+      // Multi-turn Ask context is reconstructed server-side from the
+      // session's persisted generations log (#3819). The client no longer
+      // sends prior turns over the wire — this closed the prompt-injection
+      // vector where a crafted assistant history entry was treated by
+      // Haiku as its own prior utterance.
       const userTurn: AskTurn = {
         id: nextTurnId(),
         role: 'user',
@@ -181,7 +180,6 @@ export function AskPanel({
         {
           demo_type: 'ask',
           question,
-          history: history.length > 0 ? history : undefined,
         },
         {
           onToken: (chunk: string) => {
@@ -238,7 +236,6 @@ export function AskPanel({
     },
     [
       sessionJwt,
-      turns,
       isStreaming,
       capReached,
       assistantTurnCount,

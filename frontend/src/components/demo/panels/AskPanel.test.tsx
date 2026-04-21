@@ -106,7 +106,7 @@ describe('AskPanel — empty state + starter chips', () => {
 });
 
 describe('AskPanel — multi-turn', () => {
-  it('sends prior turns as history on subsequent sends', async () => {
+  it('never sends history on subsequent turns (server reconstructs it, #3819)', async () => {
     const user = userEvent.setup();
     setupStreamMock([
       { event: 'token', data: 'First answer.' },
@@ -130,7 +130,8 @@ describe('AskPanel — multi-turn', () => {
       expect(screen.getByText(/first answer/i)).toBeInTheDocument();
     });
 
-    // Second turn — history should contain both prior turns.
+    // Second turn — client no longer forwards prior turns; Haiku's context
+    // is rebuilt server-side from DemoSession.generations_json (#3819).
     setupStreamMock([
       { event: 'token', data: 'Second answer.' },
       {
@@ -151,11 +152,14 @@ describe('AskPanel — multi-turn', () => {
       expect(screen.getByText(/second answer/i)).toBeInTheDocument();
     });
     const lastCall = mockStreamGenerate.mock.calls.at(-1)!;
-    expect(lastCall[1].history).toEqual([
-      { role: 'user', content: 'Q1' },
-      { role: 'assistant', content: 'First answer.' },
-    ]);
-    expect(lastCall[1].question).toBe('Q2');
+    expect(lastCall[1]).toMatchObject({ demo_type: 'ask', question: 'Q2' });
+    // No history field is sent — closes the prompt-injection vector where
+    // a crafted assistant entry was trusted by Haiku.
+    expect('history' in lastCall[1]).toBe(false);
+    // Sanity: every call throughout the session omits `history`.
+    for (const call of mockStreamGenerate.mock.calls) {
+      expect('history' in call[1]).toBe(false);
+    }
   });
 
   it('caps at 3 assistant turns and shows the waitlist upsell', async () => {

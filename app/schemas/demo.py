@@ -4,20 +4,21 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 RoleLiteral = Literal["parent", "student", "teacher", "other"]
 AdminStatusLiteral = Literal["pending", "approved", "rejected", "blocklisted"]
 DemoType = Literal["ask", "study_guide", "flash_tutor"]
-DemoHistoryRole = Literal["user", "assistant"]
 
 # Ask tab multi-turn chatbox (§6.135.5, #3785):
-# - History is capped at 2 prior turns (1 user + 1 assistant) so the total
-#   message array never exceeds 3 before the current user turn.
-# - Each content string is capped at 500 chars to bound the tokens we send.
-_DEMO_HISTORY_MAX_TURNS = 2
-_DEMO_HISTORY_MAX_CHARS = 500
+# - History is reconstructed server-side from ``DemoSession.generations_json``
+#   (#3819) — the client no longer sends prior turns on the wire. This closes
+#   the prompt-injection vector where a crafted ``assistant`` history entry
+#   was treated by Haiku as its own prior utterance.
+# - Only the most recent completed Ask turn is used for context (1 user +
+#   1 assistant) so the total prompt stays at 3 messages max. The
+#   invariant lives in ``app.api.routes.demo._reconstruct_ask_history``.
 
 
 class DemoSessionCreate(BaseModel):
@@ -45,23 +46,19 @@ class DemoSessionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class DemoHistoryTurn(BaseModel):
-    """One prior turn in the Ask tab multi-turn chatbox (§6.135.5, #3785).
-
-    Only ``user`` and ``assistant`` roles are permitted. Content is capped
-    at 500 chars so we never balloon the upstream prompt accidentally.
-    """
-
-    role: DemoHistoryRole
-    content: str = Field(..., min_length=1, max_length=_DEMO_HISTORY_MAX_CHARS)
-
-
 class DemoGenerateRequest(BaseModel):
     """Request body for POST /api/v1/demo/generate (PRD §11.6).
 
     The session is identified by the session JWT cookie/header, not by
     a body field.
+
+    Multi-turn Ask context is reconstructed server-side from the
+    ``DemoSession.generations_json`` log (#3819) — the client does not
+    send prior turns over the wire. Attempting to do so would be ignored
+    by the schema and is rejected as an unknown field.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     demo_type: DemoType
     # Max 500 user-supplied words per generation (FR-052). Using a
@@ -69,27 +66,16 @@ class DemoGenerateRequest(BaseModel):
     # word-level truncation is enforced in the service layer.
     source_text: Optional[str] = Field(None, max_length=4000)
     question: Optional[str] = Field(None, max_length=500)
-    # Multi-turn Ask chatbox (§6.135.5, #3785). Optional; only used by the
-    # Ask tab. Capped at ``_DEMO_HISTORY_MAX_TURNS`` prior turns so the
-    # full prompt is (history + current user) = ≤3 messages.
-    history: Optional[list[DemoHistoryTurn]] = Field(default=None)
-
-    @field_validator("history")
-    @classmethod
-    def _cap_history_length(
-        cls, v: Optional[list[DemoHistoryTurn]]
-    ) -> Optional[list[DemoHistoryTurn]]:
-        if v is None:
-            return v
-        if len(v) > _DEMO_HISTORY_MAX_TURNS:
-            raise ValueError(
-                f"history may not exceed {_DEMO_HISTORY_MAX_TURNS} prior turns"
-            )
-        return v
 
 
 class DemoGenerateEvent(BaseModel):
-    """One entry stored inside `generations_json` for a demo session (PRD §11.5)."""
+    """One entry stored inside `generations_json` for a demo session (PRD §11.5).
+
+    Ask turns additionally record the ``user_content`` and
+    ``assistant_content`` (#3819) so the next turn in the same session can
+    be reconstructed server-side. Non-Ask demo types leave those fields
+    empty.
+    """
 
     demo_type: DemoType
     latency_ms: int
@@ -97,6 +83,15 @@ class DemoGenerateEvent(BaseModel):
     output_tokens: int
     cost_cents: int
     created_at: datetime
+    # Server-reconstructed Ask history source (#3819). Both fields are
+    # capped to 500 chars at record time so the persisted payload stays
+    # bounded regardless of Haiku's output length.
+    # NOTE: the assistant reply may be mid-sentence truncated at 500 chars;
+    # this matches the previous client-side 500-char slice (§6.135.5) and
+    # is intentional for storage bounding. A future PR may lift the cap
+    # once realistic Haiku Ask output sizes are measured.
+    user_content: Optional[str] = Field(default=None, max_length=500)
+    assistant_content: Optional[str] = Field(default=None, max_length=500)
 
 
 class AdminDemoSessionRow(BaseModel):
