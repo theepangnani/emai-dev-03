@@ -60,6 +60,17 @@ def seed_features(db: Session) -> int:
             "enabled": False,
             "variant": "off",
         },
+        {
+            "key": "landing_v2",
+            "name": "Landing Page v2",
+            "description": (
+                "CB-LAND-001: Mindgrasp-inspired landing page redesign. "
+                "Variant controls percentage rollout: off / on_5 / on_25 / on_50 / on_100. "
+                "When on, HomeRedirect renders LandingPageV2 for anonymous visitors."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:
