@@ -19,11 +19,13 @@
  * `sectionRegistry.ts` for the fast-follow that moves each section
  * behind a dynamic import.
  */
-import { useMemo } from 'react';
+import { useMemo, type ComponentType } from 'react';
 import {
   buildSectionRegistry,
   type LandingSection,
 } from '../components/landing/sectionRegistry';
+import { useScrollReveal } from '../components/landing/motion';
+import '../components/landing/motion.css';
 import { LandingSeo } from '../components/landing/LandingSeo';
 import './LandingPageV2.css';
 
@@ -34,6 +36,41 @@ interface LandingPageV2Props {
    * this so the default `import.meta.glob` picks up `./sections/*.tsx`.
    */
   sections?: LandingSection[];
+}
+
+/**
+ * Wraps each registered section in a scroll-reveal `<div>` (CB-LAND-001 S13).
+ * The outer `<main data-landing="v2">` already scopes the page so the motion
+ * tokens + `.landing-reveal` rules resolve via the ancestor — no need to
+ * double-stamp `data-landing` on each wrapper. Using a wrapper keeps S13
+ * additive: no per-section edits required, idempotent if a section later adds
+ * its own reveal hook internally.
+ *
+ * Deep-link safety (I3): if the URL hash points at this section on mount, we
+ * skip the hidden state so the browser's scroll-to-anchor lands on a visible
+ * element (IntersectionObserver won't re-fire once the page has already
+ * scrolled past the reveal threshold).
+ */
+function RevealedSection({
+  id,
+  component: Component,
+}: {
+  id: string;
+  component: ComponentType;
+}) {
+  const initiallyRevealed =
+    typeof window !== 'undefined' && window.location.hash === `#${id}`;
+  const { ref, hidden } = useScrollReveal<HTMLDivElement>({ initiallyRevealed });
+  return (
+    <div
+      ref={ref}
+      id={id}
+      data-section-id={id}
+      className={hidden}
+    >
+      <Component />
+    </div>
+  );
 }
 
 /** Empty-state placeholder (only renders before any S3-S12 PR has shipped). */
@@ -73,24 +110,21 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
         {registry.length === 0 ? (
           <EmptyRegistryNotice />
         ) : (
-          mainSections.map(({ id, component: Component }) => (
+          mainSections.map(({ id, component }) => (
             // Each section wrapper stamps the stable DOM id so anchor links
             // (`/#hero`, `/#pricing`, …) work. Section components render
-            // their own <section> landmark underneath.
-            <div key={id} id={id} data-section-id={id}>
-              <Component />
-            </div>
+            // their own <section> landmark underneath. S13 adds scroll-reveal
+            // via the wrapper — see `RevealedSection` above.
+            <RevealedSection key={id} id={id} component={component} />
           ))
         )}
       </main>
       {footerSection ? (
-        <div
+        <RevealedSection
           key={footerSection.id}
           id={footerSection.id}
-          data-section-id={footerSection.id}
-        >
-          <footerSection.component />
-        </div>
+          component={footerSection.component}
+        />
       ) : null}
     </>
   );

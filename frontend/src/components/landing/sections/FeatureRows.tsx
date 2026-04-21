@@ -41,6 +41,7 @@ export function FeatureRows() {
             key={feature.id}
             content={feature}
             reversed={index % 2 === 1}
+            scanline={feature.scanline}
           />
         ))}
       </div>
