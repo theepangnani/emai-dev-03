@@ -33,45 +33,38 @@
  *   `.test.tsx` files that happen to match the glob) are skipped silently.
  * - Duplicate ids log a warning in dev; the first one wins.
  *
- * ### Lazy-loading (CB-LAND-001 S15 / #3815, §6.136.6)
- * Sections render behind `React.lazy` + `<Suspense>` so below-fold code
- * can be split into separate chunks. Each registry entry's `component`
- * is a `LazyExoticComponent` that resolves to the section's own exported
- * `section.component`. Callers (LandingPageV2) must wrap the tree in a
- * `<Suspense>` boundary.
- *
- * The metadata (`id` / `order`) is still sourced from the eager glob so
- * sort order resolves synchronously and the page doesn't flash a reorder
- * on hydration. True per-section chunk splitting in production requires
- * moving `section = { id, order }` metadata to a co-exported `sectionMeta`
- * (so Vite can split the component body into its own chunk) — tracked in
+ * ### Lazy-loading status (CB-LAND-001 S15 / #3815, §6.136.6)
+ * Sections currently ship eagerly — the LandingPageV2 bundle includes
+ * all 11 section components in one chunk. An earlier S15 iteration
+ * wrapped each component in `React.lazy(() => Promise.resolve(...))`,
+ * but that added a visible Suspense flash on first paint without any
+ * real code-split benefit (the promise resolves synchronously so Vite
+ * cannot split the chunk). True per-section chunk splitting requires
+ * each section file to co-export `sectionMeta = { id, order }` AND the
+ * component via `default` export, so the registry can discover metadata
+ * eagerly while loading component bodies via `() => import(path)`. That
+ * refactor touches every section file and is tracked as
  * CB-LAND-001-fast-follow "true per-section chunk splitting".
+ *
+ * The page keeps a `<Suspense>` boundary around the section list so the
+ * fast-follow can flip to lazy components without changing callers.
  */
-import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+import type { ComponentType } from 'react';
 
 export interface LandingSection {
   /** Stable kebab-case id, rendered as the section's DOM id. */
   id: string;
   /** Sort key — lower renders earlier. Leave gaps (10, 20, 30…). */
   order: number;
-  /**
-   * The section body — wrapped in `React.lazy` by `buildSectionRegistry`
-   * so it only mounts once `<Suspense>` flushes. Authors still export the
-   * raw component via `section = { id, order, component: MyComponent }`;
-   * the registry takes care of the lazy wrapper.
-   */
-  component: LazyExoticComponent<ComponentType> | ComponentType;
+  /** The section body. */
+  component: ComponentType;
 }
 
 /** Shape of a section module file — `section` is optional so helper files
  *  under `./sections/` that match the glob (e.g. `FeatureRow.tsx`) don't
  *  break type-checking. They're filtered out at build time. */
 interface SectionModule {
-  section?: {
-    id: string;
-    order: number;
-    component: ComponentType;
-  };
+  section?: LandingSection;
 }
 
 type SectionGlob = Record<string, SectionModule>;
@@ -98,12 +91,6 @@ const defaultSectionGlob = import.meta.glob<SectionModule>(
  *
  * Exposed as a pure function (rather than a module-level constant) so
  * tests can inject an empty or fake glob.
- *
- * Each returned `component` is wrapped in `React.lazy` so the section
- * tree mounts behind a `<Suspense>` boundary (CB-LAND-001 S15). The
- * lazy loader resolves to the same eagerly-imported module — so there's
- * no extra network fetch — but defers rendering until the browser has
- * committed the hero above-the-fold.
  */
 export function buildSectionRegistry(
   glob: SectionGlob = defaultSectionGlob,
@@ -138,22 +125,7 @@ export function buildSectionRegistry(
       continue;
     }
     seenIds.add(section.id);
-
-    // Close over the already-resolved component so `React.lazy` gets a
-    // synchronous Promise — no extra network request, just a microtask
-    // tick that lets React flush the initial paint before running the
-    // section body. When we migrate to true dynamic-import splitting
-    // (fast-follow), this closure changes to `() => import(path)`.
-    const resolved = section.component;
-    const LazyComponent: LazyExoticComponent<ComponentType> = lazy(() =>
-      Promise.resolve({ default: resolved }),
-    );
-
-    sections.push({
-      id: section.id,
-      order: section.order,
-      component: LazyComponent,
-    });
+    sections.push(section);
   }
 
   return sections.sort(

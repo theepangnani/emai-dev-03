@@ -10,10 +10,11 @@
  * from S1 (landing-v2 fonts / palette / motion) activate.
  *
  * S15 (#3815, §6.136.6): `<LandingSeo />` injects meta / OG / Twitter /
- * JSON-LD into <head>, and all registered sections mount behind a shared
- * `<Suspense>` boundary so the registry can ship lazy-wrapped components.
+ * JSON-LD into <head>. Sections still ship in one chunk — see
+ * `sectionRegistry.ts` for the fast-follow that moves each section
+ * behind a dynamic import.
  */
-import { Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   buildSectionRegistry,
   type LandingSection,
@@ -44,16 +45,6 @@ function EmptyRegistryNotice() {
   );
 }
 
-/**
- * Suspense fallback for below-fold sections. Intentionally blank (not a
- * spinner) — sections are lazy for code-split purposes, not because they
- * block on network, so any visible skeleton would flash during the
- * microtask tick that `React.lazy` imposes on pre-resolved components.
- */
-function SectionSuspenseFallback() {
-  return <div aria-hidden="true" data-testid="landing-v2-section-fallback" />;
-}
-
 export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
   const registry = useMemo<LandingSection[]>(
     () => sections ?? buildSectionRegistry(),
@@ -66,16 +57,14 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
       {registry.length === 0 ? (
         <EmptyRegistryNotice />
       ) : (
-        <Suspense fallback={<SectionSuspenseFallback />}>
-          {registry.map(({ id, component: Component }) => (
-            // Each section wrapper stamps the stable DOM id so anchor links
-            // (`/#hero`, `/#pricing`, …) work. Section components render
-            // their own <section> landmark underneath.
-            <div key={id} id={id} data-section-id={id}>
-              <Component />
-            </div>
-          ))}
-        </Suspense>
+        registry.map(({ id, component: Component }) => (
+          // Each section wrapper stamps the stable DOM id so anchor links
+          // (`/#hero`, `/#pricing`, …) work. Section components render
+          // their own <section> landmark underneath.
+          <div key={id} id={id} data-section-id={id}>
+            <Component />
+          </div>
+        ))
       )}
     </main>
   );

@@ -240,9 +240,13 @@ export function LandingSeo() {
       organizationScript.remove();
       productScript.remove();
       faqScript.remove();
-      // Restore the prior title so dashboard/admin pages don't read
-      // "ClassBridge — Close the homework gap…" after navigation.
-      document.title = prevTitle;
+      // Only restore the prior title if nothing else has claimed it in
+      // between. In React 18+ concurrent mode the NEXT route's mount
+      // effects may run BEFORE our unmount cleanup — if they already set
+      // their own title, we must not stomp on it here.
+      if (document.title === TITLE) {
+        document.title = prevTitle;
+      }
     };
   }, []);
 
