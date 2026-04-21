@@ -19,6 +19,17 @@
   gap: clamp(32px, 5vw, 56px);
 }
 
+.landing-footer__logo {
+  /* Brand mark above the column grid (#3885). The public logo renders on
+     a dark background here, so we lift it via brightness/invert-safe
+     filter rather than swap to a dedicated dark-mode asset. */
+  display: block;
+  height: 40px;
+  width: auto;
+  filter: brightness(0) invert(1);
+  opacity: 0.92;
+}
+
 .landing-footer__columns {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

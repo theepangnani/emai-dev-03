@@ -1,0 +1,109 @@
+/* ========================================
+   CB-LAND-001 — Landing v2 top nav (#3885)
+   Sticky top nav carrying the ClassBridge logo + Log In / Join Waitlist
+   actions. Uses landing-v2 tokens scoped via data-landing="v2".
+   ======================================== */
+
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(1.4) blur(8px);
+  -webkit-backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid rgba(15, 23, 36, 0.06);
+  box-shadow: 0 1px 0 rgba(15, 23, 36, 0.03),
+    0 8px 24px -20px rgba(15, 23, 36, 0.25);
+  font-family: var(--font-landing-sans);
+}
+
+.landing-nav__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.landing-nav__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.landing-nav__brand:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 3px;
+}
+
+.landing-nav__logo {
+  display: block;
+  height: 36px;
+  width: auto;
+}
+
+.landing-nav__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.landing-nav__login {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #1b1e2b;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  transition: color 160ms ease;
+}
+
+.landing-nav__login:hover {
+  color: #0b7ea8;
+}
+
+.landing-nav__login:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+.landing-nav__waitlist {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1b1e2b;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 999px;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.landing-nav__waitlist:hover {
+  background: #0f1724;
+}
+
+.landing-nav__waitlist:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .landing-nav__inner {
+    padding: 12px 16px;
+  }
+  .landing-nav__logo {
+    height: 30px;
+  }
+  /* Drop the waitlist CTA on narrow viewports — the hero retains the
+     Waitlist CTA so we avoid double-CTA clutter in the top nav. */
+  .landing-nav__waitlist {
+    display: none;
+  }
+}

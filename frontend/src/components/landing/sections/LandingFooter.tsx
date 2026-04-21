@@ -25,6 +25,16 @@ export function LandingFooter() {
         ClassBridge footer
       </h2>
       <div className="landing-footer__inner">
+        {/* Brand mark above the column grid. alt="" because the section is
+            already announced by the "ClassBridge footer" sr-only <h2> above —
+            an additional label would double up for screen-reader users
+            (#3885). */}
+        <img
+          src="/classbridge-logo.png"
+          alt=""
+          aria-hidden="true"
+          className="landing-footer__logo"
+        />
         <div className="landing-footer__columns">
           <section
             className="landing-footer__col"

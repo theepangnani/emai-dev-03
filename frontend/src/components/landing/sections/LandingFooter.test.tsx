@@ -58,6 +58,19 @@ describe('LandingFooter', () => {
     expect(screen.getByLabelText(/made in canada/i)).toBeInTheDocument();
   });
 
+  it('renders a decorative ClassBridge logo image with empty alt (#3885)', () => {
+    const { container } = renderFooter();
+    const logo = container.querySelector<HTMLImageElement>(
+      'img.landing-footer__logo',
+    );
+    expect(logo).not.toBeNull();
+    expect(logo!.getAttribute('src')).toBe('/classbridge-logo.png');
+    // Footer logo is decorative — the sr-only <h2> "ClassBridge footer"
+    // already announces the section, so the image is aria-hidden / alt="".
+    expect(logo!.getAttribute('alt')).toBe('');
+    expect(logo!.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('is a <footer> with data-landing="v2" so S1 tokens resolve', () => {
     const { container } = renderFooter();
     const footer = container.querySelector('footer.landing-footer');
