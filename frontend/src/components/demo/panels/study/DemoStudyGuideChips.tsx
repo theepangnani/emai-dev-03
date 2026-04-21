@@ -91,18 +91,39 @@ export function DemoStudyGuideChips({
     }
   }, [openChip]);
 
-  // Esc closes; focus-trap Tab / Shift+Tab inside the upsell.
-  const handleUpsellKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      setOpenChip(null);
-      return;
+  // Esc at the document level closes — mirrors GatedActionBar's pattern so the
+  // key works even when focus has drifted outside the upsell (e.g. user
+  // clicked elsewhere in the modal).
+  useEffect(() => {
+    if (!openChip) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenChip(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [openChip]);
+
+  // After the upsell closes, restore focus to the originating chip. Using a
+  // post-commit effect keyed on the openChip `!== null → null` transition
+  // avoids `setTimeout(0)` racing with React's commit phase.
+  const previousOpenChipRef = useRef<Exclude<ChipId, 'followup'> | null>(null);
+  useEffect(() => {
+    const prev = previousOpenChipRef.current;
+    previousOpenChipRef.current = openChip;
+    if (prev && !openChip) {
+      const chipId = lastActiveChipRef.current;
+      if (chipId) chipRefs.current[chipId]?.focus();
     }
+  }, [openChip]);
+
+  // Tab / Shift+Tab cycling inside the upsell — only active while focus is
+  // inside the popover.
+  const handleUpsellKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Tab') return;
     const container = upsellRef.current;
     if (!container) return;
     const focusable = container.querySelectorAll<HTMLElement>(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable]',
     );
     if (focusable.length === 0) return;
     const first = focusable[0];
@@ -120,17 +141,7 @@ export function DemoStudyGuideChips({
     }
   }, []);
 
-  // When the upsell closes, restore focus to the originating chip.
-  const closeUpsell = useCallback(() => {
-    const chipId = lastActiveChipRef.current;
-    setOpenChip(null);
-    if (chipId) {
-      // Wait a tick so React removes the panel first.
-      setTimeout(() => {
-        chipRefs.current[chipId]?.focus();
-      }, 0);
-    }
-  }, []);
+  const closeUpsell = useCallback(() => setOpenChip(null), []);
 
   const handleChipClick = (chip: ChipDef) => {
     if (chip.id === 'followup') {
@@ -193,8 +204,7 @@ export function DemoStudyGuideChips({
         <div
           ref={upsellRef}
           className="demo-sg-upsell"
-          role="dialog"
-          aria-modal="false"
+          role="region"
           aria-labelledby={`demo-sg-upsell-title-${openChip}`}
           onKeyDown={handleUpsellKeyDown}
         >

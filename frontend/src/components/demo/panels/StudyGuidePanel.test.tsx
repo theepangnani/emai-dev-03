@@ -92,7 +92,7 @@ describe('StudyGuidePanel (#3787)', () => {
     const worksheetChip = screen.getByRole('button', { name: /generate a worksheet/i });
     await user.click(worksheetChip);
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeInTheDocument();
     expect(screen.getByText(/Unlock AI worksheets/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /join the waitlist/i })).toHaveAttribute(
       'href',
@@ -122,10 +122,10 @@ describe('StudyGuidePanel (#3787)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /make a quiz/i }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /close upsell/i }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeNull();
   });
 
   it('invokes onNavigateToTab("ask") when "Ask a follow-up" is clicked and does NOT open an upsell', async () => {
@@ -147,7 +147,7 @@ describe('StudyGuidePanel (#3787)', () => {
 
     await user.click(screen.getByRole('button', { name: /ask a follow-up/i }));
     expect(onNavigateToTab).toHaveBeenCalledWith('ask');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeNull();
     expect(onChipCuriosity).not.toHaveBeenCalled();
   });
 
@@ -166,7 +166,7 @@ describe('StudyGuidePanel (#3787)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /create flashcards/i }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeInTheDocument();
 
     rerender(
       <StudyGuidePanel
@@ -180,7 +180,7 @@ describe('StudyGuidePanel (#3787)', () => {
       />,
     );
 
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeNull();
   });
 
   it('closes the upsell when Esc is pressed while focus is inside', async () => {
@@ -198,10 +198,10 @@ describe('StudyGuidePanel (#3787)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /go deeper on this topic/i }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeInTheDocument();
 
     await user.keyboard('{Escape}');
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('region', { name: /unlock (ai|flashcard|topic)/i })).toBeNull();
   });
 
   it('chips expose aria-describedby scope hints', () => {

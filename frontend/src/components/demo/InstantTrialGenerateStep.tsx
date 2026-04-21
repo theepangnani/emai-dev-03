@@ -41,6 +41,26 @@ function buildInitialStreams(): PerTabStreamState {
 }
 
 /**
+ * Derive the Study Guide title from the current source (#3787).
+ * - Sample source → the canonical SAMPLE_TITLE.
+ * - Paste with content → the first line of the paste, clipped to 60 chars.
+ * - Empty paste → fall back to SAMPLE_TITLE so the title is never blank.
+ */
+const TOPIC_MAX_LEN = 60;
+function deriveStudyGuideTopic(source: SourceKind, customText: string): string {
+  if (source === 'paste') {
+    const trimmed = customText.trim();
+    if (trimmed) {
+      const firstLine = trimmed.split('\n')[0].trim();
+      return firstLine.length > TOPIC_MAX_LEN
+        ? firstLine.slice(0, TOPIC_MAX_LEN - 1) + '\u2026'
+        : firstLine;
+    }
+  }
+  return SAMPLE_TITLE;
+}
+
+/**
  * Orchestrator for the three demo tabs.
  *
  * Post-refactor responsibilities (CB-DEMO-001 foundation):
@@ -186,7 +206,7 @@ export function InstantTrialGenerateStep({
           state={activeState}
           onGenerate={() => runGenerate('study_guide')}
           generateDisabled={disableGenerate}
-          topic={source === 'paste' && customText.trim() ? 'your source' : SAMPLE_TITLE}
+          topic={deriveStudyGuideTopic(source, customText)}
           activeTab={activeTab}
           onChipCuriosity={onStudyGuideChipCuriosity}
           onNavigateToTab={setActiveTab}
