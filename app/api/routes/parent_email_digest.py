@@ -120,6 +120,11 @@ class SendDigestResponse(BaseModel):
     message: str
     # #3880: per-channel outcomes; None = channel not requested, True = sent, False = failed.
     channel_status: dict[str, bool | None] | None = None
+    # #3894: machine-readable reason for skipped status. One of
+    # "already_delivered", "no_settings", "no_new_emails", "no_eligible_channels",
+    # or None when status != "skipped". Frontends use this to gate UI — e.g.,
+    # the "Open preferences" link only makes sense for "no_eligible_channels".
+    reason: str | None = None
 
 
 # ---------------------------------------------------------------------------
