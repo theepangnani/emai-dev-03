@@ -1,13 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamGenerate, type DemoType } from '../../api/demo';
 import { ConversionCard } from './ConversionCard';
+import { StreamingMarkdown } from '../StreamingMarkdown';
+import { DemoMascot } from './DemoMascot';
+import { FlashcardDeck } from './FlashcardDeck';
+import { GatedActionBar } from './GatedActionBar';
+import { SourcePicker, type SourceKind } from './SourcePicker';
+import { IconSparkles, IconCopy } from './icons';
+import { SAMPLE_TEXT, TABS, countWords } from './demoSamples';
 import {
-  DEFAULT_QUESTIONS,
-  SAMPLE_TEXT,
-  SAMPLE_TITLE,
-  TABS,
-  countWords,
-} from './demoSamples';
+  TAB_META,
+  GATED_ACTIONS,
+  INITIAL_TAB_STATE,
+  copyToClipboard,
+  type TabState,
+} from './instantTrialHelpers';
 
 interface Props {
   sessionJwt: string;
@@ -15,121 +22,119 @@ interface Props {
   onVerify: () => void;
 }
 
-type StreamStatus = 'idle' | 'streaming' | 'done' | 'error';
-
-/** Step 2 — sample panel, tabs, streaming output, and conversion card. */
 export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, onVerify }: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
-  const [showCustom, setShowCustom] = useState(false);
+  const [source, setSource] = useState<SourceKind>('sample');
   const [customText, setCustomText] = useState('');
-  const [question, setQuestion] = useState<string>(DEFAULT_QUESTIONS.ask);
-  const [status, setStatus] = useState<StreamStatus>('idle');
-  const [output, setOutput] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [generatedTypes, setGeneratedTypes] = useState<Set<DemoType>>(new Set());
+  const [tabState, setTabState] = useState<Record<DemoType, TabState>>(INITIAL_TAB_STATE);
+  const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const liveRegionRef = useRef<HTMLParagraphElement | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
   }, []);
 
-  // Reset question when switching tabs back to default.
-  const selectTab = (tab: DemoType) => {
-    setActiveTab(tab);
-    setQuestion(DEFAULT_QUESTIONS[tab]);
-    setOutput('');
-    setError('');
-    setStatus('idle');
+  const resetAllTabs = () => {
+    abortRef.current?.abort();
+    setTabState((prev) => ({
+      ask: { ...prev.ask, output: '', status: 'idle', error: '' },
+      study_guide: { ...prev.study_guide, output: '', status: 'idle', error: '' },
+      flash_tutor: { ...prev.flash_tutor, output: '', status: 'idle', error: '' },
+    }));
   };
+
+  const handleSourceChange = (next: SourceKind) => { setSource(next); resetAllTabs(); };
+  const handleCustomTextChange = (text: string) => {
+    setCustomText(text);
+    if (source === 'paste') resetAllTabs();
+  };
+  const updateTab = (tab: DemoType, patch: Partial<TabState>) =>
+    setTabState((prev) => ({ ...prev, [tab]: { ...prev[tab], ...patch } }));
 
   const wordCount = countWords(customText);
   const overLimit = wordCount > 500;
+  const current = tabState[activeTab];
+  const { status, output } = current;
 
   const runGenerate = useCallback(
     (tab: DemoType) => {
       abortRef.current?.abort();
-      setOutput('');
-      setError('');
-      setStatus('streaming');
-      const controller = streamGenerate(
-        sessionJwt,
-        {
-          demo_type: tab,
-          source_text: (showCustom && customText.trim()) ? customText.trim() : SAMPLE_TEXT,
-          question: tab === 'ask' ? question : undefined,
-        },
-        {
-          onToken: (chunk: string) => setOutput((prev) => prev + chunk),
-          onDone: () => {
-            setStatus('done');
-            setGeneratedTypes((prev) => new Set(prev).add(tab));
+      setTabState((prev) => {
+        const question = prev[tab].question;
+        const controller = streamGenerate(
+          sessionJwt,
+          {
+            demo_type: tab,
+            source_text: source === 'paste' && customText.trim() ? customText.trim() : SAMPLE_TEXT,
+            question: tab === 'ask' ? question : undefined,
           },
-          onError: (message: string) => {
-            setError(message);
-            setStatus('error');
+          {
+            onToken: (chunk: string) =>
+              setTabState((inner) => ({
+                ...inner,
+                [tab]: { ...inner[tab], output: inner[tab].output + chunk },
+              })),
+            onDone: () => updateTab(tab, { status: 'done' }),
+            onError: (message: string) => updateTab(tab, { status: 'error', error: message }),
           },
-        },
-      );
-      abortRef.current = controller;
+        );
+        abortRef.current = controller;
+        return { ...prev, [tab]: { ...prev[tab], output: '', error: '', status: 'streaming' } };
+      });
     },
-    [sessionJwt, showCustom, customText, question],
+    [sessionJwt, source, customText],
   );
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(output);
-    } catch {
-      // best-effort — no toast to keep scope minimal
-    }
+    const ok = await copyToClipboard(output);
+    if (!ok) return;
+    setCopied(true);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
+  const generatedTypes = useMemo(
+    () => new Set(TABS.filter((t) => tabState[t.id].status === 'done').map((t) => t.id)),
+    [tabState],
+  );
   const remainingTabs = TABS.filter((t) => t.id !== activeTab && !generatedTypes.has(t.id));
+  const activeMeta = TAB_META[activeTab];
+  const mascotMood =
+    status === 'streaming' ? 'streaming' : status === 'done' ? 'complete' : 'thinking';
+  const anyDone = generatedTypes.size > 0;
 
   return (
     <div>
-      <div className="demo-tabs" role="tablist" aria-label="Demo type">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={tab.id === activeTab}
-            className="demo-tab"
-            onClick={() => selectTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="demo-tabs demo-tabs--iconed" role="tablist" aria-label="Demo type">
+        {TABS.map((tab) => {
+          const { Icon, label, sub } = TAB_META[tab.id];
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={tab.id === activeTab}
+              className="demo-tab demo-tab--iconed"
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="demo-tab-icon" aria-hidden="true"><Icon size={22} /></span>
+              <span className="demo-tab-label">{label}</span>
+              <span className="demo-tab-sub">{sub}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <p className="demo-panel-label">Sample reading — {SAMPLE_TITLE}</p>
-      <div className="demo-sample-panel" aria-label="Pre-loaded sample" tabIndex={0}>
-        {SAMPLE_TEXT}
-      </div>
-
-      <button
-        type="button"
-        className="demo-toggle-text"
-        aria-expanded={showCustom}
-        onClick={() => setShowCustom((v) => !v)}
-      >
-        {showCustom ? '\u2212 Hide my own text' : '+ Use my own text (optional, \u2264500 words)'}
-      </button>
-      {showCustom && (
-        <>
-          <textarea
-            className="demo-textarea"
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            placeholder="Paste a short reading or notes (max 500 words)..."
-            aria-label="Your own text"
-          />
-          <p className="demo-word-count" aria-live="polite">
-            {wordCount} / 500 words{overLimit ? ' — too long' : ''}
-          </p>
-        </>
-      )}
+      <SourcePicker
+        value={source}
+        onChange={handleSourceChange}
+        customText={customText}
+        onCustomTextChange={handleCustomTextChange}
+      />
 
       {activeTab === 'ask' && (
         <div className="demo-form-group">
@@ -137,63 +142,99 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
           <input
             id="demo-question"
             type="text"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
+            value={current.question}
+            onChange={(e) => updateTab('ask', { question: e.target.value })}
             maxLength={500}
           />
         </div>
       )}
 
-      <div className="demo-modal-actions" style={{ padding: 0, border: 'none' }}>
+      <div className="demo-generate-row">
         <button
           type="button"
-          className="demo-btn-primary"
+          className="demo-btn-primary demo-btn-generate"
           disabled={status === 'streaming' || overLimit}
           onClick={() => runGenerate(activeTab)}
         >
-          {status === 'streaming' ? 'Generating...' : `Generate ${TABS.find((t) => t.id === activeTab)?.label}`}
+          {status === 'streaming' ? (
+            <>
+              <span className="demo-generate-dots" aria-hidden="true">
+                <span className="demo-typing-dot" />
+                <span className="demo-typing-dot" />
+                <span className="demo-typing-dot" />
+              </span>
+              <span>Generating...</span>
+            </>
+          ) : (
+            <>
+              <IconSparkles size={18} />
+              <span>Generate {activeMeta.label}</span>
+            </>
+          )}
         </button>
       </div>
 
       {(status !== 'idle' || output) && (
-        <div className="demo-output-wrap" aria-busy={status === 'streaming'}>
-          <span className="demo-watermark" aria-hidden="true">Demo sample</span>
-          <p className="demo-output-text" ref={liveRegionRef} aria-live="polite">
-            {output}
-            {status === 'streaming' && <span className="demo-typing-dot" aria-hidden="true" />}
-          </p>
+        <div className="demo-output-layout" aria-busy={status === 'streaming'} aria-live="polite">
+          <div className="demo-output-mascot" aria-hidden="true">
+            <DemoMascot size={44} mood={mascotMood} />
+          </div>
+          <div className="demo-output-bubble">
+            <div className="demo-output-bubble-header">
+              <span className="demo-watermark">Demo sample</span>
+            </div>
+            {activeTab === 'flash_tutor' ? (
+              <FlashcardDeck rawText={output} isStreaming={status === 'streaming'} />
+            ) : (
+              <StreamingMarkdown
+                content={output}
+                isStreaming={status === 'streaming'}
+                className="demo-output-md"
+              />
+            )}
+          </div>
         </div>
       )}
-      {error && <div className="demo-output-error" role="alert">{error}</div>}
+      {current.error && <div className="demo-output-error" role="alert">{current.error}</div>}
 
       {output && status === 'done' && (
-        <div className="demo-output-actions">
-          <button type="button" className="demo-btn-secondary" onClick={handleCopy}>
-            Copy
-          </button>
-        </div>
+        <>
+          <div className="demo-output-actions">
+            <button
+              type="button"
+              className="demo-btn-secondary demo-btn-copy"
+              onClick={handleCopy}
+              aria-label="Copy demo output to clipboard"
+            >
+              <IconCopy size={16} />
+              <span>{copied ? 'Copied!' : 'Copy'}</span>
+            </button>
+          </div>
+          <GatedActionBar actions={GATED_ACTIONS[activeTab]} />
+        </>
       )}
 
       {status === 'done' && remainingTabs.length > 0 && (
         <div className="demo-chips-row" aria-label="Try another demo">
-          {remainingTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className="demo-chip"
-              onClick={() => selectTab(tab.id)}
-            >
-              Try {tab.label}
-            </button>
-          ))}
+          {remainingTabs.map((tab) => {
+            const { Icon: ChipIcon, label } = TAB_META[tab.id];
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className="demo-chip demo-chip--iconed"
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <ChipIcon size={14} />
+                <span>Try {label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {status === 'done' && (
-        <ConversionCard
-          position={waitlistPreviewPosition}
-          onVerify={onVerify}
-        />
+      {anyDone && (
+        <ConversionCard position={waitlistPreviewPosition} onVerify={onVerify} />
       )}
     </div>
   );

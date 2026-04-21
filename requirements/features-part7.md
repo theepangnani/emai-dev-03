@@ -1307,6 +1307,20 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 
 **Issues:** #3531-#3539 | **Key PR:** #3555
 
+#### §6.137.11 Incremental Slide Streaming (NFR) — DEPLOYED (#3735)
+
+Non-functional requirement — slide generation must be **progressive and non-blocking**:
+
+- [x] **Eager streaming** — the slide SSE stream begins immediately after the session is created. The frontend must not gate SSE opening behind a progress-animation stage transition.
+- [x] **Time-to-first-slide** — the user transitions from the progress interstitial to the slides view as soon as the first slide event arrives, not after a pre-determined animation completes.
+- [x] **Background streaming** — slides 2-N continue streaming in the background while the user reads slide 1; subsequent slides append to the renderer as they arrive.
+- [x] **Bounded parallel generation (backend)** — slide #1 is generated synchronously for fastest first paint; slides #2-7 are generated with bounded concurrency (`asyncio.Semaphore`, max 3 in flight) and emitted to the SSE stream in slide-number order.
+- [x] **Per-slide error isolation** — a single slide's generation failure yields an error placeholder in its slot and does not abort the stream.
+
+**Why:** the previous implementation stalled the "Generating your lesson…" interstitial forever because `processingStage` never advanced to `4`, so `onComplete` never fired and the SSE was never opened. Even after the state-machine fix, sequential generation made the user wait for 7 × per-slide latency before seeing a complete lesson. Incremental streaming gives the user content to consume within ~1 slide-latency of starting.
+
+**Issues:** #3735 | **PR:** (integrate/3735-asgf-streaming)
+
 #### Key PRs
 
 | PR | Milestone | Description |
@@ -1435,3 +1449,202 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 - Tuesday Mirror names the tools (Google Classroom, Teach Assist, Teams, etc.)
 
 **Epic:** #3599 — see for full PRD + plan.
+
+#### 6.135.1 Demo Scope Expansion — UNRESTRICTED (#3754)
+
+**Change:** The instant-trial demo (ask / study_guide / flash_tutor) no longer restricts topics to the Grade 8 Ontario curriculum. Users can submit any topic and receive a real response.
+
+**Why changed:** The original scope (PRD v1.1, via #3599) was chosen for cost control, brand safety, audience targeting, and abuse mitigation. After initial launch, the restriction was causing a poor UX — legitimate user questions outside Grade 8 were refused with a rigid "outside curriculum" message that felt at odds with the "try anything" landing-page framing.
+
+**Mitigations preserved:**
+- Token budgets (500 / 600 / 1200 per demo_type) bound Haiku output cost per request.
+- slowapi rate limiting + disposable-email blocklist + honeypot still apply.
+- `demo-safe` posture preserved: no persistence, no personalization, no user-data lookup.
+- Cost per verified signup monitored per M5 KPI; watch for post-change drift.
+
+**Acceptance criteria:**
+- [x] All 3 prompt files (`prompts/demo/*.md`) updated — curriculum-scope rules removed
+- [x] REQUIREMENTS updated to document the change
+- [ ] Post-deploy: spot-check that Grade 10 Algebra, Grade 12 Calculus, university-level topics now produce on-topic responses
+- [ ] Post-deploy: monitor M5 Cost per Verified Signup for >25% drift in first 14 days; revisit if so
+
+**Supersedes:** any earlier "Grade 8 Ontario curriculum only" language in CB-DEMO-001 docs.
+
+#### 6.135.2 Demo page re-plan (2026-04-20, issue #3758)
+
+**Classification:** Design Gap — the original PRD v1.1 (#3599) shipped an always-on sample panel + optional "use my own text" toggle, a shared stream state, raw-JSON flash-tutor output, and no gated-extras surface. It did not account for a single-source picker, per-tab output cache, a flashcard UI, or an upsell path for non-live features (downloads, saves, follow-ups, more cards).
+
+**Design updates (frontend-only, no backend changes):**
+- **Single-source picker** — radio grid with `sample | paste | upload`. `upload` is gated: the input is disabled, clicking its label opens an inline upsell card ("Uploads unlock when you join the waitlist") and does NOT change the active source.
+- **Per-tab cache** — each of the 3 tabs (Ask / Study Guide / Flash Tutor) keeps its own `{output, status, question, error}`. Switching tabs preserves state so users can compare lenses without re-running. Source changes clear `output` / `status` / `error` across all tabs (user-typed questions are preserved so the user doesn't have to retype).
+- **Flash Tutor lens** — renders the Haiku JSON array via `FlashcardDeck` (flippable cards, keyboard-nav) instead of raw markdown.
+- **Gated action bar** — below each completed output, per-tab actions (`ask`: save + follow-up; `study_guide`: download + save + follow-up; `flash_tutor`: download + save + more-flashcards). Each opens an inline upsell pointing at `/waitlist`. Free `Copy` is retained.
+- **No backend changes in this phase** — `source_text` still strings through `POST /api/v1/demo/generate`. Upload remains gated; no file-upload endpoint is added.
+
+**Covered by:** #3759 (FlashcardDeck), #3760 (GatedActionBar), #3761 (scroll-clip fix), #3762 (integration — SourcePicker + per-tab cache + wiring).
+
+**Epic:** #3758.
+
+#### 6.135.3 Modal Maximize Toggle — Phase 1 (#3755)
+
+**Change:** `InstantTrialModal` now includes a maximize button in its header that toggles between the default size (`max-width: 640px; max-height: 92vh`) and a maximized size (`max-width: 95vw; max-height: 95vh`).
+
+**Why:** Step 2 of the modal ("Your instant demo") renders variable-length streaming output that often exceeded 92vh and showed a scrollbar even after the §6.135 sizing tightening (#3751). Users reported the scrollbar as visually distracting. A discoverable maximize control lets users expand on demand instead of hard-coding a larger default.
+
+**Design decisions:**
+- Toggle placement: header, immediately before the close (`×`) button — mirrors standard OS window chrome (max → close).
+- Icons: inline SVGs (~215 bytes each) — no icon-library dependency.
+- Hidden on mobile (`<640px`) — mobile already uses a full-screen bottom sheet, so the button is redundant and the carve-out preserves the native-app feel.
+- `:focus-visible` ring matches the close button for keyboard-a11y consistency.
+- State is in-memory (React `useState`); not persisted across modal-open cycles. If usage data shows strong preference for maximized, a future change can persist to `localStorage` (tracked as follow-up in #3772).
+
+**Acceptance criteria:**
+- [x] Maximize button in `InstantTrialModal` header, keyboard-accessible
+- [x] Toggles `.demo-modal--maximized` class between default and 95vw/95vh
+- [x] Mobile (<640px): button hidden, bottom-sheet unaffected
+- [x] Esc + close button still dismiss the modal
+- [x] `:focus-visible` ring matches other header buttons
+- [x] 2 regression tests (`aria-label` toggle + class application)
+
+**Phase 2 (deferred to #3772 / #3752):**
+- Migrate maximize into the shared `<Modal>` wrapper planned in #3752 (so any modal can opt-in via `maximizable` prop)
+- Optionally persist the maximized state in `localStorage`
+
+**Shipped:** PR #3757, merged 2026-04-19, deployed 2026-04-19 23:20 UTC.
+
+#### 6.135.4 Demo Upload Gating Copy & Dismiss-on-Tab-Change (#3784)
+
+**Change:** The source picker's "Upload a document" card replaces the literal copy `"PDF, DOCX (coming soon)"` with `"PDF, DOCX — unlocks with waitlist."`. The inline waitlist upsell overlay that appears when a user clicks the gated upload card now auto-dismisses when the user switches demo tabs (Ask / Study Guide / Flash Tutor), fixing a lingering-overlay defect where the upsell remained visible across tab changes.
+
+**Why changed:** `"(coming soon)"` implied a missing backend capability and set the wrong expectation. In reality, the demo upload is a deliberate waitlist-conversion gate — the backend upload + extraction pipeline already exists in the authenticated app (`app/services/file_processor.py`, `POST /api/v1/asgf/upload`). The new copy is truthful about the gating reason ("unlocks with waitlist") and reinforces the conversion path rather than suggesting the product is incomplete. The dismiss-on-tab-change is a straight defect fix in the current overlay-state lifecycle.
+
+**Mitigations preserved:** None applicable — this is a copy change plus a defect fix on an existing gated interaction. No behaviour change to upload handling, no backend change, no change to rate-limit or content-safety policies.
+
+**Acceptance criteria:** see issue #3784 for the canonical list. At minimum:
+- [ ] Source-picker "Upload a document" card renders `"PDF, DOCX — unlocks with waitlist."`
+- [ ] Clicking the gated upload card opens the waitlist upsell overlay as today
+- [ ] Switching demo tabs (Ask ↔ Study Guide ↔ Flash Tutor) auto-dismisses the upsell overlay
+- [ ] No regressions to sample / paste source selection or to the `/waitlist` CTA link
+
+**Supersedes:** the `"(coming soon)"` copy introduced by the v1.1 source-picker (§6.135.2).
+
+#### 6.135.5 Ask Tab as Conversational Chatbox (#3785)
+
+**Change:** The Ask tab transitions from single-shot Q&A to a multi-turn chatbox that mirrors the authenticated-app `HelpChatbot` UX — streaming assistant turns, pinned input at the bottom, starter suggestion chips on first open, and a paper-bubble thread of alternating user + assistant turns. Unverified demo users are capped at **3 assistant turns**; on turn 4, the panel swaps to an in-panel waitlist upsell ("Join the waitlist to keep asking follow-ups").
+
+**Why changed:** Single-shot Ask under-sells the real product. In the authenticated app, Ask is conversational and thread-anchored to class materials — users rarely ask just one thing. The demo needs to convey that conversational depth in ~30 seconds so the "try anything" landing promise matches the felt experience.
+
+**Mitigations preserved:**
+- Existing demo rate-limit (3 generations / 24h per email, 10 / 24h per IP, $10 CAD daily cap) still applies — **each assistant turn counts as one generation** against the bucket.
+- Content-safety post-generation check runs per turn (unchanged).
+- 500-word input cap applies to each user turn.
+- No persistence across session close — the thread lives only in client memory for the current modal session.
+
+**Backend impact:** Extend `POST /api/v1/demo/generate` to accept a short conversation history (≤3 prior turns) as an additional input field, OR add a sibling `POST /api/v1/demo/ask/turn` endpoint if the existing route's contract is too constrained. Per-turn output is capped at 200–300 tokens (tighter than the current 500-token `ask` ceiling) to keep the chatbox feel snappy. Rate-limit bucket and content-safety path are unchanged; only the request shape and per-call token budget change.
+
+**Scope boundary:** Chat state lives in the client for the active session only; no `demo_ask_threads` table, no server-side persistence. The 3-turn cap is enforced client-side and re-enforced by the rate-limit bucket server-side.
+
+**Acceptance criteria:** see issue #3785 for the canonical list. At minimum:
+- [ ] Ask tab renders a pinned-input chat thread with streaming assistant bubbles
+- [ ] 3–4 starter suggestion chips visible on first open; chips pre-fill the input
+- [ ] 3-turn cap enforced; turn 4 swaps the input for the in-panel waitlist upsell
+- [ ] Each turn counts against the demo rate-limit bucket (email + IP + daily $ cap)
+- [ ] `prefers-reduced-motion` respected on bubble/stream animations
+
+#### 6.135.6 Flash Tutor Tab as Short Learning Cycle (#3786)
+
+**Change:** The Flash Tutor tab replaces the current static 5-card deck with a **3-card adaptive Short Learning Cycle** that mirrors the authenticated Flash Tutor session loop from CB-ILE-001 (§6.134): card front → reveal back → self-grade (`Missed` / `Almost` / `Got it`) → next card. A mastery ring in the modal chrome tracks per-session progress; on completion, the panel shows a confetti burst + score summary + waitlist upsell ("Save your streak — join the waitlist").
+
+**Why changed:** Static deck display does not convey the product's core loop. Users who try Flash Tutor in the demo should feel the mastery cycle — reveal, self-grade, advance — because that loop is what CB-ILE-001 is built around. A static deck reads as "flashcard viewer," not "Flash Tutor."
+
+**Mitigations preserved:**
+- All 3 cards are pre-generated in a single Haiku call before the cycle starts — **no per-card backend hit**, so a full cycle consumes exactly 1 generation against the rate-limit bucket (unchanged from today).
+- Demo does NOT touch `ile_sessions`, `ile_mastery`, or `ile_mastery_service` tables — all mastery, streak, and score state is **client-side only** and does not persist across session close.
+- Existing demo rate-limit (3 / 24h email, 10 / 24h IP, $10 CAD daily cap) and content-safety post-generation check are preserved.
+- Output-token ceiling per generation unchanged (cards are smaller; 3-card output fits well inside the current `flash_tutor` budget).
+
+**Scope boundary:** `prompts/demo/flash-tutor.md` may be updated to generate **3 cards instead of 5**, or a `demo_type=flash_tutor_cycle` variant may be introduced — whichever is less invasive to the existing prompt + generation pipeline. Mastery + streak tracking lives entirely in the client `useDemoGameState` hook (see §6.135.8). No new tables, no new authenticated-app coupling.
+
+**Acceptance criteria:** see issue #3786 for the canonical list. At minimum:
+- [ ] Flash Tutor tab renders a 3-card cycle with reveal + self-grade controls
+- [ ] Mastery ring visible in tab chrome; updates after each self-grade
+- [ ] Confetti + score summary + waitlist CTA on cycle completion
+- [ ] Exactly 1 backend generation call per cycle (pre-generated cards)
+- [ ] No writes to `ile_*` tables; no persistence across modal close
+- [ ] `prefers-reduced-motion` disables confetti and reveal animations
+
+#### 6.135.7 Study Guide Tab as Overview + Suggestion Chips (#3787)
+
+**Change:** The Study Guide tab replaces the current "5 key points + 3 Q&A" markdown block with a **concise overview paragraph (≤150 words)** plus **4–6 suggestion chips**: `Generate a worksheet`, `Make a quiz`, `Create flashcards`, `Go deeper on [subtopic]`, `Ask a follow-up`. Non-follow-up chips open a scoped waitlist upsell describing the action they would take. `Ask a follow-up` routes the user to the Ask tab with the input focused and optionally pre-filled with the chip label.
+
+**Why changed:** Bulleted key-points-plus-Q&A is dense and non-actionable — it shows the user *what* the guide says but gives them nowhere to go next. The real Study Guide in the authenticated product offers follow-up actions (see §6.132 UTDF Framework); the demo should mirror that pattern so the "where does this lead" moment lands inside the free experience rather than only after signup.
+
+**Mitigations preserved:**
+- Chips are **illustrative** — no AI generation is triggered on chip click.
+- Only `Ask a follow-up` consumes demo quota (because it hands off to the Ask tab, which then spends an Ask turn per §6.135.5). All other chip clicks are free and open static upsell cards.
+- Content-safety + rate-limit policies unchanged (no new backend calls from chips).
+- 500-word input cap + session non-persistence unchanged.
+
+**Scope boundary:** `prompts/demo/study-guide.md` is updated to produce the overview paragraph format (≤150 words, no bulleted key points, no Q&A block). Chip labels are **hard-coded in the frontend for v1** — not AI-generated — to keep the surface deterministic and cheap. The `Go deeper on [subtopic]` chip may interpolate a subtopic from the overview in a later iteration; v1 can ship with the literal label.
+
+**Acceptance criteria:** see issue #3787 for the canonical list. At minimum:
+- [ ] Study Guide tab renders a ≤150-word overview paragraph (no bullets, no Q&A)
+- [ ] 4–6 suggestion chips visible below the overview
+- [ ] Non-follow-up chips open a scoped waitlist upsell card
+- [ ] `Ask a follow-up` routes to the Ask tab with the input focused
+- [ ] No new backend calls triggered by chip clicks (other than the Ask-tab hand-off)
+- [ ] `prompts/demo/study-guide.md` updated and covered by prompt-smoke tests
+
+#### 6.135.8 Demo Gamification Layer (cross-cutting)
+
+**Change:** Introduce a demo-wide client-side gamification layer across all three tabs:
+- **XP bar + level counter** — Lv.1 → Lv.2 at 100 XP. Visible in the modal header, updates on tab interactions (Ask turns, Flash self-grades, Study Guide chip uses).
+- **Quest tracker** — 3 diamond dots, one per tab, lighting up as the user engages each tab at least once.
+- **Streak flame** — active at streak ≥ 2 consecutive `Got it` grades in Flash Tutor; dims on any `Missed` reset.
+- **Achievement stickers** — 5 types popping onto the modal edge as earned: **First Spark** (first generation), **Bullseye** (first `Got it`), **Warming Up** (all 3 tabs touched), **Triple Threat** (3 Ask turns used), **Level Up** (hit Lv.2).
+- **Mastery ring** — visible on Flash Tutor tab, reflects session mastery (see §6.135.6).
+- **Confetti + level-up overlay** — fire at 100 XP with a waitlist CTA ("Save your streak — join the waitlist").
+
+**Why:** Increases engagement time inside the demo modal, reinforces that the product is a "learning loop" and not a tool dump, and provides natural conversion-moment anchors (e.g. level-up → "save your streak on the waitlist"). All state is session-local; nothing persists across modal close.
+
+**Mitigations preserved:**
+- All gamification is **client-side only** — no new backend calls, no new tables, no new rate-limit buckets, no new content-safety paths.
+- Respects `prefers-reduced-motion` — disables XP bar transitions, sticker pop-in, mastery-ring fill, confetti, and level-up overlay animations.
+- No PII written anywhere; game state lives in React state in the modal instance only.
+
+**Scope boundary:** All game-state primitives (XP, level, streak, quest progress, achievements earned) live in a single `useDemoGameState` hook with unit tests covering state transitions. UI components are isolated under `frontend/src/components/demo/gamification/` so they can be removed or feature-flagged without touching tab logic. No backend changes.
+
+**Acceptance criteria:**
+- [ ] `useDemoGameState` hook exists with unit tests covering state transitions (XP gain, level-up, streak increment/reset, quest dot lighting, achievement earning)
+- [ ] XP bar + level counter visible in modal header; updates on tab interactions
+- [ ] Quest tracker dots light up as user engages each tab
+- [ ] Streak flame lights up at streak ≥ 2; dims on reset (`Missed`)
+- [ ] All 5 achievement stickers (First Spark, Bullseye, Warming Up, Triple Threat, Level Up) pop onto the modal edge as earned
+- [ ] Mastery ring visible on Flash Tutor tab (feeds from §6.135.6 state)
+- [ ] Confetti + level-up overlay with waitlist CTA fire at 100 XP
+- [ ] `prefers-reduced-motion` disables all animations + confetti
+- [ ] All styles reference existing brand tokens (no new hardcoded colors) — see §6.135.9
+
+#### 6.135.9 Demo Visual Alignment Decision — Path C Blend
+
+**Change:** The demo modal visual system aligns with the existing ClassBridge brand tokens defined in `frontend/src/index.css`:
+- Fonts: **Space Grotesk** (display) + **Source Sans 3** (body) — via `var(--font-display)` / `var(--font-sans)`
+- Primary accent: `#4a90d9` — via `var(--color-accent)`
+- Warm accent: `#f4801f` — via `var(--color-accent-warm)`
+- Surface: white — via `var(--color-surface)`
+- Ink: via `var(--color-ink)`
+
+Demo-specific warmth (optional notebook-paper accents, washi-tape decorative strips, sticker-style achievements from §6.135.8) may **layer on top** of the brand tokens as a "public-face" voice, but the core palette + typography must match the authenticated app.
+
+**Why:** An initial demo prototype (see `docs/design/cb-demo-001-gamified-prototype.html`) diverged substantially from brand — different fonts (Fraunces vs Space Grotesk), different accent (cyan vs steel blue), different surface (cream vs white). A coherent brand experience matters because the demo sells the real app — it should look like the real app with a slight extra warmth, not like a different product. The decision between "adopt the prototype palette wholesale" (Path A), "reject the prototype entirely" (Path B), and "keep the playful warmth but anchor on brand tokens" (Path C) is resolved in favour of **Path C**.
+
+**Mitigations preserved:** N/A — this is a design-system decision, not a runtime change. No backend, no rate-limit, no content-safety surface touched.
+
+**Scope boundary:** All new demo CSS must reference tokens from `frontend/src/index.css`. No hardcoded hex colors in demo component CSS except for the tokens themselves at the root. Existing demo CSS that already uses hex values (pre-dating this decision) is not in scope for this subsection — it will be migrated opportunistically as each §6.135.4–§6.135.8 stream touches its files.
+
+**Supersedes:** any earlier "Notebook + Neon" or prototype-derived palette / font choices. The HTML prototype at `docs/design/cb-demo-001-gamified-prototype.html` may be refreshed or left as-is — it is a reference document, not a production artifact, and the production demo should not be driven from it.
+
+**Acceptance criteria:**
+- [ ] All new demo CSS uses `var(--font-display)`, `var(--font-sans)`, `var(--color-accent)`, `var(--color-accent-warm)`, `var(--color-ink)`, `var(--color-surface)` (and related tokens) — no hardcoded hex colors in demo component CSS
+- [ ] Any new tokens required (e.g. for sticker washi-tape accents) are added to `index.css` rather than inlined
+- [ ] The visual-alignment decision is linked from the demo component entry points so future contributors see it before adding styles

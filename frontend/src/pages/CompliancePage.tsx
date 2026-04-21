@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import './CompliancePage.css';
 
-// SUGGESTION: automate this via build-time env var or latest-deploy timestamp.
-const LAST_UPDATED = '2026-04-18';
+// Populated by CI at build time via `VITE_BUILD_DATE` (#3681). The
+// fallback keeps local dev builds readable when the env var is not set.
+const LAST_UPDATED = import.meta.env.VITE_BUILD_DATE ?? '2026-04-18';
 
 const SECTIONS = [
   { id: 'hosting', title: 'Hosted in Canada (GCP Toronto)' },

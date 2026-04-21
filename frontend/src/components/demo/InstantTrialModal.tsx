@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { InstantTrialSignupStep } from './InstantTrialSignupStep';
 import { InstantTrialGenerateStep } from './InstantTrialGenerateStep';
+import { DemoMascot } from './DemoMascot';
+import { IconClose } from './icons';
 import type { CreateDemoSessionResponse } from '../../api/demo';
 import './InstantTrialModal.css';
 
@@ -23,6 +25,8 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [waitlistPreview, setWaitlistPreview] = useState<number>(0);
   const [verifyEmail, setVerifyEmail] = useState<string>('');
   const [verifyNotice, setVerifyNotice] = useState<string>('');
+  const [verifyShown, setVerifyShown] = useState<boolean>(false);
+  const [maximized, setMaximized] = useState(false);
   const trapRef = useFocusTrap<HTMLDivElement>(true, onClose);
 
   const handleStep1Success = (res: CreateDemoSessionResponse, email: string) => {
@@ -38,6 +42,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
       `We've sent a verification link and a 6-digit code to ${verifyEmail}. ` +
         'Click the link in your email to confirm your waitlist spot.',
     );
+    setVerifyShown(true);
   };
 
   const titleId = 'demo-modal-title';
@@ -48,29 +53,87 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
       ? 'Takes ~30 seconds. No password required.'
       : 'Pick a tab, hit Generate, and watch it stream.';
 
+  const mascotMood: 'greeting' | 'thinking' | 'complete' =
+    verifyShown ? 'complete' : step === 1 ? 'greeting' : 'thinking';
+
   return (
-    <div className="demo-modal-overlay" onMouseDown={onClose}>
+    <div className="demo-modal-overlay">
       <div
         ref={trapRef}
-        className="demo-modal"
+        className={`demo-modal${maximized ? ' demo-modal--maximized' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={subtitleId}
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <header className="demo-modal-header">
-          <div>
+          <div className="demo-mascot-header" aria-hidden="true">
+            <DemoMascot size={40} mood={mascotMood} />
+          </div>
+          <div className="demo-modal-header-text">
             <h2 id={titleId} className="demo-modal-title">{title}</h2>
             <p id={subtitleId} className="demo-modal-subtitle">{subtitle}</p>
+            <div
+              className="demo-progress-dots"
+              role="group"
+              aria-label={`Step ${step} of 2`}
+            >
+              <span
+                className={`demo-progress-dot${step === 1 ? ' demo-progress-dot--active' : ''}`}
+                aria-hidden="true"
+              />
+              <span
+                className={`demo-progress-dot${step === 2 ? ' demo-progress-dot--active' : ''}`}
+                aria-hidden="true"
+              />
+            </div>
           </div>
+          <button
+            type="button"
+            className="demo-modal-maximize"
+            aria-label={maximized ? 'Restore size' : 'Maximize'}
+            title={maximized ? 'Restore size' : 'Maximize'}
+            onClick={() => setMaximized((v) => !v)}
+          >
+            {maximized ? (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                fill="none"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10 2v4h4" />
+                <path d="M6 14v-4H2" />
+              </svg>
+            ) : (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                stroke="currentColor"
+                fill="none"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 2h5v5" />
+                <path d="M7 14H2V9" />
+              </svg>
+            )}
+          </button>
           <button
             type="button"
             className="demo-modal-close"
             aria-label="Close demo"
             onClick={onClose}
           >
-            &times;
+            <IconClose size={20} aria-hidden />
           </button>
         </header>
 
@@ -85,7 +148,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 onVerify={handleVerify}
               />
               {verifyNotice && (
-                <div className="demo-form-error" role="status" style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', marginTop: 'var(--space-md)' }}>
+                <div className="demo-form-success" role="status">
                   {verifyNotice}
                 </div>
               )}

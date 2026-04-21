@@ -17,14 +17,13 @@ export function KeyboardShortcutsModal({ open, onClose }: KeyboardShortcutsModal
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div
         ref={trapRef}
         className="modal shortcuts-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        onClick={(e) => e.stopPropagation()}
       >
         <h2 id="shortcuts-title">Keyboard Shortcuts</h2>
         <div className="shortcuts-list">

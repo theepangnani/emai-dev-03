@@ -167,11 +167,10 @@ export default function ReportCardUploadModal({
   if (!isOpen) return null;
 
   return (
-    <div className="rc-upload-overlay" onClick={handleClose}>
+    <div className="rc-upload-overlay">
       <div
         className="rc-upload-modal"
         ref={trapRef}
-        onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Upload Report Cards"

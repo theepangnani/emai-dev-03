@@ -583,6 +583,27 @@ Cross-page UI consistency pass ensuring all 24 pages follow identical layout, co
 - [x] Orphaned per-page CSS removed after migration
 - [x] Total CSS line reduction documented
 
+#### 6.27.5 Modal Dismissal Behavior (App-Wide Rule) — IMPLEMENTED (#3750)
+
+**Rule:** Modals in ClassBridge are **never dismissed by clicking outside** the modal surface. Modals dismiss only via:
+- Explicit **close button** (`×` / "Cancel"), or
+- **Escape key** (via `useFocusTrap`).
+
+**Why:** Modals in this app are primarily data-entry surfaces (signup, create class, upload material, edit, etc.). An accidental stray click on the dim backdrop used to destroy partially-entered form data. Click-outside dismiss is appropriate for menus, popovers, and tooltips — **not** for modal dialogs.
+
+**Exclusions (not modals):**
+- Dropdowns / popovers / menus — **should** dismiss on outside click.
+- `TutorialOverlay` — tutorial tooltip, dismiss-anywhere is correct.
+- `JourneyWelcomeModal` — has an explicit custom dismiss gate and is allowed its own behavior.
+
+**Shared infrastructure follow-up:** See #3752 for creating a shared `<Modal>` wrapper so this rule is enforced by default in one place rather than across every callsite. Until then, this rule applies per-component.
+
+**Acceptance criteria:**
+- [x] No overlay `onClick` / `onMouseDown` handler calls `onClose` in any of the 15 listed modals (see #3750)
+- [x] `aria-modal="true"` preserved on every modal surface
+- [x] Esc-to-dismiss via `useFocusTrap` preserved
+- [x] Explicit close button present on every modal
+
 ### 6.28 Upload Modal Redesign: Two-Step Wizard - IMPLEMENTED
 
 Redesign the Upload Class Material modal (`CreateStudyMaterialModal`) from a single dense form into a progressive two-step wizard. The current modal overwhelms novice users by presenting file upload, text paste, AI tool checkboxes, title, course selector, material selector, focus prompts, and duplicate warnings all at once. The redesign prioritizes simplicity and usability across all roles (Parent, Student, Teacher, Admin).

@@ -2443,7 +2443,10 @@ def _run_migrations_inner(engine, settings, logger):
                     conn.commit()
                     logger.info("Added 'variant' column to feature_flags (#3601)")
     except Exception as e:
-        logger.debug("feature_flags variant migration skipped: %s", e)
+        # #3711: escalated debug → warning so future silent failures are
+        # visible in Cloud Run logs. The background-thread migration failed
+        # silently on prod and caused /api/features to 500 for every admin.
+        logger.warning("feature_flags variant migration skipped: %s", e)
 
     # --- Digest: whatsapp_delivery_status column on digest_delivery_log (#3620) ---
     try:

@@ -1,5 +1,8 @@
 import { Link, useSearchParams } from 'react-router-dom';
+import { DemoMascot } from '../components/demo/DemoMascot';
+import { IconCheck, IconArrowRight } from '../components/demo/icons';
 import '../pages/LaunchLandingPage.css';
+import './DemoVerifiedPage.css';
 
 /**
  * Public "email verified" confirmation page reached via
@@ -18,39 +21,40 @@ export function DemoVerifiedPage() {
         </Link>
       </nav>
 
-      <section className="launch-hero" aria-labelledby="demo-verified-title">
-        <h1 id="demo-verified-title">You're verified</h1>
-        {position > 0 ? (
-          <p className="launch-hero-sub">
-            You're <strong>#{position.toLocaleString()}</strong> on the ClassBridge waitlist. We'll
-            email you as soon as your spot opens.
-          </p>
-        ) : (
-          <p className="launch-hero-sub">
-            Your email is confirmed and your waitlist spot is secured. We'll
-            email you as soon as your spot opens.
-          </p>
+      <section className="demo-verified-hero" aria-labelledby="demo-verified-title">
+        <div className="demo-verified-mascot">
+          <DemoMascot size={96} mood="complete" />
+        </div>
+
+        <h1 id="demo-verified-title" className="demo-verified-title">
+          Your spot is saved
+        </h1>
+
+        {position > 0 && (
+          <div className="demo-verified-position-pill" aria-label={`Waitlist position ${position}`}>
+            #{position.toLocaleString()}
+          </div>
         )}
 
-        <div className="launch-hero-actions">
-          <Link to="/" className="launch-btn-primary launch-btn-lg">
-            Back to homepage
-          </Link>
-          <Link to="/login" className="launch-btn-secondary launch-btn-lg">
-            Sign in
-          </Link>
-        </div>
+        <ul className="demo-verified-benefits">
+          <li>
+            <IconCheck size={20} />
+            <span>Your email is confirmed and your waitlist spot is locked in.</span>
+          </li>
+          <li>
+            <IconCheck size={20} />
+            <span>We'll email you the moment your role's invite wave opens.</span>
+          </li>
+          <li>
+            <IconCheck size={20} />
+            <span>Want to jump the queue? Forward our email to a friend who'd benefit.</span>
+          </li>
+        </ul>
 
-        <div style={{ marginTop: 40, maxWidth: 520, textAlign: 'left' }}>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', margin: '0 0 12px' }}>
-            What happens next
-          </h2>
-          <ul style={{ color: 'var(--color-ink-muted)', lineHeight: 1.7, paddingLeft: 20 }}>
-            <li>We'll email you when your role's invite wave opens.</li>
-            <li>Keep an eye on your inbox for onboarding tips and early-access previews.</li>
-            <li>Want to jump the queue? Forward our email to a friend who would benefit.</li>
-          </ul>
-        </div>
+        <Link to="/" className="launch-btn-primary launch-btn-lg demo-verified-cta">
+          <IconArrowRight size={18} />
+          <span>Back to ClassBridge</span>
+        </Link>
       </section>
     </div>
   );

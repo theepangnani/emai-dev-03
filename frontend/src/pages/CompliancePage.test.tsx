@@ -76,4 +76,21 @@ describe('CompliancePage', () => {
     expect(backLinks.length).toBeGreaterThan(0)
     expect(backLinks[0]).toHaveAttribute('href', '/')
   })
+
+  // ── a11y (#3685) ──────────────────────────────────────────────
+  it('has exactly one h1', () => {
+    const { container } = renderPage()
+    expect(container.querySelectorAll('h1').length).toBe(1)
+  })
+
+  it('mailto link uses mailto: scheme', () => {
+    const { container } = renderPage()
+    const mailLinks = Array.from(
+      container.querySelectorAll('a[href^="mailto:"]'),
+    ).filter((a) => /privacy@classbridge\.ca/i.test(a.getAttribute('href') || ''))
+    expect(mailLinks.length).toBeGreaterThan(0)
+    for (const link of mailLinks) {
+      expect(link.getAttribute('href')).toMatch(/^mailto:/)
+    }
+  })
 })

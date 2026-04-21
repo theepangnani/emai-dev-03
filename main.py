@@ -91,6 +91,12 @@ if _is_pg:
         ("study_guides", "answer_key_markdown", "TEXT"),
         ("study_guides", "weak_topics", "TEXT"),
         ("study_guides", "ai_engine", "VARCHAR(20)"),
+        # CB-DEMO-001 F2 (#3601, #3711) — variant column must exist before
+        # the FeatureFlag model can SELECT. The background-thread migration
+        # in _run_migrations_inner ran too late / silently failed, leaving
+        # /api/features and /admin/features returning 500 after the
+        # CB-DEMO-001 deploy.
+        ("feature_flags", "variant", "VARCHAR(20) NOT NULL DEFAULT 'off'"),
     ]
     try:
         with engine.connect() as _conn:
@@ -297,6 +303,34 @@ finally:
             except Exception:
                 pass
         _ds_lock_conn.close()
+
+# CB-DEMO-001 fast-follow: demo_sessions indexes (#3641, #3658, #3659).
+# Idempotent CREATE INDEX IF NOT EXISTS — runs on both PG and SQLite.
+# Partial index on verified_ts uses WHERE verified = TRUE (PG partial indexes;
+# SQLite has partial index support since 3.8.0). Runs after the demo_sessions
+# CREATE TABLE block above so the table is guaranteed to exist.
+_utdf_indexes = [
+    ("idx_demo_sessions_verification_token_hash",
+     "CREATE INDEX IF NOT EXISTS idx_demo_sessions_verification_token_hash "
+     "ON demo_sessions(verification_token_hash)"),
+    ("idx_demo_sessions_source_ip_hash",
+     "CREATE INDEX IF NOT EXISTS idx_demo_sessions_source_ip_hash "
+     "ON demo_sessions(source_ip_hash)"),
+    ("idx_demo_sessions_verified_ts",
+     "CREATE INDEX IF NOT EXISTS idx_demo_sessions_verified_ts "
+     "ON demo_sessions(verified_ts) WHERE verified = TRUE"),
+]
+try:
+    with engine.connect() as _conn:
+        for _ix_name, _ix_sql in _utdf_indexes:
+            try:
+                _conn.execute(text(_ix_sql))
+            except Exception as _ix_err:
+                logger.warning("Index %s migration note: %s", _ix_name, _ix_err)
+        _conn.commit()
+        logger.info("demo_sessions index migration completed")
+except Exception as _ix_conn_err:
+    logger.error("demo_sessions index migration FAILED (connection level): %s", _ix_conn_err)
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
@@ -858,7 +892,6 @@ async def startup_event():
     # Initialize intent embedding service (anchor phrase embeddings)
     try:
         from app.services.intent_embedding_service import intent_embedding_service
-        from app.core.config import settings
         if settings.openai_api_key:
             intent_embedding_service.initialize(settings.openai_api_key)
     except Exception as e:

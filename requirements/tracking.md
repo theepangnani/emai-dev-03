@@ -1,9 +1,39 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 14, 2026):** ~3,290 total issues — ~2,810 closed, ~480 open, 2,038 commits
-- **Features built:** 420+ enhancements closed
-- **Bugs fixed:** 410+ bugs closed
+**Summary (as of Apr 20, 2026):** ~3,770 total issues — ~3,290 closed, ~480 open, 2,110+ commits
+- **Features built:** 430+ enhancements closed
+- **Bugs fixed:** 445+ bugs closed
 - **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
+
+**Apr 20 — CB-DEMO-001 demo modal re-plan (feature issues + §6.135 expansion):**
+- CB-DEMO-001 demo modal re-plan — 4 feature issues scoped (#3784 upload copy + dismiss, #3785 Ask chatbox, #3786 Flash Tutor short cycle, #3787 Study Guide chips) + §6.135 requirements expanded (new subsections §6.135.4–§6.135.9) + gamification layer scoped (client-side only; XP/level/streak/quests/achievements/mastery ring) + Path C brand-alignment committed (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex in demo CSS).
+- **REQUIREMENTS update:** §6.135.4 Demo Upload Gating Copy & Dismiss-on-Tab-Change (#3784), §6.135.5 Ask Tab as Conversational Chatbox (#3785), §6.135.6 Flash Tutor Tab as Short Learning Cycle (#3786), §6.135.7 Study Guide Tab as Overview + Suggestion Chips (#3787), §6.135.8 Demo Gamification Layer (cross-cutting), §6.135.9 Demo Visual Alignment Decision — Path C Blend — all added to `requirements/features-part7.md`.
+- **Scope discipline:** Ask-tab chatbox extends `POST /api/v1/demo/generate` (or adds `POST /api/v1/demo/ask/turn`) to accept a short conversation history; each turn counts against the existing rate-limit bucket. All other subsections are frontend-only. No new tables, no mastery/ILE persistence, no new content-safety surface.
+- Snapshot date: 2026-04-20.
+
+**Apr 20 — CB-DEMO-001 demo page re-plan (Mindgrasp-style UX):**
+- **Epic #3758 delivered via PR #3769 (merged to master as `ac2d8df6`):** Single-source picker (sample | paste | gated upload) replaces the always-visible sample + "Use my own text" toggle; per-tab cache preserves generated output when switching Ask ↔ Study Guide ↔ Flash Tutor (source changes clear output but preserve user-typed questions); Flash Tutor renders `FlashcardDeck` flip cards instead of raw JSON; `GatedActionBar` under each completed output (Download PDF / Save / Follow-up / More flashcards) opens inline waitlist upsells. Scrollbar clipping by rounded modal corners fixed.
+- **Classification:** Requirement Gap + Design Gap + 3 Bugs (mixed). Original CB-DEMO-001 spec didn't account for single-source UX, per-tab cache, flashcard UI, or gated extras.
+- **Delivery model:** 4 parallel worktree streams → `integrate/cb-demo-001-replan` → one master PR. Every child PR passed 2× `/pr-review` with all suggestions resolved or filed as fast-follows before merge. Final integration PR also passed 2× `/pr-review`.
+- **Issues closed:** #3758 (epic), #3759 (FlashcardDeck), #3760 (GatedActionBar), #3761 (scroll clip), #3762 (integration + REQUIREMENTS §6.135.2), #3724 (demo UI redesign — superseded by this work).
+- **PRs merged:** #3763 (scroll clip), #3764 (GatedActionBar), #3765 (FlashcardDeck), #3767 (integration into `integrate/cb-demo-001-replan`), #3769 (integrate → master).
+- **Fast-follows filed (open):** #3766 `waitlistHref` open-redirect guard; #3768 move `streamGenerate` side-effect out of `setTabState` updater (pre-StrictMode); #3770 wire `GatedActionBar.onUpsell` to analytics emitter; #3771 `FlashcardDeck.tsx` stale file-header comment.
+- **REQUIREMENTS update:** §6.135.2 "Demo page re-plan (2026-04-20)" added to `requirements/features-part7.md` documenting the Design Gap and shipped spec.
+- **Scope discipline:** Frontend-only. No backend, DB, schema, or env-var changes. Cloud Run deploy is a vanilla frontend-artifact swap.
+- **Deploy:** Triggered on merge (workflow_dispatch run 24694426427); traffic routing via `gcloud run services update-traffic classbridge --to-latest --project=emai-dev-01` to follow.
+- Snapshot date: 2026-04-20.
+
+**Apr 19 — CB-DEMO-001 Production Launch + 30+ Fast-Follow Fixes:**
+- **CB-DEMO-001 epic merged to master (#3708):** Instant Trial landing-page experience deployed to production — AI Instant Trial, Tuesday Mirror, Role Switcher, Proof Wall, Compliance page all live at classbridge.ca.
+- **Production hotfixes:** feature_flags.variant column missing on prod (500 errors, #3713), redundant settings import shadowing (#3714), expose demo_landing_v1_1 variant to public /api/features (#3716), ship prompts/ in Docker image (demo Generate broken, #3718), demo verification magic link missing /api/v1 prefix (#3721), render demo output as markdown (was showing raw # and ** chars, #3723).
+- **UI redesign + polish (PRs #3725, #3727, #3728, #3732, #3733, #3734, #3736):** DemoMascot + SVG icons (Part A), RoleSwitcher SVG icons (UI5), UI3 Generate step + DemoVerifiedPage polish + Copy fallback, UI2 modal chrome + signup + ConversionCard redesign, UI4 TuesdayMirror redesign, UI6 ProofWall redesign, plus consolidated UI redesign + 30+ fast-follow fixes.
+- **Backend fast-follows:** indexes + test coverage (#3726), admin + compliance fast-follows bundle (#3729 → #3703/#3704/#3705/#3707/#3681/#3685), backend security fast-follows bundle (#3730 → #3640/#3665/#3655/#3629/#3664), rate-limit race — reserve slot before stream (#3731 → #3666).
+- **PR-review cleanup:** un-skip timeout test + cleanup (#3742 → #3737/#3738), GenerateSubGuideModal Router test fix (#3712).
+- **ASGF (CB-ASGF-001) issues filed (in-progress):** study guide generation stuck at 'Generating your lesson' — frontend never starts SSE (#3735, fixed via fix/3735a-asgf-stream-frontend, fix/3735b-asgf-slide-parallel), slide generator leaks pending tasks on early consumer close (#3740), frontend may leak previous session's SSE into new session (#3741), distinct visual treatment for failed ASGF slides (#3743).
+- **Email digest:** From-name filter + on-demand 24h lookback (#3661 → #3652/#3653).
+- **OAuth/Gmail:** correct OAuth scopes for parent Gmail service (#3597).
+- **Open enhancements still pending:** verify path double-commits (#3656), location column on waitlist_signups for Proof Wall by_municipality (#3657), demo magic-link token exposed in URL query (#3660), Anthropic pricing hardcoded (#3667), temperature=0.7 hardcoded in stream_demo_completion (#3669), _waitlist_preview_position runs full COUNT per signup (#3670), tighten demo_session.user_agent truncation to 256 chars (#3671), verify /privacy and /terms routes before launch (#3682), verify privacy@classbridge.ca inbox monitored (#3683), CompliancePage prefer Unicode over HTML entities (#3684), lazy-load InstantTrialModal (#3697), AdminDemoSessionsPage bulk-select approve/reject (#3706), /demo/verify-failed route missing (#3722), redesign demo UI (#3724).
+- Snapshot date: 2026-04-19.
 
 **Apr 18 — CB-DEMO-001 Instant Trial & Demo Experience kickoff (epic #3599):**
 - Epic #3599 opened for Instant Trial landing-page experience (AI Instant Trial + Tuesday Mirror + Role Switcher + Proof Wall); target launch May 13, 2026 with 50/50 A/B, sunset gate May 29 if M4 < 2.0×.

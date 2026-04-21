@@ -96,16 +96,52 @@ def test_public_features_includes_variants_for_authenticated(client, db_session)
     _ = db_session.query(FeatureFlag).all()  # ensure query path works
 
 
-def test_public_features_unauthenticated_still_works(client):
-    """Regression: `/api/features` without auth must still succeed and omit DB flags."""
+def test_public_features_unauthenticated_exposes_demo_landing_variant(client, db_session):
+    """`/api/features` without auth must expose demo_landing_v1_1 variant
+    so the public landing page can gate on it (#3715). Other DB-backed
+    flags remain admin-only.
+    """
+    from app.services.feature_seed_service import seed_features
+    from app.models.feature_flag import FeatureFlag
+
+    # Ensure the public demo flag is seeded.
+    seed_features(db_session)
+
     resp = client.get("/api/features")
     assert resp.status_code == 200
     data = resp.json()
-    # Config-based flags still present
+
+    # Config-based flags still present.
     assert "google_classroom" in data
     assert "waitlist_enabled" in data
-    # _variants is present but should be an empty dict when unauthenticated
-    assert data.get("_variants") == {}
+
+    # _PUBLIC_DB_FLAGS — demo_landing_v1_1 MUST appear for unauthenticated
+    # callers so useVariantBucket on the landing page works.
+    assert "demo_landing_v1_1" in data
+    assert "_variants" in data
+    assert "demo_landing_v1_1" in data["_variants"]
+    assert data["_variants"]["demo_landing_v1_1"] in {"off", "on_50", "on_for_all"}
+
+    # Non-public DB-backed flags must NOT leak to unauthenticated callers.
+    # Seed a non-public flag and assert it's absent.
+    leakable = db_session.query(FeatureFlag).filter(
+        FeatureFlag.key == "school_board_connectivity"
+    ).first()
+    if leakable is None:
+        leakable = FeatureFlag(
+            key="school_board_connectivity",
+            name="School Board Connectivity",
+            description="test",
+            enabled=False,
+        )
+        db_session.add(leakable)
+        db_session.commit()
+    # Re-fetch with the flag now seeded.
+    resp2 = client.get("/api/features")
+    assert resp2.status_code == 200
+    data2 = resp2.json()
+    assert "school_board_connectivity" not in data2
+    assert "school_board_connectivity" not in data2.get("_variants", {})
 
 
 def test_admin_update_variant_valid(client, db_session, admin_user):
@@ -136,6 +172,21 @@ def test_admin_update_variant_valid(client, db_session, admin_user):
         headers=headers,
         json={"variant": "off"},
     )
+
+
+def test_admin_update_config_based_flag_rejects_variant(client, db_session, admin_user):
+    """Config-based flags (e.g. google_classroom) must reject variant updates (#3629)."""
+    headers = _auth(client, admin_user.email)
+
+    resp = client.patch(
+        "/api/admin/features/google_classroom",
+        headers=headers,
+        json={"variant": "on_50"},
+    )
+    assert resp.status_code == 400, resp.text
+    detail = resp.json()["detail"]
+    assert "variant" in detail.lower()
+    assert "google_classroom" in detail or "config-based" in detail.lower()
 
 
 def test_admin_update_variant_rejects_invalid_value(client, db_session, admin_user):

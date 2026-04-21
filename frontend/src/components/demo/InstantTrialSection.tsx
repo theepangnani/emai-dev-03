@@ -1,8 +1,16 @@
-import { useState } from 'react';
-import { InstantTrialModal } from './InstantTrialModal';
+import { DemoMascot } from './DemoMascot';
+import {
+  IconArrowRight,
+  IconCheck,
+  IconClock,
+  IconShield,
+  IconSparkles,
+} from './icons';
 import './InstantTrialModal.css';
 
 interface InstantTrialSectionProps {
+  /** Callback fired when the CTA is clicked; parent owns modal state. */
+  onOpen: () => void;
   /** Optional override for the section headline. */
   headline?: string;
   /** Optional override for the sub-headline. */
@@ -12,33 +20,57 @@ interface InstantTrialSectionProps {
 }
 
 /**
- * Landing-page section that advertises the instant demo and opens the
- * Instant Trial modal when the CTA is clicked.
+ * Landing-page section that advertises the instant demo and notifies the
+ * parent to open the Instant Trial modal when the CTA is clicked.
  *
  * FE5 is responsible for mounting this behind the feature flag — this
- * component is intentionally self-contained and does not touch the page.
+ * component is purely presentational.
  */
 export function InstantTrialSection({
+  onOpen,
   headline = 'Try ClassBridge in 30 seconds',
   subheadline = 'No password, no download. Pick a sample, watch it stream, and see how ClassBridge turns class work into clear next steps.',
-  ctaLabel = 'Try Now',
+  ctaLabel = 'Try the demo',
 }: InstantTrialSectionProps) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <section className="instant-trial-section" aria-labelledby="instant-trial-heading">
+    <section
+      id="instant-trial"
+      className="instant-trial-section"
+      aria-labelledby="instant-trial-heading"
+    >
       <div className="instant-trial-inner">
-        <h2 id="instant-trial-heading">{headline}</h2>
-        <p>{subheadline}</p>
-        <button
-          type="button"
-          className="instant-trial-cta"
-          onClick={() => setOpen(true)}
-        >
-          {ctaLabel}
-        </button>
+        <div className="instant-trial-content">
+          <p className="demo-eyebrow">Instant Demo &middot; 30 Seconds</p>
+          <h2 id="instant-trial-heading">{headline}</h2>
+          <p>{subheadline}</p>
+          <button
+            type="button"
+            className="instant-trial-cta"
+            onClick={onOpen}
+          >
+            <IconSparkles size={18} aria-hidden />
+            <span>{ctaLabel}</span>
+            <IconArrowRight size={18} aria-hidden />
+          </button>
+          <div className="demo-trust-bar" aria-label="Demo highlights">
+            <span className="demo-trust-chip">
+              <IconClock size={14} aria-hidden />
+              <span>Fast</span>
+            </span>
+            <span className="demo-trust-chip">
+              <IconShield size={14} aria-hidden />
+              <span>No password</span>
+            </span>
+            <span className="demo-trust-chip">
+              <IconCheck size={14} aria-hidden />
+              <span>Free</span>
+            </span>
+          </div>
+        </div>
+        <div className="instant-trial-mascot" aria-hidden="true">
+          <DemoMascot size={72} mood="greeting" />
+        </div>
       </div>
-      {open && <InstantTrialModal onClose={() => setOpen(false)} />}
     </section>
   );
 }

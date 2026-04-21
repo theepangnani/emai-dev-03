@@ -112,7 +112,8 @@ def verify_magic_link_route(
 
 class VerifyCodePayload(BaseModel):
     email: EmailStr
-    code: str = Field(min_length=1, max_length=12)
+    # Enforce exactly 6 digits at validation time (#3655).
+    code: str = Field(pattern=r"^\d{6}$")
 
 
 @router.post("/verify/code")

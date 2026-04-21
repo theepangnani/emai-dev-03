@@ -118,14 +118,13 @@ export default function CreditTopUpModal({
   if (!open) return null;
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
+    <div className="modal-overlay">
       <div
         className="topup-modal"
         ref={trapRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="topup-modal-title"
-        onClick={(e) => e.stopPropagation()}
       >
         <button className="modal-close" onClick={handleClose}>
           &times;

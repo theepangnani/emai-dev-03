@@ -899,6 +899,9 @@ async def run_migrations_manual(
         ("parent_gmail_integrations", "whatsapp_verified", "BOOLEAN DEFAULT FALSE"),
         ("parent_gmail_integrations", "whatsapp_otp_code", "VARCHAR(6)"),
         ("parent_gmail_integrations", "whatsapp_otp_expires_at", "TIMESTAMP"),
+        # CB-DEMO-001 F2 (#3601, #3711) — recovery for feature_flags.variant
+        # if the startup migration ever silently fails again.
+        ("feature_flags", "variant", "VARCHAR(20) NOT NULL DEFAULT 'off'"),
     ]
 
     with engine.connect() as conn:
@@ -1004,11 +1007,23 @@ def list_demo_sessions(
         .all()
     )
 
+    # All-time per-status counts, independent of current filters (#3703).
+    count_rows = (
+        db.query(DemoSession.admin_status, func.count(DemoSession.id))
+        .group_by(DemoSession.admin_status)
+        .all()
+    )
+    counts = {s: 0 for s in _ALLOWED_DEMO_STATUSES}
+    for status_value, n in count_rows:
+        if status_value in counts:
+            counts[status_value] = int(n or 0)
+
     return {
         "items": [_serialize_demo_row(r) for r in rows],
         "total": total,
         "page": page,
         "per_page": per_page,
+        "counts": counts,
     }
 
 

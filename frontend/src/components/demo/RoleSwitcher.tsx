@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ComponentType, KeyboardEvent } from 'react';
+import { IconCheck, IconParent, IconShield, IconStudent, IconTeacher } from './icons';
+import type { IconProps } from './icons';
 import './RoleSwitcher.css';
 
 type RoleKey = 'parent' | 'student' | 'teacher' | 'admin';
@@ -16,17 +18,18 @@ interface RoleSwitcherData {
 
 const ROLE_ORDER: RoleKey[] = ['parent', 'student', 'teacher', 'admin'];
 
-const ROLE_ICONS: Record<RoleKey, string> = {
-  parent: '👪',
-  student: '🎒',
-  teacher: '📘',
-  admin: '🏫',
+const ROLE_ICON_COMPONENT: Record<RoleKey, ComponentType<IconProps>> = {
+  parent: IconParent,
+  student: IconStudent,
+  teacher: IconTeacher,
+  admin: IconShield,
 };
 
 const FADE_MS = 150;
+const FETCH_TIMEOUT_MS = 10_000;
 
 interface RoleSwitcherProps {
-  onCtaClick?: () => void;
+  onCtaClick: () => void;
   contentUrl?: string;
 }
 
@@ -35,21 +38,33 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
   const [error, setError] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<RoleKey>('parent');
   const [isFading, setIsFading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const tabRefs = useRef<Record<RoleKey, HTMLButtonElement | null>>({
     parent: null,
     student: null,
     teacher: null,
     admin: null,
   });
+  const fadeTimerRef = useRef<number | null>(null);
 
-  const prefersReducedMotion = useMemo(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(
+    () => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    fetch(contentUrl)
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    fetch(contentUrl, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
@@ -58,21 +73,47 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
         if (!cancelled) setData(json);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load');
+        if (cancelled) return;
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Request timed out');
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load');
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timer);
       });
-    return () => { cancelled = true; };
-  }, [contentUrl]);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [contentUrl, reloadKey]);
+
+  useEffect(() => {
+    return () => {
+      if (fadeTimerRef.current !== null) {
+        window.clearTimeout(fadeTimerRef.current);
+      }
+    };
+  }, []);
 
   const switchRole = (next: RoleKey) => {
     if (next === activeRole) return;
+    if (fadeTimerRef.current !== null) {
+      window.clearTimeout(fadeTimerRef.current);
+      fadeTimerRef.current = null;
+    }
     if (prefersReducedMotion) {
+      setIsFading(false);
       setActiveRole(next);
       return;
     }
     setIsFading(true);
-    window.setTimeout(() => {
+    fadeTimerRef.current = window.setTimeout(() => {
       setActiveRole(next);
       setIsFading(false);
+      fadeTimerRef.current = null;
     }, FADE_MS);
   };
 
@@ -99,18 +140,23 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
     }
   };
 
-  const handleCtaClick = () => {
-    if (onCtaClick) {
-      onCtaClick();
-    } else if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('demo:open-modal'));
-    }
-  };
+  const handleRetry = useCallback(() => {
+    setError(null);
+    setData(null);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   if (error) {
     return (
       <div className="role-switcher role-switcher--error" role="alert">
-        Unable to load demo content.
+        <p className="role-switcher__error-message">Unable to load demo content.</p>
+        <button
+          type="button"
+          className="role-switcher__retry"
+          onClick={handleRetry}
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -136,6 +182,7 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
       >
         {ROLE_ORDER.map((role) => {
           const isActive = role === activeRole;
+          const IconComp = ROLE_ICON_COMPONENT[role];
           return (
             <button
               key={role}
@@ -150,7 +197,7 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
               onClick={() => switchRole(role)}
               onKeyDown={handleKeyDown}
             >
-              <span aria-hidden="true" className="role-switcher__tab-icon">{ROLE_ICONS[role]}</span>
+              <IconComp className="role-switcher__tab-icon" />
               <span className="role-switcher__tab-label">{data.roles[role].title}</span>
             </button>
           );
@@ -164,6 +211,9 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
         className={`role-switcher__panel${isFading ? ' role-switcher__panel--fading' : ''}`}
         data-role={activeRole}
       >
+        <div className="role-switcher__stamp" aria-hidden="true">
+          <IconCheck className="role-switcher__stamp-icon" />
+        </div>
         <ul className="role-switcher__items">
           {data.roles[activeRole].content_items.map((item, idx) => (
             <li key={idx} className="role-switcher__item">
@@ -176,7 +226,7 @@ export default function RoleSwitcher({ onCtaClick, contentUrl = '/content/role-s
       <button
         type="button"
         className="role-switcher__cta"
-        onClick={handleCtaClick}
+        onClick={onCtaClick}
       >
         See this in my own school's context
       </button>

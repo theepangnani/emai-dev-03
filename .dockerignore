@@ -18,6 +18,8 @@ design/
 tests/
 *.md
 !requirements.txt
+# CB-DEMO-001 (#3717) — demo prompt templates must survive the *.md wildcard.
+!prompts/demo/*.md
 .gcloudignore
 .dockerignore
 .gitignore

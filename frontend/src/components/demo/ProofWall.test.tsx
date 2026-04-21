@@ -194,21 +194,27 @@ describe('ProofWall', () => {
       expect(screen.getByTestId('proof-wall-badges')).toBeInTheDocument();
     });
 
-    const hosting = screen.getByRole('listitem', { name: /Hosted in Canada/i });
+    const badgeList = screen.getByTestId('proof-wall-badges');
+    expect(badgeList.tagName).toBe('UL');
+
+    const hosting = screen.getByRole('link', { name: /Hosted in Canada/i });
     expect(hosting.tagName).toBe('A');
     expect(hosting).toHaveAttribute('href', '/compliance#hosting');
 
-    expect(screen.getByRole('listitem', { name: /MFIPPA-aligned/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /MFIPPA-aligned/i })).toHaveAttribute(
       'href',
       '/compliance#mfippa',
     );
-    expect(screen.getByRole('listitem', { name: /PIPEDA-compliant/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /PIPEDA-compliant/i })).toHaveAttribute(
       'href',
       '/compliance#pipeda',
     );
     expect(
-      screen.getByRole('listitem', { name: /Canadian-hosted stack/i }),
+      screen.getByRole('link', { name: /Canadian-hosted stack/i }),
     ).toHaveAttribute('href', '/compliance#stack');
+
+    // All badge anchors are wrapped in <li> list items
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
   });
 
   it('skips count-up animation when prefers-reduced-motion is set', async () => {
@@ -227,6 +233,7 @@ describe('ProofWall', () => {
   });
 
   it('degrades gracefully when waitlist-stats fetch fails (no counter; testimonials + badges still render)', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockGetWaitlistStats.mockRejectedValue(new Error('network'));
     mockFetch({
       testimonials: {
@@ -243,5 +250,39 @@ describe('ProofWall', () => {
     });
     expect(screen.getByTestId('proof-wall-badges')).toBeInTheDocument();
     expect(screen.queryByTestId('proof-wall-counter')).not.toBeInTheDocument();
+    expect(errorSpy).toHaveBeenCalledWith(
+      'ProofWall fetch failed:',
+      expect.any(Error),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('surfaces console.error when testimonials fetch rejects', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockGetWaitlistStats.mockResolvedValue({ total: 10, by_municipality: [] });
+    global.fetch = vi.fn((url: RequestInfo | URL) => {
+      const u = String(url);
+      if (u.includes('testimonials.json')) {
+        return Promise.reject(new Error('boom'));
+      }
+      if (u.includes('compliance-badges.json')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(defaultBadges),
+        } as Response);
+      }
+      return Promise.reject(new Error(`Unexpected fetch: ${u}`));
+    }) as unknown as typeof fetch;
+
+    render(<ProofWall />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('proof-wall-badges')).toBeInTheDocument();
+    });
+    expect(errorSpy).toHaveBeenCalledWith(
+      'ProofWall fetch failed:',
+      expect.any(Error),
+    );
+    errorSpy.mockRestore();
   });
 });

@@ -1,7 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InstantTrialModal } from './InstantTrialModal';
+
+/** Click a role card (label wrapping a pointer-events:none radio). */
+function selectRole(roleLabel: RegExp) {
+  const el = screen.getByText(roleLabel).closest('label');
+  if (!el) throw new Error(`No role label found for ${roleLabel}`);
+  fireEvent.click(el);
+}
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -38,7 +45,7 @@ function setupStreamMock(script: Array<{ event: 'token' | 'done' | 'error'; data
 async function fillAndSubmitStep1(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/full name/i), 'Ada Lovelace');
   await user.type(screen.getByLabelText(/^email$/i), 'ada@example.com');
-  await user.click(screen.getByRole('radio', { name: /parent/i }));
+  selectRole(/^Parent$/);
   await user.click(screen.getByRole('checkbox'));
   await user.click(screen.getByRole('button', { name: /start demo/i }));
 }
@@ -91,16 +98,16 @@ describe('InstantTrialModal — step 1 validation', () => {
     render(<InstantTrialModal onClose={() => {}} />);
     await user.click(screen.getByRole('button', { name: /start demo/i }));
     expect(await screen.findByText(/please enter your full name/i)).toBeInTheDocument();
-    expect(screen.getByText(/please enter a valid email/i)).toBeInTheDocument();
+    // New gentler copy (#3701)
+    expect(screen.getByText(/looks off/i)).toBeInTheDocument();
     expect(screen.getByText(/please pick the role/i)).toBeInTheDocument();
     expect(screen.getByText(/please accept the consent/i)).toBeInTheDocument();
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
   it('shows the under-13 notice when role=student', async () => {
-    const user = userEvent.setup();
     render(<InstantTrialModal onClose={() => {}} />);
-    await user.click(screen.getByRole('radio', { name: /student/i }));
+    selectRole(/^Student$/);
     expect(screen.getByRole('note')).toHaveTextContent(/under 13/i);
   });
 });
@@ -131,7 +138,7 @@ describe('InstantTrialModal — step 1 → step 2', () => {
 
     // Step 2 surfaces the tablist
     expect(await screen.findByRole('tablist')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: /^ask$/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /ask/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /study guide/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /flash tutor/i })).toBeInTheDocument();
   });
@@ -164,8 +171,8 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
     expect(screen.getByText('Demo sample')).toBeInTheDocument();
     // Conversion card appears after done
     expect(await screen.findByRole('button', { name: /verify my email/i })).toBeInTheDocument();
-    // Copy button is shown
-    expect(screen.getByRole('button', { name: /^copy$/i })).toBeInTheDocument();
+    // Copy button is shown (aria-label covers full intent)
+    expect(screen.getByRole('button', { name: /copy demo output/i })).toBeInTheDocument();
   });
 
   it('shows an error when the SSE stream emits error', async () => {
@@ -184,5 +191,159 @@ describe('InstantTrialModal — step 2 SSE rendering', () => {
 
     const alert = await screen.findByRole('alert');
     expect(within(alert).getByText(/ai generation failed/i)).toBeInTheDocument();
+  });
+});
+
+// --- Fast-follow tests (#3700) -----------------------------------------
+
+describe('InstantTrialModal — SSE abort on unmount (#3700)', () => {
+  it('aborts the in-flight SSE stream when the modal unmounts mid-stream', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-unmount',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+
+    const aborted = { value: false };
+    mockStreamGenerate.mockImplementation(() => {
+      const controller = new AbortController();
+      controller.signal.addEventListener('abort', () => {
+        aborted.value = true;
+      });
+      return controller;
+    });
+
+    const { unmount } = render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    expect(mockStreamGenerate).toHaveBeenCalled();
+    unmount();
+    expect(aborted.value).toBe(true);
+  });
+});
+
+describe('InstantTrialModal — 10s timeout fallback (#3700)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('surfaces "Join the waitlist instead" link when createSession hangs > 10s', async () => {
+    vi.useFakeTimers();
+    try {
+      mockCreateSession.mockImplementation(() => new Promise(() => {}));
+      render(<InstantTrialModal onClose={() => {}} />);
+      fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Ada' } });
+      fireEvent.change(screen.getByLabelText(/^email$/i), { target: { value: 'a@b.com' } });
+      fireEvent.click(screen.getByText('Parent').closest('label')!);
+      fireEvent.click(screen.getByRole('checkbox'));
+      fireEvent.click(screen.getByRole('button', { name: /start demo/i }));
+
+      await act(async () => {
+        vi.advanceTimersByTime(10_100);
+      });
+
+      expect(
+        screen.getByRole('link', { name: /join the waitlist instead/i }),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('InstantTrialModal — per-tab cache (#3762)', () => {
+  it('preserves Ask output when switching to Study Guide and back', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-tabs',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+    setupStreamMock([
+      { event: 'token', data: 'First output.' },
+      { event: 'done', data: { demo_type: 'ask', latency_ms: 5, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
+    ]);
+
+    render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/First output\./)).toBeInTheDocument();
+    });
+
+    // Switch to Study Guide tab — Study Guide is idle, Ask output hidden.
+    await user.click(screen.getByRole('tab', { name: /study guide/i }));
+    expect(screen.queryByText(/First output\./)).not.toBeInTheDocument();
+
+    // Switch back to Ask — cached output still renders.
+    await user.click(screen.getByRole('tab', { name: /^ask/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/First output\./)).toBeInTheDocument();
+    });
+  });
+});
+
+describe('InstantTrialModal — maximize toggle (#3755)', () => {
+  it('renders maximize button and toggles aria-label on click', async () => {
+    const user = userEvent.setup();
+    render(<InstantTrialModal onClose={() => {}} />);
+    const btn = screen.getByRole('button', { name: /maximize/i });
+    expect(btn).toHaveAttribute('aria-label', 'Maximize');
+    await user.click(btn);
+    expect(screen.getByRole('button', { name: /restore size/i })).toHaveAttribute(
+      'aria-label',
+      'Restore size',
+    );
+    await user.click(screen.getByRole('button', { name: /restore size/i }));
+    expect(screen.getByRole('button', { name: /maximize/i })).toHaveAttribute(
+      'aria-label',
+      'Maximize',
+    );
+  });
+
+  it('applies demo-modal--maximized class when toggled on', async () => {
+    const user = userEvent.setup();
+    render(<InstantTrialModal onClose={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(false);
+    await user.click(screen.getByRole('button', { name: /maximize/i }));
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(true);
+    await user.click(screen.getByRole('button', { name: /restore size/i }));
+    expect(dialog.classList.contains('demo-modal--maximized')).toBe(false);
+  });
+});
+
+describe('InstantTrialModal — handleVerify renders notice (#3700)', () => {
+  it('renders the verify-notice banner after the CTA is clicked', async () => {
+    const user = userEvent.setup();
+    mockCreateSession.mockResolvedValueOnce({
+      session_jwt: 'jwt-verify',
+      verification_required: true,
+      waitlist_preview_position: 1,
+    });
+    setupStreamMock([
+      { event: 'token', data: 'done' },
+      { event: 'done', data: { demo_type: 'ask', latency_ms: 1, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
+    ]);
+
+    render(<InstantTrialModal onClose={() => {}} />);
+    await fillAndSubmitStep1(user);
+    await screen.findByRole('tablist');
+    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+
+    const verifyBtn = await screen.findByRole('button', { name: /verify my email/i });
+    await user.click(verifyBtn);
+
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(/verification link/i);
+    expect(status).toHaveTextContent(/ada@example.com/);
   });
 });
