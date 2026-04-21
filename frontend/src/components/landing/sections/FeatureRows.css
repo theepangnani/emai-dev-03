@@ -1,0 +1,47 @@
+/*
+ * CB-LAND-001 S5 — FeatureRows container styles
+ */
+
+[data-landing='v2'].landing-feature-rows,
+[data-landing='v2'] .landing-feature-rows {
+  display: block;
+  width: 100%;
+  font-family: var(--font-landing-sans);
+  color: var(--color-ink);
+}
+
+[data-landing='v2'] .landing-feature-rows__header {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: clamp(64px, 10vw, 120px) clamp(20px, 5vw, 64px) clamp(32px, 5vw, 56px);
+  text-align: center;
+}
+
+[data-landing='v2'] .landing-feature-rows__kicker {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
+}
+
+[data-landing='v2'] .landing-feature-rows__headline {
+  margin: 0;
+  font-family: var(--font-landing-sans);
+  font-size: clamp(2rem, 4.5vw, 3.5rem);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+[data-landing='v2'] .landing-feature-rows__headline em {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 500;
+}
+
+[data-landing='v2'] .landing-feature-rows__list {
+  display: flex;
+  flex-direction: column;
+}

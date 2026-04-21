@@ -1,0 +1,120 @@
+/* ========================================
+   CB-LAND-001 S12A — Final CTA band
+   Uses landing-v2 tokens scoped via data-landing="v2".
+   ======================================== */
+
+.landing-final-cta {
+  width: 100%;
+  padding: clamp(64px, 10vw, 128px) 24px;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-cyan) 0%,
+    #0fb6db 100%
+  );
+  color: #0a2a33;
+  font-family: var(--font-landing-sans);
+  text-align: center;
+}
+
+.landing-final-cta__inner {
+  max-width: 880px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(28px, 4vw, 44px);
+}
+
+.landing-final-cta__headline {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.landing-final-cta__accent {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.landing-final-cta__actions {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-final-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  min-width: 220px;
+  padding: 0 28px;
+  border-radius: 999px;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--motion-spring-fast),
+    box-shadow var(--motion-spring-fast),
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.landing-final-cta__btn--primary {
+  background: #ffffff;
+  color: #0a2a33;
+  border: 2px solid #ffffff;
+  box-shadow: 0 8px 24px rgba(10, 42, 51, 0.18);
+}
+
+.landing-final-cta__btn--primary:hover,
+.landing-final-cta__btn--primary:focus-visible {
+  box-shadow: 0 12px 28px rgba(10, 42, 51, 0.24);
+}
+
+.landing-final-cta__btn--ghost {
+  background: transparent;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+}
+
+.landing-final-cta__btn--ghost:hover,
+.landing-final-cta__btn--ghost:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Transform-based hover lift is motion — gate behind no-preference so
+   prefers-reduced-motion users see a pure color/shadow shift (WCAG 2.3.3). */
+@media (prefers-reduced-motion: no-preference) {
+  .landing-final-cta__btn--primary:hover,
+  .landing-final-cta__btn--primary:focus-visible,
+  .landing-final-cta__btn--ghost:hover,
+  .landing-final-cta__btn--ghost:focus-visible {
+    transform: translateY(-2px);
+  }
+}
+
+.landing-final-cta__btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .landing-final-cta__actions {
+    flex-direction: column;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .landing-final-cta__btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

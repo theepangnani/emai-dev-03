@@ -262,3 +262,77 @@ def test_admin_get_features_exposes_variant(client, db_session, admin_user):
     demo = next((x for x in items if x["key"] == "demo_landing_v1_1"), None)
     assert demo is not None
     assert demo["variant"] == "off"
+
+
+# -----------------------------------------------------------------------------
+# CB-LAND-001 S2 (#3802) — landing_v2 flag
+# -----------------------------------------------------------------------------
+
+
+def test_seed_features_seeds_landing_v2(db_session):
+    """seed_features() must add `landing_v2` with variant='off' idempotently."""
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = db_session.query(FeatureFlag).filter(FeatureFlag.key == "landing_v2").first()
+    assert flag is not None, "landing_v2 should be seeded"
+    assert flag.enabled is False
+    assert flag.variant == "off"
+
+    # Idempotent on re-seed
+    seed_features(db_session)
+    count = db_session.query(FeatureFlag).filter(FeatureFlag.key == "landing_v2").count()
+    assert count == 1
+
+
+def test_public_features_exposes_landing_v2_variant_unauthenticated(client, db_session):
+    """Unauthenticated callers MUST see `landing_v2` variant (kill-switch lives
+    on the anonymous landing page, so the flag must be public-readable).
+    """
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+
+    resp = client.get("/api/features")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "landing_v2" in data
+    assert "landing_v2" in data.get("_variants", {})
+    assert data["_variants"]["landing_v2"] in {
+        "off", "on_5", "on_25", "on_50", "on_100", "on_for_all",
+    }
+
+
+@pytest.mark.parametrize("variant", ["on_5", "on_25", "on_50", "on_100"])
+def test_admin_accepts_new_percentage_variants_for_landing_v2(
+    client, db_session, admin_user, variant
+):
+    """PATCH /api/admin/features/landing_v2 must accept the CB-LAND-001
+    percentage-ramp variants (on_5 / on_25 / on_50 / on_100).
+    """
+    from app.services.feature_seed_service import seed_features
+    from app.models.feature_flag import FeatureFlag
+
+    seed_features(db_session)
+    headers = _auth(client, admin_user.email)
+
+    resp = client.patch(
+        "/api/admin/features/landing_v2",
+        headers=headers,
+        json={"variant": variant},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["variant"] == variant
+
+    db_session.expire_all()
+    flag = db_session.query(FeatureFlag).filter(FeatureFlag.key == "landing_v2").first()
+    assert flag.variant == variant
+
+    # Reset to 'off' to avoid leaking state into sibling tests
+    client.patch(
+        "/api/admin/features/landing_v2",
+        headers=headers,
+        json={"variant": "off"},
+    )

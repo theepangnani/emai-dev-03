@@ -21,7 +21,9 @@ router = APIRouter(tags=["Features"])
 # because they gate public-facing UX (e.g., the CB-DEMO-001 landing-page
 # A/B wedge is only rendered to unauthenticated visitors). Other DB-backed
 # flags remain authenticated-only (#3715).
-_PUBLIC_DB_FLAGS: frozenset[str] = frozenset({"demo_landing_v1_1"})
+# - demo_landing_v1_1: CB-DEMO-001 A/B wedge on legacy landing (#3715)
+# - landing_v2:        CB-LAND-001 full landing-page redesign kill-switch (#3802)
+_PUBLIC_DB_FLAGS: frozenset[str] = frozenset({"demo_landing_v1_1", "landing_v2"})
 
 
 @router.get("/features")

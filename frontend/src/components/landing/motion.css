@@ -1,0 +1,122 @@
+/*
+ * CB-LAND-001 S13 — landing v2 motion + microinteractions (#3813).
+ *
+ * All rules scoped under [data-landing="v2"] so this sheet can never leak
+ * into legacy LaunchLandingPage or any non-landing surface. Every transform
+ * or keyframe animation is gated by
+ * `@media (prefers-reduced-motion: no-preference)` so users who opt out get
+ * an instant, motionless render (WCAG 2.3.3 / §6.136.5).
+ *
+ * Motion tokens are defined in frontend/src/index.css:
+ *   --motion-spring-fast  — short micro-bounces (hover, tab switch)
+ *   --motion-spring-slow  — section entrance reveals (this file)
+ *   --motion-scanline-loop — optional overlay on product mockups
+ */
+
+/* ---- Scroll-reveal entrance (used by every landing-v2 section) ---------- */
+
+[data-landing='v2'] .landing-reveal {
+  /* Rest state — applied implicitly once `.landing-reveal--hidden` is removed.
+     Transition always lives here (not only on the hidden variant) so the
+     element animates from hidden → rest, not the other way around. */
+  transition:
+    opacity var(--motion-spring-slow),
+    transform var(--motion-spring-slow);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing='v2'] .landing-reveal--hidden {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    /* Scope `will-change` to the hidden variant only. Keeping it on the rest
+       state promotes every section to its own compositor layer for the whole
+       page lifetime — wasted GPU memory since the reveal transition only
+       fires once. Browser drops the hint automatically once the class flips. */
+    will-change: opacity, transform;
+  }
+
+  /* I4: pause the hero bob while the reveal wrapper is hidden so the keyframed
+     transform doesn't race against / override the reveal transform transition. */
+  [data-landing='v2'] .landing-reveal--hidden .landing-hero__mockup {
+    animation-play-state: paused;
+  }
+}
+
+/* ---- Hero mockup — gentle floating bob (decorative) --------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing='v2'] .landing-hero__mockup {
+    animation: landing-hero-bob 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes landing-hero-bob {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+/* ---- Feature row scanline overlay (opt-in via data-scanline="true") ----- */
+
+[data-landing='v2'] .feature-row__mockup[data-scanline='true'] {
+  position: relative;
+  isolation: isolate;
+}
+
+[data-landing='v2'] .feature-row__mockup[data-scanline='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    transparent 48%,
+    rgba(31, 216, 255, 0.22) 50%,
+    transparent 52%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
+  mix-blend-mode: screen;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing='v2'] .feature-row__mockup[data-scanline='true']::after {
+    animation: landing-scanline var(--motion-scanline-loop);
+  }
+}
+
+@keyframes landing-scanline {
+  from {
+    background-position: 0 -100%;
+  }
+  to {
+    background-position: 0 200%;
+  }
+}
+
+/* ---- Comparison mascot — one-shot spring bounce on reveal --------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing='v2']
+    .landing-compare__mascot.landing-reveal:not(.landing-reveal--hidden) {
+    animation: landing-mascot-bounce var(--motion-spring-slow) both;
+  }
+}
+
+@keyframes landing-mascot-bounce {
+  0% {
+    transform: translate3d(0, 12px, 0) scale(0.9);
+  }
+  60% {
+    transform: translate3d(0, -4px, 0) scale(1.04);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
