@@ -17,8 +17,8 @@ DemoType = Literal["ask", "study_guide", "flash_tutor"]
 #   the prompt-injection vector where a crafted ``assistant`` history entry
 #   was treated by Haiku as its own prior utterance.
 # - Only the most recent completed Ask turn is used for context (1 user +
-#   1 assistant) so the total prompt stays at 3 messages max.
-_DEMO_HISTORY_MAX_PRIOR_TURNS = 1
+#   1 assistant) so the total prompt stays at 3 messages max. The
+#   invariant lives in ``app.api.routes.demo._reconstruct_ask_history``.
 
 
 class DemoSessionCreate(BaseModel):
@@ -86,6 +86,10 @@ class DemoGenerateEvent(BaseModel):
     # Server-reconstructed Ask history source (#3819). Both fields are
     # capped to 500 chars at record time so the persisted payload stays
     # bounded regardless of Haiku's output length.
+    # NOTE: the assistant reply may be mid-sentence truncated at 500 chars;
+    # this matches the previous client-side 500-char slice (§6.135.5) and
+    # is intentional for storage bounding. A future PR may lift the cap
+    # once realistic Haiku Ask output sizes are measured.
     user_content: Optional[str] = Field(default=None, max_length=500)
     assistant_content: Optional[str] = Field(default=None, max_length=500)
 

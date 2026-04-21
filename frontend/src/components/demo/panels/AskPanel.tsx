@@ -141,10 +141,12 @@ export function AskPanel({
     turns[turns.length - 1].role === 'assistant' &&
     turns[turns.length - 1].status === 'done';
 
-  // ``sendTurn`` relies on its closure's ``isStreaming`` + ``capReached``
-  // snapshots being fresh — both are in the useCallback deps below. A
-  // future refactor that moves them behind a ref must keep the early
-  // return guard valid, or the cap can be bypassed.
+  // ``sendTurn`` relies on ``isStreaming`` / ``capReached`` / ``assistantTurnCount``
+  // snapshots being fresh via the useCallback deps below. ``turns`` is no
+  // longer a direct dep — history assembly moved server-side (#3819) — and
+  // the turn count is propagated through ``assistantTurnCount`` (a useMemo
+  // of ``turns``). A future refactor that moves the cap/streaming state
+  // behind a ref must keep the early return guard valid.
   const sendTurn = useCallback(
     (questionText: string) => {
       const question = questionText.trim();

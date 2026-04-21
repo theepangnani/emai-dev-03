@@ -773,6 +773,8 @@ class TestGenerateAskMultiTurn:
     def test_reconstruct_helper_skips_failed_placeholder(self, db_session):
         """_reconstruct_ask_history skips placeholders where the stream
         failed before assistant_content was recorded (#3819)."""
+        import json as _json
+
         from app.api.routes.demo import _reconstruct_ask_history
 
         # No entries → None.
@@ -820,6 +822,28 @@ class TestGenerateAskMultiTurn:
             {"role": "user", "content": "newest"},
             {"role": "assistant", "content": "newest-reply"},
         ]
+
+        # SQLite defensive path — a raw JSON string is parsed back into
+        # a list before scanning.
+        encoded = _json.dumps(
+            [
+                {
+                    "demo_type": "ask",
+                    "user_content": "q",
+                    "assistant_content": "a",
+                }
+            ]
+        )
+        assert _reconstruct_ask_history(encoded) == [
+            {"role": "user", "content": "q"},
+            {"role": "assistant", "content": "a"},
+        ]
+
+        # Malformed JSON string → None (no crash).
+        assert _reconstruct_ask_history("not-json-{") is None
+
+        # JSON that decodes to a non-list (e.g., legacy dict) → None.
+        assert _reconstruct_ask_history('{"not": "a list"}') is None
 
 
 class TestGenerateExpiredJwt:
