@@ -14,6 +14,8 @@
 
 import { Link } from 'react-router-dom'
 import './CrossDeviceBar.css'
+import { emitCtaClick } from '../analytics'
+import { useSectionViewTracker } from '../useSectionViewTracker'
 
 type DeviceStatus = 'available' | 'phase2' | 'phase4'
 
@@ -75,8 +77,10 @@ const COMPAT_CHIPS: ReadonlyArray<CompatChip> = [
 ]
 
 function CrossDeviceBar() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('devices')
   return (
     <section
+      ref={sectionRef}
       data-landing="v2"
       className="landing-devices"
       aria-labelledby="landing-devices-heading"
@@ -119,6 +123,7 @@ function CrossDeviceBar() {
                     <Link
                       to={device.ctaHref}
                       className="landing-devices__cta landing-devices__cta--primary"
+                      onClick={() => emitCtaClick('primary', `devices-${device.id}`)}
                     >
                       {device.ctaLabel}
                       <span aria-hidden="true"> →</span>

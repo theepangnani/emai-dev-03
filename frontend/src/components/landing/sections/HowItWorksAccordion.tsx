@@ -1,6 +1,8 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { howItWorksSteps } from './howItWorks';
+import { emitStepView } from '../analytics';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './HowItWorksAccordion.css';
 
 /**
@@ -23,6 +25,14 @@ import './HowItWorksAccordion.css';
 export function HowItWorksAccordion() {
   const [activeIdx, setActiveIdx] = useState(0);
   const rowRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const sectionRef = useSectionViewTracker<HTMLElement>('how');
+
+  // Fire `landing_v2.step_view` whenever the active step changes (including
+  // the initial render — we track the first step the user sees expanded).
+  useEffect(() => {
+    const step = howItWorksSteps[activeIdx];
+    if (step) emitStepView(step.number);
+  }, [activeIdx]);
 
   const focusRow = useCallback((idx: number) => {
     const next = rowRefs.current[idx];
@@ -74,6 +84,7 @@ export function HowItWorksAccordion() {
 
   return (
     <section
+      ref={sectionRef}
       data-landing="v2"
       className="landing-how"
       aria-labelledby="landing-how-heading"

@@ -20,18 +20,32 @@
  * Reference: docs/design/landing-v2-reference/10-learner-segments.png
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import './LearnerSegmentTabs.css';
 import { learnerSegments } from '../content/learnerSegments';
 import type { LearnerSegment } from '../content/learnerSegments';
+import { emitSegmentTabChange } from '../analytics';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 
 export function LearnerSegmentTabs() {
   const [activeId, setActiveId] = useState<LearnerSegment['id']>(learnerSegments[0].id);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const sectionRef = useSectionViewTracker<HTMLElement>('segments');
+  const didMountRef = useRef(false);
 
   const activeIndex = learnerSegments.findIndex((s) => s.id === activeId);
   const active = learnerSegments[activeIndex] ?? learnerSegments[0];
+
+  // Fire `landing_v2.segment_tab_change` for every user-driven switch —
+  // skip the initial mount so the default tab doesn't log as a change.
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+    emitSegmentTabChange(activeId);
+  }, [activeId]);
 
   const focusTab = useCallback((index: number) => {
     const count = learnerSegments.length;
@@ -72,6 +86,7 @@ export function LearnerSegmentTabs() {
 
   return (
     <section
+      ref={sectionRef}
       data-landing="v2"
       className="landing-segments"
       aria-labelledby="landing-segments-heading"

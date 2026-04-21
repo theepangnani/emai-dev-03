@@ -8,6 +8,7 @@
  */
 import { Activity, Flame, User, PlayCircle } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './ProgressGrid.css';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -47,8 +48,9 @@ const CARDS: ProgressCard[] = [
 ];
 
 export function ProgressGrid() {
+  const sectionRef = useSectionViewTracker<HTMLElement>('progress');
   return (
-    <section data-landing="v2" className="landing-progress">
+    <section ref={sectionRef} data-landing="v2" className="landing-progress">
       <div className="landing-progress__inner">
         <h2 className="landing-progress__headline">
           Progress for <em>every child, every week.</em>

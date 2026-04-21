@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { InstantTrialModal } from '../../demo/InstantTrialModal';
+import { emitCtaClick } from '../analytics';
+import { useSectionViewTracker } from '../useSectionViewTracker';
 import './LandingHero.css';
 
 /**
@@ -23,9 +25,15 @@ const TRUST_BAR_BOARDS = ['YRDSB', 'TDSB', 'DDSB', 'PDSB', 'OCDSB'] as const;
 
 export function LandingHero() {
   const [demoOpen, setDemoOpen] = useState<boolean>(false);
+  const sectionRef = useSectionViewTracker<HTMLElement>('hero');
 
   return (
-    <section data-landing="v2" className="landing-hero" aria-labelledby="landing-hero-title">
+    <section
+      ref={sectionRef}
+      data-landing="v2"
+      className="landing-hero"
+      aria-labelledby="landing-hero-title"
+    >
       <div className="landing-hero__inner">
         <div className="landing-hero__content">
           <h1 id="landing-hero-title" className="landing-hero__headline">
@@ -39,13 +47,17 @@ export function LandingHero() {
             <button
               type="button"
               className="landing-hero__cta landing-hero__cta--primary"
-              onClick={() => setDemoOpen(true)}
+              onClick={() => {
+                emitCtaClick('demo', 'hero');
+                setDemoOpen(true);
+              }}
             >
               Try the 30-second demo
             </button>
             <Link
               to="/waitlist"
               className="landing-hero__cta landing-hero__cta--ghost"
+              onClick={() => emitCtaClick('waitlist', 'hero')}
             >
               Join the waitlist
             </Link>
