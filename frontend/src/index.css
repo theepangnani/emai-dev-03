@@ -423,3 +423,40 @@ textarea {
     animation: none;
   }
 }
+
+/* ========================================
+   CB-LAND-001 landing-v2 design tokens
+   (scoped — do not leak into the app)
+   See: frontend/src/components/landing/README.md
+   Refs: docs/design/landing-v2-reference/
+   ======================================== */
+[data-landing="v2"] {
+  /* Typography */
+  --font-display-serif: 'Fraunces', Georgia, serif;
+  --font-landing-sans: 'Instrument Sans', 'Source Sans 3', sans-serif;
+
+  /* Pastel row backgrounds (alternating full-bleed sections) */
+  --color-row-peach: #FFF1E6;
+  --color-row-mint: #E8F7F1;
+  --color-row-lavender: #F1EDFE;
+  --color-row-pink: #FDEBF1;
+
+  /* Accent hues (badges, underlines, scanlines, micro-illustrations) */
+  --color-accent-cyan: #1FD8FF;
+  --color-accent-gold: #FFB800;
+  --color-accent-mint: #46D69A;
+  --color-accent-coral: #FF5C5C;
+
+  /* Motion — spring easings + scanline loop */
+  --motion-spring-fast: 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-spring-slow: 640ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-scanline-loop: 2.2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-landing="v2"] {
+    --motion-spring-fast: 0ms linear;
+    --motion-spring-slow: 0ms linear;
+    --motion-scanline-loop: 0s linear 1;
+  }
+}
