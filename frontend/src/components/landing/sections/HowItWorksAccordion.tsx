@@ -10,7 +10,8 @@ import './HowItWorksAccordion.css';
  *       inactive rows collapse to a one-line summary.
  * Right: preview pane cross-fades between 4 mockups tied to the active step.
  *
- * Keyboard (WAI-ARIA Accordion pattern):
+ * Keyboard (WAI-ARIA Accordion pattern — panel is a sibling of the header
+ * button, never nested inside the button):
  *   ArrowDown / ArrowUp — cycle active step
  *   Home / End          — jump to first / last
  *   Enter / Space       — activate focused step
@@ -28,34 +29,36 @@ export function HowItWorksAccordion() {
     if (next) next.focus();
   }, []);
 
+  const activate = useCallback(
+    (idx: number) => {
+      setActiveIdx(idx);
+      focusRow(idx);
+    },
+    [focusRow],
+  );
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
       const last = howItWorksSteps.length - 1;
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault();
-          const next = idx === last ? 0 : idx + 1;
-          setActiveIdx(next);
-          focusRow(next);
+          activate(idx === last ? 0 : idx + 1);
           break;
         }
         case 'ArrowUp': {
           e.preventDefault();
-          const next = idx === 0 ? last : idx - 1;
-          setActiveIdx(next);
-          focusRow(next);
+          activate(idx === 0 ? last : idx - 1);
           break;
         }
         case 'Home': {
           e.preventDefault();
-          setActiveIdx(0);
-          focusRow(0);
+          activate(0);
           break;
         }
         case 'End': {
           e.preventDefault();
-          setActiveIdx(last);
-          focusRow(last);
+          activate(last);
           break;
         }
         case 'Enter':
@@ -66,7 +69,7 @@ export function HowItWorksAccordion() {
         }
       }
     },
-    [focusRow],
+    [activate],
   );
 
   return (
@@ -76,71 +79,78 @@ export function HowItWorksAccordion() {
       aria-labelledby="landing-how-heading"
     >
       <div className="landing-how__container">
-        <h2
-          id="landing-how-heading"
-          className="landing-how__headline"
-          /* Headline copy is authored per spec; safe literal string. */
-          dangerouslySetInnerHTML={{
-            __html: 'From chaos to clarity in <em>4 steps.</em>',
-          }}
-        />
+        <h2 id="landing-how-heading" className="landing-how__headline">
+          From chaos to clarity in <em>4 steps.</em>
+        </h2>
 
         <div className="landing-how__grid">
-          <div className="landing-how__accordion" role="presentation">
+          <div className="landing-how__accordion">
             {howItWorksSteps.map((step, idx) => {
               const expanded = idx === activeIdx;
               const rowId = `landing-how-row-${step.id}`;
               const panelId = `landing-how-panel-${step.id}`;
               return (
-                <button
+                <div
                   key={step.id}
-                  id={rowId}
-                  ref={(el) => {
-                    rowRefs.current[idx] = el;
-                  }}
-                  type="button"
                   className="landing-how__row"
-                  aria-expanded={expanded}
-                  aria-controls={panelId}
-                  onClick={() => setActiveIdx(idx)}
-                  onKeyDown={(e) => handleKeyDown(e, idx)}
+                  data-expanded={expanded}
                 >
-                  <span className="landing-how__row-header">
-                    <span className="landing-how__row-num" aria-hidden="true">
-                      {step.number}.
-                    </span>
-                    <span className="landing-how__row-title">{step.title}</span>
-                  </span>
-                  {!expanded && (
-                    <p className="landing-how__row-summary">{step.summary}</p>
-                  )}
+                  <h3 className="landing-how__row-heading">
+                    <button
+                      id={rowId}
+                      ref={(el) => {
+                        rowRefs.current[idx] = el;
+                      }}
+                      type="button"
+                      className="landing-how__row-button"
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => activate(idx)}
+                      onKeyDown={(e) => handleKeyDown(e, idx)}
+                    >
+                      <span className="landing-how__row-header">
+                        <span
+                          className="landing-how__row-num"
+                          aria-hidden="true"
+                        >
+                          {step.number}.
+                        </span>
+                        <span className="landing-how__row-title">
+                          {step.title}
+                        </span>
+                      </span>
+                      {!expanded && (
+                        <span className="landing-how__row-summary">
+                          {step.summary}
+                        </span>
+                      )}
+                    </button>
+                  </h3>
                   <div
                     id={panelId}
                     role="region"
                     aria-labelledby={rowId}
                     className="landing-how__row-body"
+                    hidden={!expanded}
                   >
                     {step.body}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
 
-          <div
-            className="landing-how__preview"
-            aria-live="polite"
-            aria-atomic="true"
-          >
+          <div className="landing-how__preview" aria-hidden="true">
             {howItWorksSteps.map((step, idx) => (
               <div
                 key={step.id}
                 className="landing-how__preview-slide"
                 data-step={step.id}
                 data-active={idx === activeIdx}
-                aria-hidden={idx !== activeIdx}
               >
-                <div className="landing-how__preview-mock">{step.previewLabel}</div>
+                <div className="landing-how__preview-mock">
+                  {step.previewLabel}
+                </div>
               </div>
             ))}
           </div>

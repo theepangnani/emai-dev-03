@@ -2,6 +2,18 @@
  * CB-LAND-001 §6.136.1 §5 — How It Works accordion + preview pane.
  * Scoped under [data-landing="v2"] (wrapper section carries that attribute).
  * Token source: frontend/src/index.css (search "CB-LAND-001 landing-v2 design tokens").
+ *
+ * DOM shape (matches WAI-ARIA Accordion pattern — panel is a sibling of the
+ * header button, never nested inside the button):
+ *
+ *   .landing-how__row[data-expanded="true|false"]
+ *     > h3.landing-how__row-heading
+ *         > button.landing-how__row-button
+ *             > span.landing-how__row-header
+ *                 > .landing-how__row-num
+ *                 > .landing-how__row-title
+ *             > span.landing-how__row-summary   (collapsed only)
+ *     > div.landing-how__row-body[role="region"][hidden?]
  */
 
 .landing-how {
@@ -54,31 +66,44 @@
 
 .landing-how__row {
   position: relative;
-  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-left: 4px solid transparent;
   border-radius: 12px;
   background: #fff;
-  text-align: left;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  width: 100%;
+  overflow: hidden;
   transition:
     border-left-color var(--motion-spring-fast),
     box-shadow var(--motion-spring-fast),
     transform var(--motion-spring-fast);
 }
 
-.landing-how__row:focus-visible {
-  outline: 2px solid var(--color-accent-cyan);
-  outline-offset: 2px;
-}
-
-.landing-how__row[aria-expanded='true'] {
+.landing-how__row[data-expanded='true'] {
   border-left-color: var(--color-accent-cyan);
   box-shadow: 0 6px 20px rgba(31, 216, 255, 0.18);
   transform: translateY(-2px);
+}
+
+.landing-how__row-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.landing-how__row-button {
+  display: block;
+  width: 100%;
+  padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.landing-how__row-button:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 2px;
 }
 
 .landing-how__row-header {
@@ -98,26 +123,23 @@
 }
 
 .landing-how__row-title {
-  margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
 }
 
 .landing-how__row-summary {
+  display: block;
   margin: 0.35rem 0 0 2.25rem;
   font-size: 0.95rem;
   color: rgba(0, 0, 0, 0.65);
 }
 
 .landing-how__row-body {
-  margin: 0.75rem 0 0 2.25rem;
+  margin: 0;
+  padding: 0 1.25rem 1.25rem 3.75rem;
   font-size: 1rem;
   line-height: 1.55;
   color: rgba(0, 0, 0, 0.78);
-}
-
-.landing-how__row[aria-expanded='false'] .landing-how__row-body {
-  display: none;
 }
 
 /* ─ Preview pane (right column) ──────────────────── */
@@ -154,12 +176,11 @@
   max-width: 320px;
   aspect-ratio: 4 / 3;
   border-radius: 12px;
-  background:
-    linear-gradient(
-      135deg,
-      var(--color-accent-cyan) 0%,
-      var(--color-accent-mint) 100%
-    );
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-cyan) 0%,
+    var(--color-accent-mint) 100%
+  );
   color: #ffffff;
   display: flex;
   align-items: center;
