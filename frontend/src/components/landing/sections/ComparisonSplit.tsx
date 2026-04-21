@@ -14,6 +14,7 @@
 import { DemoMascot } from '../../demo/DemoMascot';
 import { useScrollReveal } from '../motion';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './ComparisonSplit.css';
 
 interface ComparisonRow {
@@ -97,7 +98,7 @@ export function ComparisonSplit() {
 }
 
 export const section = {
-  id: 'compare',
+  id: LANDING_SECTION_ID.compare,
   order: 50,
   component: ComparisonSplit,
 };

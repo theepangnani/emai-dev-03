@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './LandingFooter.css';
 
 /**
@@ -166,7 +167,7 @@ export function LandingFooter() {
 }
 
 export const section = {
-  id: 'footer',
+  id: LANDING_SECTION_ID.footer,
   order: 9999,
   component: LandingFooter,
 };

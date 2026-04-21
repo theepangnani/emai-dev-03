@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 import './CrossDeviceBar.css'
 import { emitCtaClick } from '../analytics'
 import { useSectionViewTracker } from '../useSectionViewTracker'
+import { LANDING_SECTION_ID } from '../sectionIds'
 
 type DeviceStatus = 'available' | 'phase2' | 'phase4'
 
@@ -175,7 +176,7 @@ export default CrossDeviceBar
 // Section registry entry consumed by LandingPageV2 (CB-LAND-001 §6.136.3).
 // eslint-disable-next-line react-refresh/only-export-components
 export const section = {
-  id: 'devices',
+  id: LANDING_SECTION_ID.devices,
   order: 80,
   component: CrossDeviceBar,
 }

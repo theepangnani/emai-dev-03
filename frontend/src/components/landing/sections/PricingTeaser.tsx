@@ -2,6 +2,7 @@ import './PricingTeaser.css'
 import { emitCtaClick } from '../analytics'
 import { useSectionViewTracker } from '../useSectionViewTracker'
 import { useLandingCtas } from '../useLandingCtas'
+import { LANDING_SECTION_ID } from '../sectionIds'
 
 // TODO: drive from /api/pricing-tiers
 const FAMILY_TIER_MONTHLY = '$9.99'
@@ -126,4 +127,4 @@ function PricingTeaser() {
 
 export default PricingTeaser
 
-export const section = { id: 'pricing', order: 90, component: PricingTeaser }
+export const section = { id: LANDING_SECTION_ID.pricing, order: 90, component: PricingTeaser }

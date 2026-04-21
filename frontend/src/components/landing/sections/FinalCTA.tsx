@@ -4,6 +4,7 @@ import { InstantTrialModal } from '../../demo/InstantTrialModal';
 import { emitCtaClick } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
 import { useLandingCtas } from '../useLandingCtas';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './FinalCTA.css';
 
 /**
@@ -73,7 +74,7 @@ export function FinalCTA() {
 }
 
 export const section = {
-  id: 'final-cta',
+  id: LANDING_SECTION_ID.finalCta,
   order: 100,
   component: FinalCTA,
 };

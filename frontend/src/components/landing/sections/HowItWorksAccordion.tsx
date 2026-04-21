@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import { howItWorksSteps } from './howItWorks';
 import { emitStepView } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './HowItWorksAccordion.css';
 
 /**
@@ -172,7 +173,7 @@ export function HowItWorksAccordion() {
 }
 
 export const section = {
-  id: 'how',
+  id: LANDING_SECTION_ID.how,
   order: 40,
   component: HowItWorksAccordion,
 } as const;

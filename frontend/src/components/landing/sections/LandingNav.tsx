@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useLandingCtas } from '../useLandingCtas';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './LandingNav.css';
 
 /**
@@ -79,6 +80,6 @@ export function LandingNav() {
  * Section-registry entry. `order: 5` renders this above LandingHero (order 10)
  * so the logo sits at the very top of the page, before all other sections.
  */
-export const section = { id: 'nav', order: 5, component: LandingNav };
+export const section = { id: LANDING_SECTION_ID.nav, order: 5, component: LandingNav };
 
 export default LandingNav;

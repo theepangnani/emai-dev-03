@@ -9,6 +9,7 @@
 import { Activity, Flame, User, PlayCircle } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './ProgressGrid.css';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -77,7 +78,7 @@ export function ProgressGrid() {
 }
 
 export const section = {
-  id: 'progress',
+  id: LANDING_SECTION_ID.progress,
   order: 60,
   component: ProgressGrid,
 };

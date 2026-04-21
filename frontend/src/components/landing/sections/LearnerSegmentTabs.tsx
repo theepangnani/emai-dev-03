@@ -27,6 +27,7 @@ import { learnerSegments } from '../content/learnerSegments';
 import type { LearnerSegment } from '../content/learnerSegments';
 import { emitSegmentTabChange } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 
 export function LearnerSegmentTabs() {
   const [activeId, setActiveId] = useState<LearnerSegment['id']>(learnerSegments[0].id);
@@ -162,7 +163,7 @@ export function LearnerSegmentTabs() {
 }
 
 export const section = {
-  id: 'segments',
+  id: LANDING_SECTION_ID.segments,
   order: 70,
   component: LearnerSegmentTabs,
 };

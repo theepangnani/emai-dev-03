@@ -16,6 +16,7 @@ import './FeatureRows.css';
 import { FeatureRow } from './FeatureRow';
 import { features } from '../content/features';
 import { useSectionViewTracker } from '../useSectionViewTracker';
+import { LANDING_SECTION_ID } from '../sectionIds';
 
 export function FeatureRows() {
   const sectionRef = useSectionViewTracker<HTMLElement>('feature-rows');
@@ -50,7 +51,7 @@ export function FeatureRows() {
 }
 
 export const section = {
-  id: 'feature-rows',
+  id: LANDING_SECTION_ID.featureRows,
   order: 30,
   component: FeatureRows,
 };

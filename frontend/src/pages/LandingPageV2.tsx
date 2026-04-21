@@ -28,6 +28,7 @@ import { useScrollReveal } from '../components/landing/motion';
 import '../components/landing/motion.css';
 import { LandingSeo } from '../components/landing/LandingSeo';
 import { useLandingFonts } from '../components/landing/fonts';
+import { LANDING_SECTION_ID } from '../components/landing/sectionIds';
 import './LandingPageV2.css';
 
 interface LandingPageV2Props {
@@ -99,11 +100,11 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
     [sections],
   );
 
-  // Split footer (id === 'footer') out of <main> so the <footer> landmark
-  // sits at the page level rather than nested inside main. Any non-footer
-  // entries stay in registry order.
-  const mainSections = registry.filter((s) => s.id !== 'footer');
-  const footerSection = registry.find((s) => s.id === 'footer');
+  // Split footer (id === LANDING_SECTION_ID.footer) out of <main> so the
+  // <footer> landmark sits at the page level rather than nested inside main.
+  // Any non-footer entries stay in registry order.
+  const mainSections = registry.filter((s) => s.id !== LANDING_SECTION_ID.footer);
+  const footerSection = registry.find((s) => s.id === LANDING_SECTION_ID.footer);
 
   return (
     <>

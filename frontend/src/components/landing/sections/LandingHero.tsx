@@ -4,6 +4,7 @@ import { InstantTrialModal } from '../../demo/InstantTrialModal';
 import { emitCtaClick } from '../analytics';
 import { useSectionViewTracker } from '../useSectionViewTracker';
 import { useLandingCtas } from '../useLandingCtas';
+import { LANDING_SECTION_ID } from '../sectionIds';
 import './LandingHero.css';
 
 /**
@@ -92,4 +93,4 @@ export function LandingHero() {
  * Section-registry entry. S2 (scaffold) consumes `{ id, order, component }`
  * to render sections in-order. Exporting here is harmless if S2 hasn't merged.
  */
-export const section = { id: 'hero', order: 10, component: LandingHero };
+export const section = { id: LANDING_SECTION_ID.hero, order: 10, component: LandingHero };
