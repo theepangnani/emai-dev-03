@@ -9,8 +9,8 @@
  *   3. Demo CTA smoke            — hero CTA mounts InstantTrialModal (mocked)
  *   4. Reduced-motion            — ComparisonSplit renders without bounce
  *   5. Registry ordering         — section orders are ascending 10..9999
- *   6. Keyboard focus order      — hero CTA first, footer link last, no
- *                                  positive tabIndex values
+ *   6. Keyboard focus order      — skip link first, hero CTA second, footer
+ *                                  link last, no positive tabIndex values
  *
  * Section-level content/behavior stays with each section's own unit test —
  * this file deliberately avoids duplicating those assertions.
@@ -253,15 +253,15 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
 
   // ─── 6. Keyboard focus order ─────────────────────────────────────────
   describe('keyboard tab sequence', () => {
-    it('places the hero primary CTA as the first focusable element', () => {
+    it('places the skip-to-content link first and the hero primary CTA second', () => {
       mockVariantBucket.mockReturnValue('on');
 
       const { container } = renderWithProviders(<LandingPageV2 />);
 
-      // Without a skip-link, the first focusable in DOM order equals the
-      // first element tab order would visit. `userEvent.tab()` can exceed
-      // the 5s per-test budget on this 11-section DOM under jsdom, so we
-      // walk the DOM directly — the assertion is equivalent.
+      // S14 (#3814) prepends a WCAG skip-to-content link as the first
+      // focusable element; the hero primary CTA follows it. `userEvent.tab()`
+      // can exceed the 5s per-test budget on this 11-section DOM under
+      // jsdom, so we walk the DOM directly — the assertion is equivalent.
       const focusableSelector = [
         'a[href]',
         'button:not([disabled])',
@@ -270,12 +270,20 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
         'textarea:not([disabled])',
         '[tabindex]:not([tabindex="-1"])',
       ].join(',');
-      const first = container.querySelector<HTMLElement>(focusableSelector);
-      expect(first).not.toBeNull();
+      const focusables = Array.from(
+        container.querySelectorAll<HTMLElement>(focusableSelector),
+      );
+      expect(focusables.length).toBeGreaterThan(1);
 
-      // The hero primary CTA has a unique class across the page (other
-      // sections that share the "30 second demo" label use different
-      // class names).
+      // focusables[0] = skip link (anchor to #main with stable class).
+      const skipLink = focusables[0];
+      expect(skipLink.tagName).toBe('A');
+      expect(skipLink.getAttribute('href')).toBe('#main');
+      expect(skipLink.classList.contains('landing-v2-skip-link')).toBe(true);
+
+      // focusables[1] = hero primary CTA. The hero CTA has a unique class
+      // across the page (other sections that share the "30 second demo"
+      // label use different class names).
       const heroWrapper = container.querySelector<HTMLElement>(
         '[data-section-id="hero"]',
       );
@@ -283,7 +291,7 @@ describe('LandingPageV2 — page-level integration (S17 #3817)', { timeout: 20_0
         'button.landing-hero__cta--primary',
       );
       expect(heroCta).not.toBeNull();
-      expect(first).toBe(heroCta);
+      expect(focusables[1]).toBe(heroCta);
     });
 
     it('ends keyboard traversal on a footer social link', () => {
