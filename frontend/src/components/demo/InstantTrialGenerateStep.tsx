@@ -53,7 +53,8 @@ export function InstantTrialGenerateStep({
   const [source, setSource] = useState<SourceKind>('sample');
   const [customText, setCustomText] = useState('');
   const [askQuestion, setAskQuestion] = useState(DEFAULT_QUESTIONS.ask);
-  const [streams, setStreams] = useState<PerTabStreamState>(buildInitialStreams());
+  // Lazy init — avoid allocating a fresh initial object on every render.
+  const [streams, setStreams] = useState<PerTabStreamState>(buildInitialStreams);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {

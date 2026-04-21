@@ -1,4 +1,4 @@
-import { useCallback, useReducer } from 'react';
+import { useCallback, useMemo, useReducer } from 'react';
 import type { DemoType } from '../../../api/demo';
 
 /**
@@ -111,10 +111,13 @@ export function useDemoGameState(): UseDemoGameStateResult {
   );
   const resetAll = useCallback(() => dispatch({ type: 'RESET_ALL' }), []);
 
-  return {
-    state,
-    actions: { awardXP, markQuest, incrementStreak, resetStreak, earnAchievement, resetAll },
-  };
+  // Stable actions object so consumers can safely put it in effect deps.
+  const actions = useMemo<DemoGameActions>(
+    () => ({ awardXP, markQuest, incrementStreak, resetStreak, earnAchievement, resetAll }),
+    [awardXP, markQuest, incrementStreak, resetStreak, earnAchievement, resetAll],
+  );
+
+  return { state, actions };
 }
 
 export const DEMO_GAME_XP_MAX = XP_MAX;

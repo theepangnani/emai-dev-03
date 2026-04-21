@@ -1,11 +1,10 @@
-import type { DemoType } from '../../../api/demo';
 import type { QuestId } from './useDemoGameState';
 
 export interface DemoQuestTrackerProps {
   completedQuests: Set<QuestId>;
 }
 
-const QUEST_ORDER: { id: DemoType; label: string }[] = [
+const QUEST_ORDER: { id: QuestId; label: string }[] = [
   { id: 'ask', label: 'Ask' },
   { id: 'study_guide', label: 'Study Guide' },
   { id: 'flash_tutor', label: 'Flash Tutor' },
