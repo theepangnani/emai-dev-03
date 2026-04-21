@@ -1601,7 +1601,12 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - **XP bar + level counter** — Lv.1 → Lv.2 at 100 XP. Visible in the modal header, updates on tab interactions (Ask turns, Flash self-grades, Study Guide chip uses).
 - **Quest tracker** — 3 diamond dots, one per tab, lighting up as the user engages each tab at least once.
 - **Streak flame** — active at streak ≥ 2 consecutive `Got it` grades in Flash Tutor; dims on any `Missed` reset.
-- **Achievement stickers** — 5 types popping onto the modal edge as earned: **First Spark** (first generation), **Bullseye** (first `Got it`), **Warming Up** (all 3 tabs touched), **Triple Threat** (3 Ask turns used), **Level Up** (hit Lv.2).
+- **Achievement stickers** — 5 types popping onto the modal edge as earned, with one unambiguous trigger each (owner = the component that fires `earnAchievement(id)`):
+  - **First Spark** — `id: 'first-spark'` — first demo generation (any tab). Owner: `InstantTrialModal` / `AskPanel` turn 1.
+  - **Bullseye** — `id: 'bullseye'` — first `Got it` grade in Flash Tutor. Owner: `FlashTutorPanel`.
+  - **Warming Up** — `id: 'warmup'` — streak ≥ 2 consecutive `Got it` grades in Flash Tutor (same streak that activates the Streak flame). Owner: `FlashTutorPanel`. Note: an earlier draft defined this as "all 3 tabs touched" at the quest-tracker layer; the shipped trigger is the Flash-streak semantic — see follow-up #3795.
+  - **Triple Threat** — `id: 'triple'` — 3 Ask turns used in the same session. Owner: `AskPanel` (reserved; not yet wired — tracked separately).
+  - **Level Up** — `id: 'levelup'` — hit Lv.2 (XP reaches 100). Owner: XP-bar / level-up overlay.
 - **Mastery ring** — visible on Flash Tutor tab, reflects session mastery (see §6.135.6).
 - **Confetti + level-up overlay** — fire at 100 XP with a waitlist CTA ("Save your streak — join the waitlist").
 
