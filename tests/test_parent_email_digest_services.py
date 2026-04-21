@@ -580,6 +580,46 @@ class TestWhatsAppService:
             else:
                 ws.TwilioClient = orig_client
 
+    @patch("app.services.whatsapp_service.send_whatsapp_template", return_value=True)
+    @patch("app.services.whatsapp_service.send_whatsapp_message")
+    @patch("app.services.whatsapp_service.settings")
+    def test_send_otp_uses_template_when_content_sid_set(
+        self, mock_settings, mock_send_msg, mock_send_tpl
+    ):
+        """send_otp() uses Content API template when twilio_whatsapp_otp_content_sid is set (#3591)."""
+        from app.services.whatsapp_service import send_otp
+
+        mock_settings.twilio_whatsapp_otp_content_sid = "HXeeae316fca7d20de264b9fa7edbf5005"
+
+        result = send_otp("+14165551234", "123456")
+
+        assert result is True
+        mock_send_tpl.assert_called_once_with(
+            "+14165551234", "HXeeae316fca7d20de264b9fa7edbf5005", {"1": "123456"}
+        )
+        mock_send_msg.assert_not_called()
+
+    @patch("app.services.whatsapp_service.send_whatsapp_template")
+    @patch("app.services.whatsapp_service.send_whatsapp_message", return_value=True)
+    @patch("app.services.whatsapp_service.settings")
+    def test_send_otp_falls_back_to_freeform_when_no_content_sid(
+        self, mock_settings, mock_send_msg, mock_send_tpl
+    ):
+        """send_otp() falls back to freeform body when content SID is unset (sandbox/dev)."""
+        from app.services.whatsapp_service import send_otp
+
+        mock_settings.twilio_whatsapp_otp_content_sid = ""
+
+        result = send_otp("+14165551234", "654321")
+
+        assert result is True
+        mock_send_tpl.assert_not_called()
+        mock_send_msg.assert_called_once()
+        call_args = mock_send_msg.call_args
+        assert call_args[0][0] == "+14165551234"
+        assert "654321" in call_args[0][1]
+        assert "10 minutes" in call_args[0][1]
+
 
 # ---------------------------------------------------------------------------
 # TestDigestJob
