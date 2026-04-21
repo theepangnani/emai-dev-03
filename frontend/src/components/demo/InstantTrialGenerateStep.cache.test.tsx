@@ -35,7 +35,7 @@ beforeEach(() => {
 });
 
 describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
-  it('preserves Ask output when switching to Study Guide and back', async () => {
+  it('preserves Ask thread when switching to Study Guide and back', async () => {
     const user = userEvent.setup();
     setupStreamMock([
       { event: 'token', data: 'Ask answer here.' },
@@ -50,17 +50,20 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    // Ask is a multi-turn chatbox — type then send.
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
     await waitFor(() => {
       expect(screen.getByText(/Ask answer here\./)).toBeInTheDocument();
     });
 
     // Switch to Study Guide — idle (no output), Generate button visible.
+    // The Ask thread stays mounted-but-hidden so its state survives
+    // tab switches (#3762 per-tab cache contract).
     await user.click(screen.getByRole('tab', { name: /study guide/i }));
-    expect(screen.queryByText(/Ask answer here\./)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate study guide/i })).toBeInTheDocument();
 
-    // Switch back to Ask — cached output should still render.
+    // Switch back to Ask — cached thread should still render.
     await user.click(screen.getByRole('tab', { name: /^ask/i }));
     await waitFor(() => {
       expect(screen.getByText(/Ask answer here\./)).toBeInTheDocument();
@@ -82,52 +85,28 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
     await waitFor(() => {
       expect(screen.getByText(/Ask answer here\./)).toBeInTheDocument();
     });
 
-    // Switch source from sample to paste — cache must clear.
+    // Switch source from sample to paste — Ask thread must reset.
     const pasteLabel = screen.getByText(/paste your own text/i).closest('label')!;
     await user.click(pasteLabel);
     expect(screen.queryByText(/Ask answer here\./)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /generate ask/i })).toBeInTheDocument();
+    // Empty state starter chips return.
+    expect(
+      screen.getByRole('button', { name: /explain photosynthesis simply/i }),
+    ).toBeInTheDocument();
   });
 
-  it('preserves the Ask question when source changes', async () => {
-    const user = userEvent.setup();
-    setupStreamMock([
-      { event: 'token', data: 'Ask answer here.' },
-      { event: 'done', data: { demo_type: 'ask', latency_ms: 1, input_tokens: 1, output_tokens: 1, cost_cents: 0 } },
-    ]);
-
-    render(
-      <InstantTrialGenerateStep
-        sessionJwt="jwt"
-        waitlistPreviewPosition={10}
-        onVerify={() => {}}
-      />,
-    );
-
-    const questionInput = screen.getByLabelText(/your question/i) as HTMLInputElement;
-    await user.clear(questionInput);
-    await user.type(questionInput, 'What is photosynthesis?');
-    expect(questionInput.value).toBe('What is photosynthesis?');
-
-    // Switch source from sample to paste — cache clears but question must persist.
-    const pasteLabel = screen.getByText(/paste your own text/i).closest('label')!;
-    await user.click(pasteLabel);
-
-    expect((screen.getByLabelText(/your question/i) as HTMLInputElement).value).toBe(
-      'What is photosynthesis?',
-    );
-  });
-
-  it('renders FlashcardDeck when flash_tutor is done', async () => {
+  it('renders the Flash Tutor short learning cycle when flash_tutor is done (#3786)', async () => {
     const user = userEvent.setup();
     const cards = JSON.stringify([
       { front: 'Q1', back: 'A1' },
       { front: 'Q2', back: 'A2' },
+      { front: 'Q3', back: 'A3' },
     ]);
     setupStreamMock([
       { event: 'token', data: cards },
@@ -145,8 +124,8 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
     await user.click(screen.getByRole('tab', { name: /flash tutor/i }));
     await user.click(screen.getByRole('button', { name: /generate flash tutor/i }));
 
-    const region = await screen.findByRole('region', { name: /flashcards/i });
-    expect(region).toBeInTheDocument();
+    // Short learning cycle: mastery ring + first card front.
+    expect(await screen.findByRole('progressbar', { name: /mastery/i })).toBeInTheDocument();
     expect(screen.getByText('Q1')).toBeInTheDocument();
   });
 
@@ -190,7 +169,8 @@ describe('InstantTrialGenerateStep — per-tab cache (#3762)', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /generate ask/i }));
+    await user.type(screen.getByLabelText(/type your question/i), 'What is a cell?');
+    await user.click(screen.getByRole('button', { name: /send question/i }));
     expect(await screen.findByRole('button', { name: /save to library/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ask a follow-up/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /download pdf/i })).toBeNull();

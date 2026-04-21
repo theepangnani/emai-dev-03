@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SourcePicker } from './SourcePicker';
 
+const WAITLIST_SUB = /PDF, DOCX\s+—\s+unlocks with waitlist/i;
+
 describe('SourcePicker', () => {
   function setup(overrides: Partial<React.ComponentProps<typeof SourcePicker>> = {}) {
     const onChange = vi.fn();
@@ -74,5 +76,39 @@ describe('SourcePicker', () => {
     const longText = Array.from({ length: 501 }, (_, i) => `w${i}`).join(' ');
     setup({ value: 'paste', customText: longText });
     expect(screen.getByText(/501 \/ 500 words — too long/i)).toBeInTheDocument();
+  });
+
+  it('renders the upload sub-label without "coming soon" (#3784)', () => {
+    setup();
+    expect(screen.getByText(WAITLIST_SUB)).toBeInTheDocument();
+    expect(screen.queryByText(/coming soon/i)).toBeNull();
+  });
+
+  it('dismisses the upload upsell when activeTab changes (#3784)', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onCustomTextChange = vi.fn();
+    const { rerender } = render(
+      <SourcePicker
+        value="sample"
+        customText=""
+        onChange={onChange}
+        onCustomTextChange={onCustomTextChange}
+        activeTab="ask"
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /upload a document/i }));
+    expect(screen.getByRole('region', { name: /upload/i })).toBeInTheDocument();
+
+    rerender(
+      <SourcePicker
+        value="sample"
+        customText=""
+        onChange={onChange}
+        onCustomTextChange={onCustomTextChange}
+        activeTab="study_guide"
+      />,
+    );
+    expect(screen.queryByRole('region', { name: /upload/i })).toBeNull();
   });
 });

@@ -4,7 +4,11 @@ import { InstantTrialSignupStep } from './InstantTrialSignupStep';
 import { InstantTrialGenerateStep } from './InstantTrialGenerateStep';
 import { DemoMascot } from './DemoMascot';
 import { IconClose } from './icons';
-import type { CreateDemoSessionResponse } from '../../api/demo';
+import { DemoXPBar } from './gamification/DemoXPBar';
+import { DemoQuestTracker } from './gamification/DemoQuestTracker';
+import { DemoStreakFlame } from './gamification/DemoStreakFlame';
+import { useDemoGameState } from './gamification/useDemoGameState';
+import type { CreateDemoSessionResponse, DemoType } from '../../api/demo';
 import './InstantTrialModal.css';
 
 interface InstantTrialModalProps {
@@ -18,6 +22,10 @@ type Step = 1 | 2;
  *   Step 1 — signup (full_name, email, role, consent, honeypot).
  *   Step 2 — tabs (Ask / Study Guide / Flash Tutor) + streaming output.
  * Esc closes, focus is trapped, aria-modal + aria-labelledby per WCAG 2.1 AA.
+ *
+ * Gamification (CB-DEMO-001 foundation, epic #3599): XP bar, quest tracker,
+ * and streak flame live in the step-2 header, driven by `useDemoGameState`.
+ * Wave 2 feature streams (#3784–#3787) will enrich the visual layer.
  */
 export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -28,6 +36,8 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
   const [verifyShown, setVerifyShown] = useState<boolean>(false);
   const [maximized, setMaximized] = useState(false);
   const trapRef = useFocusTrap<HTMLDivElement>(true, onClose);
+
+  const { state: gameState, actions: gameActions } = useDemoGameState();
 
   const handleStep1Success = (res: CreateDemoSessionResponse, email: string) => {
     setSessionJwt(res.session_jwt);
@@ -43,6 +53,34 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
         'Click the link in your email to confirm your waitlist spot.',
     );
     setVerifyShown(true);
+  };
+
+  /**
+   * Foundation-only: when a tab completes, mark its quest. Wave 2 feature
+   * streams will layer XP awards, streaks, and achievement triggers here.
+   *
+   * Study Guide (#3787) gamification: on first completion, award 10 XP,
+   * mark the quest, and pop the First Spark achievement if this is the
+   * user's first generation of the session.
+   */
+  const handleTabGenerated = (tab: DemoType) => {
+    const wasFirstGeneration = gameState.completedQuests.size === 0;
+    gameActions.markQuest(tab);
+    if (tab === 'study_guide') {
+      gameActions.awardXP(10);
+      if (wasFirstGeneration) {
+        gameActions.earnAchievement('first-spark');
+      }
+    }
+  };
+
+  /**
+   * #3787 curiosity reward — user opens a scoped chip upsell on the Study
+   * Guide tab. Awards a small XP bump the first time each chip is opened.
+   * Per-chip once-per-session enforcement lives in `DemoStudyGuideChips`.
+   */
+  const handleStudyGuideChipCuriosity = () => {
+    gameActions.awardXP(5);
   };
 
   const titleId = 'demo-modal-title';
@@ -87,6 +125,13 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 aria-hidden="true"
               />
             </div>
+            {step === 2 && (
+              <div className="demo-game-header">
+                <DemoXPBar xp={gameState.xp} level={gameState.level} />
+                <DemoQuestTracker completedQuests={gameState.completedQuests} />
+                <DemoStreakFlame streak={gameState.streak} />
+              </div>
+            )}
           </div>
           <button
             type="button"
@@ -146,6 +191,10 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 sessionJwt={sessionJwt}
                 waitlistPreviewPosition={waitlistPreview}
                 onVerify={handleVerify}
+                onTabGenerated={handleTabGenerated}
+                onStudyGuideChipCuriosity={handleStudyGuideChipCuriosity}
+                gameState={gameState}
+                gameActions={gameActions}
               />
               {verifyNotice && (
                 <div className="demo-form-success" role="status">

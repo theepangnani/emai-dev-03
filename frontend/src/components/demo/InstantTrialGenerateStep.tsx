@@ -1,111 +1,212 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamGenerate, type DemoType } from '../../api/demo';
 import { ConversionCard } from './ConversionCard';
-import { StreamingMarkdown } from '../StreamingMarkdown';
-import { DemoMascot } from './DemoMascot';
-import { FlashcardDeck } from './FlashcardDeck';
-import { GatedActionBar } from './GatedActionBar';
 import { SourcePicker, type SourceKind } from './SourcePicker';
-import { IconSparkles, IconCopy } from './icons';
-import { SAMPLE_TEXT, TABS, countWords } from './demoSamples';
-import {
-  TAB_META,
-  GATED_ACTIONS,
-  INITIAL_TAB_STATE,
-  copyToClipboard,
-  type TabState,
-} from './instantTrialHelpers';
+import { AskPanel } from './panels/AskPanel';
+import { StudyGuidePanel } from './panels/StudyGuidePanel';
+import { FlashTutorPanel } from './panels/FlashTutorPanel';
+import type { ChipId } from './panels/study/DemoStudyGuideChips';
+import { INITIAL_PANEL_STREAM_STATE, type PanelStreamState } from './panels/panelTypes';
+import { SAMPLE_TEXT, SAMPLE_TITLE, TABS, countWords } from './demoSamples';
+import { TAB_META } from './instantTrialHelpers';
+import type { DemoGameActions, DemoGameState } from './gamification/useDemoGameState';
 
 interface Props {
   sessionJwt: string;
   waitlistPreviewPosition: number;
   onVerify: () => void;
+  /**
+   * Optional hook for Wave 2 feature streams — fires whenever a tab's
+   * generation finishes successfully. The foundation PR wires the modal
+   * header's game-state hook through this; feature streams will award XP,
+   * mark quests, and trigger achievements from here.
+   */
+  onTabGenerated?: (tab: DemoType) => void;
+  /**
+   * Study-guide-specific curiosity reward hook (#3787) — fires when the
+   * user opens a gated chip's scoped upsell. Max once per chip per session
+   * is enforced inside `DemoStudyGuideChips`.
+   */
+  onStudyGuideChipCuriosity?: (id: Exclude<ChipId, 'followup'>) => void;
+  /**
+   * Optional gamification state + actions. Used by:
+   *   - FlashTutorPanel (#3786) for per-card XP + streaks + achievements.
+   *   - AskPanel (§6.135.5, #3785) for per-turn XP + first-spark. The
+   *     panel reads ``gameState.xp`` to detect whether the session has
+   *     earned any XP yet (drives the first-spark achievement).
+   * Panels that don't accept these simply ignore them.
+   */
+  gameState?: DemoGameState;
+  gameActions?: DemoGameActions;
 }
 
-export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, onVerify }: Props) {
+type PerTabStreamState = Record<DemoType, PanelStreamState>;
+
+/** Factory so reset paths never accidentally share object identity. */
+function buildInitialStreams(): PerTabStreamState {
+  return {
+    ask: { ...INITIAL_PANEL_STREAM_STATE },
+    study_guide: { ...INITIAL_PANEL_STREAM_STATE },
+    flash_tutor: { ...INITIAL_PANEL_STREAM_STATE },
+  };
+}
+
+/**
+ * Derive the Study Guide title from the current source (#3787).
+ * - Sample source → the canonical SAMPLE_TITLE.
+ * - Paste with content → the first line of the paste, clipped to 60 chars.
+ * - Empty paste → fall back to SAMPLE_TITLE so the title is never blank.
+ */
+const TOPIC_MAX_LEN = 60;
+function deriveStudyGuideTopic(source: SourceKind, customText: string): string {
+  if (source === 'paste') {
+    const trimmed = customText.trim();
+    if (trimmed) {
+      // Strip leading markdown heading markers (e.g. `# `, `## `) so a pasted
+      // title renders as "Study guide — My Topic" not "# My Topic".
+      const firstLine = trimmed.split('\n')[0].trim().replace(/^#+\s*/, '');
+      if (firstLine) {
+        return firstLine.length > TOPIC_MAX_LEN
+          ? firstLine.slice(0, TOPIC_MAX_LEN - 1) + '\u2026'
+          : firstLine;
+      }
+    }
+  }
+  return SAMPLE_TITLE;
+}
+
+/**
+ * Orchestrator for the three demo tabs.
+ *
+ * Post-refactor responsibilities (CB-DEMO-001 foundation):
+ *   - Tab selection + shared chrome (tab row, source picker, conversion card).
+ *   - Owns per-tab streaming state so output survives tab switches (#3762).
+ *   - Delegates per-tab rendering to panel components:
+ *       AskPanel / StudyGuidePanel / FlashTutorPanel.
+ *   - Exposes `onTabGenerated` so the modal's game-state hook can react.
+ *
+ * Special case: the Ask tab (§6.135.5, #3785) is a self-contained multi-
+ * turn chatbox and owns its own streaming + per-turn state. The orches-
+ * trator only tracks whether any Ask turn has completed (via the
+ * ``onTurnComplete`` callback) so the conversion card + "try another"
+ * chips still appear at the right moment.
+ */
+export function InstantTrialGenerateStep({
+  sessionJwt,
+  waitlistPreviewPosition,
+  onVerify,
+  onTabGenerated,
+  onStudyGuideChipCuriosity,
+  gameState,
+  gameActions,
+}: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
   const [source, setSource] = useState<SourceKind>('sample');
   const [customText, setCustomText] = useState('');
-  const [tabState, setTabState] = useState<Record<DemoType, TabState>>(INITIAL_TAB_STATE);
-  const [copied, setCopied] = useState(false);
+  // Lazy init — avoid allocating a fresh initial object on every render.
+  const [streams, setStreams] = useState<PerTabStreamState>(buildInitialStreams);
+  // Bumped on source change so AskPanel clears its thread in lockstep
+  // with the study_guide / flash_tutor per-tab streams.
+  const [askResetKey, setAskResetKey] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     };
   }, []);
 
-  const resetAllTabs = () => {
+  const resetAllStreams = useCallback(() => {
     abortRef.current?.abort();
-    setTabState((prev) => ({
-      ask: { ...prev.ask, output: '', status: 'idle', error: '' },
-      study_guide: { ...prev.study_guide, output: '', status: 'idle', error: '' },
-      flash_tutor: { ...prev.flash_tutor, output: '', status: 'idle', error: '' },
-    }));
+    setStreams(buildInitialStreams());
+    setAskResetKey((k) => k + 1);
+  }, []);
+
+  const handleSourceChange = (next: SourceKind) => {
+    setSource(next);
+    resetAllStreams();
   };
 
-  const handleSourceChange = (next: SourceKind) => { setSource(next); resetAllTabs(); };
   const handleCustomTextChange = (text: string) => {
     setCustomText(text);
-    if (source === 'paste') resetAllTabs();
+    if (source === 'paste') resetAllStreams();
   };
-  const updateTab = (tab: DemoType, patch: Partial<TabState>) =>
-    setTabState((prev) => ({ ...prev, [tab]: { ...prev[tab], ...patch } }));
 
   const wordCount = countWords(customText);
   const overLimit = wordCount > 500;
-  const current = tabState[activeTab];
-  const { status, output } = current;
+  const sourceText =
+    source === 'paste' && customText.trim() ? customText.trim() : SAMPLE_TEXT;
 
   const runGenerate = useCallback(
     (tab: DemoType) => {
       abortRef.current?.abort();
-      setTabState((prev) => {
-        const question = prev[tab].question;
-        const controller = streamGenerate(
-          sessionJwt,
-          {
-            demo_type: tab,
-            source_text: source === 'paste' && customText.trim() ? customText.trim() : SAMPLE_TEXT,
-            question: tab === 'ask' ? question : undefined,
+      setStreams((prev) => ({
+        ...prev,
+        [tab]: { output: '', status: 'streaming', error: '' },
+      }));
+      const controller = streamGenerate(
+        sessionJwt,
+        {
+          demo_type: tab,
+          source_text: sourceText,
+        },
+        {
+          onToken: (chunk: string) =>
+            setStreams((inner) => ({
+              ...inner,
+              [tab]: { ...inner[tab], output: inner[tab].output + chunk },
+            })),
+          onDone: () => {
+            setStreams((inner) => ({
+              ...inner,
+              [tab]: { ...inner[tab], status: 'done' },
+            }));
+            onTabGenerated?.(tab);
           },
-          {
-            onToken: (chunk: string) =>
-              setTabState((inner) => ({
-                ...inner,
-                [tab]: { ...inner[tab], output: inner[tab].output + chunk },
-              })),
-            onDone: () => updateTab(tab, { status: 'done' }),
-            onError: (message: string) => updateTab(tab, { status: 'error', error: message }),
-          },
-        );
-        abortRef.current = controller;
-        return { ...prev, [tab]: { ...prev[tab], output: '', error: '', status: 'streaming' } };
-      });
+          onError: (message: string) =>
+            setStreams((inner) => ({
+              ...inner,
+              [tab]: { ...inner[tab], status: 'error', error: message },
+            })),
+        },
+      );
+      abortRef.current = controller;
     },
-    [sessionJwt, source, customText],
+    [sessionJwt, sourceText, onTabGenerated],
   );
 
-  const handleCopy = async () => {
-    const ok = await copyToClipboard(output);
-    if (!ok) return;
-    setCopied(true);
-    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
-  };
+  /** Fires when the multi-turn Ask panel finishes a streaming turn. It
+   *  flips the ask stream to 'done' so the conversion card + "try
+   *  another" chips appear, and re-uses the shared onTabGenerated hook
+   *  for parity with the other panels.
+   *
+   *  The panel's ``onTurnComplete`` signature also passes a
+   *  ``turnNumber`` second arg; we intentionally drop it here because
+   *  the panel already handles per-turn gamification (XP scaling,
+   *  first-spark) — the orchestrator only needs to know that *at
+   *  least one* turn has completed. */
+  const handleAskTurnComplete = useCallback(
+    (tab: DemoType) => {
+      setStreams((prev) =>
+        prev[tab].status === 'done'
+          ? prev
+          : { ...prev, [tab]: { ...prev[tab], status: 'done' } },
+      );
+      onTabGenerated?.(tab);
+    },
+    [onTabGenerated],
+  );
 
   const generatedTypes = useMemo(
-    () => new Set(TABS.filter((t) => tabState[t.id].status === 'done').map((t) => t.id)),
-    [tabState],
+    () => new Set(TABS.filter((t) => streams[t.id].status === 'done').map((t) => t.id)),
+    [streams],
   );
   const remainingTabs = TABS.filter((t) => t.id !== activeTab && !generatedTypes.has(t.id));
-  const activeMeta = TAB_META[activeTab];
-  const mascotMood =
-    status === 'streaming' ? 'streaming' : status === 'done' ? 'complete' : 'thinking';
+  const activeState = streams[activeTab];
   const anyDone = generatedTypes.size > 0;
+  const disableGenerate = overLimit;
+
+  const isFirstXpOfSession = (gameState?.xp ?? 0) === 0;
 
   return (
     <div>
@@ -134,87 +235,46 @@ export function InstantTrialGenerateStep({ sessionJwt, waitlistPreviewPosition, 
         onChange={handleSourceChange}
         customText={customText}
         onCustomTextChange={handleCustomTextChange}
+        activeTab={activeTab}
       />
 
-      {activeTab === 'ask' && (
-        <div className="demo-form-group">
-          <label htmlFor="demo-question">Your question</label>
-          <input
-            id="demo-question"
-            type="text"
-            value={current.question}
-            onChange={(e) => updateTab('ask', { question: e.target.value })}
-            maxLength={500}
-          />
-        </div>
-      )}
-
-      <div className="demo-generate-row">
-        <button
-          type="button"
-          className="demo-btn-primary demo-btn-generate"
-          disabled={status === 'streaming' || overLimit}
-          onClick={() => runGenerate(activeTab)}
-        >
-          {status === 'streaming' ? (
-            <>
-              <span className="demo-generate-dots" aria-hidden="true">
-                <span className="demo-typing-dot" />
-                <span className="demo-typing-dot" />
-                <span className="demo-typing-dot" />
-              </span>
-              <span>Generating...</span>
-            </>
-          ) : (
-            <>
-              <IconSparkles size={18} />
-              <span>Generate {activeMeta.label}</span>
-            </>
-          )}
-        </button>
+      {/* The Ask panel is always mounted so its multi-turn thread state
+          survives tab-switches (#3762 per-tab cache contract). Hidden
+          with ``hidden`` when it is not the active tab. */}
+      <div hidden={activeTab !== 'ask'}>
+        <AskPanel
+          sessionJwt={sessionJwt}
+          resetKey={askResetKey}
+          onTurnComplete={handleAskTurnComplete}
+          gameActions={gameActions}
+          isFirstXpOfSession={isFirstXpOfSession}
+        />
       </div>
-
-      {(status !== 'idle' || output) && (
-        <div className="demo-output-layout" aria-busy={status === 'streaming'} aria-live="polite">
-          <div className="demo-output-mascot" aria-hidden="true">
-            <DemoMascot size={44} mood={mascotMood} />
-          </div>
-          <div className="demo-output-bubble">
-            <div className="demo-output-bubble-header">
-              <span className="demo-watermark">Demo sample</span>
-            </div>
-            {activeTab === 'flash_tutor' ? (
-              <FlashcardDeck rawText={output} isStreaming={status === 'streaming'} />
-            ) : (
-              <StreamingMarkdown
-                content={output}
-                isStreaming={status === 'streaming'}
-                className="demo-output-md"
-              />
-            )}
-          </div>
-        </div>
+      {activeTab === 'study_guide' && (
+        <StudyGuidePanel
+          sessionJwt={sessionJwt}
+          sourceText={sourceText}
+          state={activeState}
+          onGenerate={() => runGenerate('study_guide')}
+          generateDisabled={disableGenerate}
+          topic={deriveStudyGuideTopic(source, customText)}
+          activeTab={activeTab}
+          onChipCuriosity={onStudyGuideChipCuriosity}
+          onNavigateToTab={setActiveTab}
+        />
       )}
-      {current.error && <div className="demo-output-error" role="alert">{current.error}</div>}
-
-      {output && status === 'done' && (
-        <>
-          <div className="demo-output-actions">
-            <button
-              type="button"
-              className="demo-btn-secondary demo-btn-copy"
-              onClick={handleCopy}
-              aria-label="Copy demo output to clipboard"
-            >
-              <IconCopy size={16} />
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-          </div>
-          <GatedActionBar actions={GATED_ACTIONS[activeTab]} />
-        </>
+      {activeTab === 'flash_tutor' && (
+        <FlashTutorPanel
+          sessionJwt={sessionJwt}
+          sourceText={sourceText}
+          state={activeState}
+          onGenerate={() => runGenerate('flash_tutor')}
+          generateDisabled={disableGenerate}
+          gameActions={gameActions}
+        />
       )}
 
-      {status === 'done' && remainingTabs.length > 0 && (
+      {activeState.status === 'done' && remainingTabs.length > 0 && (
         <div className="demo-chips-row" aria-label="Try another demo">
           {remainingTabs.map((tab) => {
             const { Icon: ChipIcon, label } = TAB_META[tab.id];

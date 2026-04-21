@@ -19,12 +19,14 @@ export interface TabState {
 export const TAB_META: Record<DemoType, { label: string; sub: string; Icon: typeof IconAsk }> = {
   ask: { label: 'Ask', sub: 'Get an answer', Icon: IconAsk },
   study_guide: { label: 'Study Guide', sub: 'Key points + Q&A', Icon: IconStudyGuide },
-  flash_tutor: { label: 'Flash Tutor', sub: '5 flashcards', Icon: IconFlashTutor },
+  flash_tutor: { label: 'Flash Tutor', sub: '3-card mastery loop', Icon: IconFlashTutor },
 };
 
 export const GATED_ACTIONS: Record<DemoType, GatedActionId[]> = {
   ask: ['save', 'follow_up'],
-  study_guide: ['download', 'save', 'follow_up'],
+  // #3787 — the Study Guide tab now renders its own suggestion chips
+  // (`DemoStudyGuideChips`) in place of the generic gated action bar.
+  study_guide: [],
   flash_tutor: ['download', 'save', 'more_flashcards'],
 };
 

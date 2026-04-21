@@ -43,9 +43,14 @@ _DEMO_TYPE_FILES: dict[str, str] = {
 }
 
 # Token budgets per demo_type (PRD §11.6).
+# - ask (300): each turn of the multi-turn chatbox (§6.135.5, #3785) is
+#   billed against the rate-limit bucket; tighter per-turn output keeps
+#   aggregate cost roughly linear in turns.
+# - study_guide (600): dropped from 1200 when the tab switched from
+#   "5 key points + 3 Q&A" to a ≤150-word overview paragraph (#3787).
 _MAX_TOKENS: dict[str, int] = {
-    "ask": 600,
-    "study_guide": 1200,
+    "ask": 300,
+    "study_guide": 600,
     "flash_tutor": 500,
 }
 
@@ -152,6 +157,7 @@ async def stream_demo_completion(
     *,
     source_text: Optional[str],
     question: Optional[str],
+    history: Optional[list[dict]] = None,
 ) -> AsyncGenerator[dict, None]:
     """Stream a demo completion from Claude Haiku.
 
@@ -162,6 +168,10 @@ async def stream_demo_completion(
 
     The caller is responsible for wrapping these into SSE frames and for
     recording the generation (cost, counts) on success.
+
+    For the Ask multi-turn chatbox (§6.135.5, #3785) the caller may pass a
+    short ``history`` list (≤2 prior turns, each {role, content}). History
+    is prepended to the message array before the current user turn.
     """
     if demo_type not in _DEMO_TYPE_FILES:
         yield {"event": "error", "data": f"Unknown demo_type: {demo_type}"}
@@ -180,6 +190,17 @@ async def stream_demo_completion(
     )
     max_tokens = _MAX_TOKENS.get(demo_type, 600)
 
+    # Assemble the messages array. Only the Ask tab currently passes
+    # history; other demo types ignore it.
+    messages: list[dict] = []
+    if demo_type == "ask" and history:
+        for turn in history:
+            role = turn.get("role")
+            content = turn.get("content")
+            if role in ("user", "assistant") and isinstance(content, str) and content:
+                messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": user_prompt})
+
     start_time = time.time()
     try:
         client = get_async_anthropic_client()
@@ -192,7 +213,7 @@ async def stream_demo_completion(
         async with client.messages.stream(
             model=_DEMO_MODEL,
             system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
+            messages=messages,
             max_tokens=max_tokens,
             temperature=0.7,
         ) as stream:
