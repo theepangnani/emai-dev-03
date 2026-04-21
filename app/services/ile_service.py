@@ -533,12 +533,14 @@ async def complete_session(db: Session, session: ILESession) -> dict:
                 from app.services.notification_service import notify_parents_of_student
                 student_user = db.query(User).filter(User.id == session.student_id).first()
                 if student_user:
+                    _parts = student_user.full_name.split() if student_user.full_name else []
+                    student_first_name = _parts[0] if _parts else "Your child"
                     notify_parents_of_student(
                         db=db,
                         student_user=student_user,
-                        title=f"{student_user.first_name or 'Your child'} had a breakthrough in {session.topic} today!",
+                        title=f"{student_first_name} had a breakthrough in {session.topic} today!",
                         content=(
-                            f"{student_user.first_name or 'Your child'} was struggling with "
+                            f"{student_first_name} was struggling with "
                             f"{session.topic} ({session.subject}) but just had a breakthrough moment. "
                             f"Their accuracy improved significantly!"
                         ),

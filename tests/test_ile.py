@@ -11,7 +11,7 @@ Tests:
 import json
 import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -513,3 +513,132 @@ class TestILERateLimiting:
             headers=headers,
         )
         assert resp.status_code == 201
+
+
+# ---------------------------------------------------------------------------
+# Aha-moment parent notification tests (#3840)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.usefixtures("_cleanup_ile")
+class TestAhaMomentNotification:
+    """Regression tests for #3840 — full_name parsing for parent notifications."""
+
+    def _build_completed_session(self, db_session, student_id):
+        from app.models.ile_session import ILESession
+        from app.models.ile_question_attempt import ILEQuestionAttempt
+
+        now = datetime.now(timezone.utc)
+        session = ILESession(
+            student_id=student_id,
+            mode="testing",
+            subject="Math",
+            topic="Fractions",
+            question_count=3,
+            difficulty="medium",
+            blooms_tier="recall",
+            status="in_progress",
+            current_question_index=3,
+            questions_json=json.dumps(FAKE_QUESTIONS[:3]),
+            started_at=now - timedelta(minutes=5),
+            expires_at=now + timedelta(hours=24),
+        )
+        db_session.add(session)
+        db_session.flush()
+
+        for qi in range(3):
+            db_session.add(ILEQuestionAttempt(
+                session_id=session.id,
+                question_index=qi,
+                question_text=f"Q{qi}",
+                question_format="mcq",
+                difficulty_level="medium",
+                selected_answer="B",
+                correct_answer="B",
+                is_correct=True,
+                attempt_number=1,
+                xp_earned=10,
+            ))
+        db_session.commit()
+        return session
+
+    def test_aha_moment_notification_uses_first_name_from_full_name(
+        self, db_session, ile_student,
+    ):
+        """Aha-moment notification derives first name from full_name (not first_name).
+
+        Before the fix, `student_user.first_name` raised AttributeError (swallowed
+        by broad except), so parents never received the breakthrough notification.
+        With the fix, the first name is parsed from `full_name` and the title
+        begins with it (e.g. "ILE ..." from "ILE Student").
+        """
+        import asyncio
+        from app.services import ile_service
+
+        session = self._build_completed_session(db_session, ile_student.id)
+
+        captured = {}
+
+        def _capture_notify(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        with patch.object(
+            ile_service, "update_student_calibration", return_value=None,
+        ), patch(
+            "app.services.ile_mastery_service.update_mastery_after_session",
+            return_value=MagicMock(),
+        ), patch(
+            "app.services.ile_mastery_service.get_mastery_snapshot",
+            return_value={"accuracy": 0.2},
+        ), patch(
+            "app.services.ile_mastery_service.check_aha_moment", return_value=True,
+        ), patch(
+            "app.services.notification_service.notify_parents_of_student",
+            side_effect=_capture_notify,
+        ):
+            asyncio.run(ile_service.complete_session(db_session, session))
+
+        assert captured, "notify_parents_of_student was not called"
+        # "ILE Student" -> first token "ILE"
+        assert captured["title"].startswith("ILE "), captured.get("title")
+        assert "had a breakthrough in Fractions" in captured["title"]
+        assert captured["content"].startswith("ILE was struggling with"), (
+            captured.get("content")
+        )
+
+    def test_aha_moment_notification_whitespace_full_name_falls_back(
+        self, db_session, ile_student,
+    ):
+        """#3845 — whitespace-only full_name must not IndexError; falls back to 'Your child'."""
+        import asyncio
+        from app.services import ile_service
+
+        ile_student.full_name = "   "
+        db_session.commit()
+
+        session = self._build_completed_session(db_session, ile_student.id)
+
+        captured = {}
+
+        def _capture_notify(**kwargs):
+            captured.update(kwargs)
+            return []
+
+        with patch.object(
+            ile_service, "update_student_calibration", return_value=None,
+        ), patch(
+            "app.services.ile_mastery_service.update_mastery_after_session",
+            return_value=MagicMock(),
+        ), patch(
+            "app.services.ile_mastery_service.get_mastery_snapshot",
+            return_value={"accuracy": 0.2},
+        ), patch(
+            "app.services.ile_mastery_service.check_aha_moment", return_value=True,
+        ), patch(
+            "app.services.notification_service.notify_parents_of_student",
+            side_effect=_capture_notify,
+        ):
+            asyncio.run(ile_service.complete_session(db_session, session))
+
+        assert captured, "notify_parents_of_student was not called"
+        assert captured["title"].startswith("Your child "), captured.get("title")
