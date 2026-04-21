@@ -1624,7 +1624,7 @@ Non-functional requirement — slide generation must be **progressive and non-bl
 - [ ] XP bar + level counter visible in modal header; updates on tab interactions
 - [ ] Quest tracker dots light up as user engages each tab
 - [ ] Streak flame lights up at streak ≥ 2; dims on reset (`Missed`)
-- [ ] All 5 achievement stickers (First Spark, Bullseye, Warming Up, Triple Threat, Level Up) pop onto the modal edge as earned
+- [ ] 4 achievement stickers (First Spark, Bullseye, Warming Up, Level Up) pop onto the modal edge as earned — Triple Threat is reserved and tracked separately in #3857
 - [ ] Mastery ring visible on Flash Tutor tab (feeds from §6.135.6 state)
 - [ ] Confetti + level-up overlay with waitlist CTA fire at 100 XP
 - [ ] `prefers-reduced-motion` disables all animations + confetti
