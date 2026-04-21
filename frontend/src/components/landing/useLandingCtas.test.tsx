@@ -44,4 +44,15 @@ describe('useLandingCtas', () => {
     });
     expect(useFeatureMock).toHaveBeenCalledWith('waitlist_enabled');
   });
+
+  it('returns waitlist-mode shape while the feature-toggle query is pending (#3895)', () => {
+    // `useFeature` defaults `waitlist_enabled` to true during hydration so
+    // the hook should produce the waitlist-mode CTAs, not "Get Started".
+    useFeatureMock.mockReturnValue(true);
+    const { result } = renderHook(() => useLandingCtas());
+    expect(result.current.secondaryLabel).toBe('Join the waitlist');
+    expect(result.current.secondaryHref).toBe('/waitlist');
+    expect(result.current.pricingMode).toBe('waitlist');
+    expect(result.current.waitlistEnabled).toBe(true);
+  });
 });
