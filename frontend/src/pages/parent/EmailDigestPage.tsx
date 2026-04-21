@@ -429,9 +429,55 @@ export function EmailDigestPage() {
                     {(sendDigestMutation.error as any)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
                   </span>
                 )}
-                {sendDigestMutation.isSuccess && (
-                  <span className="ed-success-text">{sendDigestMutation.data?.data?.message ?? 'Digest sent!'}</span>
-                )}
+                {sendDigestMutation.isSuccess && (() => {
+                  // #3880: render per-channel digest status with three variants.
+                  const payload = sendDigestMutation.data?.data;
+                  const status = payload?.status ?? 'delivered';
+                  const message = payload?.message ?? 'Digest sent!';
+                  const variant =
+                    status === 'delivered'
+                      ? 'ed-digest-status--delivered'
+                      : status === 'partial'
+                      ? 'ed-digest-status--partial'
+                      : status === 'failed'
+                      ? 'ed-digest-status--failed'
+                      : 'ed-digest-status--delivered';
+                  const icon =
+                    status === 'delivered'
+                      ? '\u2713'
+                      : status === 'partial'
+                      ? '\u26A0'
+                      : status === 'failed'
+                      ? '\u2715'
+                      : '\u2713';
+                  return (
+                    <div
+                      className={`ed-digest-status ${variant}`}
+                      role={status === 'failed' ? 'alert' : 'status'}
+                      data-status={status}
+                    >
+                      <div className="ed-digest-status__row">
+                        <span className="ed-digest-status__icon" aria-hidden="true">
+                          {icon}
+                        </span>
+                        <span>{message}</span>
+                      </div>
+                      {status === 'failed' && (
+                        <button
+                          type="button"
+                          className="ed-digest-status__retry"
+                          onClick={() => {
+                            sendDigestMutation.reset();
+                            sendDigestMutation.mutate(activeIntegration.id);
+                          }}
+                          disabled={sendDigestMutation.isPending}
+                        >
+                          Try again
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
