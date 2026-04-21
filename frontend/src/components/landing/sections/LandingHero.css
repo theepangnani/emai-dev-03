@@ -1,0 +1,225 @@
+/* CB-LAND-001 S3 — LandingHero. Tokens defined in frontend/src/index.css
+   under [data-landing="v2"]. Do not redefine locally. */
+
+.landing-hero {
+  --landing-hero-max-width: 1200px;
+  --landing-hero-ink: var(--color-ink, #1b1e2b);
+  --landing-hero-ink-muted: var(--color-ink-muted, #5b6274);
+
+  font-family: var(--font-landing-sans);
+  color: var(--landing-hero-ink);
+  padding: 4.5rem 1.5rem 3rem;
+  background: #ffffff;
+}
+
+.landing-hero__inner {
+  max-width: var(--landing-hero-max-width);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 3rem;
+  align-items: center;
+}
+
+.landing-hero__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.landing-hero__headline {
+  font-family: var(--font-landing-sans);
+  font-weight: 600;
+  font-size: clamp(2.25rem, 4.5vw + 1rem, 3.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--landing-hero-ink);
+}
+
+.landing-hero__headline em {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 400;
+  /* Serif italic reads slightly smaller optically — bump it up and open
+     the line a hair so descenders (g, p) don't collide with the line below. */
+  font-size: 1.08em;
+  line-height: 1.2;
+}
+
+.landing-hero__subhead {
+  font-size: clamp(1rem, 0.5vw + 0.9rem, 1.125rem);
+  line-height: 1.55;
+  color: var(--landing-hero-ink-muted);
+  margin: 0;
+  max-width: 34ch;
+}
+
+.landing-hero__ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 0.25rem;
+}
+
+.landing-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-landing-sans);
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.95rem 1.6rem;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-spring-fast, 180ms ease),
+    border-color var(--motion-spring-fast, 180ms ease),
+    transform var(--motion-spring-fast, 180ms ease);
+  min-width: 15rem;
+}
+
+.landing-hero__cta:focus-visible {
+  outline: 2px solid var(--color-accent-cyan);
+  outline-offset: 3px;
+}
+
+.landing-hero__cta--primary {
+  background-color: var(--color-accent-cyan);
+  color: var(--landing-hero-ink);
+  border: 2px solid var(--color-accent-cyan);
+}
+
+.landing-hero__cta--primary:hover,
+.landing-hero__cta--primary:focus-visible {
+  /* Darker cyan shade for hover — ink text on this variant clears WCAG AA
+     for large/bold CTA copy (contrast ratio ~6.3:1). */
+  background-color: #0bb8de;
+  border-color: #0bb8de;
+}
+
+.landing-hero__cta--ghost {
+  background-color: transparent;
+  color: var(--landing-hero-ink);
+  border: 2px solid var(--color-accent-cyan);
+}
+
+.landing-hero__cta--ghost:hover,
+.landing-hero__cta--ghost:focus-visible {
+  background-color: rgba(31, 216, 255, 0.12);
+  border-color: #0bb8de;
+}
+
+/* Right-side product mockup placeholder — decorative only. S3 ships without
+   a real screenshot; fast-follow to swap in a rendered product shot. */
+.landing-hero__mockup {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  background: linear-gradient(135deg, #e6faff 0%, #d0f4fb 100%);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 18px 40px -24px rgba(27, 30, 43, 0.25);
+  overflow: hidden;
+}
+
+.landing-hero__mockup-bar {
+  height: 2.25rem;
+  width: 35%;
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 12px -6px rgba(27, 30, 43, 0.12);
+}
+
+.landing-hero__mockup-panel {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 6px 18px -10px rgba(27, 30, 43, 0.18);
+}
+
+.landing-hero__mockup-panel--wide {
+  height: 42%;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.landing-hero__mockup-panel--narrow {
+  height: 28%;
+  width: 70%;
+}
+
+/* Trust bar — kicker + 5 chips. Lives below the hero grid. */
+.landing-hero__trust {
+  max-width: var(--landing-hero-max-width);
+  margin: 3.5rem auto 0;
+  text-align: center;
+}
+
+.landing-hero__trust-kicker {
+  font-family: var(--font-landing-sans);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  color: var(--landing-hero-ink-muted);
+  margin: 0 0 1rem;
+}
+
+.landing-hero__trust-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.landing-hero__trust-chip {
+  font-family: var(--font-landing-sans);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  color: var(--landing-hero-ink);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background-color: #f4f6fa;
+}
+
+/* Responsive — ≤768px stack content above mockup; ≤480px full-width CTAs. */
+@media (max-width: 768px) {
+  .landing-hero {
+    padding: 3rem 1.25rem 2.5rem;
+  }
+
+  .landing-hero__inner {
+    grid-template-columns: 1fr;
+    gap: 2.25rem;
+  }
+
+  .landing-hero__content {
+    order: 1;
+  }
+
+  .landing-hero__mockup {
+    order: 2;
+  }
+
+  .landing-hero__trust {
+    margin-top: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-hero__ctas {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .landing-hero__cta {
+    width: 100%;
+    min-width: 0;
+  }
+}
