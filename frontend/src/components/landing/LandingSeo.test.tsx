@@ -56,7 +56,7 @@ describe('LandingSeo', () => {
       document
         .querySelector<HTMLMetaElement>('meta[property="og:image"]')
         ?.getAttribute('content'),
-    ).toMatch(/\/og-image\.png$/);
+    ).toMatch(/\/classbridge-hero-logo\.png$/);
     expect(
       document
         .querySelector<HTMLMetaElement>('meta[property="og:type"]')

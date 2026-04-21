@@ -70,7 +70,9 @@ function injectJsonLd(blob: Record<string, unknown>): HTMLScriptElement {
 
 /** Canonical URL for the landing page. */
 const SITE_URL = 'https://www.classbridge.ca';
-const OG_IMAGE = `${SITE_URL}/og-image.png`;
+// TEMPORARY: points at existing 1:1 hero logo until a real 1200×630 OG asset
+// lands via CB-LAND-001-fast-follow #3875.
+const OG_IMAGE = `${SITE_URL}/classbridge-hero-logo.png`;
 
 const TITLE =
   'ClassBridge — Close the homework gap. Together, in one place.';
