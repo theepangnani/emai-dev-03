@@ -1648,3 +1648,65 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
 - [ ] All new demo CSS uses `var(--font-display)`, `var(--font-sans)`, `var(--color-accent)`, `var(--color-accent-warm)`, `var(--color-ink)`, `var(--color-surface)` (and related tokens) — no hardcoded hex colors in demo component CSS
 - [ ] Any new tokens required (e.g. for sticker washi-tape accents) are added to `index.css` rather than inlined
 - [ ] The visual-alignment decision is linked from the demo component entry points so future contributors see it before adding styles
+
+### 6.140 Landing Page Redesign (CB-LAND-001) — SHIPPED (2026-04-21)
+
+**Purpose:** Replace the current `LaunchLandingPage.tsx` (hero + 4 demo surfaces + 4 feature cards + footer) with a 12-section Mindgrasp-inspired persuasion architecture, aligned to the CB-DEMO-001 brand tokens (Path C decision, §6.135.9). Coexists with CB-DEMO-001 — the existing `InstantTrialModal` / `TuesdayMirror` / `RoleSwitcher` / `ProofWall` are wrapped behind a new flag-gated `landing_v2` scaffold rather than replaced.
+
+**Epic:** #3800 (open) — initially claimed requirements would land under §6.136, but §6.136 was already used for Problem Solver; this section is filed as §6.140 post-hoc to close the documentation gap.
+
+**Reference material:**
+- `docs/design/landing-v2-reference/` — 12 annotated Mindgrasp.ai screenshots
+- Visual system inherits §6.135.9 Path C (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex)
+
+**Section map (Mindgrasp → ClassBridge):**
+
+| # | Section | Child issue | PR | Shipped |
+|---|---------|-------------|----|---------|
+| S1 | Design tokens + typography | #3801 | #3821 | ✅ 2026-04-21 |
+| S2 | `LandingPageV2` scaffold + `landing_v2` flag + section registry | #3802 | #3849 | ✅ 2026-04-21 |
+| S3 | Hero — `Close the homework gap. Together, in *one place.*` + demo CTA + waitlist + Ontario-board trust bar | #3803 | #3831 | ✅ 2026-04-21 |
+| S4 | Pain — `School communication is *broken.*` + 4 role-quote cards | #3804 | #3823 | ✅ 2026-04-21 |
+| S5 | Feature rows — 6 alternating pastel rows (AI Study Guides · Flash Tutor · Quizzes + Flashcards · Parent Digest · Classroom/Boards · Messaging) | #3805 | #3837 | ✅ 2026-04-21 |
+| S6 | How It Works — 4-step accordion + synced preview | #3806 | #3824 | ✅ 2026-04-21 |
+| S7 | Old vs New — 5 ✗/✓ comparison rows | #3807 | #3825 | ✅ 2026-04-21 |
+| S8 | Progress tracking — 2×2 grid (Activity · Streak/XP · Per-Child Focus · Resume) | #3808 | #3826 | ✅ 2026-04-21 |
+| S9 | Learner-segment tabs (Parents · Students · Teachers · Admins · Private Tutors) | #3809 | #3836 | ✅ 2026-04-21 |
+| S10 | Cross-device + integrations bar (Web · iOS · Classroom · YRDSB · WhatsApp) | #3810 | #3835 | ✅ 2026-04-21 |
+| S11 | Pricing teaser — Free · Family · Board | #3811 | #3830 | ✅ 2026-04-21 |
+| S12 | Final CTA + footer polish | #3812 | #3827 | ✅ 2026-04-21 |
+
+**Cross-cutting streams (still open as of 2026-04-21):**
+- S13 Motion + microinteractions (#3813) — `in-progress`
+- S14 Accessibility pass WCAG 2.1 AA (#3814) — `in-progress`
+- S15 SEO + meta / OG / JSON-LD / lazy-load (#3815) — `in-progress`
+- S16 Analytics (section-view + CTA click events) (#3816) — `in-progress`
+- S17 Frontend tests (render / keyboard / reduced-motion / flag on-off) (#3817) — `in-progress`
+
+**Fast-follows filed (open):**
+- #3822 — S1 follow-up: reduced-motion token semantics + font load strategy
+- #3828 — S8 ProgressGrid headline font-face vs. reference
+- #3829 — S12 footer bg tokenization + dark-cyan gradient stop + real social SVGs
+- #3832 — S6 How It Works mobile preview pane UX
+- #3833 — S3 trust-bar boards source from TuesdayMirror data
+- #3834 — S3 swap hero mockup placeholder for real product screenshot
+- #3838 — S5 FeatureRow polish (safer headline, real icons/screenshots, RTL flip, test ordering)
+- #3850 — S2 fast-follow: `HomeRedirect` calls `useVariantBucket` even for authed users + redundant `.test.` filter in `sectionRegistry`
+
+**Success metrics:**
+- **M1** — landing → demo click-through ≥ 25% (baseline to capture pre-50% rollout)
+- **M2** — landing → waitlist signup conversion +50% vs v1 landing
+- **M3** — bounce rate −20%
+- **M4** — Lighthouse Performance ≥ 90, Accessibility ≥ 95, SEO ≥ 95
+- **M5** — zero regressions in CB-DEMO-001 demo-completion funnel
+
+**Rollout:**
+- Feature flag `landing_v2` (mirrors `demo_landing_v1_1` pattern) — 0% → 5% → 25% → 50% → 100%
+- Kill-switch: flag off → renders existing `LaunchLandingPage` (no code removal)
+- Target wide-rollout: May 2026 (Phase 2)
+
+**Scope boundary:**
+- Coexists with §6.135 CB-DEMO-001; does not replace InstantTrialModal / TuesdayMirror / RoleSwitcher / ProofWall — only re-composes them inside the new 12-section scaffold.
+- Frontend-only feature. Backend touched in #3849 only to add `landing_v2` to the feature-flag seed list and admin surface.
+- No database schema changes.
+- No new Python routes beyond the feature-flag enablement in S2.
