@@ -5,8 +5,9 @@ import { SourcePicker, type SourceKind } from './SourcePicker';
 import { AskPanel } from './panels/AskPanel';
 import { StudyGuidePanel } from './panels/StudyGuidePanel';
 import { FlashTutorPanel } from './panels/FlashTutorPanel';
+import type { ChipId } from './panels/study/DemoStudyGuideChips';
 import { INITIAL_PANEL_STREAM_STATE, type PanelStreamState } from './panels/panelTypes';
-import { DEFAULT_QUESTIONS, SAMPLE_TEXT, TABS, countWords } from './demoSamples';
+import { DEFAULT_QUESTIONS, SAMPLE_TEXT, SAMPLE_TITLE, TABS, countWords } from './demoSamples';
 import { TAB_META } from './instantTrialHelpers';
 
 interface Props {
@@ -20,6 +21,12 @@ interface Props {
    * mark quests, and trigger achievements from here.
    */
   onTabGenerated?: (tab: DemoType) => void;
+  /**
+   * Study-guide-specific curiosity reward hook (#3787) — fires when the
+   * user opens a gated chip's scoped upsell. Max once per chip per session
+   * is enforced inside `DemoStudyGuideChips`.
+   */
+  onStudyGuideChipCuriosity?: (id: Exclude<ChipId, 'followup'>) => void;
 }
 
 type PerTabStreamState = Record<DemoType, PanelStreamState>;
@@ -31,6 +38,30 @@ function buildInitialStreams(): PerTabStreamState {
     study_guide: { ...INITIAL_PANEL_STREAM_STATE },
     flash_tutor: { ...INITIAL_PANEL_STREAM_STATE },
   };
+}
+
+/**
+ * Derive the Study Guide title from the current source (#3787).
+ * - Sample source → the canonical SAMPLE_TITLE.
+ * - Paste with content → the first line of the paste, clipped to 60 chars.
+ * - Empty paste → fall back to SAMPLE_TITLE so the title is never blank.
+ */
+const TOPIC_MAX_LEN = 60;
+function deriveStudyGuideTopic(source: SourceKind, customText: string): string {
+  if (source === 'paste') {
+    const trimmed = customText.trim();
+    if (trimmed) {
+      // Strip leading markdown heading markers (e.g. `# `, `## `) so a pasted
+      // title renders as "Study guide — My Topic" not "# My Topic".
+      const firstLine = trimmed.split('\n')[0].trim().replace(/^#+\s*/, '');
+      if (firstLine) {
+        return firstLine.length > TOPIC_MAX_LEN
+          ? firstLine.slice(0, TOPIC_MAX_LEN - 1) + '\u2026'
+          : firstLine;
+      }
+    }
+  }
+  return SAMPLE_TITLE;
 }
 
 /**
@@ -48,6 +79,7 @@ export function InstantTrialGenerateStep({
   waitlistPreviewPosition,
   onVerify,
   onTabGenerated,
+  onStudyGuideChipCuriosity,
 }: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
   const [source, setSource] = useState<SourceKind>('sample');
@@ -179,6 +211,10 @@ export function InstantTrialGenerateStep({
           state={activeState}
           onGenerate={() => runGenerate('study_guide')}
           generateDisabled={disableGenerate}
+          topic={deriveStudyGuideTopic(source, customText)}
+          activeTab={activeTab}
+          onChipCuriosity={onStudyGuideChipCuriosity}
+          onNavigateToTab={setActiveTab}
         />
       )}
       {activeTab === 'flash_tutor' && (
