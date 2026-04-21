@@ -192,6 +192,7 @@ export function InstantTrialModal({ onClose }: InstantTrialModalProps) {
                 waitlistPreviewPosition={waitlistPreview}
                 onVerify={handleVerify}
                 onTabGenerated={handleTabGenerated}
+                gameActions={gameActions}
                 onStudyGuideChipCuriosity={handleStudyGuideChipCuriosity}
               />
               {verifyNotice && (

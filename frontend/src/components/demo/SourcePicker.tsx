@@ -42,6 +42,7 @@ export function SourcePicker({ value, onChange, customText, onCustomTextChange, 
   // #3784 — dismiss the upload upsell when the demo tab changes so it
   // never persists across Ask / Study Guide / Flash Tutor.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional dismiss-on-tab-change (#3784)
     setUploadUpsellOpen(false);
   }, [activeTab]);
 

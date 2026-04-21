@@ -1,4 +1,5 @@
 import type { DemoType } from '../../../api/demo';
+import type { DemoGameActions } from '../gamification/useDemoGameState';
 import type { StreamStatus } from '../instantTrialHelpers';
 
 /**
@@ -38,4 +39,11 @@ export interface DemoPanelProps {
   /** Disable the Generate button (e.g. source over the 500-word limit). */
   generateDisabled?: boolean;
   onGenerated?: (demoType: DemoType) => void;
+  /**
+   * Optional gamification actions — panels that drive XP / streak /
+   * achievement side-effects (e.g. FlashTutorPanel's self-grade loop,
+   * #3786) call these directly rather than going through
+   * `onGenerated`. Panels that don't need them simply ignore this prop.
+   */
+  gameActions?: DemoGameActions;
 }

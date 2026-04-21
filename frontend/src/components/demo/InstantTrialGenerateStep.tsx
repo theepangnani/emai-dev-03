@@ -9,6 +9,7 @@ import type { ChipId } from './panels/study/DemoStudyGuideChips';
 import { INITIAL_PANEL_STREAM_STATE, type PanelStreamState } from './panels/panelTypes';
 import { DEFAULT_QUESTIONS, SAMPLE_TEXT, SAMPLE_TITLE, TABS, countWords } from './demoSamples';
 import { TAB_META } from './instantTrialHelpers';
+import type { DemoGameActions } from './gamification/useDemoGameState';
 
 interface Props {
   sessionJwt: string;
@@ -21,6 +22,12 @@ interface Props {
    * mark quests, and trigger achievements from here.
    */
   onTabGenerated?: (tab: DemoType) => void;
+  /**
+   * Optional gamification actions passed through to panels that drive
+   * finer-grained side-effects (per-card XP + streaks + achievements in
+   * FlashTutorPanel, #3786). Panels that don't accept it simply ignore it.
+   */
+  gameActions?: DemoGameActions;
   /**
    * Study-guide-specific curiosity reward hook (#3787) — fires when the
    * user opens a gated chip's scoped upsell. Max once per chip per session
@@ -79,6 +86,7 @@ export function InstantTrialGenerateStep({
   waitlistPreviewPosition,
   onVerify,
   onTabGenerated,
+  gameActions,
   onStudyGuideChipCuriosity,
 }: Props) {
   const [activeTab, setActiveTab] = useState<DemoType>('ask');
@@ -224,6 +232,7 @@ export function InstantTrialGenerateStep({
           state={activeState}
           onGenerate={() => runGenerate('flash_tutor')}
           generateDisabled={disableGenerate}
+          gameActions={gameActions}
         />
       )}
 
