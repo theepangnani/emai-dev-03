@@ -178,7 +178,13 @@ export function InstantTrialGenerateStep({
   /** Fires when the multi-turn Ask panel finishes a streaming turn. It
    *  flips the ask stream to 'done' so the conversion card + "try
    *  another" chips appear, and re-uses the shared onTabGenerated hook
-   *  for parity with the other panels. */
+   *  for parity with the other panels.
+   *
+   *  The panel's ``onTurnComplete`` signature also passes a
+   *  ``turnNumber`` second arg; we intentionally drop it here because
+   *  the panel already handles per-turn gamification (XP scaling,
+   *  first-spark) — the orchestrator only needs to know that *at
+   *  least one* turn has completed. */
   const handleAskTurnComplete = useCallback(
     (tab: DemoType) => {
       setStreams((prev) =>

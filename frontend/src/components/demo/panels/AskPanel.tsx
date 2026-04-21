@@ -198,8 +198,11 @@ export function AskPanel({
             // Count assistant turns *after* this turn lands.
             const nextTurnNumber = assistantTurnCount + 1;
 
-            // Gamification: XP + quest + first-spark achievement.
-            if (gameActions) {
+            // Gamification: XP + quest + first-spark achievement. The
+            // cap guard in sendTurn already prevents turn 4+ from
+            // reaching onDone, but keep a belt-and-braces check so a
+            // future refactor can't accidentally let XP overflow.
+            if (gameActions && nextTurnNumber <= MAX_ASSISTANT_TURNS) {
               if (nextTurnNumber === 1) {
                 gameActions.awardXP(15);
                 gameActions.markQuest('ask');
@@ -239,7 +242,7 @@ export function AskPanel({
   );
 
   const handleChipClick = (text: string) => {
-    setInput(text);
+    // sendTurn clears the input itself; no need to pre-fill it.
     sendTurn(text);
   };
 
