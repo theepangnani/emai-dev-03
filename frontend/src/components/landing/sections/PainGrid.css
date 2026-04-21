@@ -1,0 +1,191 @@
+/* CB-LAND-001 S4 — Pain section
+ * Tokens scoped under [data-landing="v2"] (see landing/README.md).
+ * Reference: docs/design/landing-v2-reference/02-pain-section.png
+ */
+
+.landing-pain {
+  font-family: var(--font-landing-sans);
+  color: var(--color-ink);
+  padding: 72px 16px;
+  background: transparent;
+}
+
+.landing-pain__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.landing-pain__kicker {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--color-ink-muted, #6b7085);
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.landing-pain__heading {
+  font-family: var(--font-landing-sans);
+  font-size: clamp(28px, 4.5vw, 44px);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-ink);
+  margin: 0 0 40px;
+  text-align: center;
+  max-width: 760px;
+}
+
+.landing-pain__heading em {
+  font-family: var(--font-display-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--color-accent-coral);
+}
+
+/* 4-col grid → 2-col tablet → 1-col mobile */
+.landing-pain__grid {
+  list-style: none;
+  margin: 0 0 32px;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 960px) {
+  .landing-pain__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-pain__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.landing-pain__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: 0 4px 18px rgba(19, 27, 46, 0.06);
+  transition: transform var(--motion-spring-fast), box-shadow var(--motion-spring-fast);
+}
+
+.landing-pain__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(19, 27, 46, 0.1);
+}
+
+/* Pastel-square icon — light-tint bg + filled-look icon */
+.landing-pain__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: var(--color-ink);
+}
+
+.landing-pain__tint--peach {
+  background: var(--color-row-peach);
+  color: #d26a2a;
+}
+
+.landing-pain__tint--mint {
+  background: var(--color-row-mint);
+  color: #1f8a66;
+}
+
+.landing-pain__tint--lavender {
+  background: var(--color-row-lavender);
+  color: #6a4dc2;
+}
+
+.landing-pain__tint--pink {
+  background: var(--color-row-pink);
+  color: #c4427c;
+}
+
+.landing-pain__badge {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.landing-pain__quote {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink);
+  quotes: none;
+}
+
+/* Trailing "better way" strip */
+.landing-pain__strip {
+  width: 100%;
+  background: #ffffff;
+  border-radius: var(--radius-xl);
+  padding: 22px 28px;
+  box-shadow: 0 4px 18px rgba(19, 27, 46, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.landing-pain__strip-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--color-ink);
+  flex: 1 1 320px;
+}
+
+.landing-pain__strip-text strong {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.landing-pain__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-accent-coral);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--motion-spring-fast), box-shadow var(--motion-spring-fast);
+  box-shadow: 0 6px 16px rgba(255, 92, 92, 0.3);
+}
+
+.landing-pain__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(255, 92, 92, 0.38);
+}
+
+.landing-pain__cta:focus-visible {
+  outline: 2px solid var(--color-accent-coral);
+  outline-offset: 3px;
+}
+
+.landing-pain__cta-arrow {
+  color: #ffffff;
+}
