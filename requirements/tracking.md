@@ -1,10 +1,30 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 21, 2026, EOD):** ~3,853 total issues+PRs — ~584 open issues, 2,046 closed issues, 1,221 PRs (89 merged in the past 3 days), 2,146 commits on master.
+**Summary (as of Apr 21, 2026, late-EOD):** 3,899 total issues+PRs — 584 open issues, ~2,065 closed issues, ~1,225 PRs, 2,154 commits on master.
 - **Features built:** 445+ enhancements closed
-- **Bugs fixed:** 460+ bugs closed
+- **Bugs fixed:** 466+ bugs closed
 - **Other closed:** 1,420+ (pilot prep, docs, testing, infra, misc)
-- **Past 3 days (Apr 18–21):** 89 PRs merged · 189 issues created · 126 issues closed
+- **Past 3 days (Apr 18–21):** 90+ PRs merged · 195 issues created · 132 issues closed
+
+**Apr 21 (late evening) — Digest delivery honesty (PR #3886, deployed):**
+
+Production defect: parent clicked "Send Digest Now" → UI showed `Digest delivered with 7 emails` → user received nothing. Investigation surfaced 6 distinct issues feeding the same broken parent experience, all fixed in one integration PR via 5 parallel worktree streams + 4 /pr-review passes.
+
+- **#3879 WhatsApp template vars (Bug):** Twilio Content API rejected every WhatsApp digest send with `HTTP 400 — Content Variables parameter is invalid`. Root cause: `plain_text` template variable contained newlines between per-email summaries, and the 1600-char budget was the full-message budget, not Twilio's per-variable ~1024 cap. Strip control chars, collapse whitespace, cap at 1024 for the template path; freeform fallback retains 1600.
+- **#3880 Per-channel delivery status (Design Gap):** `send_digest_for_integration` hardcoded `status="delivered"` and ignored `send_email_sync` return value. New three-valued per-channel contract (`true` / `false` / `null`); overall status computed from selected channels. New `email_delivery_status` column on `digest_delivery_log` (idempotent migration mirrors #3620 template). Tri-state UI banner on Email Digest page (green / amber / red) with Try-again CTA on failure.
+- **#3884 Notification modal HTML rendering (Bug):** AI digest is HTML-formatted by design (system prompt mandates `<h3>`/`<strong>`/`<ul>`); the in-app bell modal rendered it as literal text — parents saw `<h3>Hello</h3>` in the modal. Fixed via `DOMPurify.sanitize` with a tight allowlist (`h1-h4`, `p`, `ul`, `ol`, `li`, `strong`, `em`, `br`, `a`, `hr`). Also fixed: `_build_notification_email` no longer wraps HTML content in outer `<p>` (avoids invalid `<p><h3>` nesting).
+- **#3887 Skip-vs-failure conflation (Bug, surfaced by /pr-review pass 1):** The new per-channel status conflated intentional skips (preference off / WhatsApp not verified / no valid sender) with actual delivery failures. Refined to four-state (`delivered` / `partial` / `failed` / `skipped`) with `null` for "not applicable / preference-suppressed" — `null` excluded from overall-status computation. New `skipped` UI variant (info blue + ℹ icon, no retry CTA).
+- **#3894 Skipped-link gating (Bug, surfaced by /pr-review pass 3):** "Open preferences" link rendered for ALL `status=skipped` responses, not just "no eligible channels" — a parent with "no new emails today" was being told to fix preferences. Added machine-readable `reason` field (`already_delivered` / `no_settings` / `no_new_emails` / `no_eligible_channels`); link gated on `reason === 'no_eligible_channels'`.
+- **#3896 Notification list preview (Bug, surfaced by /pr-review pass 3):** Modal fix in #3884 didn't cover the bell dropdown LIST preview, which still rendered raw `<h3>...</h3>` text. Strip ALL tags to plain text for list preview via `DOMPurify({ ALLOWED_TAGS: [], KEEP_CONTENT: true })`; full HTML render preserved only in the modal detail view.
+- **REQUIREMENTS update:** §6.127.1 in `requirements/features-part7.md` documents the four delivery states, three-valued per-channel convention, parent-facing copy for each, `reason` field semantics, and persistence columns.
+- **Delivery model:** 5 parallel worktree streams (A/B/C/D/E) → `integrate/digest-delivery-fixes` → one master PR (#3886). Streams A/B/C launched in parallel from master; C rebased on B to avoid `notification_service.py` conflict. D extends master post-pass-1; E extends integration branch post-pass-3.
+- **/pr-review discipline:** Four passes total per user directive "ensure /pr-review is done at least two times and all recommendations and suggestions are resolved before merging". Pass 1 → 1 IMPORTANT (#3887). Pass 2 → 0 new criticals + 3 suggestions carried to Stream E. Pass 3 → 2 IMPORTANT (#3894, #3896). Pass 4 → APPROVE.
+- **Follow-up filed (deferred, unblocked):** #3883 — add ClassBridge Messages as a fourth delivery channel + per-channel UI toggles. Pattern template documented inline.
+- **Diagnostics improvement:** Cloud Run logs now show actual delivery outcomes ("digest skipped because every selected channel was preference-suppressed" vs. "WhatsApp delivery failed: HTTP 400") instead of silent success. Future digest failures will be diagnosable from logs alone.
+- **Issues closed:** #3879, #3880, #3884, #3887, #3894, #3896 (auto-closed via squash merge of #3886 = `80f6572b`).
+- **Tests:** 216 backend + 37 frontend (vitest) passing on integration branch; 0 lint errors; 0 TS build errors.
+- **Deploy:** Triggered on master via `gh workflow run deploy.yml` (run 24751178596 — completed success). Traffic routing pending explicit user approval per CLAUDE.md.
+- Snapshot date: 2026-04-21 (late evening).
 
 **Apr 21 (evening) — Digest bug fix + CB-LAND-001 epic shipped + demo surface features:**
 
