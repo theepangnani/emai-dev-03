@@ -99,11 +99,23 @@ def send_multi_channel_notification(
         student_id: Student context for ClassBridge messages
 
     Returns:
-        None if suppressed. Otherwise a dict with:
+        None if suppressed. Otherwise a dict with per-channel outcomes using a
+        three-valued convention (#3887):
+          - ``True``  — channel was requested and delivery succeeded
+          - ``False`` — channel was requested and delivery actually failed
+                        (exception raised, or underlying send helper returned
+                        False)
+          - ``None``  — not applicable: channel was not requested, or was
+                        requested but intentionally skipped (recipient
+                        preference off, no email on file, no valid sender for
+                        the classbridge_message channel, etc.). Callers MUST
+                        NOT treat ``None`` as a failure — it is a skip.
+
+        Keys:
           - "notification": Notification | None — the in-app row, if any
-          - "in_app": bool | None — True on create, False if preference-suppressed, None if not requested
-          - "email": bool | None — True on send success, False on failure/exception, None if not requested
-          - "classbridge_message": bool | None — per-channel outcome for the CB-message channel
+          - "in_app": bool | None
+          - "email": bool | None
+          - "classbridge_message": bool | None
 
         Truthiness of the dict remains stable because a non-empty dict is always
         truthy, but legacy callers that check ``if notif:`` should migrate to
@@ -153,7 +165,8 @@ def send_multi_channel_notification(
             db.add(notification)
             in_app_status = True
         else:
-            in_app_status = False
+            # Preference-suppressed → not applicable, not a failure (#3887).
+            in_app_status = None
 
     # Channel 2: Email
     if "email" in channels:
@@ -172,8 +185,10 @@ def send_multi_channel_notification(
                 logger.warning(f"Failed to send notification email to {recipient.email}: {e}")
                 email_status = False
         else:
-            # Channel requested but recipient has no email / email disabled / preference off
-            email_status = False
+            # No email on file / email_notifications=False / preference off → not
+            # applicable, not a failure (#3887). The user never asked for this
+            # channel to fire.
+            email_status = None
 
     # Channel 3: ClassBridge message
     if "classbridge_message" in channels:
@@ -185,7 +200,9 @@ def send_multi_channel_notification(
                 logger.warning(f"Failed to send ClassBridge message notification: {e}")
                 cb_message_status = False
         else:
-            cb_message_status = False
+            # No valid sender (system notification or self-send) → not
+            # applicable, not a failure (#3887).
+            cb_message_status = None
 
     return {
         "notification": notification,
