@@ -154,24 +154,34 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     whatsapp_content = digest_content
                 plain_text = re.sub(r'<[^>]+>', '', whatsapp_content or "")
 
-                # Truncate digest content BEFORE wrapping in template (#3586)
-                # Reserve space for header + footer so they're never cut off
+                # Header / footer used by the freeform fallback path
                 header = f"Hi {parent_name}, here's your child's daily school email summary:\n\n"
                 footer = "\n\nView full digest at https://www.classbridge.ca/email-digest"
-                max_content_len = 1600 - len(header) - len(footer)
-                if len(plain_text) > max_content_len:
-                    plain_text = plain_text[:max_content_len - 3] + "..."
 
                 # Use Content API template if content_sid configured (#3585)
                 content_sid = app_settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
+                    # #3879 — Twilio Content Variables reject newlines / control chars and
+                    # cap each variable at ~1024 chars. Sanitise plain_text and parent_name
+                    # before sending through the template path.
+                    sanitised_text = re.sub(r'[\x00-\x1f]', ' ', plain_text)
+                    sanitised_text = re.sub(r'\s+', ' ', sanitised_text).strip()
+                    max_var_len = 1024
+                    if len(sanitised_text) > max_var_len:
+                        sanitised_text = sanitised_text[:max_var_len - 3] + "..."
+                    sanitised_parent_name = parent_name.replace('\n', ' ').replace('\r', ' ').strip()
                     wa_success = send_whatsapp_template(
                         integration.whatsapp_phone,
                         content_sid,
-                        {"1": parent_name, "2": plain_text},
+                        {"1": sanitised_parent_name, "2": sanitised_text},
                     )
                 else:
-                    # Fallback: body-text matching (works in sandbox / session window)
+                    # Fallback: body-text matching (works in sandbox / session window).
+                    # Truncate digest content BEFORE wrapping in template (#3586).
+                    # Reserve space for header + footer so they're never cut off.
+                    max_content_len = 1600 - len(header) - len(footer)
+                    if len(plain_text) > max_content_len:
+                        plain_text = plain_text[:max_content_len - 3] + "..."
                     template_msg = f"{header}{plain_text}{footer}"
                     wa_success = send_whatsapp_message(integration.whatsapp_phone, template_msg)
                 whatsapp_status = "sent" if wa_success else "failed"
