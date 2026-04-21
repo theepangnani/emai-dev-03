@@ -590,6 +590,38 @@ YRDSB Student Gmail → [manual forwarding] → Parent Personal Gmail → [Class
   - Bypasses the "already delivered today" deduplication check (parent may want a fresh digest after new emails arrive)
   - Rate-limited to 10 requests per minute per parent to prevent abuse
 
+#### §6.127.1 Per-Channel Delivery Status Contract (#3880)
+
+**Added:** 2026-04-21 | **GitHub Issue:** #3880
+
+Prior to #3880, the `POST /api/parent/email-digest/integrations/{id}/send-digest` endpoint always returned `status="delivered"` with the message `"Digest delivered with N emails"` — regardless of whether the email send actually succeeded or the WhatsApp delivery failed. Parents saw a green success toast even when they received nothing. This subsection documents the corrected per-channel truth contract.
+
+**Three delivery states (top-level `status`):**
+- `delivered` — every selected channel succeeded
+- `partial` — at least one channel succeeded and at least one failed
+- `failed` — every selected channel failed or was skipped due to misconfiguration
+
+"Selected channels" are parsed from `ParentDigestSettings.delivery_channels` (comma-separated subset of `in_app`, `email`, `whatsapp`).
+
+**Parent-facing copy (rendered on the Email Digest page):**
+- `delivered` → green toast: `"Digest delivered with {N} emails"`
+- `partial` → amber toast: `"Digest partially delivered ({N} emails). Failed channels: {list}. Check your setup."`
+- `failed` → red toast with retry CTA: `"Digest delivery failed on all channels ({N} emails). Please try again or check your setup."`
+
+**Per-channel status fields (`channel_status` dict on the response):**
+- `channel_status.in_app` — `true` if the in-app Notification row was created, `false` if attempted but preference-suppressed, `null` if `in_app` was not selected
+- `channel_status.email` — `true` if `send_email_sync` returned `True` without raising, `false` if it returned `False` or raised (SendGrid error, SMTP failure, etc.), `null` if `email` was not selected
+- `channel_status.whatsapp` — `true` if the Twilio WhatsApp template/message send returned success, `false` if Twilio returned failure or the send raised, `null` if `whatsapp` was not selected (or WhatsApp not verified — treated as a skip, recorded as `false` on the overall status computation)
+
+Semantics: `true` = sent, `false` = failed, `null` = not requested.
+
+**Persistence — `digest_delivery_log` table:**
+- `status` — top-level state (`delivered` / `partial` / `failed` / `skipped`)
+- `email_delivery_status` — `"sent"` / `"failed"` / `"skipped"` / `null` (mirrors the `whatsapp_delivery_status` column added in #3620)
+- `whatsapp_delivery_status` — unchanged (`"sent"` / `"failed"` / `"skipped"` / `null`)
+
+Both per-channel columns enable analytics on channel reliability independent of the top-level summary status.
+
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)
