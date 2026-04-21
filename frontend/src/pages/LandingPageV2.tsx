@@ -13,12 +13,18 @@
  * main landmark carries id="main" for the link target, and the footer
  * section (if present in the registry) is rendered OUTSIDE <main> so the
  * page has a single top-level <footer> landmark.
+ *
+ * S15 (#3815, §6.136.6): `<LandingSeo />` injects meta / OG / Twitter /
+ * JSON-LD into <head>. Sections still ship in one chunk — see
+ * `sectionRegistry.ts` for the fast-follow that moves each section
+ * behind a dynamic import.
  */
 import { useMemo } from 'react';
 import {
   buildSectionRegistry,
   type LandingSection,
 } from '../components/landing/sectionRegistry';
+import { LandingSeo } from '../components/landing/LandingSeo';
 import './LandingPageV2.css';
 
 interface LandingPageV2Props {
@@ -63,6 +69,7 @@ export function LandingPageV2({ sections }: LandingPageV2Props = {}) {
         Skip to main content
       </a>
       <main id="main" data-landing="v2" className="landing-v2-root">
+        <LandingSeo />
         {registry.length === 0 ? (
           <EmptyRegistryNotice />
         ) : (
