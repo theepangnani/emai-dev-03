@@ -1,11 +1,25 @@
 ## 12. GitHub Issues Tracking
 
-**Summary (as of Apr 20, 2026):** ~3,770 total issues — ~3,290 closed, ~480 open, 2,110+ commits
-- **Features built:** 430+ enhancements closed
-- **Bugs fixed:** 445+ bugs closed
-- **Other closed:** 1,400+ (pilot prep, docs, testing, infra, misc)
+**Summary (as of Apr 21, 2026, EOD):** ~3,853 total issues+PRs — ~584 open issues, 2,046 closed issues, 1,221 PRs (89 merged in the past 3 days), 2,146 commits on master.
+- **Features built:** 445+ enhancements closed
+- **Bugs fixed:** 460+ bugs closed
+- **Other closed:** 1,420+ (pilot prep, docs, testing, infra, misc)
+- **Past 3 days (Apr 18–21):** 89 PRs merged · 189 issues created · 126 issues closed
 
-**Apr 21 — WhatsApp Digest UI + OTP End-to-End:**
+**Apr 21 (evening) — Digest bug fix + CB-LAND-001 epic shipped + demo surface features:**
+
+- **#3844 — `User.first_name` AttributeError fix (deployed):** *Send Digest Now* returned HTTP 500 for every parent ("email daily digest never worked"). Root cause: `app/jobs/parent_email_digest_job.py:85` and `app/services/ile_service.py:539,541` accessed a non-existent `User.first_name` attribute (model only has `full_name`). Fix derives first name from `full_name.split()[0]` with empty-list guard. Bundles #3839 (digest), #3840 (ILE aha-moment silently-suppressed parent notification), and #3845 (pass-1 review: whitespace-only `full_name` → IndexError). Merged via integration branch `integrate/user-first-name-bugs`. Squash SHA `7c195956`. 49/49 backend regression tests pass. `/pr-review` ran ×3 — all Critical/Important findings resolved before merge. Manual workflow_dispatch deploy to Cloud Run (run 24725145457) succeeded on revision `classbridge-01123-ss2` at 100% traffic; zero errors in post-deploy logs. Follow-ups filed: #3846 (replace MagicMock parent with real User in existing digest tests — this is why the bug slipped CI), #3847 (extract `first_name_from(user, default)` helper), #3848 (symmetrize whitespace test assertion), #3851 (restore `ile_student` fixture in whitespace aha test).
+- **#3800 CB-LAND-001 Landing Page Redesign — S1-S12 shipped:** Mindgrasp-inspired 12-section landing-page scaffold merged today across PRs #3821 (S1 tokens), #3849 (S2 scaffold + `landing_v2` flag), #3831 (S3 Hero), #3823 (S4 Pain), #3837 (S5 Feature rows), #3824 (S6 How It Works), #3825 (S7 Old vs New), #3826 (S8 Progress grid), #3836 (S9 Learner-segment tabs), #3835 (S10 Cross-device + integrations), #3830 (S11 Pricing teaser), #3827 (S12 Final CTA + footer). Coexists with CB-DEMO-001 behind flag; no backend/schema changes. S13-S17 (motion, a11y, SEO, analytics, tests) remain `in-progress`. **REQUIREMENTS update (this PR):** added §6.140 to `requirements/features-part7.md` — the epic originally claimed §6.136 but §6.136 is already Problem Solver; documenting the actual shipped scope under §6.140 closes the doc gap. Fast-follows filed: #3822, #3828, #3829, #3832, #3833, #3834, #3838, #3850.
+- **#3785 Demo Ask tab — multi-turn chatbox (PR #3794):** Replaces single-prompt Ask demo with conversational chatbox sharing turn-cap + waitlist upsell logic. Follow-ups filed for persisted `assistant_content` review: #3842 (sanitisation audit), #3843 (500-char persistence cap).
+- **#3786 Demo Flash Tutor — short learning cycle (PR #3793):** 3-card adaptive cycle with mastery ring + confetti; mirrors authenticated Flash Tutor (CB-ILE-001 §6.134). Client-only gamification (XP/streak/achievements), no new tables. Open reconciliation issue #3795 on "Warming Up" achievement trigger alignment with §6.135.8.
+- **#3787 Demo Study Guide — overview + scoped chips (PR #3792):** Bulleted-points deck replaced with overview + gated suggestion chips; only "Ask a follow-up" consumes demo quota.
+- **#3784 Demo upload copy fix (PR #3790):** Replaced "coming soon" copy + dismiss waitlist upsell on tab change.
+- **#3789 CB-DEMO-001 foundation:** Split demo panels + gamification primitives (prerequisite for #3785/#3786/#3787/#3784).
+- **#3819 Ask prompt-injection closed (PR #3841):** Server now reconstructs multi-turn Ask history from trusted DB state rather than trusting client-sent history. Closes a prompt-injection vector where a crafted client-side history could steer the Haiku model.
+- **#3820 Infra gap filed (high priority, in-progress):** no CI test workflow runs on pull requests — merges rely on local verification alone. Tracked as the root cause explanation for #3839/#3840 slipping through (MagicMock-based tests passed locally + no CI PR gate). See also linked follow-up #3846.
+- **§6.135.2–§6.135.9 REQUIREMENTS confirmed:** All demo-modal subsections from Apr 20 now align with shipped code as of today's merges. Open issues #3842/#3843 may drive §6.135.5 clarifications.
+
+**Apr 21 (morning) — WhatsApp Digest UI + OTP End-to-End:**
 - **#3592 WhatsApp Digest UI:** Added 3-state UI on parent Email Digest page (not connected → pending verification → connected). Phone input with E.164 validation, OTP send/verify, useConfirm-guarded disconnect. 10 vitest tests cover all states + validation + confirm-cancel path. (PR #3796)
 - **#3797 Cancel UX hardening (PR review):** Cancel button on pending state now shows confirm modal before deleting phone+delivery_channels server-side. Added maxLength=16 to phone input. JSDoc on isValidPhone documenting NA-centric assumption. (Bundled in PR #3796)
 - **#3591 OTP Authentication Template:** otp_verification template approved on Meta + Twilio (Twilio Content SID HXeeae316fca7d20de264b9fa7edbf5005). send_otp() now uses Content API template when configured, freeform fallback for sandbox. (PR #3791)
