@@ -30,11 +30,11 @@ from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.logging_config import get_logger
 from app.models.assignment import Assignment
-from app.models.course import student_courses
+from app.models.course import Course, student_courses
 from app.models.parent_gmail_integration import ParentGmailIntegration
 from app.models.student import Student, parent_students
 from app.models.task import Task
@@ -775,15 +775,19 @@ def sync_all_upcoming_assignments(
     Failures on individual assignments do NOT abort the batch.
 
     Returns a summary dict with keys: ``scanned``, ``created``, ``updated``,
-    ``skipped``, ``errors``, ``duration_ms``.
+    ``upgraded``, ``skipped``, ``errors``, ``duration_ms``.
     """
     start = time.time()
     now = _now_utc()
     lower = now - timedelta(days=window_days_past)
     upper = now + timedelta(days=window_days_future)
 
+    # Eager-load ``course`` and ``course.teacher`` so the per-assignment call
+    # to ``_assignment_creator_user_id`` does not trigger a pair of lazy loads
+    # (N+1). See #3948.
     assignments = (
         db.query(Assignment)
+        .options(joinedload(Assignment.course).joinedload(Course.teacher))
         .filter(Assignment.due_date.isnot(None))
         .filter(Assignment.due_date >= lower)
         .filter(Assignment.due_date <= upper)
@@ -793,6 +797,7 @@ def sync_all_upcoming_assignments(
     scanned = 0
     created = 0
     updated = 0
+    upgraded = 0
     skipped = 0
     errors = 0
 
@@ -815,7 +820,13 @@ def sync_all_upcoming_assignments(
                 skipped += 1
                 continue
             for t in tasks:
-                if t.id in existing_ids:
+                # Upgraded digest→assignment Tasks won't appear in
+                # ``existing_ids`` (snapshot filtered on source='assignment').
+                # Classify them explicitly before the created/updated split.
+                # See #3950.
+                if t.source_status == "upgraded":
+                    upgraded += 1
+                elif t.id in existing_ids:
                     updated += 1
                 else:
                     created += 1
@@ -830,13 +841,14 @@ def sync_all_upcoming_assignments(
         "scanned": scanned,
         "created": created,
         "updated": updated,
+        "upgraded": upgraded,
         "skipped": skipped,
         "errors": errors,
         "duration_ms": duration_ms,
     }
     logger.info(
-        "task_sync_summary | source=assignment created=%d updated=%d cancelled=0 "
-        "skipped=%d errors=%d duration_ms=%d",
-        created, updated, skipped, errors, duration_ms,
+        "task_sync_summary | source=assignment created=%d updated=%d upgraded=%d "
+        "cancelled=0 skipped=%d errors=%d duration_ms=%d",
+        created, updated, upgraded, skipped, errors, duration_ms,
     )
     return summary
