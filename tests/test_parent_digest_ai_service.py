@@ -165,6 +165,11 @@ class TestExtractDigestItems:
         # Tool choice forces the extraction tool
         assert kwargs["tool_choice"] == {"type": "tool", "name": "extract_urgent_items"}
 
+        # Deterministic extraction config locked in
+        assert kwargs["max_tokens"] == 1024
+        assert kwargs["temperature"] == 0.0
+        assert kwargs["model"] == "claude-haiku-4-5-20251001"
+
     @pytest.mark.asyncio
     @patch("app.services.parent_digest_ai_service.get_anthropic_client")
     async def test_extract_parses_due_date_in_timezone(self, mock_get_client):
@@ -206,6 +211,35 @@ class TestExtractDigestItems:
         result = await extract_digest_items([])
         assert result == []
         mock_get_client.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_digest_ai_service.logger")
+    @patch("app.services.parent_digest_ai_service.get_anthropic_client")
+    async def test_extract_bad_tz_falls_back_and_warns(self, mock_get_client, mock_logger):
+        """Invalid IANA tz_name logs a warning once and falls back to America/Toronto."""
+        from app.services.parent_digest_ai_service import extract_digest_items
+
+        mock_client = MagicMock()
+        mock_client.messages.create.return_value = _make_tool_use_message({
+            "urgent_items": [{
+                "title": "Sign slip",
+                "due_date": "2026-05-02",
+                "course_or_context": None,
+                "confidence": 0.9,
+                "source_email_excerpt": "x",
+                "source_email_index": 1,
+            }]
+        })
+        mock_get_client.return_value = mock_client
+
+        result = await extract_digest_items(_emails_fixture(), tz_name="America/Torono")
+
+        assert len(result) == 1
+        # Fell back to Toronto
+        assert result[0].due_date.tzinfo == ZoneInfo("America/Toronto")
+        # Warning emitted exactly once mentioning the bad tz name
+        warn_calls = [c for c in mock_logger.warning.call_args_list if "tz_name" in (c.args[0] if c.args else "")]
+        assert len(warn_calls) == 1
 
     @pytest.mark.asyncio
     @patch("app.services.parent_digest_ai_service.get_anthropic_client")

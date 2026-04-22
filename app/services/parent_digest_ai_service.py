@@ -290,7 +290,24 @@ def _build_extraction_user_prompt(emails: list[dict]) -> str:
     )
 
 
-def _parse_due_date(raw: str, tz_name: str) -> datetime | None:
+def _resolve_tz(tz_name: str) -> ZoneInfo:
+    """Resolve an IANA timezone string, falling back to the default on bad input.
+
+    Called once per extraction — on fallback we log a single warning so
+    typos in stored timezones surface in logs instead of silently producing
+    wrong-offset due dates for every item.
+    """
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        logger.warning(
+            "Digest extraction: unknown tz_name=%r — falling back to %s",
+            tz_name, _DEFAULT_EXTRACTION_TZ,
+        )
+        return ZoneInfo(_DEFAULT_EXTRACTION_TZ)
+
+
+def _parse_due_date(raw: str, tz: ZoneInfo) -> datetime | None:
     """Parse a YYYY-MM-DD string into a timezone-aware datetime at local midnight.
 
     Returns ``None`` if the string isn't a valid date, so a single bad item
@@ -298,10 +315,6 @@ def _parse_due_date(raw: str, tz_name: str) -> datetime | None:
     """
     if not raw or not isinstance(raw, str):
         return None
-    try:
-        tz = ZoneInfo(tz_name)
-    except Exception:
-        tz = ZoneInfo(_DEFAULT_EXTRACTION_TZ)
     try:
         # Accept "YYYY-MM-DD" — strip any stray time/tz component defensively.
         date_part = raw.strip().split("T", 1)[0].split(" ", 1)[0]
@@ -341,6 +354,7 @@ async def extract_digest_items(
         "Extracting digest items | email_count=%d | tz=%s",
         len(emails), tz_name,
     )
+    tz = _resolve_tz(tz_name)
 
     try:
         client = get_anthropic_client()
@@ -368,9 +382,10 @@ async def extract_digest_items(
         )
 
         # Track token usage (same pattern as generate_parent_digest).
-        try:
-            input_tok = message.usage.input_tokens
-            output_tok = message.usage.output_tokens
+        usage = getattr(message, "usage", None)
+        if usage is not None:
+            input_tok = usage.input_tokens
+            output_tok = usage.output_tokens
             _last_ai_usage.set({
                 "prompt_tokens": input_tok,
                 "completion_tokens": output_tok,
@@ -378,9 +393,6 @@ async def extract_digest_items(
                 "model_name": DIGEST_MODEL,
                 "estimated_cost_usd": _calc_cost(DIGEST_MODEL, input_tok, output_tok),
             })
-        except AttributeError:
-            # usage metadata missing (rare) — don't let it kill extraction
-            pass
 
         # Find the tool_use block. With forced tool_choice the model must
         # emit one, but defensively handle missing/empty cases.
@@ -411,7 +423,7 @@ async def extract_digest_items(
             if not title or due_raw is None or idx is None or confidence is None:
                 continue
 
-            due_date = _parse_due_date(str(due_raw), tz_name)
+            due_date = _parse_due_date(str(due_raw), tz)
             if due_date is None:
                 continue
 
