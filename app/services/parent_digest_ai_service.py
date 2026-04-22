@@ -9,7 +9,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from pydantic import ValidationError
+
 from app.core.logging_config import get_logger
+from app.schemas.parent_email_digest import SectionedDigest
 from app.services.ai_service import get_anthropic_client, _last_ai_usage, _calc_cost
 
 logger = get_logger(__name__)
@@ -519,34 +522,6 @@ def _strip_json_fence(raw: str) -> str:
     return s.strip()
 
 
-def _validate_sectioned_dict(parsed: dict) -> dict:
-    """Coerce a loosely-shaped dict into the SectionedDigest contract.
-
-    Missing keys default to []/{}; non-list sections default to []; non-string items
-    are stringified; overflow values default to 0 and are coerced to int.
-    """
-    def _as_str_list(v) -> list[str]:
-        if not isinstance(v, list):
-            return []
-        return [str(x) for x in v if x is not None]
-
-    overflow_in = parsed.get("overflow") if isinstance(parsed.get("overflow"), dict) else {}
-    overflow_out: dict[str, int] = {}
-    for key in ("urgent", "announcements", "action_items"):
-        raw = overflow_in.get(key, 0)
-        try:
-            overflow_out[key] = max(0, int(raw))
-        except (TypeError, ValueError):
-            overflow_out[key] = 0
-
-    return {
-        "urgent": _as_str_list(parsed.get("urgent", [])),
-        "announcements": _as_str_list(parsed.get("announcements", [])),
-        "action_items": _as_str_list(parsed.get("action_items", [])),
-        "overflow": overflow_out,
-    }
-
-
 async def generate_sectioned_digest(
     emails: list[dict],
     child_name: str,
@@ -661,7 +636,17 @@ async def generate_sectioned_digest(
             duration_ms, input_tok, output_tok,
         )
 
-        return _validate_sectioned_dict(parsed)
+        try:
+            return SectionedDigest.model_validate(parsed).model_dump()
+        except ValidationError as e:
+            logger.warning(
+                "Sectioned digest failed Pydantic validation — falling back to legacy blob | error=%s",
+                e,
+            )
+            legacy = await generate_parent_digest(
+                emails, child_name, parent_name, digest_format="full"
+            )
+            return {"legacy_blob": legacy}
 
     except Exception as e:
         duration_ms = (time.time() - start_time) * 1000

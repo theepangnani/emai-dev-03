@@ -413,3 +413,104 @@ class TestSectionedDigest:
         result = await generate_sectioned_digest([{"body": "x"}], "Alex", "Sarah")
         assert result.get("urgent") == ["x"]
         assert result.get("legacy_blob") is None or "legacy_blob" not in result
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_digest_ai_service.generate_parent_digest")
+    @patch("app.services.parent_digest_ai_service.get_anthropic_client")
+    async def test_sectioned_digest_uses_pydantic_validation_fallback(
+        self, mock_get_client, mock_legacy
+    ):
+        """JSON that parses but fails Pydantic validation triggers legacy_blob fallback.
+
+        The old hand-rolled coercer would have silently dropped/ignored invalid
+        shapes; now ValidationError explicitly routes to the legacy HTML path.
+        """
+        from app.services.parent_digest_ai_service import generate_sectioned_digest
+
+        # `urgent: 123` — an int, not a list. stringify_items coerces to []
+        # which still passes Pydantic, so pick something that can't be coerced:
+        # `overflow: "nope"` — non-dict goes through normalize_overflow OK.
+        # Use model_validate directly with a schema violation that survives the
+        # before-validators. Easiest: make urgent a deeply-nested object that
+        # Pydantic can't stringify because `stringify_items` only handles lists.
+        # Actually `stringify_items` returns [] for non-list, which passes.
+        # So we need something that breaks AFTER the before-validators. A str
+        # as the top-level `legacy_blob` value is fine, but making `overflow`
+        # return a dict with a non-int-coercible complex value is handled.
+        # The cleanest way to force ValidationError is to patch the schema call
+        # to raise, but that's brittle. Instead: make urgent a list whose
+        # stringified items somehow fail — not possible because str() works on
+        # anything. So: force the fallback by having a payload that fails the
+        # isinstance(parsed, dict) check upstream — but that's JSON parse path.
+        #
+        # Solution: patch SectionedDigest.model_validate to raise ValidationError.
+        from pydantic import ValidationError
+
+        payload = {"urgent": [], "announcements": [], "action_items": [], "overflow": {}}
+        client = MagicMock()
+        client.messages.create.return_value = self._mock_anthropic_message(
+            json.dumps(payload)
+        )
+        mock_get_client.return_value = client
+
+        async def _legacy_fn(emails, child, parent, digest_format="full"):
+            return "<h3>Legacy HTML Digest (Pydantic fallback)</h3>"
+
+        mock_legacy.side_effect = _legacy_fn
+
+        # Force model_validate to raise to exercise the ValidationError branch.
+        with patch(
+            "app.services.parent_digest_ai_service.SectionedDigest"
+        ) as mock_schema:
+            mock_schema.model_validate.side_effect = ValidationError.from_exception_data(
+                "SectionedDigest", []
+            )
+            result = await generate_sectioned_digest(self._emails(), "Alex", "Sarah")
+
+        assert result.get("legacy_blob") == "<h3>Legacy HTML Digest (Pydantic fallback)</h3>"
+        assert mock_legacy.called
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_digest_ai_service.get_anthropic_client")
+    async def test_sectioned_digest_coerces_non_string_items(self, mock_get_client):
+        """Non-string items (ints, None) are stringified/dropped by the before-validator."""
+        from app.services.parent_digest_ai_service import generate_sectioned_digest
+
+        payload = {
+            "urgent": [1, 2, None, "a"],
+            "announcements": [],
+            "action_items": [],
+            "overflow": {},
+        }
+        client = MagicMock()
+        client.messages.create.return_value = self._mock_anthropic_message(
+            json.dumps(payload)
+        )
+        mock_get_client.return_value = client
+
+        result = await generate_sectioned_digest(self._emails(), "Alex", "Sarah")
+
+        # None dropped, ints stringified, caps at 3 (so "a" drops out after the cap)
+        assert result["urgent"] == ["1", "2", "a"]
+
+    @pytest.mark.asyncio
+    @patch("app.services.parent_digest_ai_service.get_anthropic_client")
+    async def test_sectioned_digest_fills_missing_overflow_keys(self, mock_get_client):
+        """Missing overflow keys default to 0 via normalize_overflow validator."""
+        from app.services.parent_digest_ai_service import generate_sectioned_digest
+
+        # No overflow key at all in the payload
+        payload = {
+            "urgent": ["x"],
+            "announcements": [],
+            "action_items": [],
+        }
+        client = MagicMock()
+        client.messages.create.return_value = self._mock_anthropic_message(
+            json.dumps(payload)
+        )
+        mock_get_client.return_value = client
+
+        result = await generate_sectioned_digest(self._emails(), "Alex", "Sarah")
+
+        assert result["overflow"] == {"urgent": 0, "announcements": 0, "action_items": 0}

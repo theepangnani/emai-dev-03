@@ -118,6 +118,45 @@ class SectionedDigest(BaseModel):
     overflow: dict[str, int] = {}
     legacy_blob: Optional[str] = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_fields(cls, data):
+        """Fill missing section/overflow keys BEFORE field validators run.
+
+        Pydantic's ``mode="before"`` field validators don't fire when a field
+        is absent (the default is used as-is). This ensures the normalize/
+        stringify validators always see the caller's intended values — and
+        matches the old hand-rolled coercer's ``parsed.get(k, [])`` behavior.
+        """
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)  # don't mutate caller's dict
+        for key in ("urgent", "announcements", "action_items"):
+            data.setdefault(key, [])
+        data.setdefault("overflow", {})
+        return data
+
+    @field_validator("urgent", "announcements", "action_items", mode="before")
+    @classmethod
+    def stringify_items(cls, v) -> list[str]:
+        if not isinstance(v, list):
+            return []
+        return [str(x) for x in v if x is not None]
+
+    @field_validator("overflow", mode="before")
+    @classmethod
+    def normalize_overflow(cls, v) -> dict[str, int]:
+        if not isinstance(v, dict):
+            return {"urgent": 0, "announcements": 0, "action_items": 0}
+        out: dict[str, int] = {}
+        for key in ("urgent", "announcements", "action_items"):
+            raw = v.get(key, 0)
+            try:
+                out[key] = max(0, int(raw))
+            except (TypeError, ValueError):
+                out[key] = 0
+        return out
+
     @field_validator("urgent", "announcements", "action_items")
     @classmethod
     def cap_at_three(cls, v: list[str]) -> list[str]:
