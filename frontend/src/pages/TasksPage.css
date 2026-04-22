@@ -483,6 +483,24 @@
   white-space: nowrap;
   border: 1px solid transparent;
   cursor: help;
+  /* CB-TASKSYNC-001 (#3921) — soft variant transition so the tentative →
+   * active/assignment upgrade (I6) fades between palettes rather than
+   * flipping. Respect reduced-motion below. */
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+
+/* Scoped focus ring — defensive. The badge itself has no tabIndex today
+ * (see TaskSourceBadge.tsx), but if it's ever wrapped in an interactive
+ * element we want a consistent outline using the existing focus token. */
+.task-source-badge:focus-visible {
+  outline: 2px solid var(--color-focus-ring, currentColor);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-source-badge {
+    transition: none;
+  }
 }
 
 .task-source-badge--assignment {
