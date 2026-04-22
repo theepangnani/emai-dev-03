@@ -31,6 +31,17 @@ vi.mock('../../api/client', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('../../api/client')
   return {
     ...actual,
+    // #3958 — prevent unmocked /api/features refetch from crashing jsdom
+    // when queryClient.invalidateQueries fires after the Auto-fix click.
+    api: {
+      get: vi.fn().mockResolvedValue({
+        data: { waitlist_enabled: true, _variants: {} },
+      }),
+      post: vi.fn(),
+      patch: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+    },
     messagesApi: {
       getUnreadCount: vi.fn().mockResolvedValue({ total_unread: 0 }),
     },
