@@ -256,34 +256,50 @@ async def test_job_handles_service_exception(db_session, tasksync_env, caplog):
             # Must NOT raise.
             await task_sync_job.sync_assignments_to_tasks()
 
-    assert any(
-        "task_sync.failed | source=assignment" in rec.getMessage()
-        for rec in caplog.records
+    exc_rec = next(
+        (
+            rec
+            for rec in caplog.records
+            if "task_sync.failed | source=assignment" in rec.getMessage()
+        ),
+        None,
     )
+    assert exc_rec is not None
+    # Prove logger.exception was used (not just logger.error) — the traceback
+    # is the load-bearing piece of the failure signal.
+    assert exc_rec.exc_info is not None
 
 
 # ──────────────────────────────────────────────────────────────────────────
 # 4. Scheduler registration — verify cron at 06:45 UTC
 # ──────────────────────────────────────────────────────────────────────────
 
-def test_job_registered_at_0645_utc():
-    """Startup wiring: the task_sync_assignments job must run at hour=6, minute=45."""
-    from apscheduler.schedulers.background import BackgroundScheduler
-    from apscheduler.triggers.cron import CronTrigger
+def test_job_registered_at_0645_utc_in_main():
+    """Regression guard: ``main.py`` startup wiring MUST register
+    ``task_sync_assignments`` at ``CronTrigger(hour=6, minute=45)``.
 
-    from app.jobs.task_sync_job import sync_assignments_to_tasks
+    We can't run ``startup_event()`` here because it does heavy seeding +
+    DB work, and the conftest ``app`` fixture deliberately clears
+    ``on_startup`` handlers. Instead we contract-check the literal cron
+    registration in ``main.py`` — if someone changes ``hour=7`` or renames
+    the job id, this test fails immediately.
+    """
+    import re
+    from pathlib import Path
 
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        sync_assignments_to_tasks,
-        CronTrigger(hour=6, minute=45),
-        id="task_sync_assignments",
-        replace_existing=True,
-        misfire_grace_time=3600,
-        coalesce=True,
+    main_py = Path(__file__).resolve().parents[1] / "main.py"
+    source = main_py.read_text(encoding="utf-8")
+
+    # Contract: CronTrigger(hour=6, minute=45) block that schedules our job
+    # must exist and assign id="task_sync_assignments".
+    pattern = re.compile(
+        r"scheduler\.add_job\(\s*"
+        r"sync_assignments_to_tasks\s*,\s*"
+        r"CronTrigger\(\s*hour\s*=\s*6\s*,\s*minute\s*=\s*45\s*\)\s*,\s*"
+        r'id\s*=\s*"task_sync_assignments"',
+        re.MULTILINE,
     )
-    job = scheduler.get_job("task_sync_assignments")
-    assert job is not None
-    fields = {f.name: str(f) for f in job.trigger.fields}
-    assert fields["hour"] == "6"
-    assert fields["minute"] == "45"
+    assert pattern.search(source), (
+        "main.py must register sync_assignments_to_tasks at "
+        "CronTrigger(hour=6, minute=45) with id='task_sync_assignments'"
+    )
