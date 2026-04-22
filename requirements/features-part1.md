@@ -738,6 +738,57 @@ Any user can create a task and assign it to a related user. Relationship verific
 - Parent calendar aggregates children's assignments via `parent_students` + `student_courses` + `assignments`
 - GET `/api/tasks/` returns tasks where user is creator OR assignee
 
+#### 6.13.1 Automatic Task Creation from Due-Date Signals (CB-TASKSYNC-001)
+
+**Status:** PLANNED (MVP-1) | **Epic:** #3912 | **Feature flag:** `task_sync_enabled` (default OFF, staged rollout 10% → 100%)
+
+**Requirement.** The system MUST auto-create Task rows from two due-date sources without human intervention:
+
+1. **Assignment rows** (deterministic) — for every Assignment with a non-null `due_date`, the system creates one Task per enrolled student, linked via `Task.source = 'assignment'` and `Task.source_ref = Assignment.id`.
+2. **Parent email-digest AI extraction** (probabilistic) — during the scheduled Gmail digest run, the AI extracts urgent items (`title` + `due_date` + `confidence`) and the system creates a Task linked via `Task.source = 'email_digest'` and `Task.source_ref = sha256(normalized_title + ISO due_date)`.
+
+**Write triggers.** Task upserts run only from scheduled background jobs plus the immediate `submit` / `delete` hooks on assignments. GET digest endpoints and the "Send digest now" HTTP endpoint MUST NOT create Tasks.
+
+**Idempotency.** Upserts MUST be idempotent via partial unique index `(source, source_ref, assigned_to_user_id) WHERE source IS NOT NULL`.
+
+**Confidence thresholds (email_digest only).**
+- `confidence < 0.6` — drop silently, no Task created
+- `0.6 ≤ confidence < 0.8` — create Task with `source_status = 'tentative'` and a visible warning badge in the UI
+- `confidence ≥ 0.8` — create Task with `source_status = 'active'`
+
+**Lifecycle rules.**
+- If a source Assignment is deleted, the linked Task is soft-cancelled (`archived_at = now`, `source_status = 'source_deleted'`) — never hard-deleted
+- If a student submits the source Assignment, the linked Task auto-completes (`is_completed = True`, `completed_at = submitted_at`)
+- If an `email_digest` Task later matches an Assignment, its `source` flips to `'assignment'` and the user is notified ("'{title}' now linked to class assignment")
+- If an `email_digest` item disappears from subsequent digest runs, the existing Task remains (no retraction — false-negative risk)
+
+**User-edit stickiness.** Users MAY fully edit auto-created Tasks (title, due date, description, priority). After a user edit — detected via `updated_at > created_at + 60s` — subsequent upsert runs skip field updates on that Task. User-archived Tasks are sticky (`source_status = 'user_deleted'`) and MUST NOT be resurrected by later upsert runs.
+
+**Notifications.** On every `email_digest` auto-create AND on every `email_digest → assignment` upgrade, the system MUST send an in-app notification to the assignee. Assignment-sourced auto-creates do not notify (they already surface via course/calendar UI).
+
+**UI contract.** Auto-created Tasks MUST carry a visible source badge in the task list UI. Tentative Tasks (`source_status = 'tentative'`) MUST display a distinct warning badge with confidence tooltip.
+
+**Assignment fallback.** When the `email_digest` source is a parent who has no linked/enrolled child, the Task is assigned to the parent.
+
+**Data model additions to `tasks` table.**
+- `source` VARCHAR(20) — one of `assignment` / `email_digest` / `study_guide` / `manual` / NULL
+- `source_ref` VARCHAR(128) — FK-like reference (Assignment.id or sha256 hash)
+- `source_confidence` FLOAT — `0.0`–`1.0`, populated only for `email_digest`
+- `source_status` VARCHAR(20) — one of `active` / `tentative` / `source_deleted` / `source_submitted` / `user_deleted` / `upgraded`
+- `source_message_id` VARCHAR(255) — Gmail message id (audit only)
+- `source_created_at` TIMESTAMPTZ / DATETIME — when the source event occurred
+
+**Scheduling.**
+- `sync_assignments_to_tasks` — **06:45 UTC daily** (15 minutes before the 07:00 UTC parent digest)
+- `process_parent_email_digests` — **every 4 hours** (existing job, extended with a `create_tasks` flag)
+- Immediate hooks: `submit_assignment` and `delete_assignment` in `app/api/routes/assignments.py`
+
+**Backfill.** None — on first run, the job processes the rolling window `due_date BETWEEN now - 2d AND now + 30d`.
+
+**Implementation reference.** `app/services/task_sync_service.py`.
+
+**Relation to existing study-guide auto-task creation (§6.2.3).** The existing study-guide-based auto-task generator (`auto_create_tasks_from_dates` in `app/api/routes/study.py`) is retroactively subsumed under this requirement with `source = 'study_guide'`. The behavioural spec in §6.2.3 continues to govern the extraction flow; §6.13.1 governs only the `source` / `source_ref` / `source_status` tagging on the resulting Task rows. No formal requirement existed for the `source` tagging of study-guide-generated Tasks prior to this subsection — this is the known documentation gap now closed.
+
 ### 6.14 Audit Logging (Phase 1) - IMPLEMENTED
 
 Persistent audit log tracking sensitive actions for FERPA/PIPEDA compliance and security incident investigation.
