@@ -118,7 +118,7 @@ export function AdminFeaturesPage() {
                     {mismatch && (
                       <div
                         className="admin-feature-mismatch"
-                        role="alert"
+                        role="status"
                         data-testid={`feature-mismatch-${f.key}`}
                       >
                         <AlertTriangle

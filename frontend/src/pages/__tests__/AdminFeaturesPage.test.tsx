@@ -4,7 +4,6 @@ import { renderWithProviders } from '../../test/helpers'
 
 // ── Mocks ──────────────────────────────────────────────────────
 const mockGetFeatures = vi.fn()
-const mockUpdateFeatureToggle = vi.fn()
 const mockUpdateFeatureVariant = vi.fn()
 
 vi.mock('../../context/AuthContext', () => ({
@@ -23,7 +22,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../../api/admin', () => ({
   adminApi: {
     getFeatures: (...args: unknown[]) => mockGetFeatures(...args),
-    updateFeatureToggle: (...args: unknown[]) => mockUpdateFeatureToggle(...args),
+    updateFeatureToggle: vi.fn().mockResolvedValue({ enabled: false }),
     updateFeatureVariant: (...args: unknown[]) => mockUpdateFeatureVariant(...args),
   },
 }))
