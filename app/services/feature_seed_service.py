@@ -71,6 +71,13 @@ def seed_features(db: Session) -> int:
             "enabled": False,
             "variant": "off",
         },
+        {
+            "key": "task_sync_enabled",
+            "name": "Task Sync",
+            "description": "Auto-create Tasks from Assignment rows and parent email digests (CB-TASKSYNC-001)",
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:
