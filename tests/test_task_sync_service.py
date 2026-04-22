@@ -537,6 +537,66 @@ def test_digest_item_upgraded_to_assignment(db_session, tasksync_env):
     assert fresh.source_status == "active"
 
 
+def test_upgrade_does_not_resurrect_source_deleted_task(db_session, tasksync_env):
+    """Regression for #3949.
+
+    A source_deleted (archived) email_digest Task must NOT be picked up by
+    the digest→assignment upgrade path — otherwise it'd be flipped to
+    source='assignment' while still carrying archived_at, making it invisible
+    to the user. Expected behaviour: the source_deleted row is left alone and
+    a fresh assignment-source Task is created instead.
+    """
+    from app.services.task_sync_service import (
+        upsert_task_from_assignment,
+        upsert_task_from_digest_item,
+    )
+
+    env = tasksync_env
+    due = datetime(2026, 5, 20, 12, 0, tzinfo=ZoneInfo("America/Toronto"))
+    item = _digest_item("Science lab writeup", due, confidence=0.9)
+    digest_task = upsert_task_from_digest_item(
+        db_session, env["parent_user"], env["child_user1"].id, item
+    )
+    assert digest_task is not None
+    digest_task_id = digest_task.id
+    digest_task_source_ref = digest_task.source_ref
+
+    # Simulate teacher deleting the mentioned Assignment — the digest Task's
+    # lifecycle reaches 'source_deleted' + archived_at=now.
+    archived_at = datetime.now(timezone.utc)
+    digest_task.source_status = "source_deleted"
+    digest_task.archived_at = archived_at
+    db_session.commit()
+
+    # Teacher re-uploads the matching Assignment. Upgrade path MUST skip
+    # the source_deleted candidate and create a new Task instead.
+    assignment = _make_assignment(
+        db_session,
+        env["course"].id,
+        title="Science lab writeup",
+        description="See Google Classroom",
+        due_date=due + timedelta(hours=6),
+    )
+    tasks = upsert_task_from_assignment(db_session, assignment)
+
+    # Refresh the original digest task — it should be untouched.
+    db_session.refresh(digest_task)
+    assert digest_task.id == digest_task_id
+    assert digest_task.source == "email_digest"
+    assert digest_task.source_status == "source_deleted"
+    assert digest_task.source_ref == digest_task_source_ref
+    assert digest_task.archived_at is not None
+
+    # A fresh assignment-source Task should exist for child_user1.
+    by_assignee = {t.assigned_to_user_id: t for t in tasks}
+    fresh = by_assignee[env["child_user1"].id]
+    assert fresh.id != digest_task_id
+    assert fresh.source == "assignment"
+    assert fresh.source_ref == str(assignment.id)
+    assert fresh.source_status == "active"
+    assert fresh.archived_at is None
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # 3. source_ref + timezone
 # ──────────────────────────────────────────────────────────────────────────
