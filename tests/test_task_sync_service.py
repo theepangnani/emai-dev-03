@@ -634,6 +634,158 @@ def test_source_ref_uses_integration_timezone():
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# 3a. Batch orchestrator — eager loading + summary classification
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_sync_upcoming_eager_loads_course_and_teacher(db_session, tasksync_env):
+    """#3948 regression: the orchestrator query must eager-load
+    ``Assignment.course`` and ``course.teacher`` so the per-assignment call
+    to ``_assignment_creator_user_id`` does not fire lazy SELECTs.
+    """
+    from sqlalchemy import event
+
+    from app.models.assignment import Assignment
+    from app.services import task_sync_service
+    from app.services.task_sync_service import sync_all_upcoming_assignments
+
+    env = tasksync_env
+    now = datetime.now(timezone.utc)
+    # Create several in-window assignments.
+    for i in range(3):
+        _make_assignment(
+            db_session,
+            env["course"].id,
+            title=f"Eager quiz {i}",
+            due_date=now + timedelta(days=i + 1),
+        )
+
+    # Seed the initial run so the next pass hits the update path only.
+    sync_all_upcoming_assignments(db_session)
+
+    # Count SELECTs issued against the ``assignments`` or ``courses`` or
+    # ``teachers`` tables during ``_assignment_creator_user_id`` access. If
+    # eager-loading is in place, the creator-id helper must not trigger any.
+    creator_access_queries: list[str] = []
+    inside_creator_call = {"flag": False}
+
+    engine = db_session.get_bind()
+
+    def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        if inside_creator_call["flag"]:
+            stmt = statement or ""
+            low = stmt.lower()
+            if (
+                "from assignments" in low
+                or "from courses" in low
+                or "from teachers" in low
+            ):
+                creator_access_queries.append(stmt)
+
+    event.listen(engine, "before_cursor_execute", before_cursor_execute)
+    original_helper = task_sync_service._assignment_creator_user_id
+
+    def traced_helper(assignment):
+        inside_creator_call["flag"] = True
+        try:
+            return original_helper(assignment)
+        finally:
+            inside_creator_call["flag"] = False
+
+    try:
+        task_sync_service._assignment_creator_user_id = traced_helper
+        summary = sync_all_upcoming_assignments(db_session)
+    finally:
+        task_sync_service._assignment_creator_user_id = original_helper
+        event.remove(engine, "before_cursor_execute", before_cursor_execute)
+
+    assert summary["scanned"] >= 3
+    # Zero lazy SELECTs against assignment/course/teacher during the
+    # per-assignment creator-id access.
+    assert creator_access_queries == [], (
+        f"expected no lazy loads during _assignment_creator_user_id, "
+        f"got {len(creator_access_queries)}: {creator_access_queries[:3]}"
+    )
+
+
+def test_sync_summary_distinguishes_upgraded_from_created(db_session, tasksync_env):
+    """#3950 regression: a digest Task upgraded to an Assignment during the
+    orchestrator run must be counted as ``upgraded``, not ``created``.
+    """
+    from app.models.task import Task
+    from app.services.task_sync_service import (
+        sync_all_upcoming_assignments,
+        upsert_task_from_digest_item,
+    )
+
+    env = tasksync_env
+    # Only one child gets a pre-existing digest Task.
+    due = datetime.now(timezone.utc) + timedelta(days=3)
+    item = _digest_item("Upgrade target task uniq 3950", due, confidence=0.9)
+    digest_task = upsert_task_from_digest_item(
+        db_session, env["parent_user"], env["child_user1"].id, item
+    )
+    assert digest_task is not None
+    digest_task_id = digest_task.id
+
+    # Take a pre-run summary snapshot so we can isolate our delta from any
+    # state left behind by earlier tests in this session-scoped DB.
+    before = sync_all_upcoming_assignments(db_session)
+
+    # Teacher posts the matching assignment (normalized-title equal, due ±1d).
+    _make_assignment(
+        db_session,
+        env["course"].id,
+        title="Upgrade target task uniq 3950",
+        description="See classroom",
+        due_date=due + timedelta(hours=4),
+    )
+
+    after = sync_all_upcoming_assignments(db_session)
+
+    # Our one new assignment produces exactly: 1 upgrade (child1) + 1 create
+    # (child2). Everything else pre-existed and should be steady-state updates.
+    assert after["upgraded"] - before["upgraded"] == 1, (before, after)
+    assert after["created"] - before["created"] == 1, (before, after)
+    # The summary dict must carry the ``upgraded`` key.
+    assert "upgraded" in after
+
+    # Direct verification: the specific digest Task row was upgraded.
+    upgraded = db_session.query(Task).filter(Task.id == digest_task_id).first()
+    assert upgraded is not None
+    assert upgraded.source == "assignment"
+    assert upgraded.source_status == "upgraded"
+
+
+def test_sync_summary_created_when_no_prior_task(db_session, tasksync_env):
+    """Baseline: with no pre-existing digest Task, every enrolled student
+    gets a freshly-created assignment-source Task — zero ``upgraded``
+    *attributable to this assignment*.
+    """
+    from app.services.task_sync_service import sync_all_upcoming_assignments
+
+    env = tasksync_env
+
+    # Pre-run snapshot so we can compute a clean delta against session-scoped
+    # DB state left by earlier tests.
+    before = sync_all_upcoming_assignments(db_session)
+
+    due = datetime.now(timezone.utc) + timedelta(days=2)
+    _make_assignment(
+        db_session,
+        env["course"].id,
+        title="Fresh assignment no digest 3950",
+        due_date=due,
+    )
+
+    after = sync_all_upcoming_assignments(db_session)
+
+    # 2 enrolled students → 2 fresh Tasks created by THIS assignment.
+    assert after["created"] - before["created"] == 2, (before, after)
+    # No digest Task matched this unique title — no new upgrades.
+    assert after["upgraded"] - before["upgraded"] == 0, (before, after)
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # 4. Multi-child sanity check
 # ──────────────────────────────────────────────────────────────────────────
 
