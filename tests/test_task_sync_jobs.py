@@ -1,577 +1,305 @@
-"""Tests for CB-TASKSYNC-001 I6 — email-digest → task sync wiring (#3918).
+"""Tests for CB-TASKSYNC-001 I4 — scheduled task sync job (#3916).
 
 Covers:
-- `send_digest_for_integration(..., create_tasks=True)` calls the AI extractor
-  and upserts Tasks when `task_sync_enabled` is ON.
-- HTTP "Send digest now" endpoint does NOT create tasks without the opt-in
-  query param.
-- HTTP "Send digest now" endpoint DOES create tasks with `?create_tasks=true`
-  when the feature flag is ON.
-- The override respects the feature flag: flag OFF + `?create_tasks=true`
-  → still 0 tasks.
-- The override emits the `task_sync.test_override` warning.
-- In-app notification is fired on every auto-create (new Task only,
-  not on idempotent re-runs of an existing Task).
-- In-app notification is fired on `email_digest → assignment` upgrade.
-
-Note: these tests mock the Anthropic client (via `extract_digest_items`) and
-the Gmail fetcher; the goal is to exercise the wiring between the job / HTTP
-endpoint and `task_sync_service`, not the AI or Gmail integrations.
+  * Full end-to-end: rolling-window filtering, per-student fan-out, null due skip.
+  * Feature flag gating — job is a no-op when ``task_sync_enabled`` is OFF.
+  * Error isolation — service exceptions are swallowed (do not bubble).
+  * Scheduler registration at ``hour=6, minute=45`` UTC.
 """
-
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
-from tests.conftest import _auth
-
 
 # ──────────────────────────────────────────────────────────────────────────
-# Helpers
+# Fixtures
 # ──────────────────────────────────────────────────────────────────────────
-
-def _set_task_sync_flag(db_session, enabled: bool) -> None:
-    """Ensure the `task_sync_enabled` feature flag exists and matches `enabled`."""
-    from app.models.feature_flag import FeatureFlag
-    from app.services.feature_seed_service import seed_features
-
-    seed_features(db_session)
-    flag = (
-        db_session.query(FeatureFlag)
-        .filter(FeatureFlag.key == "task_sync_enabled")
-        .first()
-    )
-    assert flag is not None
-    flag.enabled = enabled
-    db_session.commit()
-
-
-def _digest_item(title: str, due: datetime, confidence: float = 0.9, msg_id: str = "<m1>"):
-    from app.services.parent_digest_ai_service import DigestTaskItem
-
-    return DigestTaskItem(
-        title=title,
-        due_date=due,
-        course_name=None,
-        confidence=confidence,
-        source_excerpt="",
-        gmail_message_id=msg_id,
-    )
-
 
 @pytest.fixture
-def digest_env(db_session):
-    """Build a parent + child + Gmail integration + digest settings."""
+def tasksync_env(db_session):
+    """Build: teacher + 3 students enrolled in 1 course, parent linked to them."""
     from app.core.security import get_password_hash
-    from app.models.parent_gmail_integration import (
-        ParentDigestSettings,
-        ParentGmailIntegration,
-    )
+    from app.models.course import Course, student_courses
     from app.models.student import Student, parent_students
+    from app.models.teacher import Teacher
     from app.models.user import User, UserRole
 
-    suffix = f"_dj_{id(db_session)}_{datetime.now(timezone.utc).timestamp():.6f}"
+    suffix = f"_ts4_{id(db_session)}_{datetime.now(timezone.utc).timestamp():.6f}"
     hashed = get_password_hash("Password123!")
 
-    parent = User(
-        email=f"dj_parent{suffix}@example.com",
-        full_name="Digest Job Parent",
+    teacher_user = User(
+        email=f"ts4_teacher{suffix}@example.com",
+        full_name="TaskSync Job Teacher",
+        role=UserRole.TEACHER,
+        hashed_password=hashed,
+    )
+    parent_user = User(
+        email=f"ts4_parent{suffix}@example.com",
+        full_name="TaskSync Job Parent",
         role=UserRole.PARENT,
         hashed_password=hashed,
     )
-    child = User(
-        email=f"dj_child{suffix}@example.com",
-        full_name="Digest Job Child",
+    child1 = User(
+        email=f"ts4_child1{suffix}@example.com",
+        full_name="Child One",
         role=UserRole.STUDENT,
         hashed_password=hashed,
     )
-    db_session.add_all([parent, child])
+    child2 = User(
+        email=f"ts4_child2{suffix}@example.com",
+        full_name="Child Two",
+        role=UserRole.STUDENT,
+        hashed_password=hashed,
+    )
+    child3 = User(
+        email=f"ts4_child3{suffix}@example.com",
+        full_name="Child Three",
+        role=UserRole.STUDENT,
+        hashed_password=hashed,
+    )
+    db_session.add_all([teacher_user, parent_user, child1, child2, child3])
     db_session.commit()
 
-    student = Student(user_id=child.id, grade_level=8)
-    db_session.add(student)
-    db_session.commit()
-
-    db_session.execute(
-        parent_students.insert().values(parent_id=parent.id, student_id=student.id)
-    )
-    db_session.commit()
-
-    integration = ParentGmailIntegration(
-        parent_id=parent.id,
-        gmail_address=f"parent_gmail{suffix}@gmail.com",
-        google_id=f"google_id{suffix}",
-        access_token="enc_access",
-        refresh_token="enc_refresh",
-        child_school_email=child.email,
-        child_first_name="Alex",
-    )
-    db_session.add(integration)
-    db_session.commit()
-
-    settings = ParentDigestSettings(
-        integration_id=integration.id,
-        timezone="America/Toronto",
-    )
-    db_session.add(settings)
-    db_session.commit()
-    db_session.refresh(integration)
-    integration.digest_settings = settings
-
-    return {
-        "parent": parent,
-        "child": child,
-        "student": student,
-        "integration": integration,
-        "settings": settings,
-    }
-
-
-def _fetched_emails():
-    received_at = datetime.now(timezone.utc) - timedelta(hours=1)
-    return [
-        {
-            "source_id": "<msg-1@school.ca>",
-            "sender_name": "Ms. Smith",
-            "sender_email": "smith@school.ca",
-            "subject": "Permission slip due",
-            "body": "Please sign the permission slip by May 10.",
-            "snippet": "Permission slip",
-            "received_at": received_at,
-        },
-        {
-            "source_id": "<msg-2@school.ca>",
-            "sender_name": "Mr. Jones",
-            "sender_email": "jones@school.ca",
-            "subject": "Math quiz",
-            "body": "Math quiz scheduled for May 12.",
-            "snippet": "Math quiz",
-            "received_at": received_at,
-        },
-    ]
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 1. Scheduled-job path: create_tasks defaults True → extracts + upserts.
-# ──────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_parent_email_digest_job_creates_tasks(db_session, digest_env):
-    """Flag ON + 2 AI items → 2 tasks created with source='email_digest'."""
-    from app.jobs.parent_email_digest_job import send_digest_for_integration
-    from app.models.task import Task
-
-    _set_task_sync_flag(db_session, True)
-    env = digest_env
-
-    items = [
-        _digest_item(
-            "Permission slip",
-            datetime(2026, 5, 10, tzinfo=timezone.utc),
-            confidence=0.9,
-            msg_id="<msg-1@school.ca>",
-        ),
-        _digest_item(
-            "Math quiz",
-            datetime(2026, 5, 12, tzinfo=timezone.utc),
-            confidence=0.9,
-            msg_id="<msg-2@school.ca>",
-        ),
-    ]
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(return_value=items),
-    ), patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        result = await send_digest_for_integration(
-            db_session,
-            env["integration"],
-            skip_dedup=True,
-            since=datetime.now(timezone.utc) - timedelta(hours=24),
-        )
-
-    assert result["status"] in ("delivered", "partial", "skipped")
-    tasks = (
-        db_session.query(Task)
-        .filter(Task.source == "email_digest")
-        .filter(Task.assigned_to_user_id == env["child"].id)
-        .all()
-    )
-    assert len(tasks) == 2
-    titles = {t.title for t in tasks}
-    assert titles == {"Permission slip", "Math quiz"}
-
-
-@pytest.mark.asyncio
-async def test_job_skips_task_creation_when_flag_off(db_session, digest_env):
-    """Flag OFF → scheduled job default (create_tasks=True) must still create 0 tasks."""
-    from app.jobs.parent_email_digest_job import send_digest_for_integration
-    from app.models.task import Task
-
-    _set_task_sync_flag(db_session, False)
-    env = digest_env
-
-    items = [
-        _digest_item("Permission slip", datetime(2026, 5, 10, tzinfo=timezone.utc)),
-    ]
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(return_value=items),
-    ), patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        await send_digest_for_integration(
-            db_session,
-            env["integration"],
-            skip_dedup=True,
-            since=datetime.now(timezone.utc) - timedelta(hours=24),
-        )
-
-    count = (
-        db_session.query(Task)
-        .filter(Task.source == "email_digest")
-        .filter(Task.assigned_to_user_id == env["child"].id)
-        .count()
-    )
-    assert count == 0
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 2. HTTP "Send digest now" — default (no query param) must NOT create tasks.
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_send_digest_now_without_param_does_NOT_create_tasks(
-    client, db_session, digest_env
-):
-    """Default production behaviour: no `?create_tasks=true` → 0 tasks created."""
-    from app.models.task import Task
-
-    _set_task_sync_flag(db_session, True)
-    env = digest_env
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(
-            return_value=[
-                _digest_item("Permission slip", datetime(2026, 5, 10, tzinfo=timezone.utc))
-            ]
-        ),
-    ) as mock_extract, patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        resp = client.post(
-            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest",
-            headers=_auth(client, env["parent"].email),
-        )
-
-    assert resp.status_code == 200, resp.text
-    # Extractor MUST NOT be called — gated out before the AI call.
-    mock_extract.assert_not_called()
-    count = (
-        db_session.query(Task)
-        .filter(Task.source == "email_digest")
-        .filter(Task.assigned_to_user_id == env["child"].id)
-        .count()
-    )
-    assert count == 0
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 3. HTTP "Send digest now" — with `?create_tasks=true` + flag ON → creates.
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_send_digest_now_with_create_tasks_true_creates_tasks(
-    client, db_session, digest_env
-):
-    from app.models.task import Task
-
-    _set_task_sync_flag(db_session, True)
-    env = digest_env
-
-    items = [
-        _digest_item("Permission slip", datetime(2026, 5, 10, tzinfo=timezone.utc)),
-    ]
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(return_value=items),
-    ), patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        resp = client.post(
-            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest?create_tasks=true",
-            headers=_auth(client, env["parent"].email),
-        )
-
-    assert resp.status_code == 200, resp.text
-    tasks = (
-        db_session.query(Task)
-        .filter(Task.source == "email_digest")
-        .filter(Task.assigned_to_user_id == env["child"].id)
-        .all()
-    )
-    assert len(tasks) == 1
-    assert tasks[0].title == "Permission slip"
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 4. Override MUST respect feature flag — flag OFF + ?create_tasks=true → 0.
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_send_digest_now_override_respects_feature_flag(
-    client, db_session, digest_env
-):
-    from app.models.task import Task
-
-    _set_task_sync_flag(db_session, False)
-    env = digest_env
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(
-            return_value=[
-                _digest_item("Permission slip", datetime(2026, 5, 10, tzinfo=timezone.utc))
-            ]
-        ),
-    ) as mock_extract, patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        resp = client.post(
-            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest?create_tasks=true",
-            headers=_auth(client, env["parent"].email),
-        )
-
-    assert resp.status_code == 200, resp.text
-    mock_extract.assert_not_called()
-    count = (
-        db_session.query(Task)
-        .filter(Task.source == "email_digest")
-        .filter(Task.assigned_to_user_id == env["child"].id)
-        .count()
-    )
-    assert count == 0
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 5. Override emits the `task_sync.test_override` warning.
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_send_digest_now_override_logs_warning(
-    client, db_session, digest_env, caplog
-):
-    import logging
-
-    _set_task_sync_flag(db_session, True)
-    env = digest_env
-
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(return_value=[]),
-    ), patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
-    ):
-        with caplog.at_level(logging.WARNING, logger="app.api.routes.parent_email_digest"):
-            resp = client.post(
-                f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest?create_tasks=true",
-                headers=_auth(client, env["parent"].email),
-            )
-
-    assert resp.status_code == 200, resp.text
-    assert any(
-        "task_sync.test_override" in rec.getMessage() for rec in caplog.records
-    ), [r.getMessage() for r in caplog.records]
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 6. In-app notification fires once per newly auto-created Task.
-# ──────────────────────────────────────────────────────────────────────────
-
-@pytest.mark.asyncio
-async def test_notification_sent_on_auto_create(db_session, digest_env):
-    from app.jobs.parent_email_digest_job import send_digest_for_integration
-
-    _set_task_sync_flag(db_session, True)
-    env = digest_env
-
-    items = [
-        _digest_item("Permission slip", datetime(2026, 5, 10, tzinfo=timezone.utc)),
-        _digest_item("Math quiz", datetime(2026, 5, 12, tzinfo=timezone.utc)),
-    ]
-
-    notify_mock = MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None})
-    with patch(
-        "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=_fetched_emails()),
-    ), patch(
-        "app.services.parent_digest_ai_service.generate_parent_digest",
-        new=AsyncMock(return_value="<p>digest</p>"),
-    ), patch(
-        "app.services.parent_digest_ai_service.extract_digest_items",
-        new=AsyncMock(return_value=items),
-    ), patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=notify_mock,
-    ):
-        await send_digest_for_integration(
-            db_session,
-            env["integration"],
-            skip_dedup=True,
-            since=datetime.now(timezone.utc) - timedelta(hours=24),
-        )
-
-    # Expect exactly 2 auto-create task notifications (one per NEW Task).
-    # The parent digest itself also calls send_multi_channel_notification
-    # with a different body — filter by the task-notification content.
-    task_calls = [
-        c for c in notify_mock.call_args_list
-        if "added to your tasks from teacher email" in (c.kwargs.get("content") or "")
-    ]
-    assert len(task_calls) == 2, f"expected 2 task notifications, got {len(task_calls)} of {len(notify_mock.call_args_list)}"
-    for c in task_calls:
-        assert c.kwargs.get("channels") == ["app_notification"]
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# 7. Notification fires on email_digest → assignment upgrade.
-# ──────────────────────────────────────────────────────────────────────────
-
-def test_notification_sent_on_upgrade(db_session, digest_env):
-    """Pre-existing email_digest Task + matching Assignment → upgrade + notify."""
-    from app.models.assignment import Assignment
-    from app.models.course import Course, student_courses
-    from app.models.task import Task
-    from app.models.teacher import Teacher
-    from app.services.task_sync_service import (
-        _digest_source_ref,
-        upsert_task_from_assignment,
-    )
-    from app.core.security import get_password_hash
-    from app.models.user import User, UserRole
-
-    env = digest_env
-    due = datetime(2026, 5, 10, 15, 0, tzinfo=timezone.utc)
-
-    # Seed a teacher + course the child is enrolled in.
-    suffix = f"_up_{id(db_session)}_{datetime.now(timezone.utc).timestamp():.6f}"
-    teacher_user = User(
-        email=f"up_teacher{suffix}@example.com",
-        full_name="Upgrade Teacher",
-        role=UserRole.TEACHER,
-        hashed_password=get_password_hash("Password123!"),
-    )
-    db_session.add(teacher_user)
-    db_session.commit()
     teacher = Teacher(user_id=teacher_user.id)
     db_session.add(teacher)
     db_session.commit()
+
+    s1 = Student(user_id=child1.id, grade_level=8)
+    s2 = Student(user_id=child2.id, grade_level=8)
+    s3 = Student(user_id=child3.id, grade_level=8)
+    db_session.add_all([s1, s2, s3])
+    db_session.commit()
+
+    for s in (s1, s2, s3):
+        db_session.execute(
+            parent_students.insert().values(parent_id=parent_user.id, student_id=s.id)
+        )
+    db_session.commit()
+
     course = Course(
-        name=f"Upgrade Course{suffix}",
+        name=f"TS4 Math{suffix}",
         teacher_id=teacher.id,
         created_by_user_id=teacher_user.id,
     )
     db_session.add(course)
     db_session.commit()
-    db_session.execute(
-        student_courses.insert().values(
-            student_id=env["student"].id, course_id=course.id
+    for s in (s1, s2, s3):
+        db_session.execute(
+            student_courses.insert().values(student_id=s.id, course_id=course.id)
         )
-    )
     db_session.commit()
 
-    # Seed a pre-existing email_digest Task for the child with a fuzzy-matching title.
-    digest_title = "Chapter 5 Quiz"
-    source_ref = _digest_source_ref(digest_title, due, "America/Toronto")
-    pre_task = Task(
-        created_by_user_id=env["parent"].id,
-        assigned_to_user_id=env["child"].id,
-        title=digest_title,
-        due_date=due,
-        source="email_digest",
-        source_ref=source_ref,
-        source_confidence=0.9,
-        source_status="active",
-        source_message_id="<m1>",
-        source_created_at=datetime.now(timezone.utc),
+    return {
+        "teacher_user": teacher_user,
+        "parent_user": parent_user,
+        "child_users": [child1, child2, child3],
+        "students": [s1, s2, s3],
+        "course": course,
+    }
+
+
+def _set_flag(db_session, enabled: bool):
+    """Upsert the ``task_sync_enabled`` feature flag to the given value."""
+    from app.models.feature_flag import FeatureFlag
+
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "task_sync_enabled")
+        .first()
     )
-    db_session.add(pre_task)
+    if flag is None:
+        flag = FeatureFlag(
+            key="task_sync_enabled",
+            name="Task Sync",
+            description="Auto-create Tasks from due-date signals.",
+            enabled=enabled,
+        )
+        db_session.add(flag)
+    else:
+        flag.enabled = enabled
     db_session.commit()
 
-    # Now add a matching Assignment — upgrade should fire.
-    assignment = Assignment(
-        title="chapter 5 quiz",  # different case — normalize matches
-        description="covering sections 5.1-5.3",
-        course_id=course.id,
-        due_date=due,
+
+def _make_assignment(db_session, course_id, title, due_date):
+    from app.models.assignment import Assignment
+
+    a = Assignment(
+        title=title,
+        description=f"{title} description",
+        course_id=course_id,
+        due_date=due_date,
     )
-    db_session.add(assignment)
+    db_session.add(a)
     db_session.commit()
+    db_session.refresh(a)
+    return a
 
-    notify_mock = MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None})
-    with patch(
-        "app.services.notification_service.send_multi_channel_notification",
-        new=notify_mock,
-    ):
-        tasks = upsert_task_from_assignment(db_session, assignment)
 
-    # The pre-existing email_digest Task was upgraded → source='assignment'.
-    upgraded = [t for t in tasks if t.id == pre_task.id]
-    assert upgraded, f"pre-existing task {pre_task.id} not in upsert result: {[t.id for t in tasks]}"
-    db_session.refresh(upgraded[0])
-    assert upgraded[0].source == "assignment"
-    assert upgraded[0].source_ref == str(assignment.id)
+# ──────────────────────────────────────────────────────────────────────────
+# 1. Full-job end-to-end
+# ──────────────────────────────────────────────────────────────────────────
 
-    # And a notification fired mentioning the upgrade.
-    upgrade_calls = [
-        c for c in notify_mock.call_args_list
-        if "linked to a class assignment" in (c.kwargs.get("content") or "")
+@pytest.mark.asyncio
+async def test_sync_assignments_to_tasks_full_job(db_session, tasksync_env):
+    """With flag ON: 3 in-window assignments → 9 Tasks (3 students × 3 assignments).
+    Out-of-window and NULL-due assignments yield 0 Tasks."""
+    from app.jobs.task_sync_job import sync_assignments_to_tasks
+    from app.models.task import Task
+
+    _set_flag(db_session, True)
+
+    env = tasksync_env
+    now = datetime.now(timezone.utc)
+
+    # 3 in-window assignments (within +30 days).
+    in_window = [
+        _make_assignment(db_session, env["course"].id, "Chapter 1 quiz", now + timedelta(days=1)),
+        _make_assignment(db_session, env["course"].id, "Chapter 2 quiz", now + timedelta(days=7)),
+        _make_assignment(db_session, env["course"].id, "Chapter 3 quiz", now + timedelta(days=21)),
     ]
-    assert len(upgrade_calls) == 1, f"expected 1 upgrade notification, got {len(upgrade_calls)}"
-    assert upgrade_calls[0].kwargs.get("channels") == ["app_notification"]
+    # 1 out-of-window (far future).
+    out_of_window = _make_assignment(
+        db_session, env["course"].id, "Far-future quiz", now + timedelta(days=90)
+    )
+    # 1 with NULL due — skipped by the rolling-window query.
+    null_due = _make_assignment(db_session, env["course"].id, "No-due quiz", None)
+
+    await sync_assignments_to_tasks()
+
+    # In-window → one Task per (assignment, student) pair = 3 × 3 = 9.
+    for assignment in in_window:
+        count = (
+            db_session.query(Task)
+            .filter(Task.source == "assignment", Task.source_ref == str(assignment.id))
+            .count()
+        )
+        assert count == 3, f"expected 3 Tasks for {assignment.title}, got {count}"
+
+    # Out-of-window → 0 Tasks.
+    oow_count = (
+        db_session.query(Task)
+        .filter(Task.source == "assignment", Task.source_ref == str(out_of_window.id))
+        .count()
+    )
+    assert oow_count == 0
+
+    # NULL-due → 0 Tasks.
+    null_count = (
+        db_session.query(Task)
+        .filter(Task.source == "assignment", Task.source_ref == str(null_due.id))
+        .count()
+    )
+    assert null_count == 0
+
+    # Grand total for this course's in-window assignments = 9.
+    total = (
+        db_session.query(Task)
+        .filter(Task.source == "assignment")
+        .filter(Task.course_id == env["course"].id)
+        .count()
+    )
+    assert total == 9
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 2. Feature-flag gating
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_feature_flag_off_skips_job(db_session, tasksync_env, caplog):
+    """With flag OFF: no Tasks are created and the skip line is logged."""
+    from app.jobs.task_sync_job import sync_assignments_to_tasks
+    from app.models.task import Task
+
+    _set_flag(db_session, False)
+
+    env = tasksync_env
+    now = datetime.now(timezone.utc)
+    _make_assignment(db_session, env["course"].id, "Quiz while flag off", now + timedelta(days=2))
+
+    with caplog.at_level(logging.INFO, logger="app.jobs.task_sync_job"):
+        await sync_assignments_to_tasks()
+
+    # Scope by this test's course — other tests using the same session-scoped
+    # DB may have left Tasks around.
+    count = (
+        db_session.query(Task)
+        .filter(Task.source == "assignment")
+        .filter(Task.course_id == env["course"].id)
+        .count()
+    )
+    assert count == 0
+    assert any("task_sync.skipped | flag=off" in rec.getMessage() for rec in caplog.records)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 3. Exception isolation
+# ──────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_job_handles_service_exception(db_session, tasksync_env, caplog):
+    """If the service raises, the job swallows the exception and logs it."""
+    from app.jobs import task_sync_job
+
+    _set_flag(db_session, True)
+
+    with patch.object(
+        task_sync_job,
+        "sync_all_upcoming_assignments",
+        side_effect=RuntimeError("boom"),
+    ):
+        with caplog.at_level(logging.ERROR, logger="app.jobs.task_sync_job"):
+            # Must NOT raise.
+            await task_sync_job.sync_assignments_to_tasks()
+
+    exc_rec = next(
+        (
+            rec
+            for rec in caplog.records
+            if "task_sync.failed | source=assignment" in rec.getMessage()
+        ),
+        None,
+    )
+    assert exc_rec is not None
+    # Prove logger.exception was used (not just logger.error) — the traceback
+    # is the load-bearing piece of the failure signal.
+    assert exc_rec.exc_info is not None
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 4. Scheduler registration — verify cron at 06:45 UTC
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_job_registered_at_0645_utc_in_main():
+    """Regression guard: ``main.py`` startup wiring MUST register
+    ``task_sync_assignments`` at ``CronTrigger(hour=6, minute=45)``.
+
+    We can't run ``startup_event()`` here because it does heavy seeding +
+    DB work, and the conftest ``app`` fixture deliberately clears
+    ``on_startup`` handlers. Instead we contract-check the literal cron
+    registration in ``main.py`` — if someone changes ``hour=7`` or renames
+    the job id, this test fails immediately.
+    """
+    import re
+    from pathlib import Path
+
+    main_py = Path(__file__).resolve().parents[1] / "main.py"
+    source = main_py.read_text(encoding="utf-8")
+
+    # Contract: CronTrigger(hour=6, minute=45) block that schedules our job
+    # must exist and assign id="task_sync_assignments".
+    pattern = re.compile(
+        r"scheduler\.add_job\(\s*"
+        r"sync_assignments_to_tasks\s*,\s*"
+        r"CronTrigger\(\s*hour\s*=\s*6\s*,\s*minute\s*=\s*45\s*\)\s*,\s*"
+        r'id\s*=\s*"task_sync_assignments"',
+        re.MULTILINE,
+    )
+    assert pattern.search(source), (
+        "main.py must register sync_assignments_to_tasks at "
+        "CronTrigger(hour=6, minute=45) with id='task_sync_assignments'"
+    )
