@@ -1776,6 +1776,8 @@ Inherits §6.135.9 Path C tokens (Space Grotesk + Source Sans 3 + `var(--color-a
 - **Brand logo sizing (#3902 / #3908):** nav 64px desktop / 44px mobile; footer 80px. Intrinsic img width/height must match CSS height × ~2.14 (v6 asset is 400×187, ratio ≈ 2.139:1) to preserve CLS. Shipped values: nav `137×64`, footer `171×80`.
 - **Logo asset (#3908):** `/classbridge-logo-v6.png` (tight-cropped variant, ~5% whitespace) across all UI surfaces. The loose-cropped `classbridge-logo.png` / `classbridge-hero-logo.png` (1536×1024, 3:2 ratio) are kept for JSON-LD `logo` and OG `og:image` fallback only in `LandingSeo.tsx` — search engines and social unfurls prefer a logo with safe-zone padding around the artwork.
 
+**Feature-flag kill-switch semantics (#3930):** `enabled=false` is the authoritative kill-switch for DB-backed flags (`landing_v2`, `demo_landing_v1_1`, etc.). When `enabled=false`, the `variant` field is advisory only — the backend `/api/features` coerces `_variants[key]` to `"off"` (Stream B #3932), and the frontend `useVariantBucket` short-circuits to `'off'` before consulting variant (Stream A #3931). The admin UI warns on mismatched state (Stream C #3933). Authors of new DB-backed flags MUST preserve this contract. Same semantics apply to `demo_landing_v1_1` (see §6.135 CB-DEMO-001).
+
 #### 6.140.7 Analytics funnel (CB-LAND-001)
 
 **Events:**
@@ -1799,6 +1801,7 @@ One-day post-ship defect sweep after CB-LAND-001 hit production (revision `class
 | #3897 | `LandingFooter.css` used `filter: brightness(0) invert(1)` to whiten the color logo on dark bg | Swapped to existing `/classbridge-logo-dark.png` asset; filter hack removed. |
 | #3898 | CTA copy duplicated per-consumer (nav "Join Waitlist" short vs hero "Join the waitlist" long) | `useLandingCtas` now exposes `secondaryLabel` (long) + `secondaryLabelShort` (short). |
 | #3899 | Section-id string literals scattered across registry / page split / section files | New `frontend/src/components/landing/sectionIds.ts` with `LANDING_SECTION_ID` const + `LandingSectionId` type. All 12 section files + `LandingPageV2` footer-split migrated. |
+| #3930 | Feature-flag kill-switch broken — `useVariantBucket` ignored `enabled` boolean, so admin toggle-off had no effect when variant remained `on_for_all`. Both `landing_v2` and `demo_landing_v1_1` affected. | Defense-in-depth: frontend hook short-circuit (#3931), backend `/api/features` response coercion (#3932), admin UI mismatch warning (#3933), docs (#3935). |
 
 **Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 109/109 landing tests pass · 2× `/pr-review` per fix branch + 1× orchestrator-level review.
 

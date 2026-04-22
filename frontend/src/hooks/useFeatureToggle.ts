@@ -102,3 +102,23 @@ export function useFeatureVariant(key: string): FeatureVariant {
   const variants = toggles._variants ?? {};
   return variants[key] ?? 'off';
 }
+
+/**
+ * Returns whether an arbitrary feature-flag key's `enabled` column is true.
+ *
+ * Unlike `useFeature` (which is typed to `keyof FeatureToggles` for the
+ * static compile-time flags), this accepts any string key so composable
+ * hooks can read DB-backed flags like `landing_v2` or `demo_landing_v1_1`
+ * that aren't declared in the `FeatureToggles` interface.
+ *
+ * Reads from the same `useFeatureQuery` cache as `useFeature` to preserve
+ * a single source of truth. Returns `false` while the query is hydrating
+ * or when the key is missing / non-boolean — this is the safe default for
+ * the kill-switch semantics in #3930 (enabled=false must force 'off').
+ */
+export function useFeatureFlagEnabled(key: string): boolean {
+  const { data } = useFeatureQuery();
+  if (!data) return false;
+  const value = (data as Record<string, unknown>)[key];
+  return typeof value === 'boolean' ? value : false;
+}

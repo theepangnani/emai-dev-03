@@ -66,7 +66,15 @@ def get_public_features(
 
     for flag in db_flags:
         result[flag.key] = flag.enabled
-        variants[flag.key] = getattr(flag, "variant", None) or "off"
+        # Kill-switch defense-in-depth (#3930, #3932): when a flag is
+        # disabled, coerce its exposed variant to "off" so non-frontend
+        # consumers (mobile, external API) get correct semantics without
+        # mirroring the frontend's useVariantBucket guard. We deliberately
+        # do NOT overwrite FeatureFlag.variant in the DB — the stored
+        # variant is preserved so flipping `enabled` back on restores the
+        # admin-configured rollout percentage.
+        stored_variant = getattr(flag, "variant", None) or "off"
+        variants[flag.key] = stored_variant if flag.enabled else "off"
 
     result["_variants"] = variants
     return result

@@ -101,6 +101,10 @@
 
 .launch-hero-logo {
   height: 280px;
+  /* Negative margins are compositionally tuned for the custom
+     `classbridge-hero-logo.png` illustration's intrinsic whitespace.
+     Do not remove — see #3939 for the regression history. */
+  margin: -24px auto -16px;
 }
 
 .launch-hero h1 {
@@ -308,6 +312,7 @@
 
   .launch-hero-logo {
     height: 160px;
+    margin: -10px auto -10px;
   }
 
   .launch-hero h1 {
