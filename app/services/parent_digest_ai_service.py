@@ -197,14 +197,14 @@ Based on the emails below, produce a JSON object with AT MOST 3 items per sectio
 ranked by urgency and recency.
 
 Return ONLY valid JSON matching this schema (no markdown, no prose):
-{
+{{
   "urgent": [str, str, str],
   "announcements": [str, str, str],
   "action_items": [str, str, str],
-  "overflow": {
+  "overflow": {{
     "urgent": int, "announcements": int, "action_items": int
-  }
-}
+  }}
+}}
 
 - "urgent" = items due today or tomorrow (0-3 items)
 - "announcements" = classroom posts, not time-sensitive (0-3 items)
