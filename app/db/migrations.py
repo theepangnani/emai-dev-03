@@ -267,6 +267,47 @@ def _run_migrations_inner(engine, settings, logger):
                     conn.rollback()
             conn.commit()
 
+        # ── tasks: CB-TASKSYNC-001 source attribution columns + indexes
+        # (#3912, #3913). Re-scan columns; columns are nullable with no ORM
+        # defaults. Idempotent — existing columns are skipped.
+        if "tasks" in inspector.get_table_names():
+            is_sqlite_task = "sqlite" in settings.database_url
+            existing_cols = {c["name"] for c in inspector.get_columns("tasks")}
+            _source_cols = [
+                ("source", "VARCHAR(20)", "VARCHAR(20)"),
+                ("source_ref", "VARCHAR(128)", "VARCHAR(128)"),
+                ("source_confidence", "REAL", "DOUBLE PRECISION"),
+                ("source_status", "VARCHAR(20)", "VARCHAR(20)"),
+                ("source_message_id", "VARCHAR(255)", "VARCHAR(255)"),
+                ("source_created_at", "DATETIME", "TIMESTAMPTZ"),
+            ]
+            for col_name, sqlite_type, pg_type in _source_cols:
+                if col_name in existing_cols:
+                    continue
+                col_type = sqlite_type if is_sqlite_task else pg_type
+                try:
+                    conn.execute(text(f"ALTER TABLE tasks ADD COLUMN {col_name} {col_type}"))
+                    logger.info("Added '%s' column to tasks", col_name)
+                except Exception as e:
+                    logger.warning("Failed to add tasks.%s: %s", col_name, e)
+                    conn.rollback()
+            # Indexes — CREATE INDEX IF NOT EXISTS is idempotent on both dialects.
+            try:
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
+                    "ON tasks(source, source_ref)"
+                ))
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
+                    "ON tasks(source, source_ref, assigned_to_user_id) "
+                    "WHERE source IS NOT NULL"
+                ))
+                logger.info("Task source-attribution indexes ensured")
+            except Exception as e:
+                logger.warning("Failed to ensure tasks source-attribution indexes: %s", e)
+                conn.rollback()
+            conn.commit()
+
         # Make users.email nullable for students created without email (by parent)
         if "users" in inspector.get_table_names():
             if "sqlite" not in settings.database_url:

@@ -907,6 +907,25 @@ async def run_migrations_manual(
         # CB-DEMO-001 F2 (#3601, #3711) — recovery for feature_flags.variant
         # if the startup migration ever silently fails again.
         ("feature_flags", "variant", "VARCHAR(20) NOT NULL DEFAULT 'off'"),
+        # CB-TASKSYNC-001 (#3912, #3913) — Task source attribution. Nullable,
+        # no defaults. Kept in sync with main.py startup block + migrations.py.
+        ("tasks", "source", "VARCHAR(20)"),
+        ("tasks", "source_ref", "VARCHAR(128)"),
+        ("tasks", "source_confidence", "DOUBLE PRECISION"),
+        ("tasks", "source_status", "VARCHAR(20)"),
+        ("tasks", "source_message_id", "VARCHAR(255)"),
+        ("tasks", "source_created_at", "TIMESTAMPTZ"),
+    ]
+
+    # CB-TASKSYNC-001 (#3913) — indexes for the tasks source-attribution
+    # columns. Kept here so the manual-trigger endpoint can recover both
+    # columns AND indexes if the startup block failed.
+    extra_index_sql = [
+        "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
+        "ON tasks(source, source_ref)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
+        "ON tasks(source, source_ref, assigned_to_user_id) "
+        "WHERE source IS NOT NULL",
     ]
 
     with engine.connect() as conn:
@@ -916,6 +935,12 @@ async def run_migrations_manual(
                 results.append({"table": tbl, "column": col, "status": "added_or_exists"})
             except Exception as e:
                 results.append({"table": tbl, "column": col, "status": "error", "detail": str(e)})
+        for ix_sql in extra_index_sql:
+            try:
+                conn.execute(text(ix_sql))
+                results.append({"index": ix_sql.split()[5], "status": "added_or_exists"})
+            except Exception as e:
+                results.append({"index": ix_sql.split()[5], "status": "error", "detail": str(e)})
         conn.commit()
 
     return {"migrations_run": len(migrations), "results": results}
