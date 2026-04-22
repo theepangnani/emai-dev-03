@@ -45,6 +45,10 @@ export function useParentStudyTools({
     // Question mode is deprecated — route to /ask (ASGFPage), the canonical Ask flow (#3955).
     // Any remaining question-mode callers get redirected with the question pre-filled.
     if (modalParams.mode === 'question') {
+      if (import.meta.env?.DEV) {
+        // Straggler-caller warning — lets us spot external code still on the legacy path.
+        console.warn('[useParentStudyTools] mode:"question" is deprecated — redirecting to /ask (#3955). Callers should navigate directly.');
+      }
       resetStudyModal();
       const q = (modalParams.content || '').trim();
       const target = q ? `/ask?question=${encodeURIComponent(q)}` : '/ask';
