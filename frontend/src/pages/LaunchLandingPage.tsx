@@ -34,7 +34,7 @@ export function LaunchLandingPage() {
       </nav>
 
       <section className="launch-hero">
-        <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="launch-hero-logo" />
+        <img src="/classbridge-hero-logo.png" alt="ClassBridge" className="launch-hero-logo" />
         <h1>The AI-Powered Education Platform</h1>
         <p className="launch-hero-sub">
           Connecting parents, students, and teachers in one intelligent platform.

@@ -101,6 +101,7 @@
 
 .launch-hero-logo {
   height: 280px;
+  margin: -24px auto -16px;
 }
 
 .launch-hero h1 {
@@ -308,6 +309,7 @@
 
   .launch-hero-logo {
     height: 160px;
+    margin: -10px auto -10px;
   }
 
   .launch-hero h1 {
