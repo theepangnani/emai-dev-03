@@ -163,12 +163,13 @@ async def test_send_digest_for_integration_whitespace_only_full_name(db_session)
 
 @pytest.mark.asyncio
 async def test_whatsapp_template_variables_sanitised(db_session):
-    """#3879 / #3904 — Twilio Content Variables cap each variable at ~1024 chars.
+    """#3941 — Twilio's daily_digest Content Template rejects \\n in variables.
 
     The WhatsApp template path must:
-    - PRESERVE \\n / \\r / \\t in the plain_text variable (#3904 — paragraph
-      breaks must survive so the digest doesn't render as a wall of text)
-    - strip only other non-printable control chars (ASCII 0-8, 11-12, 14-31)
+    - substitute \\n\\n with " • " (visible section boundary)
+    - substitute single \\n / \\r / \\t with spaces
+    - strip all remaining control chars (ASCII 0-31)
+    - collapse whitespace runs
     - cap variable "2" at 1024 chars (Twilio per-variable limit)
     - strip newlines/control chars from parent_name (variable "1")
     """
@@ -227,12 +228,11 @@ async def test_whatsapp_template_variables_sanitised(db_session):
         }
     ]
 
-    # AI digest with multiple newlines between per-email summaries + long content
+    # AI digest with \n\n paragraph breaks between sections + long content
     ai_digest = (
-        "Email 1: Field trip next week.\n\n"
-        "Email 2: Report card released.\r\n"
-        "Email 3: Lunch menu changes.\t\tExtra details follow.\n"
-        + ("x" * 2000)
+        "URGENT: Do this.\n\n"
+        "Automated Notifications: Math assignment due.\n\n"
+        "Action Items: Check in with teacher."
     )
 
     captured = {}
@@ -273,18 +273,16 @@ async def test_whatsapp_template_variables_sanitised(db_session):
     var1 = content_variables["1"]
     var2 = content_variables["2"]
 
-    # #3904: newlines (and tabs) must now be PRESERVED in variable "2" so the
-    # WhatsApp digest renders with proper paragraph breaks. Only non-printable
-    # control chars (other than \n, \r, \t) are stripped.
-    assert "\n" in var2, "variable '2' MUST preserve newlines (#3904)"
-    # Other ASCII control chars (0x00-0x08, 0x0b, 0x0c, 0x0e-0x1f) still stripped
+    # #3941: Twilio's daily_digest template rejects \n in variables. Newlines
+    # must be substituted: \n\n → " • ", single \n/\r/\t → space. All control
+    # chars (ASCII 0-31) stripped so the variable is strictly single-line.
+    assert "\n" not in var2, "var2 must not contain newlines (Twilio rejects for daily_digest template, #3941)"
+    assert "\r" not in var2, "var2 must not contain carriage returns"
+    assert "\t" not in var2, "var2 must not contain tabs"
+    assert " • " in var2, "paragraph breaks must be replaced with bullet markers (#3941)"
     for ch in var2:
-        code = ord(ch)
-        # Allowed: printable ASCII, \t (9), \n (10), \r (13), and Unicode > 31
-        assert code >= 32 or code in (9, 10, 13), (
-            f"variable '2' contains disallowed control char {code!r}"
-        )
-    assert len(var2) <= 1024, f"variable '2' must be ≤ 1024 chars (got {len(var2)})"
+        assert ord(ch) >= 32, f"var2 contains control char {ord(ch)!r}"
+    assert len(var2) <= 1024
 
     # Variable "1" — parent_name: no newlines
     assert "\n" not in var1
@@ -292,8 +290,8 @@ async def test_whatsapp_template_variables_sanitised(db_session):
 
 
 @pytest.mark.asyncio
-async def test_whatsapp_template_strips_unsafe_control_chars_but_keeps_newlines(db_session):
-    """#3904 — \\n / \\r / \\t are preserved; other control chars stripped."""
+async def test_whatsapp_template_substitutes_newlines_with_bullet_markers_strips_control_chars(db_session):
+    """#3941 — \\n\\n substituted with " • "; other control chars stripped."""
     from app.core.security import get_password_hash
     from app.jobs.parent_email_digest_job import send_digest_for_integration
     from app.models.parent_gmail_integration import (
@@ -384,11 +382,115 @@ async def test_whatsapp_template_strips_unsafe_control_chars_but_keeps_newlines(
     assert result["status"] == "delivered"
     var2 = captured["content_variables"]["2"]
 
-    # Paragraph break preserved
-    assert "\n\n" in var2, "variable '2' MUST preserve paragraph-break newlines (#3904)"
+    # Paragraph break substituted with bullet marker
+    assert "\n" not in var2, "variable '2' MUST NOT contain newlines (#3941)"
+    assert " • " in var2, "paragraph breaks must be replaced with bullet markers (#3941)"
     # Unsafe control chars stripped
     assert "\x00" not in var2, "NUL control char must be stripped"
     assert "\x07" not in var2, "BEL control char must be stripped"
+
+
+@pytest.mark.asyncio
+async def test_whatsapp_template_three_paragraphs_produces_two_bullet_markers(db_session):
+    """#3941 — N paragraphs separated by \\n\\n produce N-1 bullet markers."""
+    from app.core.security import get_password_hash
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email="wa_bullets_parent@test.com",
+        full_name="Rohini Sundaram",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.flush()
+
+    integration = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address="wa_bullets_parent@gmail.com",
+        google_id="google_wa_bullets_test",
+        access_token="enc_access",
+        refresh_token="enc_refresh",
+        child_school_email="child@school.ca",
+        child_first_name="Alex",
+        whatsapp_phone="+14155551234",
+        whatsapp_verified=True,
+    )
+    db_session.add(integration)
+    db_session.flush()
+
+    settings = ParentDigestSettings(
+        integration_id=integration.id,
+        delivery_channels="in_app,whatsapp",
+        digest_format="brief",
+    )
+    db_session.add(settings)
+    db_session.commit()
+    db_session.refresh(integration)
+
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    received_at = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    fetched_emails = [
+        {
+            "source_id": "x",
+            "sender_name": "School",
+            "sender_email": "s@s.ca",
+            "subject": "Hi",
+            "body": "B",
+            "snippet": "B",
+            "received_at": received_at,
+        }
+    ]
+
+    # Three paragraphs separated by \n\n → expect two " • " separators
+    ai_digest = (
+        "Paragraph one about urgent items.\n\n"
+        "Paragraph two about automated notifications.\n\n"
+        "Paragraph three about action items."
+    )
+
+    captured = {}
+
+    def fake_send_whatsapp_template(to, content_sid, content_variables):
+        captured["content_variables"] = content_variables
+        return True
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=fetched_emails),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value=ai_digest),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        side_effect=fake_send_whatsapp_template,
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid",
+        "HX_TEST_SID",
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=since,
+        )
+
+    assert result["status"] == "delivered"
+    var2 = captured["content_variables"]["2"]
+
+    # Three paragraphs → two bullet-marker separators between them
+    assert var2.count(" • ") == 2, (
+        f"three paragraphs must produce exactly two bullet markers, got {var2.count(' • ')} in {var2!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
