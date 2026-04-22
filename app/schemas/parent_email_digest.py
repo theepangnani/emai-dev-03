@@ -71,7 +71,7 @@ class ParentDigestSettingsUpdate(BaseModel):
     digest_enabled: Optional[bool] = None
     delivery_time: Optional[str] = None
     timezone: Optional[str] = None
-    digest_format: Optional[Literal["full", "brief", "actions_only"]] = None
+    digest_format: Optional[Literal["full", "brief", "actions_only", "sectioned"]] = None
     delivery_channels: Optional[str] = None
     notify_on_empty: Optional[bool] = None
 
@@ -95,6 +95,33 @@ class ParentDigestSettingsUpdate(BaseModel):
         if v not in available_timezones():
             raise ValueError(f"Invalid timezone: {v}")
         return v
+
+
+# ---------------------------------------------------------------------------
+# SectionedDigest (#3956 — Phase A of #3905)
+# ---------------------------------------------------------------------------
+
+class SectionedDigest(BaseModel):
+    """3x3 sectioned digest content produced by generate_sectioned_digest.
+
+    Each section caps at 3 items (enforced by validator). ``overflow`` records
+    how many items we would have included if the cap were higher; renderers
+    surface this as an "And N more -> View full digest" CTA.
+
+    ``legacy_blob`` is set when the AI JSON parse failed and we fell back to
+    the old HTML format — renderers MUST check this first and render the
+    legacy HTML instead of the 3x3 layout.
+    """
+    urgent: list[str] = []
+    announcements: list[str] = []
+    action_items: list[str] = []
+    overflow: dict[str, int] = {}
+    legacy_blob: Optional[str] = None
+
+    @field_validator("urgent", "announcements", "action_items")
+    @classmethod
+    def cap_at_three(cls, v: list[str]) -> list[str]:
+        return v[:3]
 
 
 # ---------------------------------------------------------------------------

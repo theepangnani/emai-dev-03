@@ -1086,3 +1086,405 @@ async def test_digest_no_reason_when_delivered(db_session):
 
     assert result["status"] == "delivered"
     assert result.get("reason") is None
+
+
+# ---------------------------------------------------------------------------
+# Sectioned 3×3 digest path (#3956 — Phase A of #3905)
+# ---------------------------------------------------------------------------
+
+
+def _mk_parent_and_integration(
+    db_session,
+    *,
+    digest_format: str = "sectioned",
+    delivery_channels: str = "in_app,email",
+    whatsapp_verified: bool = False,
+    whatsapp_phone: str | None = None,
+    email_suffix: str = "sectioned",
+):
+    """Factory used by the #3956 sectioned-digest tests."""
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email=f"{email_suffix}_parent@test.com",
+        full_name="Rohini Sundaram",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.flush()
+
+    integration = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address=f"{email_suffix}_parent@gmail.com",
+        google_id=f"google_{email_suffix}_test",
+        access_token="enc_access",
+        refresh_token="enc_refresh",
+        child_school_email="child@school.ca",
+        child_first_name="Alex",
+        whatsapp_phone=whatsapp_phone,
+        whatsapp_verified=whatsapp_verified,
+    )
+    db_session.add(integration)
+    db_session.flush()
+
+    settings = ParentDigestSettings(
+        integration_id=integration.id,
+        delivery_channels=delivery_channels,
+        digest_format=digest_format,
+    )
+    db_session.add(settings)
+    db_session.commit()
+    db_session.refresh(integration)
+    return integration
+
+
+def _fetched_email():
+    return [
+        {
+            "source_id": "x",
+            "sender_name": "School",
+            "sender_email": "s@s.ca",
+            "subject": "Hi",
+            "body": "B",
+            "snippet": "B",
+            "received_at": datetime.now(timezone.utc) - timedelta(hours=1),
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_digest_sectioned_format_renders_3x3_email(db_session):
+    """Full integration: sectioned JSON -> email HTML has 3 section headings + bullets."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(db_session)
+
+    sectioned = {
+        "urgent": ["Permission slip due today"],
+        "announcements": ["New classroom schedule posted", "PTA meeting next week"],
+        "action_items": ["Sign field trip form"],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    captured: dict = {}
+
+    def fake_send_multi_channel_notification(**kwargs):
+        captured["content"] = kwargs.get("content")
+        captured["title"] = kwargs.get("title")
+        return {"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        side_effect=fake_send_multi_channel_notification,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    html = captured.get("content") or ""
+    assert "Urgent" in html
+    assert "Announcements" in html
+    assert "Action Items" in html
+    # 1 urgent + 2 announcements + 1 action_item = 4 <li>
+    assert html.count("<li") == 4
+    assert "Permission slip due today" in html
+    assert "Sign field trip form" in html
+
+
+@pytest.mark.asyncio
+async def test_digest_sectioned_whatsapp_v1_flattens_to_single_line(db_session):
+    """V2 env var empty -> V1 single-line-with-bullets format."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(
+        db_session,
+        delivery_channels="in_app,whatsapp",
+        whatsapp_verified=True,
+        whatsapp_phone="+14155551234",
+        email_suffix="v1",
+    )
+
+    sectioned = {
+        "urgent": ["U1", "U2"],
+        "announcements": ["A1"],
+        "action_items": ["Act1"],
+        "overflow": {"urgent": 1, "announcements": 0, "action_items": 0},
+    }
+
+    captured: dict = {}
+
+    def fake_send_template(to, sid, variables):
+        captured["to"] = to
+        captured["sid"] = sid
+        captured["variables"] = variables
+        return True
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": None, "classbridge_message": None, "notification": MagicMock()}),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        side_effect=fake_send_template,
+    ) as mock_template, patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid",
+        "HX_V1_SID",
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid_v2",
+        "",
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    assert mock_template.called
+    # V1 = 2 variables (parent_name, flattened_text)
+    variables = captured["variables"]
+    assert set(variables.keys()) == {"1", "2"}
+    var2 = variables["2"]
+    # No newlines (#3941 rule still applies to V1 path).
+    assert "\n" not in var2
+    # Section headings + bullet separators from the flatten helper.
+    assert "Urgent" in var2
+    assert "Announcements" in var2
+    assert "Action Items" in var2
+    assert "U1" in var2
+    assert "A1" in var2
+    assert "Act1" in var2
+    assert "(And 1 more)" in var2
+
+
+@pytest.mark.asyncio
+async def test_digest_sectioned_whatsapp_v2_uses_4_variables(db_session):
+    """V2 env var set -> 4-variable template call with correct per-variable content."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(
+        db_session,
+        delivery_channels="in_app,whatsapp",
+        whatsapp_verified=True,
+        whatsapp_phone="+14155551234",
+        email_suffix="v2",
+    )
+
+    sectioned = {
+        "urgent": ["U1", "U2", "U3"],
+        "announcements": ["A1", "A2"],
+        "action_items": ["Act1"],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    captured: dict = {}
+
+    def fake_send_template(to, sid, variables):
+        captured["to"] = to
+        captured["sid"] = sid
+        captured["variables"] = variables
+        return True
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": None, "classbridge_message": None, "notification": MagicMock()}),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        side_effect=fake_send_template,
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid_v2",
+        "HX_V2_SID",
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid",
+        "HX_V1_SID",
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    assert captured["sid"] == "HX_V2_SID"
+    variables = captured["variables"]
+    assert set(variables.keys()) == {"1", "2", "3", "4"}
+    assert variables["1"] == "Rohini"
+    # Each block has up to 3 bullets.
+    assert "U1" in variables["2"] and "U2" in variables["2"] and "U3" in variables["2"]
+    assert "A1" in variables["3"] and "A2" in variables["3"]
+    assert "Act1" in variables["4"]
+
+
+@pytest.mark.asyncio
+async def test_digest_empty_section_shows_none_in_v2(db_session):
+    """Empty sections in V2 variables get '(none)' to satisfy Twilio's non-empty rule."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(
+        db_session,
+        delivery_channels="in_app,whatsapp",
+        whatsapp_verified=True,
+        whatsapp_phone="+14155551234",
+        email_suffix="empty",
+    )
+
+    sectioned = {
+        "urgent": [],
+        "announcements": ["A1"],
+        "action_items": ["Act1"],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    captured: dict = {}
+
+    def fake_send_template(to, sid, variables):
+        captured["variables"] = variables
+        return True
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": None, "classbridge_message": None, "notification": MagicMock()}),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        side_effect=fake_send_template,
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid_v2",
+        "HX_V2_SID",
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    variables = captured["variables"]
+    # urgent is empty -> must be "(none)"
+    assert variables["2"] == "(none)"
+    # non-empty sections still render normally
+    assert "A1" in variables["3"]
+    assert "Act1" in variables["4"]
+
+
+@pytest.mark.asyncio
+async def test_digest_overflow_renders_more_cta(db_session):
+    """overflow.urgent=5 -> email HTML contains an 'And 5 more ->' link to /email-digest."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(
+        db_session,
+        delivery_channels="in_app,email",
+        email_suffix="overflow",
+    )
+
+    sectioned = {
+        "urgent": ["u1", "u2", "u3"],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 5, "announcements": 0, "action_items": 0},
+    }
+
+    captured: dict = {}
+
+    def fake_send_multi_channel_notification(**kwargs):
+        captured["content"] = kwargs.get("content")
+        return {"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        side_effect=fake_send_multi_channel_notification,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    html = captured.get("content") or ""
+    assert "And 5 more" in html
+    assert "classbridge.ca/email-digest" in html
+
+
+@pytest.mark.asyncio
+async def test_digest_sectioned_legacy_blob_falls_back_to_legacy_html(db_session):
+    """AI JSON parse failure -> generate_sectioned_digest returns legacy_blob -> legacy render path."""
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration(
+        db_session,
+        delivery_channels="in_app,email",
+        email_suffix="legacy",
+    )
+
+    sectioned = {"legacy_blob": "<h3>Legacy Full Digest</h3><p>Content here</p>"}
+
+    captured: dict = {}
+
+    def fake_send_multi_channel_notification(**kwargs):
+        captured["content"] = kwargs.get("content")
+        return {"notification": MagicMock(), "in_app": True, "email": True, "classbridge_message": None}
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_email()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        side_effect=fake_send_multi_channel_notification,
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] == "delivered"
+    # Legacy HTML is passed through unchanged (3x3 email renderer not used).
+    assert captured.get("content") == "<h3>Legacy Full Digest</h3><p>Content here</p>"

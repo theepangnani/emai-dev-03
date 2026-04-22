@@ -237,8 +237,13 @@ def gmail_callback(
         db.add(integration)
         db.flush()  # assign integration.id without committing
 
-        # Auto-create default digest settings in the same transaction
-        default_settings = ParentDigestSettings(integration_id=integration.id)
+        # Auto-create default digest settings in the same transaction.
+        # #3956: new parents default to the "sectioned" 3x3 format; existing
+        # parents stay on their current format until migrated.
+        default_settings = ParentDigestSettings(
+            integration_id=integration.id,
+            digest_format="sectioned",
+        )
         db.add(default_settings)
         db.commit()
 
