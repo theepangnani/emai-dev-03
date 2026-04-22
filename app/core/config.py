@@ -132,6 +132,11 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_whatsapp_from: str = ""  # e.g. +14155238886 (Twilio sandbox)
     twilio_whatsapp_digest_content_sid: str = ""  # Twilio Content SID for daily_digest template
+    # #3956 — Phase A of #3905 multi-variable redesign. Dormant until Meta
+    # approves the 4-variable sectioned template. When set, the digest job
+    # uses the V2 4-variable sectioned template path; when empty, falls back
+    # to V1 (single-variable bullet-marker template) with no user-visible change.
+    twilio_whatsapp_digest_content_sid_v2: str = ""
     twilio_whatsapp_otp_content_sid: str = ""  # Twilio Content SID for OTP authentication template
     twilio_sms_from: str = ""
 
