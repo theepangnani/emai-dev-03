@@ -336,3 +336,27 @@ def test_task_created_and_task_upgraded_enum_values_exist():
     assert NotificationType.TASK_UPGRADED.value == "task_upgraded"
     # Existing TASK_DUE still present (due-date reminders).
     assert NotificationType.TASK_DUE.value == "task_due"
+
+
+def test_task_created_and_task_upgraded_respect_tasks_preference(db_session, notif_user):
+    """#3953 — TASK_CREATED / TASK_UPGRADED must gate on the 'tasks' preference category.
+
+    Without the NOTIFICATION_TYPE_TO_CATEGORY mapping they would default to
+    "unknown → always enabled" and bypass the user's in-app opt-out.
+    """
+    import json
+
+    # Disable the 'tasks' category for the in-app channel.
+    prefs = notif_user.get_notification_preferences()
+    prefs.setdefault("tasks", {})
+    prefs["tasks"]["in_app"] = False
+    notif_user.notification_preferences = json.dumps(prefs)
+    db_session.add(notif_user)
+    db_session.commit()
+    db_session.refresh(notif_user)
+
+    # Baseline: task_due respects the opt-out.
+    assert notif_user.should_notify("task_due", "in_app") is False
+    # New types must also respect it.
+    assert notif_user.should_notify("task_created", "in_app") is False
+    assert notif_user.should_notify("task_upgraded", "in_app") is False

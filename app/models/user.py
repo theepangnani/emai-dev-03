@@ -131,6 +131,8 @@ class User(Base):
         "study_guide_created": "study_guides",
         "material_uploaded": "study_guides",
         "task_due": "tasks",
+        "task_created": "tasks",
+        "task_upgraded": "tasks",
         "system": "system",
         "survey_completed": "system",
     }
