@@ -1774,6 +1774,7 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
 Inherits §6.135.9 Path C tokens (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex). Section-specific visual conventions:
 
 - **Brand logo sizing (#3902):** nav 64px desktop / 44px mobile; footer 80px. Intrinsic img width/height must match CSS height × 1.5 (asset is 3:2 ratio) to preserve CLS.
+- **Logo asset:** `/classbridge-logo-v6.png` (tight-cropped variant, ~5% whitespace) across all UI surfaces. The loose-cropped `classbridge-logo.png` is kept for JSON-LD / social-unfurl fallback only (search engines prefer a logo with safe-zone padding around the artwork).
 
 #### 6.140.7 Analytics funnel (CB-LAND-001)
 

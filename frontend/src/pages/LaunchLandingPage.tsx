@@ -27,14 +27,14 @@ export function LaunchLandingPage() {
   return (
     <div className="launch-page">
       <nav className="launch-nav">
-        <img src="/classbridge-logo.png" alt="ClassBridge" className="launch-nav-logo" />
+        <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="launch-nav-logo" />
         <div className="launch-nav-links">
           <Link to="/login" className="launch-btn-secondary">Log In</Link>
         </div>
       </nav>
 
       <section className="launch-hero">
-        <img src="/classbridge-hero-logo.png" alt="ClassBridge" className="launch-hero-logo" />
+        <img src="/classbridge-logo-v6.png" alt="ClassBridge" className="launch-hero-logo" />
         <h1>The AI-Powered Education Platform</h1>
         <p className="launch-hero-sub">
           Connecting parents, students, and teachers in one intelligent platform.

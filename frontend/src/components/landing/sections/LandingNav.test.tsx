@@ -30,7 +30,7 @@ describe('LandingNav (#3885)', () => {
     const logo = screen.getByAltText('ClassBridge');
     expect(logo).toBeInTheDocument();
     expect(logo.tagName).toBe('IMG');
-    expect(logo.getAttribute('src')).toBe('/classbridge-logo.png');
+    expect(logo.getAttribute('src')).toBe('/classbridge-logo-v6.png');
   });
 
   it('wraps the logo in a link to the site root', () => {

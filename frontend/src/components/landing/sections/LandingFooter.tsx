@@ -31,10 +31,10 @@ export function LandingFooter() {
             an additional label would double up for screen-reader users
             (#3885). */}
         <img
-          src="/classbridge-logo-dark.png"
+          src="/classbridge-logo-v6.png"
           alt=""
           aria-hidden="true"
-          width={120}
+          width={171}
           height={80}
           className="landing-footer__logo"
         />
