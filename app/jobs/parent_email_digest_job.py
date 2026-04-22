@@ -205,25 +205,26 @@ async def send_digest_for_integration(
                 items = await extract_digest_items(emails, tz_name=tz_name)
                 child_uid = resolve_integration_child_user_id(db, integration)
                 parent_user = integration.parent
+                # Snapshot pre-existing Task ids ONCE per digest run (review
+                # I3). Maintained in-loop by adding each newly-created Task id
+                # — keeps the created-vs-updated classification O(1) per item
+                # instead of re-querying on every loop iteration.
+                assignee_probe_id = child_uid or (
+                    parent_user.id if parent_user else None
+                )
+                pre_ids: set[int] = set()
+                if assignee_probe_id is not None:
+                    pre_ids = {
+                        row[0]
+                        for row in (
+                            db.query(Task.id)
+                            .filter(Task.source == "email_digest")
+                            .filter(Task.assigned_to_user_id == assignee_probe_id)
+                            .all()
+                        )
+                    }
                 for item in items:
                     try:
-                        # Snapshot pre-existing Task ids for this assignee so
-                        # we can reliably classify created vs updated without
-                        # altering the I3 service signature.
-                        assignee_probe_id = child_uid or (
-                            parent_user.id if parent_user else None
-                        )
-                        pre_ids: set[int] = set()
-                        if assignee_probe_id is not None:
-                            pre_ids = {
-                                row[0]
-                                for row in (
-                                    db.query(Task.id)
-                                    .filter(Task.source == "email_digest")
-                                    .filter(Task.assigned_to_user_id == assignee_probe_id)
-                                    .all()
-                                )
-                            }
                         task = upsert_task_from_digest_item(
                             db,
                             parent_user,
@@ -231,10 +232,15 @@ async def send_digest_for_integration(
                             item,
                             tz_name=tz_name,
                         )
+                        # upsert_task_from_digest_item commits internally; the
+                        # trailing db.commit() below flushes only the
+                        # Notification row added by the helper. Helper
+                        # swallows its own exceptions, so a notification
+                        # failure cannot roll back a successful upsert.
                         if task is not None and task.id not in pre_ids:
-                            # New auto-create → in-app notification only.
                             _notify_digest_task_created(db, task, integration)
                             db.commit()
+                            pre_ids.add(task.id)
                     except Exception:
                         db.rollback()
                         logger.exception(

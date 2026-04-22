@@ -467,9 +467,9 @@ async def test_notification_sent_on_auto_create(db_session, digest_env):
             since=datetime.now(timezone.utc) - timedelta(hours=24),
         )
 
-    # Expect at least 2 auto-create notifications (one per new Task). The
-    # parent digest itself also calls the same function once — assert >=3 and
-    # that at least 2 carry the "added to your tasks from teacher email" body.
+    # Expect exactly 2 auto-create task notifications (one per NEW Task).
+    # The parent digest itself also calls send_multi_channel_notification
+    # with a different body — filter by the task-notification content.
     task_calls = [
         c for c in notify_mock.call_args_list
         if "added to your tasks from teacher email" in (c.kwargs.get("content") or "")
