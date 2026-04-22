@@ -22,6 +22,144 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
+class _SectionedWhatsAppDone(Exception):
+    """Internal control-flow sentinel — sectioned WhatsApp path completed.
+
+    #3956: the sectioned 3x3 digest uses V1/V2 WhatsApp templates that are
+    exclusive to it and are fully handled before the legacy sanitisation
+    block. Raising this sentinel inside the existing try/except jumps past
+    the legacy path without re-implementing the outer error handling.
+    """
+
+
+def _sectioned_section_block(items: list[str], overflow: int) -> str:
+    """Render a single sectioned block for the WhatsApp V2 4-variable template.
+
+    Each block = up to 3 bullet lines + an optional "And N more" overflow line.
+    Empty sections return "(none)" — Twilio V2 template rules forbid empty
+    variables.
+    """
+    items = items[:3]
+    if not items:
+        return "(none)"
+    lines = [f"- {it}" for it in items]
+    if overflow and overflow > 0:
+        lines.append(f"+ And {overflow} more")
+    return "\n".join(lines)
+
+
+def _flatten_sectioned_to_bullets(sectioned: dict) -> str:
+    """Collapse sectioned 3x3 content into a single-line-with-bullets string.
+
+    Used by the V1 WhatsApp template path when V2 env var is NOT set.
+    Format:
+        "Urgent • item1 • item2 • (And N more) • Announcements • ... • Action Items • ..."
+    Empty sections are skipped entirely (no section heading).
+    """
+    overflow = sectioned.get("overflow") or {}
+    pieces: list[str] = []
+    labels = (
+        ("urgent", "Urgent"),
+        ("announcements", "Announcements"),
+        ("action_items", "Action Items"),
+    )
+    for key, label in labels:
+        items = (sectioned.get(key) or [])[:3]
+        if not items:
+            continue
+        pieces.append(label)
+        pieces.extend(items)
+        try:
+            more = int(overflow.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            more = 0
+        if more > 0:
+            pieces.append(f"(And {more} more)")
+    return " • ".join(pieces)
+
+
+def _sanitise_whatsapp_var(text: str) -> str:
+    """Apply the #3941 Twilio V1 daily_digest variable sanitisation rules."""
+    s = text.replace('\r\n', '\n').replace('\r', '\n')
+    s = re.sub(r'\n{2,}', ' • ', s)
+    s = re.sub(r'[\n\r\t]', ' ', s)
+    s = re.sub(r'[\x00-\x1f]', ' ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    if len(s) > 1024:
+        s = s[:1021] + "..."
+    return s
+
+
+def _send_sectioned_whatsapp_v2(
+    to_phone: str,
+    content_sid: str,
+    parent_name: str,
+    sectioned: dict,
+) -> bool:
+    """Send the 4-variable Twilio V2 sectioned daily-digest template.
+
+    Variables:
+      1 -> parent_name
+      2 -> urgent_block (3 items + overflow, newline-separated, or "(none)")
+      3 -> announcements_block (same)
+      4 -> action_items_block (same)
+    """
+    from app.services.whatsapp_service import send_whatsapp_template
+
+    overflow = sectioned.get("overflow") or {}
+
+    def _of(key: str) -> int:
+        try:
+            return max(0, int(overflow.get(key, 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    urgent_block = _sectioned_section_block(sectioned.get("urgent") or [], _of("urgent"))
+    announcements_block = _sectioned_section_block(
+        sectioned.get("announcements") or [], _of("announcements")
+    )
+    action_items_block = _sectioned_section_block(
+        sectioned.get("action_items") or [], _of("action_items")
+    )
+
+    sanitised_parent_name = re.sub(r'[\x00-\x1f]', ' ', parent_name).strip()
+    return send_whatsapp_template(
+        to_phone,
+        content_sid,
+        {
+            "1": sanitised_parent_name,
+            "2": urgent_block,
+            "3": announcements_block,
+            "4": action_items_block,
+        },
+    )
+
+
+def _sectioned_to_plain_text(sectioned: dict) -> str:
+    """Render sectioned content as plain text for the delivery-log digest_content column."""
+    overflow = sectioned.get("overflow") or {}
+    parts: list[str] = []
+    labels = (
+        ("urgent", "Urgent"),
+        ("announcements", "Announcements"),
+        ("action_items", "Action Items"),
+    )
+    for key, label in labels:
+        items = (sectioned.get(key) or [])[:3]
+        if not items:
+            continue
+        parts.append(f"{label}:")
+        parts.extend(f"- {it}" for it in items)
+        try:
+            more = int(overflow.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            more = 0
+        if more > 0:
+            parts.append(f"And {more} more")
+        parts.append("")
+    return "\n".join(parts).strip()
+
+
 async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False, since: datetime | None = None) -> dict:
     now = datetime.now(timezone.utc)
 
@@ -103,17 +241,40 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         if parts:
             parent_name = parts[0]
 
+    # #3956: "sectioned" format uses the 3x3 JSON contract and a different
+    # render path (3 section headings + overflow "More ->" CTA). Legacy brief/
+    # full/actions_only formats keep the single-HTML-blob path unchanged.
+    is_sectioned = settings.digest_format == "sectioned"
+    sectioned_content: dict | None = None
+
     try:
         from app.services.parent_digest_ai_service import (
             generate_parent_digest,
+            generate_sectioned_digest,
         )
 
-        digest_content = await generate_parent_digest(
-            emails,
-            child_name,
-            parent_name,
-            settings.digest_format,
-        )
+        if is_sectioned:
+            sectioned_content = await generate_sectioned_digest(
+                emails, child_name, parent_name
+            )
+            # When JSON parse / AI errors force legacy fallback, the sectioned
+            # dict carries a ``legacy_blob`` HTML string. Use that as the
+            # primary digest_content so the email-render path and delivery-log
+            # persistence still work.
+            if sectioned_content.get("legacy_blob"):
+                digest_content = sectioned_content["legacy_blob"]
+            else:
+                # Build a plain-text fallback representation for the
+                # DigestDeliveryLog.digest_content column so historical logs
+                # still contain something readable.
+                digest_content = _sectioned_to_plain_text(sectioned_content)
+        else:
+            digest_content = await generate_parent_digest(
+                emails,
+                child_name,
+                parent_name,
+                settings.digest_format,
+            )
     except Exception as e:
         logger.error(
             "AI digest generation failed for integration %d | error=%s",
@@ -159,12 +320,28 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
             send_multi_channel_notification,
         )
 
+        # #3956: render sectioned 3x3 HTML when available; legacy_blob already
+        # propagated into digest_content above so the legacy render path runs
+        # unchanged.
+        if (
+            is_sectioned
+            and sectioned_content
+            and not sectioned_content.get("legacy_blob")
+        ):
+            from app.services.notification_service import (
+                build_sectioned_digest_email_body,
+            )
+
+            email_html_content = build_sectioned_digest_email_body(sectioned_content)
+        else:
+            email_html_content = digest_content or "No new emails today."
+
         delivery_result = send_multi_channel_notification(
             db=db,
             recipient=parent,
             sender=None,
             title=f"Email Digest for {child_name}",
-            content=digest_content or "No new emails today.",
+            content=email_html_content,
             notification_type=NotificationType.PARENT_EMAIL_DIGEST,
             link="/email-digest",
             channels=notification_channels,
@@ -188,6 +365,65 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         if integration.whatsapp_verified and integration.whatsapp_phone:
             try:
                 from app.services.whatsapp_service import send_whatsapp_message, send_whatsapp_template
+
+                # #3956: sectioned 3x3 has its own WhatsApp paths.
+                # - V2 env var set  -> 4-variable Twilio template call
+                # - V2 env var empty -> fall back to V1 single-variable template
+                #   (flatten sectioned into single-line-with-bullets).
+                use_sectioned_wa = (
+                    is_sectioned
+                    and sectioned_content
+                    and not sectioned_content.get("legacy_blob")
+                )
+                if use_sectioned_wa:
+                    v2_sid = app_settings.twilio_whatsapp_digest_content_sid_v2
+                    v1_sid = app_settings.twilio_whatsapp_digest_content_sid
+
+                    if v2_sid:
+                        wa_success = _send_sectioned_whatsapp_v2(
+                            integration.whatsapp_phone,
+                            v2_sid,
+                            parent_name,
+                            sectioned_content,
+                        )
+                    else:
+                        # V1 path: flatten 3x3 into single-line-with-bullets.
+                        flattened = _flatten_sectioned_to_bullets(sectioned_content)
+                        if v1_sid:
+                            sanitised_text = _sanitise_whatsapp_var(flattened)
+                            sanitised_parent_name = re.sub(
+                                r'[\x00-\x1f]', ' ', parent_name
+                            ).strip()
+                            wa_success = send_whatsapp_template(
+                                integration.whatsapp_phone,
+                                v1_sid,
+                                {"1": sanitised_parent_name, "2": sanitised_text},
+                            )
+                        else:
+                            # No SID at all -> freeform fallback with flattened text.
+                            header = (
+                                f"Hi {parent_name}, here's your child's daily "
+                                f"school email summary:\n\n"
+                            )
+                            footer = (
+                                "\n\nView full digest at "
+                                "https://www.classbridge.ca/email-digest"
+                            )
+                            max_content_len = 1600 - len(header) - len(footer)
+                            body = (
+                                flattened[:max_content_len - 3] + "..."
+                                if len(flattened) > max_content_len
+                                else flattened
+                            )
+                            wa_success = send_whatsapp_message(
+                                integration.whatsapp_phone,
+                                f"{header}{body}{footer}",
+                            )
+                    whatsapp_status = "sent" if wa_success else "failed"
+                    whatsapp_ok = bool(wa_success)
+                    # Sectioned path handled — skip the legacy sanitisation block.
+                    raise _SectionedWhatsAppDone()
+
                 if settings.digest_format != "brief":
                     from app.services.parent_digest_ai_service import generate_parent_digest as gen_brief
                     whatsapp_content = await gen_brief(emails, child_name, parent_name, "brief")
@@ -243,6 +479,9 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     wa_success = send_whatsapp_message(integration.whatsapp_phone, template_msg)
                 whatsapp_status = "sent" if wa_success else "failed"
                 whatsapp_ok = bool(wa_success)
+            except _SectionedWhatsAppDone:
+                # #3956 — sectioned WhatsApp path already set status/ok above.
+                pass
             except Exception as e:
                 whatsapp_status = "failed"
                 whatsapp_ok = False
