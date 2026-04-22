@@ -919,13 +919,21 @@ async def run_migrations_manual(
 
     # CB-TASKSYNC-001 (#3913) — indexes for the tasks source-attribution
     # columns. Kept here so the manual-trigger endpoint can recover both
-    # columns AND indexes if the startup block failed.
-    extra_index_sql = [
-        "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
-        "ON tasks(source, source_ref)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
-        "ON tasks(source, source_ref, assigned_to_user_id) "
-        "WHERE source IS NOT NULL",
+    # columns AND indexes if the startup block failed. Structured as
+    # (name, sql) tuples so the reported key always matches the index name
+    # (positional parsing of the SQL string breaks for the UNIQUE form).
+    extra_indexes = [
+        (
+            "ix_tasks_source_ref",
+            "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
+            "ON tasks(source, source_ref)",
+        ),
+        (
+            "uq_tasks_source_upsert",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
+            "ON tasks(source, source_ref, assigned_to_user_id) "
+            "WHERE source IS NOT NULL",
+        ),
     ]
 
     with engine.connect() as conn:
@@ -935,12 +943,12 @@ async def run_migrations_manual(
                 results.append({"table": tbl, "column": col, "status": "added_or_exists"})
             except Exception as e:
                 results.append({"table": tbl, "column": col, "status": "error", "detail": str(e)})
-        for ix_sql in extra_index_sql:
+        for ix_name, ix_sql in extra_indexes:
             try:
                 conn.execute(text(ix_sql))
-                results.append({"index": ix_sql.split()[5], "status": "added_or_exists"})
+                results.append({"index": ix_name, "status": "added_or_exists"})
             except Exception as e:
-                results.append({"index": ix_sql.split()[5], "status": "error", "detail": str(e)})
+                results.append({"index": ix_name, "status": "error", "detail": str(e)})
         conn.commit()
 
     return {"migrations_run": len(migrations), "results": results}

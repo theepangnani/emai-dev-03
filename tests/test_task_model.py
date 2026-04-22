@@ -44,7 +44,9 @@ class TestTaskSourceColumns:
         inspector = sa_inspect(engine)
         by_name = {c["name"]: c for c in inspector.get_columns("tasks")}
         for name in EXPECTED_SOURCE_COLUMNS:
-            assert by_name[name].get("nullable") is True, (
+            # Dialect-agnostic truthy-check: some drivers return int (1),
+            # others return bool (True).
+            assert bool(by_name[name].get("nullable")), (
                 f"tasks.{name} must be nullable (got nullable="
                 f"{by_name[name].get('nullable')!r})"
             )

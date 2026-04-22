@@ -288,25 +288,34 @@ def _run_migrations_inner(engine, settings, logger):
                 try:
                     conn.execute(text(f"ALTER TABLE tasks ADD COLUMN {col_name} {col_type}"))
                     logger.info("Added '%s' column to tasks", col_name)
+                    # Commit per column so a later failure doesn't roll back
+                    # earlier successful ADDs on PostgreSQL (#3913 review).
+                    conn.commit()
                 except Exception as e:
                     logger.warning("Failed to add tasks.%s: %s", col_name, e)
-                    conn.rollback()
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
             # Indexes — CREATE INDEX IF NOT EXISTS is idempotent on both dialects.
-            try:
-                conn.execute(text(
-                    "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
-                    "ON tasks(source, source_ref)"
-                ))
-                conn.execute(text(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
-                    "ON tasks(source, source_ref, assigned_to_user_id) "
-                    "WHERE source IS NOT NULL"
-                ))
-                logger.info("Task source-attribution indexes ensured")
-            except Exception as e:
-                logger.warning("Failed to ensure tasks source-attribution indexes: %s", e)
-                conn.rollback()
-            conn.commit()
+            # Create each in its own commit so one failure doesn't abort the other.
+            for ix_sql in (
+                "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
+                "ON tasks(source, source_ref)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
+                "ON tasks(source, source_ref, assigned_to_user_id) "
+                "WHERE source IS NOT NULL",
+            ):
+                try:
+                    conn.execute(text(ix_sql))
+                    conn.commit()
+                except Exception as e:
+                    logger.warning("Task source-attribution index migration note: %s", e)
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+            logger.info("Task source-attribution indexes ensured")
 
         # Make users.email nullable for students created without email (by parent)
         if "users" in inspector.get_table_names():
