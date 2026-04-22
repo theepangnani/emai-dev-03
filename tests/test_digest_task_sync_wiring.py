@@ -470,6 +470,8 @@ async def test_notification_sent_on_auto_create(db_session, digest_env):
     # Expect exactly 2 auto-create task notifications (one per NEW Task).
     # The parent digest itself also calls send_multi_channel_notification
     # with a different body — filter by the task-notification content.
+    from app.models.notification import NotificationType
+
     task_calls = [
         c for c in notify_mock.call_args_list
         if "added to your tasks from teacher email" in (c.kwargs.get("content") or "")
@@ -477,6 +479,8 @@ async def test_notification_sent_on_auto_create(db_session, digest_env):
     assert len(task_calls) == 2, f"expected 2 task notifications, got {len(task_calls)} of {len(notify_mock.call_args_list)}"
     for c in task_calls:
         assert c.kwargs.get("channels") == ["app_notification"]
+        # #3947 — auto-create must be tagged TASK_CREATED, not TASK_DUE.
+        assert c.kwargs.get("notification_type") == NotificationType.TASK_CREATED
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -569,9 +573,13 @@ def test_notification_sent_on_upgrade(db_session, digest_env):
     assert upgraded[0].source_ref == str(assignment.id)
 
     # And a notification fired mentioning the upgrade.
+    from app.models.notification import NotificationType
+
     upgrade_calls = [
         c for c in notify_mock.call_args_list
         if "linked to a class assignment" in (c.kwargs.get("content") or "")
     ]
     assert len(upgrade_calls) == 1, f"expected 1 upgrade notification, got {len(upgrade_calls)}"
     assert upgrade_calls[0].kwargs.get("channels") == ["app_notification"]
+    # #3947 — upgrade must be tagged TASK_UPGRADED, not TASK_DUE.
+    assert upgrade_calls[0].kwargs.get("notification_type") == NotificationType.TASK_UPGRADED

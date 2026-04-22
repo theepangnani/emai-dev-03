@@ -51,7 +51,7 @@ def _notify_digest_task_created(
             sender=None,
             title="New task from teacher email",
             content=f"'{title_preview}' added to your tasks from teacher email",
-            notification_type=NotificationType.TASK_DUE,
+            notification_type=NotificationType.TASK_CREATED,
             link="/tasks",
             channels=["app_notification"],
         )

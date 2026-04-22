@@ -324,3 +324,15 @@ def test_nonexistent_notification_returns_404(client, notif_user, method, url):
     headers = _auth(client, notif_user.email)
     resp = getattr(client, method.lower())(url, headers=headers)
     assert resp.status_code == 404
+
+
+# ── Enum: CB-TASKSYNC-001 semantic notification types (#3947) ──
+
+def test_task_created_and_task_upgraded_enum_values_exist():
+    """TASK_CREATED and TASK_UPGRADED must be valid NotificationType members."""
+    from app.models.notification import NotificationType
+
+    assert NotificationType.TASK_CREATED.value == "task_created"
+    assert NotificationType.TASK_UPGRADED.value == "task_upgraded"
+    # Existing TASK_DUE still present (due-date reminders).
+    assert NotificationType.TASK_DUE.value == "task_due"

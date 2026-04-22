@@ -13,6 +13,8 @@ class NotificationType(str, enum.Enum):
     MESSAGE = "message"
     SYSTEM = "system"
     TASK_DUE = "task_due"
+    TASK_CREATED = "task_created"
+    TASK_UPGRADED = "task_upgraded"
     LINK_REQUEST = "link_request"
     MATERIAL_UPLOADED = "material_uploaded"
     STUDY_GUIDE_CREATED = "study_guide_created"

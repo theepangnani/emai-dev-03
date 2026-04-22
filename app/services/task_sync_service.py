@@ -290,7 +290,7 @@ def _notify_task_upgraded(db: Session, task: Task) -> None:
             sender=None,
             title="Task linked to class assignment",
             content=f"'{title_preview}' is now linked to a class assignment",
-            notification_type=NotificationType.TASK_DUE,
+            notification_type=NotificationType.TASK_UPGRADED,
             link="/tasks",
             channels=["app_notification"],
         )
