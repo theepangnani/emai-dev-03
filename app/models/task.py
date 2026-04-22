@@ -1,8 +1,8 @@
 import enum
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, Float, Index
 from sqlalchemy.orm import relationship, backref
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
 
 from app.db.database import Base
 
@@ -43,6 +43,17 @@ class Task(Base):
 
     last_reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
 
+    # CB-TASKSYNC-001 (#3912, #3913) — Source attribution for auto-created Tasks.
+    # All columns are nullable; defaults are applied at the SQL layer (migrations),
+    # not via ORM `default=`, so existing rows are not touched on schema change.
+    # `source` is stored as a plain VARCHAR (not Enum) per project convention.
+    source = Column(String(20), nullable=True)
+    source_ref = Column(String(128), nullable=True)
+    source_confidence = Column(Float, nullable=True)
+    source_status = Column(String(20), nullable=True)
+    source_message_id = Column(String(255), nullable=True)
+    source_created_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -58,4 +69,17 @@ class Task(Base):
         Index("ix_tasks_creator_completed", "created_by_user_id", "is_completed"),
         Index("ix_tasks_assignee_due", "assigned_to_user_id", "due_date"),
         Index("ix_tasks_archived", "archived_at"),
+        # CB-TASKSYNC-001 (#3913) — lookup by source + source_ref for upserts.
+        Index("ix_tasks_source_ref", "source", "source_ref"),
+        # CB-TASKSYNC-001 (#3913) — dedup key for auto-created Tasks. Partial
+        # index so rows without a source (manual/legacy) are excluded.
+        Index(
+            "uq_tasks_source_upsert",
+            "source",
+            "source_ref",
+            "assigned_to_user_id",
+            unique=True,
+            sqlite_where=text("source IS NOT NULL"),
+            postgresql_where=text("source IS NOT NULL"),
+        ),
     )

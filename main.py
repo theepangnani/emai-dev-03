@@ -332,6 +332,94 @@ try:
 except Exception as _ix_conn_err:
     logger.error("demo_sessions index migration FAILED (connection level): %s", _ix_conn_err)
 
+# CB-TASKSYNC-001 (#3912, #3913) — Task source attribution columns + indexes.
+# Synchronous startup migration (mirrors UTDF pattern above) so the Task model
+# can SELECT/INSERT these columns on the very first request after a deploy.
+# All columns nullable, no ORM defaults. Wrapped in pg_try_advisory_lock for
+# Cloud Run safety (3 retries × 5s — see CLAUDE.md migration-locking section).
+_tasksync_lock_conn = None
+_tasksync_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _ts_time
+        _tasksync_lock_conn = engine.connect()
+        for _ts_attempt in range(1, 4):
+            _ts_result = _tasksync_lock_conn.execute(text("SELECT pg_try_advisory_lock(3913)"))
+            _tasksync_lock_acquired = _ts_result.scalar()
+            if _tasksync_lock_acquired:
+                logger.info("Acquired advisory lock 3913 for tasks source-col migration (attempt %d)", _ts_attempt)
+                break
+            logger.warning("Advisory lock 3913 held by another instance (attempt %d/3), retrying in 5s...", _ts_attempt)
+            _ts_time.sleep(5)
+        if not _tasksync_lock_acquired:
+            logger.warning("Could not acquire advisory lock 3913 after 3 attempts — running tasks source-col migration without lock")
+
+    _tasksync_cols_pg = [
+        ("tasks", "source", "VARCHAR(20)"),
+        ("tasks", "source_ref", "VARCHAR(128)"),
+        ("tasks", "source_confidence", "DOUBLE PRECISION"),
+        ("tasks", "source_status", "VARCHAR(20)"),
+        ("tasks", "source_message_id", "VARCHAR(255)"),
+        ("tasks", "source_created_at", "TIMESTAMPTZ"),
+    ]
+    _tasksync_cols_sqlite = [
+        ("tasks", "source", "VARCHAR(20)"),
+        ("tasks", "source_ref", "VARCHAR(128)"),
+        ("tasks", "source_confidence", "REAL"),
+        ("tasks", "source_status", "VARCHAR(20)"),
+        ("tasks", "source_message_id", "VARCHAR(255)"),
+        ("tasks", "source_created_at", "DATETIME"),
+    ]
+    _tasksync_cols = _tasksync_cols_pg if _is_pg else _tasksync_cols_sqlite
+
+    with engine.connect() as _conn:
+        if _is_pg:
+            for _tbl, _col, _typ in _tasksync_cols:
+                try:
+                    _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN IF NOT EXISTS {_col} {_typ}"))
+                except Exception as _col_err:
+                    logger.warning("Column %s.%s migration note: %s", _tbl, _col, _col_err)
+        else:
+            # SQLite has no ADD COLUMN IF NOT EXISTS — probe via PRAGMA.
+            _existing = {
+                row[1]
+                for row in _conn.execute(text("PRAGMA table_info(tasks)")).fetchall()
+            }
+            for _tbl, _col, _typ in _tasksync_cols:
+                if _col in _existing:
+                    continue
+                try:
+                    _conn.execute(text(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_typ}"))
+                except Exception as _col_err:
+                    logger.warning("Column %s.%s migration note: %s", _tbl, _col, _col_err)
+
+        # Indexes (PG partial WHERE + SQLite partial WHERE both supported).
+        _tasksync_indexes = [
+            "CREATE INDEX IF NOT EXISTS ix_tasks_source_ref "
+            "ON tasks(source, source_ref)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_tasks_source_upsert "
+            "ON tasks(source, source_ref, assigned_to_user_id) "
+            "WHERE source IS NOT NULL",
+        ]
+        for _ix_sql in _tasksync_indexes:
+            try:
+                _conn.execute(text(_ix_sql))
+            except Exception as _ix_err:
+                logger.warning("Task source-attribution index migration note: %s", _ix_err)
+        _conn.commit()
+        logger.info("tasks source-attribution migration completed (#3913)")
+except Exception as _ts_err:
+    logger.warning("tasks source-attribution migration note: %s", _ts_err)
+finally:
+    if _tasksync_lock_conn is not None:
+        if _tasksync_lock_acquired:
+            try:
+                _tasksync_lock_conn.execute(text("SELECT pg_advisory_unlock(3913)"))
+                _tasksync_lock_conn.commit()
+            except Exception:
+                pass
+        _tasksync_lock_conn.close()
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
