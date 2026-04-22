@@ -202,15 +202,18 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 # Use Content API template if content_sid configured (#3585)
                 content_sid = app_settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
-                    # #3879 — Twilio Content Variables reject newlines / control chars and
-                    # cap each variable at ~1024 chars. Sanitise plain_text and parent_name
-                    # before sending through the template path.
-                    sanitised_text = re.sub(r'[\x00-\x1f]', ' ', plain_text)
-                    sanitised_text = re.sub(r'\s+', ' ', sanitised_text).strip()
+                    # #3904 — preserve \n and \t inside the template variable so paragraph
+                    # breaks survive (most WhatsApp Content templates accept newlines). Strip
+                    # only non-printable control chars (ASCII 0-8, 11-12, 14-31). The whitespace-
+                    # collapse step from the over-aggressive #3879 fix is dropped — it was the
+                    # cause of the wall-of-text formatting bug. Per-variable 1024 cap stays.
+                    sanitised_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', plain_text).strip()
                     max_var_len = 1024
                     if len(sanitised_text) > max_var_len:
                         sanitised_text = sanitised_text[:max_var_len - 3] + "..."
-                    sanitised_parent_name = parent_name.replace('\n', ' ').replace('\r', ' ').strip()
+                    # parent_name: still strip newlines/control chars (it's a single-line variable;
+                    # split()[0] of full_name shouldn't have any anyway, defence in depth).
+                    sanitised_parent_name = re.sub(r'[\x00-\x1f]', ' ', parent_name).strip()
                     wa_success = send_whatsapp_template(
                         integration.whatsapp_phone,
                         content_sid,
