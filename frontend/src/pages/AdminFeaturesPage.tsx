@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle } from 'lucide-react';
 import { adminApi } from '../api/admin';
 import type { FeatureFlagItem, FeatureVariantValue } from '../api/admin';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -100,51 +101,78 @@ export function AdminFeaturesPage() {
           <p className="admin-features-empty">No features configured.</p>
         ) : (
           <div className="admin-features-list">
-            {features.map(f => (
-              <div key={f.key} className={`admin-feature-card ${f.enabled ? 'enabled' : 'disabled'}`}>
-                <div className="admin-feature-info">
-                  <div className="admin-feature-name">{f.name}</div>
-                  {f.description && (
-                    <div className="admin-feature-desc">{f.description}</div>
-                  )}
-                  {f.updated_at && (
-                    <div className="admin-feature-updated">
-                      Last updated: {new Date(f.updated_at).toLocaleDateString()}
-                    </div>
-                  )}
-                </div>
-                <div className="admin-feature-toggle">
-                  <label className="admin-toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={f.enabled}
-                      disabled={toggling[f.key]}
-                      onChange={() => handleToggle(f.key, f.enabled)}
-                      aria-label={`Toggle ${f.name}`}
-                    />
-                    <span className="admin-toggle-slider" />
-                  </label>
-                  <span className={`admin-feature-status ${f.enabled ? 'on' : 'off'}`}>
-                    {toggling[f.key] ? '...' : f.enabled ? 'ON' : 'OFF'}
-                  </span>
-                  {f.variant !== null && f.variant !== undefined && (
-                    <label className="admin-feature-variant">
-                      <span className="admin-feature-variant-label">Variant</span>
-                      <select
-                        value={f.variant}
-                        disabled={updatingVariant[f.key]}
-                        onChange={(e) => handleVariantChange(f.key, e.target.value as FeatureVariantValue)}
-                        aria-label={`${f.name} variant`}
+            {features.map(f => {
+              const mismatch = !f.enabled && !!f.variant && f.variant !== 'off';
+              return (
+                <div key={f.key} className={`admin-feature-card ${f.enabled ? 'enabled' : 'disabled'}`}>
+                  <div className="admin-feature-info">
+                    <div className="admin-feature-name">{f.name}</div>
+                    {f.description && (
+                      <div className="admin-feature-desc">{f.description}</div>
+                    )}
+                    {f.updated_at && (
+                      <div className="admin-feature-updated">
+                        Last updated: {new Date(f.updated_at).toLocaleDateString()}
+                      </div>
+                    )}
+                    {mismatch && (
+                      <div
+                        className="admin-feature-mismatch"
+                        role="alert"
+                        data-testid={`feature-mismatch-${f.key}`}
                       >
-                        {VARIANT_OPTIONS.map(v => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
+                        <AlertTriangle
+                          className="admin-feature-mismatch-icon"
+                          size={14}
+                          aria-hidden="true"
+                        />
+                        <span className="admin-feature-mismatch-text">
+                          Enabled is off, but variant is set to '{f.variant}'. Kill-switch is active (backend coerces to off), but the variant value is ignored.
+                        </span>
+                        <button
+                          type="button"
+                          className="admin-feature-mismatch-fix"
+                          disabled={updatingVariant[f.key]}
+                          onClick={() => handleVariantChange(f.key, 'off')}
+                        >
+                          Auto-fix
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="admin-feature-toggle">
+                    <label className="admin-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={f.enabled}
+                        disabled={toggling[f.key]}
+                        onChange={() => handleToggle(f.key, f.enabled)}
+                        aria-label={`Toggle ${f.name}`}
+                      />
+                      <span className="admin-toggle-slider" />
                     </label>
-                  )}
+                    <span className={`admin-feature-status ${f.enabled ? 'on' : 'off'}`}>
+                      {toggling[f.key] ? '...' : f.enabled ? 'ON' : 'OFF'}
+                    </span>
+                    {f.variant !== null && f.variant !== undefined && (
+                      <label className="admin-feature-variant">
+                        <span className="admin-feature-variant-label">Variant</span>
+                        <select
+                          value={f.variant}
+                          disabled={updatingVariant[f.key]}
+                          onChange={(e) => handleVariantChange(f.key, e.target.value as FeatureVariantValue)}
+                          aria-label={`${f.name} variant`}
+                        >
+                          {VARIANT_OPTIONS.map(v => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
