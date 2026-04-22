@@ -1,6 +1,22 @@
 import { api } from './client';
 
 // Task Types
+
+// CB-TASKSYNC-001 (#3920) — source attribution surfaced from backend so the
+// frontend can render auto-created badges and retire string-level dedup.
+export type TaskSource =
+  | 'assignment'
+  | 'email_digest'
+  | 'study_guide'
+  | 'manual';
+
+export type TaskSourceStatus =
+  | 'active'
+  | 'tentative'
+  | 'source_deleted'
+  | 'source_submitted'
+  | 'upgraded';
+
 export interface TaskItem {
   id: number;
   created_by_user_id: number;
@@ -24,6 +40,16 @@ export interface TaskItem {
   study_guide_title: string | null;
   study_guide_type: string | null;
   last_reminder_sent_at: string | null;
+  // CB-TASKSYNC-001 (#3920) — source-attribution fields; all optional so
+  // manual/legacy Tasks serialize with null. `source_ref` is surfaced to let
+  // the calendar retire string-level dedup in favour of an FK-style check.
+  // `source` accepts arbitrary strings too so a new backend value doesn't
+  // force a frontend release — TaskSourceBadge renders a neutral fallback.
+  source?: TaskSource | (string & {}) | null;
+  source_ref?: string | null;
+  source_confidence?: number | null;
+  source_status?: TaskSourceStatus | null;
+  source_created_at?: string | null;
   created_at: string;
   updated_at: string | null;
 }

@@ -409,6 +409,53 @@ describe('TasksPage', () => {
     expect(screen.getByText('→ Jane Doe')).toBeInTheDocument()
   })
 
+  describe('source badges (#3920)', () => {
+    it('renders Auto badge for source=assignment tasks', async () => {
+      const autoTask = makeMockTask({
+        id: 10,
+        title: 'Synced assignment',
+        source: 'assignment',
+        source_ref: '42',
+      })
+      renderTasks([autoTask])
+      await waitFor(() => {
+        expect(screen.getByText('Synced assignment')).toBeInTheDocument()
+      })
+      const badge = screen.getByTitle('Auto-created from class assignment')
+      expect(badge).toHaveTextContent('Auto')
+      expect(badge).toHaveClass('task-source-badge--assignment')
+    })
+
+    it('renders Unverified badge with confidence for tentative email_digest tasks', async () => {
+      const tentativeTask = makeMockTask({
+        id: 11,
+        title: 'Parsed from email',
+        source: 'email_digest',
+        source_status: 'tentative',
+        source_confidence: 0.72,
+      })
+      renderTasks([tentativeTask])
+      await waitFor(() => {
+        expect(screen.getByText('Parsed from email')).toBeInTheDocument()
+      })
+      const badge = screen.getByTitle(
+        'Auto-created from teacher email (72% confidence) — please verify',
+      )
+      expect(badge).toHaveTextContent('Unverified')
+      expect(badge).toHaveClass('task-source-badge--email-tentative')
+    })
+
+    it('renders no source badge for manual tasks', async () => {
+      renderTasks() // MOCK_TASKS have no source set
+      await waitFor(() => {
+        expect(screen.getByText('Review Chapter 5')).toBeInTheDocument()
+      })
+      expect(
+        screen.queryByTitle(/Auto-created from/),
+      ).not.toBeInTheDocument()
+    })
+  })
+
   it('shows Retry button on error and retries', async () => {
     const user = userEvent.setup()
     mockList.mockRejectedValueOnce(new Error('Server error'))
