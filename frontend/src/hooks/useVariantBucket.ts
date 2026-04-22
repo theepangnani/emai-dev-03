@@ -15,7 +15,11 @@
  * across reloads and flag evaluations.
  */
 import { useMemo } from 'react';
-import { useFeatureVariant, type FeatureVariant } from './useFeatureToggle';
+import {
+  useFeatureFlagEnabled,
+  useFeatureVariant,
+  type FeatureVariant,
+} from './useFeatureToggle';
 
 export const BUCKET_STORAGE_KEY = 'classbridge_ab_bucket';
 
@@ -100,13 +104,22 @@ export function resolveVariant(variant: FeatureVariant, bucketId: string): Bucke
  * React hook that returns `'on'` or `'off'` for the given flag key,
  * applying sticky percentage bucketing when the flag's variant is a
  * partial rollout (`on_5` / `on_25` / `on_50`).
+ *
+ * Kill-switch semantics (#3930): the flag's `enabled` column is the
+ * HARD kill-switch and beats the `variant` value. When `enabled=false`
+ * this hook returns `'off'` regardless of the variant — even if the
+ * variant is `'on_for_all'` or `'on_100'`. Admins flipping the enabled
+ * toggle off must cut traffic to 0% immediately with no exceptions.
  */
 export function useVariantBucket(flagKey: string): BucketResolution {
+  const enabled = useFeatureFlagEnabled(flagKey);
   const variant = useFeatureVariant(flagKey);
   return useMemo(() => {
+    // HARD KILL-SWITCH (#3930): enabled=false forces 'off' regardless of variant.
+    if (!enabled) return 'off';
     if (variant === 'off') return 'off';
     if (variant === 'on_for_all' || variant === 'on_100') return 'on';
     const bucketId = getOrCreateBucketId();
     return resolveVariant(variant, bucketId);
-  }, [variant]);
+  }, [enabled, variant]);
 }
