@@ -209,6 +209,10 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                     # variable-content policy. See #3905 for the proper multi-variable
                     # redesign that supersedes this workaround.
                     sanitised_text = plain_text
+                    # Normalise CRLF / CR line endings to LF first so the
+                    # paragraph-break pattern below catches Windows and old-
+                    # Mac line endings too (PR-review suggestion on #3941).
+                    sanitised_text = sanitised_text.replace('\r\n', '\n').replace('\r', '\n')
                     # Paragraph break → bullet marker (visible section boundary)
                     sanitised_text = re.sub(r'\n{2,}', ' • ', sanitised_text)
                     # Single \n / \r / \t → space

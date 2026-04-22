@@ -493,6 +493,120 @@ async def test_whatsapp_template_three_paragraphs_produces_two_bullet_markers(db
     )
 
 
+@pytest.mark.asyncio
+async def test_whatsapp_template_crlf_line_endings_produce_bullet_markers(db_session):
+    """#3941 (pass-1 review follow-up) — CRLF (\\r\\n) and bare \\r paragraph
+    breaks must be treated the same as \\n\\n: normalised first, then
+    substituted with a bullet marker.
+
+    Without the CRLF normalisation, \\r\\n\\r\\n between paragraphs would
+    fall through the \\n{2,} pattern (because \\r interrupts consecutive \\n)
+    and the paragraph boundary would collapse to a single space instead of
+    a bullet marker — losing the visual section break.
+    """
+    from app.core.security import get_password_hash
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email="wa_crlf_parent@test.com",
+        full_name="Rohini Sundaram",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.flush()
+
+    integration = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address="wa_crlf_parent@gmail.com",
+        google_id="google_wa_crlf_test",
+        access_token="enc_access",
+        refresh_token="enc_refresh",
+        child_school_email="child@school.ca",
+        child_first_name="Alex",
+        whatsapp_phone="+14155551234",
+        whatsapp_verified=True,
+    )
+    db_session.add(integration)
+    db_session.flush()
+
+    settings = ParentDigestSettings(
+        integration_id=integration.id,
+        delivery_channels="in_app,whatsapp",
+        digest_format="brief",
+    )
+    db_session.add(settings)
+    db_session.commit()
+    db_session.refresh(integration)
+
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    received_at = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    fetched_emails = [
+        {
+            "source_id": "x",
+            "sender_name": "School",
+            "sender_email": "s@s.ca",
+            "subject": "Hi",
+            "body": "B",
+            "snippet": "B",
+            "received_at": received_at,
+        }
+    ]
+
+    # CRLF paragraph break + bare \r paragraph break — both must become bullets
+    ai_digest = (
+        "Paragraph one (CRLF below).\r\n\r\n"
+        "Paragraph two (bare-CR below).\r\r"
+        "Paragraph three."
+    )
+
+    captured = {}
+
+    def fake_send_whatsapp_template(to, content_sid, content_variables):
+        captured["content_variables"] = content_variables
+        return True
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=fetched_emails),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value=ai_digest),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        side_effect=fake_send_whatsapp_template,
+    ), patch(
+        "app.core.config.settings.twilio_whatsapp_digest_content_sid",
+        "HX_TEST_SID",
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=since,
+        )
+
+    assert result["status"] == "delivered"
+    var2 = captured["content_variables"]["2"]
+
+    assert "\n" not in var2, "var2 must not contain newlines"
+    assert "\r" not in var2, "var2 must not contain carriage returns"
+    # Both paragraph boundaries must become bullet markers, not collapsed spaces
+    assert var2.count(" • ") == 2, (
+        f"CRLF and bare-CR paragraph breaks must each produce a bullet marker, "
+        f"got {var2.count(' • ')} in {var2!r}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Per-channel delivery status (#3880)
 # ---------------------------------------------------------------------------
