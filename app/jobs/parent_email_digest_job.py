@@ -17,12 +17,60 @@ from app.models.parent_gmail_integration import (
     DigestDeliveryLog,
 )
 from app.models.notification import NotificationType
+from app.models.task import Task
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 
-async def send_digest_for_integration(db: Session, integration: ParentGmailIntegration, *, skip_dedup: bool = False, since: datetime | None = None) -> dict:
+def _notify_digest_task_created(
+    db: Session,
+    task: Task,
+    integration: ParentGmailIntegration,
+) -> None:
+    """Send an in-app notification on email_digest auto-create (§6.13.1).
+
+    Channels: in_app only (no email, no WhatsApp per MVP-1 decision). Truncates
+    the title to 80 chars. Best-effort — failures are logged but never
+    propagate (a notification failure must not roll back the Task upsert).
+    """
+    if task is None or task.assigned_to_user_id is None:
+        return
+    try:
+        from app.services.notification_service import (
+            send_multi_channel_notification,
+        )
+
+        recipient = db.query(User).filter(User.id == task.assigned_to_user_id).first()
+        if recipient is None:
+            return
+        title_preview = (task.title or "")[:80]
+        send_multi_channel_notification(
+            db=db,
+            recipient=recipient,
+            sender=None,
+            title="New task from teacher email",
+            content=f"'{title_preview}' added to your tasks from teacher email",
+            notification_type=NotificationType.TASK_CREATED,
+            link="/tasks",
+            channels=["app_notification"],
+        )
+    except Exception:
+        logger.exception(
+            "task_sync.digest.notify_created.error | task_id=%s integration_id=%s",
+            getattr(task, "id", None),
+            getattr(integration, "id", None),
+        )
+
+
+async def send_digest_for_integration(
+    db: Session,
+    integration: ParentGmailIntegration,
+    *,
+    skip_dedup: bool = False,
+    since: datetime | None = None,
+    create_tasks: bool = True,
+) -> dict:
     now = datetime.now(timezone.utc)
 
     if not skip_dedup:
@@ -132,6 +180,78 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
         db.add(log_entry)
         db.commit()
         return {"status": "failed", "email_count": len(emails) if emails else 0, "message": "Failed to generate digest summary. Please try again."}
+
+    # ── CB-TASKSYNC-001 I6 (#3918): wire email-digest → task sync ──
+    # Extract structured urgent items and upsert Tasks. Gated by the
+    # `task_sync_enabled` feature flag AND the caller-supplied `create_tasks`
+    # flag (scheduled 4h job passes True; HTTP "Send digest now" passes False
+    # unless the MVP-1 pilot query-param override is used — see #3929).
+    if create_tasks and emails:
+        try:
+            from app.services.feature_flag_service import is_feature_enabled
+
+            if is_feature_enabled("task_sync_enabled", db=db):
+                from app.services.parent_digest_ai_service import (
+                    extract_digest_items,
+                )
+                from app.services.task_sync_service import (
+                    resolve_integration_child_user_id,
+                    upsert_task_from_digest_item,
+                )
+
+                tz_name = (
+                    getattr(settings, "timezone", None) or "America/Toronto"
+                )
+                items = await extract_digest_items(emails, tz_name=tz_name)
+                child_uid = resolve_integration_child_user_id(db, integration)
+                parent_user = integration.parent
+                # Snapshot pre-existing Task ids ONCE per digest run (review
+                # I3). Maintained in-loop by adding each newly-created Task id
+                # — keeps the created-vs-updated classification O(1) per item
+                # instead of re-querying on every loop iteration.
+                assignee_probe_id = child_uid or (
+                    parent_user.id if parent_user else None
+                )
+                pre_ids: set[int] = set()
+                if assignee_probe_id is not None:
+                    pre_ids = {
+                        row[0]
+                        for row in (
+                            db.query(Task.id)
+                            .filter(Task.source == "email_digest")
+                            .filter(Task.assigned_to_user_id == assignee_probe_id)
+                            .all()
+                        )
+                    }
+                for item in items:
+                    try:
+                        task = upsert_task_from_digest_item(
+                            db,
+                            parent_user,
+                            child_uid,
+                            item,
+                            tz_name=tz_name,
+                        )
+                        # upsert_task_from_digest_item commits internally; the
+                        # trailing db.commit() below flushes only the
+                        # Notification row added by the helper. Helper
+                        # swallows its own exceptions, so a notification
+                        # failure cannot roll back a successful upsert.
+                        if task is not None and task.id not in pre_ids:
+                            _notify_digest_task_created(db, task, integration)
+                            db.commit()
+                            pre_ids.add(task.id)
+                    except Exception:
+                        db.rollback()
+                        logger.exception(
+                            "task_sync.digest | failed | title=%s",
+                            getattr(item, "title", "<unknown>"),
+                        )
+        except Exception:
+            logger.exception(
+                "task_sync.digest | extract_items failed | integration_id=%s",
+                integration.id,
+            )
 
     channels = [c.strip() for c in settings.delivery_channels.split(",") if c.strip()]
     notification_channels = []

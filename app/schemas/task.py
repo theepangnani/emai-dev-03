@@ -63,6 +63,15 @@ class TaskResponse(BaseModel):
     study_guide_title: Optional[str] = None
     study_guide_type: Optional[str] = None
     last_reminder_sent_at: Optional[datetime] = None
+    # CB-TASKSYNC-001 (#3920) — source-attribution fields surfaced to the
+    # frontend for badges and structured calendar dedup. All optional so
+    # legacy/manual Tasks serialize fine. `source_ref` is included to let the
+    # UI replace string-level title+date dedup with an FK-ish identity check.
+    source: Optional[str] = None
+    source_ref: Optional[str] = None
+    source_confidence: Optional[float] = None
+    source_status: Optional[str] = None
+    source_created_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime]
 

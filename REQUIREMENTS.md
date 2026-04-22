@@ -14,7 +14,7 @@ This requirements document is split into multiple files for easier navigation an
 | File | Sections | Description |
 |------|----------|-------------|
 | **REQUIREMENTS.md** (this file) | 1-5 | Overview, vision, problem, goals, roles |
-| [requirements/features-part1.md](requirements/features-part1.md) | 6.1-6.14 | Core features: Integrations, AI Study Tools, Registration, Courses, Content, Analytics, Communication, Teachers, Tasks, Audit |
+| [requirements/features-part1.md](requirements/features-part1.md) | 6.1-6.14 | Core features: Integrations, AI Study Tools, Registration, Courses, Content, Analytics, Communication, Teachers, Tasks, Audit — **Automatic Task Creation from Due-Date Signals (6.13.1, CB-TASKSYNC-001)** |
 | [requirements/features-part2.md](requirements/features-part2.md) | 6.15-6.28 | UI & Auth features: Themes, Layout, Search, Mobile, UI Polish, Calendar, Parent UX, Security, Multi-Role, Materials Lifecycle, Password Reset, Design Consistency (6.27), **Upload Modal Redesign (6.28)**, **Simplified Upload & Progressive Generation (6.28.7, #2694)** |
 | [requirements/features-part3.md](requirements/features-part3.md) | 6.27-6.50 | Messaging, Teacher Linking, Enrollment, Security, Tasks, Infrastructure, Admin, Onboarding, Verification |
 | [requirements/features-part4.md](requirements/features-part4.md) | 6.51-6.59 | Registration Workflow, Waitlist, AI Limits, Notes, Tutorials, Teacher Resources, Image Retention, AI Help Chatbot |

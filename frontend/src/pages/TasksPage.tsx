@@ -17,6 +17,7 @@ import EmptyState from '../components/EmptyState';
 import { PageNav } from '../components/PageNav';
 import { ReportBugLink } from '../components/ReportBugLink';
 import { ASGFEntryButton } from '../components/asgf/ASGFEntryButton';
+import { TaskSourceBadge } from '../components/TaskSourceBadge';
 import './TasksPage.css';
 
 type FilterStatus = 'all' | 'pending' | 'completed' | 'archived';
@@ -203,20 +204,25 @@ export function TasksPage() {
           itemType: 'assignment' as const,
         }))
     );
-    // Dedup: skip tasks that duplicate an overview assignment on the same date (#3379)
-    const overviewKeys = new Set(
-      assignments.map(a => `${a.dueDate.toDateString()}|${a.title.toLowerCase().trim()}`)
+    // CB-TASKSYNC-001 (#3920) — Dedup via structured FK-ish check.
+    // When an auto-created Task with source='assignment' exists, its
+    // `source_ref` holds the underlying Assignment id. We skip the raw
+    // Assignment so only the Task row (which has full task UX) is shown.
+    // This retires the older string-level title+date dedup (#3379) now that
+    // the backend provides a reliable identifier.
+    const assignmentSourceRefs = new Set(
+      tasks
+        .filter(t => t.source === 'assignment' && t.source_ref != null)
+        .map(t => String(t.source_ref))
     );
+    const dedupedAssignments = assignmentSourceRefs.size > 0
+      ? assignments.filter(a => !assignmentSourceRefs.has(String(a.id)))
+      : assignments;
     const filteredCalendarTasks = filterAssignee === 'all'
       ? tasks
       : tasks.filter(t => t.assigned_to_user_id === filterAssignee);
     const taskItems: CalendarAssignment[] = filteredCalendarTasks
       .filter(t => t.due_date)
-      .filter(t => {
-        const taskDate = new Date(t.due_date!).toDateString();
-        const cleanTitle = t.title.replace(/^Review:\s*/i, '').toLowerCase().trim();
-        return !overviewKeys.has(`${taskDate}|${cleanTitle}`);
-      })
       .map(t => ({
         id: t.id + 1_000_000,
         taskId: t.id,
@@ -232,7 +238,7 @@ export function TasksPage() {
         priority: (t.priority || 'medium') as 'low' | 'medium' | 'high',
         isCompleted: t.is_completed,
       }));
-    return [...assignments, ...taskItems];
+    return [...dedupedAssignments, ...taskItems];
   }, [overviews, courseIds, children.length, tasks, filterAssignee]);
 
   const handleTaskDrop = async (calendarId: number, newDate: Date) => {
@@ -709,6 +715,12 @@ export function TasksPage() {
                           {task.priority === 'high' ? '\u25B2 ' : task.priority === 'low' ? '\u25BC ' : '\u25CF '}{task.priority}
                         </span>
                       )}
+                      <TaskSourceBadge
+                        source={task.source}
+                        sourceStatus={task.source_status}
+                        confidence={task.source_confidence}
+                        sourceCreatedAt={task.source_created_at}
+                      />
                       {task.due_date && (
                         <span className="task-row-due">{formatDate(task.due_date)}</span>
                       )}

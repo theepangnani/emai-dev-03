@@ -84,6 +84,13 @@ def _task_to_response(task: Task) -> dict:
         "study_guide_title": task.study_guide.title if task.study_guide else None,
         "study_guide_type": task.study_guide.guide_type if task.study_guide else None,
         "last_reminder_sent_at": task.last_reminder_sent_at,
+        # CB-TASKSYNC-001 (#3920) — source attribution surfaced for frontend badges
+        # and calendar FK-style dedup (source + source_ref).
+        "source": task.source,
+        "source_ref": task.source_ref,
+        "source_confidence": task.source_confidence,
+        "source_status": task.source_status,
+        "source_created_at": task.source_created_at,
         "created_at": task.created_at,
         "updated_at": task.updated_at,
     }

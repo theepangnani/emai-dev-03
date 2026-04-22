@@ -449,6 +449,96 @@
   color: var(--priority-low);
 }
 
+/* ------------------------------------------------------------------
+ * CB-TASKSYNC-001 (#3920) — TaskSourceBadge
+ * Small pill rendered next to the priority chip on auto-created Tasks.
+ * Scoped palette tokens (slate / teal / amber) are defined here so we
+ * don't leak them into the global `:root` layer. Variants:
+ *   --assignment       slate fill
+ *   --email-active     teal fill
+ *   --email-tentative  amber OUTLINE (not filled) — warning emphasis
+ *   --study-guide      neutral fill
+ * ----------------------------------------------------------------- */
+.task-source-badge {
+  /* Slate (assignment) */
+  --task-source-slate-bg: #e2e8f0;
+  --task-source-slate-fg: #334155;
+  /* Teal (active email digest) */
+  --task-source-teal-bg: #ccfbf1;
+  --task-source-teal-fg: #115e59;
+  /* Amber outline (tentative / unverified) */
+  --task-source-amber-bg: transparent;
+  --task-source-amber-fg: #92400e;
+  --task-source-amber-border: #f59e0b;
+  /* Neutral (study guide) */
+  --task-source-neutral-bg: #f3f4f6;
+  --task-source-neutral-fg: #374151;
+
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: help;
+  /* CB-TASKSYNC-001 (#3921) — soft variant transition so the tentative →
+   * active/assignment upgrade (I6) fades between palettes rather than
+   * flipping. Respect reduced-motion below. */
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+
+/* Scoped focus ring — defensive. The badge itself has no tabIndex today
+ * (see TaskSourceBadge.tsx), but if it's ever wrapped in an interactive
+ * element we want a consistent outline. Matches the global :focus-visible
+ * convention in index.css (accent color, 2px solid, 2px offset). The
+ * --color-focus-ring token is intentionally avoided here: it's a low-alpha
+ * glow token for box-shadows and would render near-invisible as an outline. */
+.task-source-badge:focus-visible {
+  outline: 2px solid var(--color-accent, currentColor);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-source-badge {
+    transition: none;
+  }
+}
+
+.task-source-badge--assignment {
+  background: var(--task-source-slate-bg);
+  color: var(--task-source-slate-fg);
+}
+
+.task-source-badge--email-active {
+  background: var(--task-source-teal-bg);
+  color: var(--task-source-teal-fg);
+}
+
+.task-source-badge--email-tentative {
+  background: var(--task-source-amber-bg);
+  color: var(--task-source-amber-fg);
+  border-color: var(--task-source-amber-border);
+}
+
+.task-source-badge--study-guide,
+.task-source-badge--unknown {
+  background: var(--task-source-neutral-bg);
+  color: var(--task-source-neutral-fg);
+}
+
+[data-theme='dark'] .task-source-badge {
+  --task-source-slate-bg: #334155;
+  --task-source-slate-fg: #e2e8f0;
+  --task-source-teal-bg: #134e4a;
+  --task-source-teal-fg: #99f6e4;
+  --task-source-amber-fg: #fcd34d;
+  --task-source-amber-border: #fbbf24;
+  --task-source-neutral-bg: #374151;
+  --task-source-neutral-fg: #e5e7eb;
+}
+
 .task-row-due {
   color: var(--color-ink-muted);
 }
