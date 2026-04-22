@@ -1773,7 +1773,8 @@ Demo-specific warmth (optional notebook-paper accents, washi-tape decorative str
 
 Inherits §6.135.9 Path C tokens (Space Grotesk + Source Sans 3 + `var(--color-accent)` / `var(--color-accent-warm)`; no new hardcoded hex). Section-specific visual conventions:
 
-- **Brand logo sizing (#3902):** nav 64px desktop / 44px mobile; footer 80px. Intrinsic img width/height must match CSS height × 1.5 (asset is 3:2 ratio) to preserve CLS.
+- **Brand logo sizing (#3902 / #3908):** nav 64px desktop / 44px mobile; footer 80px. Intrinsic img width/height must match CSS height × ~2.14 (v6 asset is 400×187, ratio ≈ 2.139:1) to preserve CLS. Shipped values: nav `137×64`, footer `171×80`.
+- **Logo asset (#3908):** `/classbridge-logo-v6.png` (tight-cropped variant, ~5% whitespace) across all UI surfaces. The loose-cropped `classbridge-logo.png` / `classbridge-hero-logo.png` (1536×1024, 3:2 ratio) are kept for JSON-LD `logo` and OG `og:image` fallback only in `LandingSeo.tsx` — search engines and social unfurls prefer a logo with safe-zone padding around the artwork.
 
 #### 6.140.7 Analytics funnel (CB-LAND-001)
 

@@ -26,7 +26,6 @@
 
 .launch-nav-logo {
   height: 100px;
-  margin: -18px 0;
 }
 
 .launch-nav-links {
@@ -102,7 +101,6 @@
 
 .launch-hero-logo {
   height: 280px;
-  margin: -24px auto -16px;
 }
 
 .launch-hero h1 {
@@ -291,7 +289,6 @@
 
   .launch-nav-logo {
     height: 56px;
-    margin: -4px 0;
   }
 
   .launch-btn-primary,
@@ -311,7 +308,6 @@
 
   .launch-hero-logo {
     height: 160px;
-    margin: -10px auto -10px;
   }
 
   .launch-hero h1 {
