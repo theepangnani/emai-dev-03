@@ -719,6 +719,7 @@ export function TasksPage() {
                         source={task.source}
                         sourceStatus={task.source_status}
                         confidence={task.source_confidence}
+                        sourceCreatedAt={task.source_created_at}
                       />
                       {task.due_date && (
                         <span className="task-row-due">{formatDate(task.due_date)}</span>
