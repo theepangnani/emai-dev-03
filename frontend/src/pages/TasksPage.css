@@ -491,9 +491,12 @@
 
 /* Scoped focus ring — defensive. The badge itself has no tabIndex today
  * (see TaskSourceBadge.tsx), but if it's ever wrapped in an interactive
- * element we want a consistent outline using the existing focus token. */
+ * element we want a consistent outline. Matches the global :focus-visible
+ * convention in index.css (accent color, 2px solid, 2px offset). The
+ * --color-focus-ring token is intentionally avoided here: it's a low-alpha
+ * glow token for box-shadows and would render near-invisible as an outline. */
 .task-source-badge:focus-visible {
-  outline: 2px solid var(--color-focus-ring, currentColor);
+  outline: 2px solid var(--color-accent, currentColor);
   outline-offset: 2px;
 }
 
