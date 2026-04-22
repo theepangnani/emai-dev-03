@@ -51,11 +51,12 @@ export function LandingNav() {
     >
       <div className="landing-nav__inner">
         <Link to="/" className="landing-nav__brand" aria-label="ClassBridge home">
-          {/* width/height match the intrinsic 400×187 (~2.139:1) ratio of
-              the tight-cropped v6 asset (#3908) so the browser reserves
-              space before decode, eliminating above-the-fold CLS. CSS
-              (`height: 64px; width: auto`) still controls the rendered
-              size. */}
+          {/* width/height encode the ~2.139:1 aspect ratio of the
+              tight-cropped v6 asset (400×187, #3908) so the browser
+              reserves a correctly-shaped box before decode — eliminating
+              above-the-fold CLS at both the desktop (64px) and mobile
+              (44px) rendered heights. CSS (`height: 64px` → `44px` on
+              ≤640px; `width: auto`) still controls the rendered size. */}
           <img
             src="/classbridge-logo-v6.png"
             alt="ClassBridge"
