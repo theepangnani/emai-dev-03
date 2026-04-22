@@ -485,11 +485,6 @@
   cursor: help;
 }
 
-.task-source-badge:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
 .task-source-badge--assignment {
   background: var(--task-source-slate-bg);
   color: var(--task-source-slate-fg);
@@ -506,7 +501,8 @@
   border-color: var(--task-source-amber-border);
 }
 
-.task-source-badge--study-guide {
+.task-source-badge--study-guide,
+.task-source-badge--unknown {
   background: var(--task-source-neutral-bg);
   color: var(--task-source-neutral-fg);
 }

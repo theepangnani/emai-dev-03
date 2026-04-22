@@ -134,20 +134,24 @@ class TestTaskCRUD:
         headers = _auth(client, users["parent"].email)
         # Manual task (no source) — fields should be None but present
         create = client.post("/api/tasks/", json={"title": "Manual task"}, headers=headers)
-        assert create.status_code in (200, 201), create.text
+        assert create.status_code == 201, create.text
         manual_body = create.json()
         for field in ("source", "source_ref", "source_confidence", "source_status", "source_created_at"):
             assert field in manual_body, f"{field} missing from TaskResponse"
             assert manual_body[field] is None
 
         # Insert an auto-created Task directly via ORM to verify the fields
-        # serialize with real values.
+        # serialize with real values. `source_ref` is namespaced to this test
+        # so it cannot collide with the uq_tasks_source_upsert partial unique
+        # index on PostgreSQL (where the session-scoped DB fixture persists
+        # rows across tests).
+        source_ref = "test_list_tasks_includes_source_fields:msg-123"
         auto_task = Task(
             created_by_user_id=users["parent"].id,
             assigned_to_user_id=users["parent"].id,
             title="Auto digest task",
             source="email_digest",
-            source_ref="digest:msg-123",
+            source_ref=source_ref,
             source_confidence=0.82,
             source_status="tentative",
             source_created_at=datetime(2026, 4, 21, 12, 0, tzinfo=timezone.utc),
@@ -155,15 +159,22 @@ class TestTaskCRUD:
         db_session.add(auto_task)
         db_session.commit()
 
-        resp = client.get("/api/tasks/", headers=headers)
-        assert resp.status_code == 200, resp.text
-        matched = [t for t in resp.json() if t["title"] == "Auto digest task"]
-        assert len(matched) == 1, "auto-created task not returned"
-        auto_body = matched[0]
-        assert auto_body["source"] == "email_digest"
-        assert auto_body["source_confidence"] == 0.82
-        assert auto_body["source_status"] == "tentative"
-        assert auto_body["source_created_at"] is not None
+        try:
+            resp = client.get("/api/tasks/", headers=headers)
+            assert resp.status_code == 200, resp.text
+            matched = [t for t in resp.json() if t["title"] == "Auto digest task"]
+            assert len(matched) == 1, "auto-created task not returned"
+            auto_body = matched[0]
+            assert auto_body["source"] == "email_digest"
+            assert auto_body["source_ref"] == source_ref
+            assert auto_body["source_confidence"] == 0.82
+            assert auto_body["source_status"] == "tentative"
+            assert auto_body["source_created_at"] is not None
+        finally:
+            # Clean up so the session-scoped DB fixture doesn't leak this row
+            # into later tests that might reuse the same source+source_ref.
+            db_session.delete(auto_task)
+            db_session.commit()
 
     def test_update_own_task(self, client, users):
         headers = _auth(client, users["parent"].email)

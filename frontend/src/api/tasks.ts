@@ -43,7 +43,9 @@ export interface TaskItem {
   // CB-TASKSYNC-001 (#3920) — source-attribution fields; all optional so
   // manual/legacy Tasks serialize with null. `source_ref` is surfaced to let
   // the calendar retire string-level dedup in favour of an FK-style check.
-  source?: TaskSource | null;
+  // `source` accepts arbitrary strings too so a new backend value doesn't
+  // force a frontend release — TaskSourceBadge renders a neutral fallback.
+  source?: TaskSource | (string & {}) | null;
   source_ref?: string | null;
   source_confidence?: number | null;
   source_status?: TaskSourceStatus | null;
