@@ -126,6 +126,45 @@ class TestTaskCRUD:
         titles = [t["title"] for t in resp.json()]
         assert "List test task" in titles
 
+    def test_list_tasks_includes_source_fields(self, client, users, db_session):
+        """CB-TASKSYNC-001 (#3920) — TaskResponse exposes source attribution fields."""
+        from datetime import datetime, timezone
+        from app.models.task import Task
+
+        headers = _auth(client, users["parent"].email)
+        # Manual task (no source) — fields should be None but present
+        create = client.post("/api/tasks/", json={"title": "Manual task"}, headers=headers)
+        assert create.status_code in (200, 201), create.text
+        manual_body = create.json()
+        for field in ("source", "source_ref", "source_confidence", "source_status", "source_created_at"):
+            assert field in manual_body, f"{field} missing from TaskResponse"
+            assert manual_body[field] is None
+
+        # Insert an auto-created Task directly via ORM to verify the fields
+        # serialize with real values.
+        auto_task = Task(
+            created_by_user_id=users["parent"].id,
+            assigned_to_user_id=users["parent"].id,
+            title="Auto digest task",
+            source="email_digest",
+            source_ref="digest:msg-123",
+            source_confidence=0.82,
+            source_status="tentative",
+            source_created_at=datetime(2026, 4, 21, 12, 0, tzinfo=timezone.utc),
+        )
+        db_session.add(auto_task)
+        db_session.commit()
+
+        resp = client.get("/api/tasks/", headers=headers)
+        assert resp.status_code == 200, resp.text
+        matched = [t for t in resp.json() if t["title"] == "Auto digest task"]
+        assert len(matched) == 1, "auto-created task not returned"
+        auto_body = matched[0]
+        assert auto_body["source"] == "email_digest"
+        assert auto_body["source_confidence"] == 0.82
+        assert auto_body["source_status"] == "tentative"
+        assert auto_body["source_created_at"] is not None
+
     def test_update_own_task(self, client, users):
         headers = _auth(client, users["parent"].email)
         create = client.post("/api/tasks/", json={"title": "Original title"}, headers=headers)
