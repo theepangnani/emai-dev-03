@@ -222,3 +222,54 @@ describe('useParentStudyTools – pasted images upload', () => {
     expect(mockUploadMultiFiles).not.toHaveBeenCalled()
   })
 })
+
+// #3955 — question mode redirects to /ask (ASGFPage) instead of creating a CourseContent.
+describe('useParentStudyTools – question mode redirects to /ask', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGetDefault.mockResolvedValue({ id: 100 })
+    mockCreate.mockResolvedValue({ id: 1 })
+  })
+
+  it('navigates to /ask with encoded question when content provided', async () => {
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: 7, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: '',
+        content: 'How can I help my child with fractions?',
+        types: [],
+        mode: 'question',
+        documentType: 'parent_question',
+        studyGoal: 'parent_review',
+      })
+    })
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      `/ask?question=${encodeURIComponent('How can I help my child with fractions?')}`,
+      expect.objectContaining({ state: expect.objectContaining({ selectedChild: 7 }) }),
+    )
+    // Must not take the legacy CourseContent + autoGenerate path
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+
+  it('navigates to bare /ask when question content is empty', async () => {
+    const { result } = renderHook(() =>
+      useParentStudyTools({ selectedChildUserId: null, navigate: mockNavigate }),
+    )
+
+    await act(async () => {
+      await result.current.handleGenerateFromModal({
+        title: '',
+        content: '   ',
+        types: [],
+        mode: 'question',
+      })
+    })
+
+    expect(mockNavigate).toHaveBeenCalledWith('/ask', expect.any(Object))
+    expect(mockCreate).not.toHaveBeenCalled()
+  })
+})

@@ -42,32 +42,13 @@ export function useParentStudyTools({
   };
 
   const handleGenerateFromModal = async (modalParams: StudyMaterialGenerateParams) => {
-    // Question mode: create CourseContent + auto-stream study guide immediately (#2880)
+    // Question mode is deprecated — route to /ask (ASGFPage), the canonical Ask flow (#3955).
+    // Any remaining question-mode callers get redirected with the question pre-filled.
     if (modalParams.mode === 'question') {
       resetStudyModal();
-      setIsGenerating(true);
-      setBackgroundGeneration({ status: 'generating', type: 'Study Guide' });
-
-      try {
-        const targetCourseId = await resolveTargetCourseId(modalParams.courseId);
-        const created = await courseContentsApi.create({
-          course_id: targetCourseId,
-          title: modalParams.title || 'Parent Question',
-          text_content: modalParams.content || undefined,
-          content_type: 'notes',
-          document_type: modalParams.documentType,
-          study_goal: modalParams.studyGoal,
-        });
-
-        setBackgroundGeneration({ status: 'success', type: 'Study Guide', resultId: created.id });
-        queryClient.invalidateQueries({ queryKey: ['activity'] });
-        // Navigate with autoGenerate param — detail page starts streaming immediately
-        navigate(`/course-materials/${created.id}?autoGenerate=study_guide`, { state: { selectedChild: selectedChildUserId } });
-      } catch {
-        setBackgroundGeneration({ status: 'error', type: 'Study Guide', error: 'Generation failed' });
-      } finally {
-        setIsGenerating(false);
-      }
+      const q = (modalParams.content || '').trim();
+      const target = q ? `/ask?question=${encodeURIComponent(q)}` : '/ask';
+      navigate(target, { state: { selectedChild: selectedChildUserId } });
       return;
     }
 

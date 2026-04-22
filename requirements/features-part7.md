@@ -691,13 +691,19 @@ Both per-channel columns enable analytics on channel reliability independent of 
 | M4 | July-Aug 2026 | Phase 2: format selector, categorization, multi-child |
 | M5 | September 2026 | Public launch — feature GA |
 
-### 6.128 Ask a Question — Parent Open-Ended Study Guide Generation (Phase 2) - IMPLEMENTED
+### 6.128 Ask a Question — Parent Open-Ended Study Guide Generation (Phase 2) - DEPRECATED (superseded by §6.137 / CB-ASGF-001)
 
-Parents can type free-form education questions (e.g., "My son is doing OSSLT — how can I help him prep?") and get a structured, actionable study guide generated through the existing pipeline. No file upload or course content required.
+> **⚠️ DEPRECATED 2026-04-22 (#3955):** The in-wizard "Ask a Question" tab was removed. The canonical Ask flow is now **§6.137 AI Study Guide Generator (CB-ASGF-001)** at route `/ask` (ASGFPage). The legacy `document_type='parent_question'` → `CourseMaterialDetailPage` autoGenerate pipeline is no longer reachable from the UI. Any lingering `mode: 'question'` callers in `useParentStudyTools` are safely redirected to `/ask?question=<encoded>`. Backend prompts and services listed below remain in the codebase so existing parent-question study guides keep rendering, but no new ones can be created via this path.
 
-**GitHub Epic:** #2861
+**Why deprecated:** The modal flow created a CourseContent + relied on an autoGenerate redirect that produced the "We couldn't determine the document type" empty state when the stream kick-off failed (e.g. session expiry, stale content). ASGFPage replaces it with a first-class 5-stage wizard (Input → Processing → Slides → Quiz → Results) and is the only supported entry point going forward (sidebar nav + dashboard quick actions already route there).
 
-**User Flow:**
+---
+
+**Historical reference (superseded):** Parents could type free-form education questions and get a structured study guide through the existing pipeline. No file upload or course content required.
+
+**GitHub Epic:** #2861 — *Closed; see §6.137 for the successor feature.*
+
+**User Flow (historical):**
 1. Parent opens Upload Material wizard (from Dashboard or Study Guides page)
 2. Clicks "Ask a Question" tab (new mode alongside "Upload Material")
 3. Types open-ended question in textarea
@@ -766,10 +772,11 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 | #2884 | fix: `_build_study_guide_prompt()` uses full guide user prompt for `parent_question` |
 | #2888 | fix: CourseContent create endpoint stores `document_type`/`study_goal` (root cause fix) |
 
-**Known future enhancements:**
+**Known future enhancements (historical — no longer actionable since §6.128 is deprecated):**
 - [ ] Document dual prompt locations — system in `study_guide_strategy.py`, user in `ai_service.py` (#2886)
 - [ ] Add `CRITICAL_DATES` extraction to parent_question prompt for auto-task creation (#2887)
 - [x] Convert continue endpoint to SSE streaming — spinner shows but no content streams (#2896) (FIXED — PR #2906)
+- [x] Retire legacy in-wizard Ask tab; route parent questions to `/ask` (ASGFPage) (#3955) — **DEPRECATED ON 2026-04-22**
 
 ### 6.129 Study Guide Section Navigation — Collapsible Sections & Table of Contents (#2894) - IMPLEMENTED
 
@@ -1355,8 +1362,9 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 - [x] **SelectionTooltip:** "Start Session" button on text selection (#3538, PR #3555)
 - [x] **ASGF page escape hatch:** "Generate study guide instead" link on ASGFPage (#3535, PR #3555)
 - [x] **ASGFPage at /ask route:** Full 5-stage wizard (question → upload → context → slides → quiz) (#3518, PR #3518)
+- [x] **Legacy in-wizard Ask tab removed (#3955):** The "Ask a Question" tab inside `UploadMaterialWizard` (originally part of §6.128) was retired; `/ask` is now the single canonical entry point for open-ended parent/student questions. `useParentStudyTools.handleGenerateFromModal` redirects any stray `mode: 'question'` caller to `/ask?question=<encoded>` as a safety net.
 
-**Issues:** #3531-#3539 | **Key PR:** #3555
+**Issues:** #3531-#3539, #3955 | **Key PR:** #3555
 
 #### §6.137.11 Incremental Slide Streaming (NFR) — DEPLOYED (#3735)
 
