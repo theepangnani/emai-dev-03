@@ -745,11 +745,13 @@ Any user can create a task and assign it to a related user. Relationship verific
 **Requirement.** The system MUST auto-create Task rows from two due-date sources without human intervention:
 
 1. **Assignment rows** (deterministic) — for every Assignment with a non-null `due_date`, the system creates one Task per enrolled student, linked via `Task.source = 'assignment'` and `Task.source_ref = Assignment.id`.
-2. **Parent email-digest AI extraction** (probabilistic) — during the scheduled Gmail digest run, the AI extracts urgent items (`title` + `due_date` + `confidence`) and the system creates a Task linked via `Task.source = 'email_digest'` and `Task.source_ref = sha256(normalized_title + ISO due_date)`.
+2. **Parent email-digest AI extraction** (probabilistic) — during the scheduled Gmail digest run, the AI extracts urgent items (`title` + `due_date` + `confidence`) and the system creates a Task linked via `Task.source = 'email_digest'` and `Task.source_ref = sha256(f"{normalized_title}|{due_date.date().isoformat()}")` (see *Dedup-key normalization* below).
 
-**Write triggers.** Task upserts run only from scheduled background jobs plus the immediate `submit` / `delete` hooks on assignments. GET digest endpoints and the "Send digest now" HTTP endpoint MUST NOT create Tasks.
+**Dedup-key normalization.** `normalized_title` MUST be computed deterministically as `re.sub(r'\s+', ' ', title.casefold().strip())` — i.e., Unicode case-fold, leading/trailing whitespace trimmed, and any internal whitespace run collapsed to a single space. Punctuation is preserved. The hash input is the normalized title, a literal pipe separator (`|`), and the ISO date-only form (`YYYY-MM-DD`) of `due_date`. This is load-bearing for idempotency — implementations MUST NOT vary from this recipe.
 
-**Idempotency.** Upserts MUST be idempotent via partial unique index `(source, source_ref, assigned_to_user_id) WHERE source IS NOT NULL`.
+**Write triggers.** Task upserts run only from scheduled background jobs plus the immediate `submit` / `delete` hooks on assignments. GET digest endpoints and the "Send digest now" HTTP endpoint MUST NOT create Tasks. When `task_sync_enabled` is OFF for a user, no new auto-Tasks are created, but existing auto-Tasks remain visible and continue to participate in lifecycle updates (auto-complete on submit, soft-cancel on source delete) so an ops revert does not strand Tasks.
+
+**Idempotency.** Upserts MUST be idempotent via partial unique index `(source, source_ref, assigned_to_user_id) WHERE source IN ('assignment', 'email_digest')`. The `study_guide` source is exempt from this index because §6.2.3 permits a per-generation "Review: {title}" fallback Task — see the *Relation to §6.2.3* paragraph for the `source_ref` recipe used for study-guide Tasks.
 
 **Confidence thresholds (email_digest only).**
 - `confidence < 0.6` — drop silently, no Task created
@@ -772,11 +774,12 @@ Any user can create a task and assign it to a related user. Relationship verific
 
 **Data model additions to `tasks` table.**
 - `source` VARCHAR(20) — one of `assignment` / `email_digest` / `study_guide` / `manual` / NULL
-- `source_ref` VARCHAR(128) — FK-like reference (Assignment.id or sha256 hash)
-- `source_confidence` FLOAT — `0.0`–`1.0`, populated only for `email_digest`
+- `source_ref` VARCHAR(128) — FK-like reference (Assignment.id or sha256 hash; see §6.2.3 recipe for `source='study_guide'`)
+- `source_confidence` FLOAT (PG: `DOUBLE PRECISION`) / REAL (SQLite) — `0.0`–`1.0`, populated only for `email_digest`
 - `source_status` VARCHAR(20) — one of `active` / `tentative` / `source_deleted` / `source_submitted` / `user_deleted` / `upgraded`
 - `source_message_id` VARCHAR(255) — Gmail message id (audit only)
-- `source_created_at` TIMESTAMPTZ / DATETIME — when the source event occurred
+- `source_created_at` TIMESTAMPTZ (PG) / DATETIME (SQLite) — when the source event occurred
+- `archived_at` TIMESTAMPTZ (PG) / DATETIME (SQLite) — nullable; set when an auto-Task is soft-cancelled (source deleted) or user-archived. A non-null `archived_at` hides the Task from default list/calendar queries but preserves it for audit and for the sticky-archive rule
 
 **Scheduling.**
 - `sync_assignments_to_tasks` — **06:45 UTC daily** (15 minutes before the 07:00 UTC parent digest)
@@ -787,7 +790,12 @@ Any user can create a task and assign it to a related user. Relationship verific
 
 **Implementation reference.** `app/services/task_sync_service.py`.
 
-**Relation to existing study-guide auto-task creation (§6.2.3).** The existing study-guide-based auto-task generator (`auto_create_tasks_from_dates` in `app/api/routes/study.py`) is retroactively subsumed under this requirement with `source = 'study_guide'`. The behavioural spec in §6.2.3 continues to govern the extraction flow; §6.13.1 governs only the `source` / `source_ref` / `source_status` tagging on the resulting Task rows. No formal requirement existed for the `source` tagging of study-guide-generated Tasks prior to this subsection — this is the known documentation gap now closed.
+**Relation to existing study-guide auto-task creation (§6.2.3).** The existing study-guide-based auto-task generator (`auto_create_tasks_from_dates` in `app/api/routes/study.py`) is retroactively subsumed under this requirement with `source = 'study_guide'`. The behavioural spec in §6.2.3 continues to govern the extraction flow; §6.13.1 governs only the `source` / `source_ref` / `source_status` tagging on the resulting Task rows. Specifically, `source_ref` for study-guide Tasks is:
+
+- `sha256(f"sg:{study_guide_id}|{extracted_date_iso}|{normalized_title}")` — for each date-extracted Task (where `normalized_title` follows the same recipe as the `email_digest` source)
+- `f"sg:{study_guide_id}:fallback"` — for the single §6.2.3 "Review: {title}" fallback Task per study guide (idempotent across regenerations)
+
+`study_guide` Tasks are explicitly exempt from the partial unique index (see *Idempotency*) because §6.2.3's fallback-Task behaviour pre-dates this subsection and changing it is out of scope. No formal requirement existed for the `source` tagging of study-guide-generated Tasks prior to this subsection — this is the known documentation gap now closed.
 
 ### 6.14 Audit Logging (Phase 1) - IMPLEMENTED
 
