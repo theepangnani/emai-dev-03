@@ -262,6 +262,45 @@ def _apply_field_updates(task: Task, *, title: str, due_date: Optional[datetime]
     return changed
 
 
+def _notify_task_upgraded(db: Session, task: Task) -> None:
+    """Send an in-app notification when an email_digest Task is upgraded to an Assignment.
+
+    Per §6.13.1 notifications rule ("'{title}' now linked to class assignment").
+    Best-effort: failures are logged but never propagate — a notification
+    failure must not roll back the upgrade itself. Added for CB-TASKSYNC-001 I6
+    as a surgical addition to the I3 service (single-responsibility break
+    accepted for MVP-1 simplicity).
+    """
+    if task is None or task.assigned_to_user_id is None:
+        return
+    try:
+        from app.models.notification import NotificationType
+        from app.models.user import User
+        from app.services.notification_service import (
+            send_multi_channel_notification,
+        )
+
+        recipient = db.query(User).filter(User.id == task.assigned_to_user_id).first()
+        if recipient is None:
+            return
+        title_preview = (task.title or "")[:80]
+        send_multi_channel_notification(
+            db=db,
+            recipient=recipient,
+            sender=None,
+            title="Task linked to class assignment",
+            content=f"'{title_preview}' is now linked to a class assignment",
+            notification_type=NotificationType.TASK_DUE,
+            link="/tasks",
+            channels=["app_notification"],
+        )
+    except Exception:
+        logger.exception(
+            "task_sync.notify_upgraded.error | task_id=%s",
+            getattr(task, "id", None),
+        )
+
+
 def _try_upgrade_digest_to_assignment(
     db: Session,
     assignment: Assignment,
@@ -378,6 +417,10 @@ def upsert_task_from_assignment(db: Session, assignment: Assignment) -> list[Tas
                     upgraded.source_created_at = now
                     db.commit()
                     db.refresh(upgraded)
+                    # §6.13.1: notify assignee on email_digest → assignment
+                    # upgrade. Fire after commit so a notification failure
+                    # cannot roll back the upgrade itself.
+                    _notify_task_upgraded(db, upgraded)
                     results.append(upgraded)
                     continue
 

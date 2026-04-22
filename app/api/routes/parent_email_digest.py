@@ -589,6 +589,20 @@ def get_delivery_log(
 async def send_digest_now(
     request: Request,
     integration_id: int,
+    # TEMPORARY (CB-TASKSYNC-001 MVP-1 pilot, follow-up #3929): the
+    # `create_tasks` query param allows manual task creation for dedup
+    # verification. §6.13.1 locks the contract that the HTTP "Send digest
+    # now" endpoint MUST NOT create Tasks in production — this override is
+    # strictly for pilot testing and MUST be removed before public launch
+    # (see #3929). Defaults to False so production behaviour is preserved.
+    create_tasks: bool = Query(
+        False,
+        description=(
+            "TEMPORARY (CB-TASKSYNC-001 MVP-1 pilot, #3929) — opt-in task "
+            "creation for dedup verification. Defaults False; must be "
+            "removed before public launch."
+        ),
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ) -> SendDigestResponse:
@@ -612,8 +626,22 @@ async def send_digest_now(
 
     from app.jobs.parent_email_digest_job import send_digest_for_integration
 
+    if create_tasks:
+        logger.warning(
+            "task_sync.test_override | user_id=%s integration_id=%s — "
+            "TEMPORARY: remove post-pilot (#3929)",
+            current_user.id,
+            integration.id,
+        )
+
     since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
-    result = await send_digest_for_integration(db, integration, skip_dedup=True, since=since_24h)
+    result = await send_digest_for_integration(
+        db,
+        integration,
+        skip_dedup=True,
+        since=since_24h,
+        create_tasks=create_tasks,
+    )
     return result
 
 
