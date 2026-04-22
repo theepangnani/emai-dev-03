@@ -82,3 +82,7 @@ that reference the variables automatically comply with WCAG 2.3.3.
 4. **Do not edit `LaunchLandingPage.tsx` or `frontend/src/components/demo/*`.**
    CB-DEMO-001 (§6.135) ships on its own track and coexists with landing-v2
    behind the `landing_v2` feature flag (see §6.136 rollout plan).
+
+## Kill-switch semantics (#3930)
+
+DB-backed flags (`landing_v2`) are killed by `enabled=false` in `/admin/features`. `useVariantBucket` respects the enabled column; `variant` is advisory when enabled is false. See §6.140.2 for the full contract.
