@@ -251,6 +251,41 @@ def test_upsert_updates_due_date_on_change(db_session, tasksync_env):
         assert _naive(t.due_date) == _naive(new_due)
 
 
+def test_upsert_server_side_refresh_does_not_false_trigger_user_edit(db_session, tasksync_env):
+    """Regression: the user-edit heuristic must not flag server-side re-runs
+    (after the 60s grace window) as user edits. source_created_at is refreshed
+    on every server write so that updated_at compared against it stays within
+    the grace window for the *next* run."""
+    from app.models.task import Task
+    from app.services.task_sync_service import upsert_task_from_assignment
+
+    env = tasksync_env
+    assignment = _make_assignment(db_session, env["course"].id)
+
+    # First run — creates the tasks.
+    tasks = upsert_task_from_assignment(db_session, assignment)
+    target = tasks[0]
+    target_id = target.id
+
+    # Simulate "server-side run >60s later": forcibly age updated_at AND
+    # bump source_created_at as the service would have done on a prior run.
+    # Then push a new assignment title and re-run.
+    past = datetime.now(timezone.utc) - timedelta(hours=1)
+    target.updated_at = past
+    # Simulate the service's "refresh source_created_at on each server write":
+    # this must have happened last run, so the baseline has moved forward.
+    target.source_created_at = past
+    db_session.commit()
+
+    assignment.title = "New server-pushed title"
+    db_session.commit()
+    upsert_task_from_assignment(db_session, assignment)
+
+    reloaded = db_session.query(Task).filter(Task.id == target_id).first()
+    # The server-side update must have gone through (not misread as user-edit).
+    assert reloaded.title == "New server-pushed title"
+
+
 def test_upsert_skips_update_when_user_edited_task(db_session, tasksync_env):
     from app.models.task import Task
     from app.services.task_sync_service import upsert_task_from_assignment

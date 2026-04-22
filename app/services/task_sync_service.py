@@ -25,16 +25,16 @@ from __future__ import annotations
 import hashlib
 import re
 import time
-from datetime import date, datetime, timedelta, timezone
-from typing import Iterable, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import and_, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
-from app.models.assignment import Assignment, StudentAssignment
-from app.models.course import Course, student_courses
+from app.models.assignment import Assignment
+from app.models.course import student_courses
 from app.models.parent_gmail_integration import ParentGmailIntegration
 from app.models.student import Student, parent_students
 from app.models.task import Task
@@ -83,9 +83,15 @@ def _digest_source_ref(title: str, due_date: datetime, tz_name: Optional[str]) -
     ``sha256(normalized_title + '|' + iso_date_in_integration_tz)``.
     Date component is evaluated in the integration's timezone so that a 23:30
     EST email doesn't drift to the next UTC day.
+
+    Naive datetimes are treated as already-in-``tz_name`` — we do NOT assume
+    UTC, because that would silently flip the dedup key on the day boundary.
     """
     tz = _resolve_tz(tz_name)
-    local_date = due_date.astimezone(tz).date() if due_date.tzinfo else due_date.date()
+    if due_date.tzinfo is None:
+        local_date = due_date.date()
+    else:
+        local_date = due_date.astimezone(tz).date()
     payload = f"{_normalize_title(title)}|{local_date.isoformat()}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -281,6 +287,8 @@ def _try_upgrade_digest_to_assignment(
         .filter(or_(Task.source_status.is_(None), Task.source_status != "user_deleted"))
         .filter(Task.due_date >= lower)
         .filter(Task.due_date <= upper)
+        # Deterministic "first match" so behaviour is reproducible across runs.
+        .order_by(Task.id.asc())
         .all()
     )
     for cand in candidates:
@@ -338,7 +346,7 @@ def upsert_task_from_assignment(db: Session, assignment: Assignment) -> list[Tas
                 assigned_to_user_id=student_user_id,
             )
             if existing is not None and existing.source_status == "user_deleted":
-                db.commit()  # no-op but ensures consistent per-item tx
+                # No state to commit — the existing row is sticky.
                 logger.info(
                     "task_sync.assignment.skipped_user_deleted",
                     extra={
@@ -364,6 +372,10 @@ def upsert_task_from_assignment(db: Session, assignment: Assignment) -> list[Tas
                             due_date=assignment.due_date,
                             description=assignment.description,
                         )
+                    # Refresh the "last server touch" baseline so the next
+                    # run's user-edit heuristic compares against this write,
+                    # not the original creation timestamp.
+                    upgraded.source_created_at = now
                     db.commit()
                     db.refresh(upgraded)
                     results.append(upgraded)
@@ -431,6 +443,10 @@ def upsert_task_from_assignment(db: Session, assignment: Assignment) -> list[Tas
                     existing.source_status = "active"
                     existing.archived_at = None
                     changed = True
+                # Refresh the "last server touch" baseline so the next run's
+                # user-edit heuristic doesn't misread this server write as a
+                # user edit once the 60s grace window elapses.
+                existing.source_created_at = now
                 # Preserve user completion — never overwrite.
                 db.commit()
                 db.refresh(existing)
@@ -465,8 +481,20 @@ def upsert_task_from_digest_item(
 ) -> Optional[Task]:
     """Upsert a single email_digest Task from an AI-extracted item.
 
-    Returns the Task (created or updated) or None if the item was dropped
-    (low confidence, sticky user_deleted, bad input).
+    Args:
+        db: Active SQLAlchemy session.
+        parent_user: The parent who owns the Gmail integration; used as
+            ``created_by_user_id`` and as the fallback assignee.
+        child_user_id: Preferred assignee (the student). If ``None``, the
+            parent is used as assignee (§6.13.1 fallback rule).
+        item: AI-extracted :class:`DigestTaskItem`. Its ``due_date`` must be
+            timezone-aware.
+        tz_name: IANA timezone name for dedup-key date normalization. Defaults
+            to ``America/Toronto`` when falsy.
+
+    Returns:
+        The Task (created or updated) or None if the item was dropped
+        (low confidence, sticky user_deleted, bad input).
     """
     if item is None or not item.title or item.due_date is None:
         return None
@@ -560,6 +588,14 @@ def upsert_task_from_digest_item(
         if existing.source_status not in ("upgraded",) and existing.source_status != status:
             existing.source_status = status
             changed = True
+        # Keep the audit trail pointing at the most-recent Gmail message.
+        if item.gmail_message_id and existing.source_message_id != item.gmail_message_id:
+            existing.source_message_id = item.gmail_message_id
+            changed = True
+        # Refresh the "last server touch" baseline so the next run's user-edit
+        # heuristic doesn't misread this server write as a user edit once the
+        # 60s grace window elapses.
+        existing.source_created_at = now
         db.commit()
         db.refresh(existing)
         if changed:
@@ -588,9 +624,12 @@ def upsert_task_from_digest_item(
 def handle_assignment_deleted(db: Session, assignment_id: int) -> int:
     """Soft-cancel every Task linked to ``assignment_id``.
 
-    Returns the number of Tasks transitioned. Each Task gets
-    ``archived_at=now, source_status='source_deleted'``. Already user_deleted
-    rows are untouched.
+    Returns the count of Tasks transitioned by *this* call (not the total
+    number of ``source_deleted`` rows for the assignment). A repeat call with
+    no new tasks to cancel returns 0 — already-deleted tasks are skipped.
+    Each transitioned Task gets ``archived_at=now,
+    source_status='source_deleted'``. Already ``user_deleted`` rows are
+    untouched (sticky per §6.13.1).
     """
     source_ref = str(assignment_id)
     now = _now_utc()
