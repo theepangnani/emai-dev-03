@@ -945,6 +945,19 @@ async def startup_event():
         coalesce=True,
     )
 
+    # Task sync from assignments — daily at 6:45 AM UTC, 15 min before the
+    # daily digest at 7:00 AM, so the digest reflects the freshly-synced tasks
+    # (CB-TASKSYNC-001 I4, #3916).
+    from app.jobs.task_sync_job import sync_assignments_to_tasks
+    scheduler.add_job(
+        sync_assignments_to_tasks,
+        CronTrigger(hour=6, minute=45),
+        id="task_sync_assignments",
+        replace_existing=True,
+        misfire_grace_time=SCHEDULER_MISFIRE_GRACE,
+        coalesce=True,
+    )
+
     # Daily digest email — every day at 7 AM UTC (#2023)
     from app.jobs.daily_digest_job import send_daily_digests
     scheduler.add_job(
