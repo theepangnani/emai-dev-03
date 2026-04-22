@@ -202,17 +202,30 @@ async def send_digest_for_integration(db: Session, integration: ParentGmailInteg
                 # Use Content API template if content_sid configured (#3585)
                 content_sid = app_settings.twilio_whatsapp_digest_content_sid
                 if content_sid:
-                    # #3904 — preserve \n and \t inside the template variable so paragraph
-                    # breaks survive (most WhatsApp Content templates accept newlines). Strip
-                    # only non-printable control chars (ASCII 0-8, 11-12, 14-31). The whitespace-
-                    # collapse step from the over-aggressive #3879 fix is dropped — it was the
-                    # cause of the wall-of-text formatting bug. Per-variable 1024 cap stays.
-                    sanitised_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', plain_text).strip()
+                    # #3941 — Twilio's daily_digest Content Template rejects \n in variables
+                    # (empirically verified: #3906's newline-preservation caused HTTP 400 on
+                    # every send). Substitute structural newlines with visible section
+                    # markers so parents still get a scannable digest without hitting Twilio's
+                    # variable-content policy. See #3905 for the proper multi-variable
+                    # redesign that supersedes this workaround.
+                    sanitised_text = plain_text
+                    # Normalise CRLF / CR line endings to LF first so the
+                    # paragraph-break pattern below catches Windows and old-
+                    # Mac line endings too (PR-review suggestion on #3941).
+                    sanitised_text = sanitised_text.replace('\r\n', '\n').replace('\r', '\n')
+                    # Paragraph break → bullet marker (visible section boundary)
+                    sanitised_text = re.sub(r'\n{2,}', ' • ', sanitised_text)
+                    # Single \n / \r / \t → space
+                    sanitised_text = re.sub(r'[\n\r\t]', ' ', sanitised_text)
+                    # Strip all remaining control chars (ASCII 0-31)
+                    sanitised_text = re.sub(r'[\x00-\x1f]', ' ', sanitised_text)
+                    # Collapse whitespace runs
+                    sanitised_text = re.sub(r'\s+', ' ', sanitised_text).strip()
+                    # Per-variable 1024 cap
                     max_var_len = 1024
                     if len(sanitised_text) > max_var_len:
                         sanitised_text = sanitised_text[:max_var_len - 3] + "..."
-                    # parent_name: still strip newlines/control chars (it's a single-line variable;
-                    # split()[0] of full_name shouldn't have any anyway, defence in depth).
+                    # parent_name: single-line variable — strip all control chars
                     sanitised_parent_name = re.sub(r'[\x00-\x1f]', ' ', parent_name).strip()
                     wa_success = send_whatsapp_template(
                         integration.whatsapp_phone,
