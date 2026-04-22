@@ -281,6 +281,119 @@ def notify_parents_of_student(
     return notifications
 
 
+# #3956 — Sectioned 3x3 email renderer for parent digest. Kept as a separate
+# helper (not wired into _build_notification_email) because the section
+# headings / coloured accents / overflow CTA are specific to the digest and
+# don't generalise to other notification types. The digest job computes the
+# HTML up-front and passes it into the existing _build_notification_email
+# path which already handles block-tag-starting content correctly (#3884).
+
+_SECTIONED_SECTION_STYLES = {
+    "urgent": {
+        "heading": "Urgent",
+        "emoji": "🔴",
+        "color": "#dc2626",  # red-600
+    },
+    "announcements": {
+        "heading": "Announcements",
+        "emoji": "📢",
+        "color": "#6b7280",  # grey-500
+    },
+    "action_items": {
+        "heading": "Action Items",
+        "emoji": "✅",
+        "color": "#2563eb",  # blue-600
+    },
+}
+
+_SECTIONED_FULL_DIGEST_URL = "https://www.classbridge.ca/email-digest"
+
+
+def _html_escape(text: str) -> str:
+    """Minimal HTML-escape for user-facing strings rendered into the digest."""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def build_sectioned_digest_email_body(sectioned: dict) -> str:
+    """Render the 3x3 sectioned digest as inline-styled email HTML (#3956).
+
+    Takes a dict matching the ``SectionedDigest`` schema and produces HTML
+    with:
+      - Up to 3 sections (Urgent, Announcements, Action Items)
+      - Coloured section headings (inline-styled for email-client compat)
+      - Bullet list with up to 3 items per section
+      - "And N more -> View full digest" CTA when overflow > 0
+      - Empty sections are skipped entirely (no empty card)
+
+    If ``sectioned["legacy_blob"]`` is set, returns the legacy HTML unchanged
+    so the old full-format render path still works (back-compat for AI JSON
+    parse failures).
+    """
+    legacy = sectioned.get("legacy_blob")
+    if legacy:
+        return legacy
+
+    overflow = sectioned.get("overflow") or {}
+    sections_html: list[str] = []
+
+    for key in ("urgent", "announcements", "action_items"):
+        items_raw = sectioned.get(key) or []
+        items = items_raw[:3]
+        if not items:
+            # Empty section -> skip heading entirely (#3956).
+            continue
+
+        meta = _SECTIONED_SECTION_STYLES[key]
+        heading = (
+            f'<h3 style="color:{meta["color"]};margin:24px 0 8px 0;'
+            f'font-size:16px;font-weight:700;">'
+            f'{meta["emoji"]} {meta["heading"]}</h3>'
+        )
+
+        li_items = "".join(
+            f'<li style="margin:4px 0;">{_html_escape(str(it))}</li>'
+            for it in items
+        )
+        ul_html = (
+            f'<ul style="margin:0 0 8px 20px;padding:0;color:#333;'
+            f'line-height:1.5;">{li_items}</ul>'
+        )
+
+        try:
+            more = int(overflow.get(key, 0) or 0)
+        except (TypeError, ValueError):
+            more = 0
+
+        more_html = ""
+        if more > 0:
+            more_html = (
+                f'<p style="margin:4px 0 0 0;font-size:14px;">'
+                f'<a href="{_SECTIONED_FULL_DIGEST_URL}" '
+                f'style="color:#4f46e5;text-decoration:none;">'
+                f'And {more} more &rarr; View full digest</a></p>'
+            )
+
+        sections_html.append(heading + ul_html + more_html)
+
+    if not sections_html:
+        # Nothing at all — defensive fallback so the email still renders.
+        return (
+            '<p style="color:#333;line-height:1.6;margin:0 0 16px 0;">'
+            'No new school emails today.</p>'
+        )
+
+    return (
+        '<div style="color:#333;line-height:1.6;margin:0 0 16px 0;">'
+        + "".join(sections_html)
+        + "</div>"
+    )
+
+
 def _build_notification_email(title: str, content: str, link: str | None, recipient_role: str | None = None) -> str:
     """Build a branded HTML email for notifications."""
     from app.core.config import settings
