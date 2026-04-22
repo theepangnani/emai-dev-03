@@ -323,7 +323,10 @@ def _try_upgrade_digest_to_assignment(
         db.query(Task)
         .filter(Task.source == "email_digest")
         .filter(Task.assigned_to_user_id == assignee_user_id)
-        .filter(or_(Task.source_status.is_(None), Task.source_status != "user_deleted"))
+        .filter(or_(
+            Task.source_status.is_(None),
+            ~Task.source_status.in_(("user_deleted", "source_deleted")),
+        ))
         .filter(Task.due_date >= lower)
         .filter(Task.due_date <= upper)
         # Deterministic "first match" so behaviour is reproducible across runs.
