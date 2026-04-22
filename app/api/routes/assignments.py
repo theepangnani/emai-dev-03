@@ -21,7 +21,12 @@ from app.schemas.assignment import (
     SubmissionListItem,
 )
 from app.api.deps import get_current_user, can_access_course
+from app.services.feature_flag_service import is_feature_enabled
 from app.services.storage_service import save_file, get_file_path, delete_file
+from app.services.task_sync_service import (
+    handle_assignment_deleted,
+    handle_assignment_submitted,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +217,21 @@ def delete_assignment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
 
     _require_course_write(db, current_user, assignment.course_id)
+
+    # CB-TASKSYNC-001 I7: soft-cancel linked Tasks before the Assignment row is gone.
+    # Run BEFORE delete so the linked Task rows can still resolve the assignment
+    # reference if needed, and to avoid any race with a concurrent sync.
+    if is_feature_enabled("task_sync_enabled"):
+        try:
+            cancelled = handle_assignment_deleted(db, assignment.id)
+            logger.info(
+                "task_sync.delete_hook | cancelled=%d assignment_id=%s",
+                cancelled, assignment.id,
+            )
+        except Exception:
+            logger.exception(
+                "task_sync.delete_hook | failed | assignment_id=%s", assignment.id,
+            )
 
     db.delete(assignment)
     db.commit()
@@ -404,6 +424,16 @@ async def submit_assignment(
         .filter(StudentAssignment.id == sa.id)
         .first()
     )
+
+    # CB-TASKSYNC-001 I7: auto-complete linked Task on submit.
+    # `handle_assignment_submitted` commits internally (per I3 contract).
+    if is_feature_enabled("task_sync_enabled"):
+        try:
+            handle_assignment_submitted(db, assignment.id, current_user.id, now)
+        except Exception:
+            logger.exception(
+                "task_sync.submit_hook | failed | assignment_id=%s", assignment.id,
+            )
 
     # Notify the course teacher
     try:
