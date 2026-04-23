@@ -641,6 +641,60 @@ Frontends MUST gate "Open preferences" / "Change settings" style CTAs on `reason
 
 Both per-channel columns enable analytics on channel reliability independent of the top-level summary status. Analytics queries distinguishing "delivery reliability" from "parent setup completeness" should filter on the column values: `"failed"` for reliability, `"skipped"` for setup completeness.
 
+#### §6.127.2 Sectioned 3×3 Digest Contract (#3956 — Phase A of #3905)
+
+**Added:** 2026-04-21 | **GitHub Issue:** #3956 (Phase A) — parent of #3905 multi-variable Twilio template redesign.
+
+Parent feedback on the original single-HTML-blob digest: "text heavy, group in 3, 'More' opens ClassBridge". Phase A ships everything that can go live **without** Meta approval dependency; Phase B (#3905) adds the V2 Twilio template once Meta approves.
+
+**Digest format:** `digest_format="sectioned"` is added alongside existing `full` / `brief` / `actions_only`. New parents default to `"sectioned"`; existing parents keep their configured format until explicitly migrated.
+
+**AI-service JSON contract:**
+
+`generate_sectioned_digest(emails, child_name, parent_name) -> dict` produces:
+
+```json
+{
+  "urgent":        ["str", "str", "str"],
+  "announcements": ["str", "str", "str"],
+  "action_items":  ["str", "str", "str"],
+  "overflow": {
+    "urgent": 0, "announcements": 0, "action_items": 0
+  },
+  "legacy_blob":  null
+}
+```
+
+- Each section: AT MOST 3 items, each ONE SHORT SENTENCE (max 140 chars), no HTML.
+- `urgent` = due today or tomorrow. `announcements` = classroom posts, not time-sensitive. `action_items` = things the parent or child must DO.
+- `overflow.<section>` = count of additional items we would have included if the cap were higher. Drives the "And N more →" CTA.
+- Empty sections = `[]`. Empty overflow entries = `0` (never missing — Pydantic `SectionedDigest` coerces).
+- On JSON parse failure or upstream AI error, the service falls back to the legacy `generate_parent_digest` call and returns `{"legacy_blob": "<html>"}`. Downstream renderers MUST check `legacy_blob` first and render the legacy HTML unchanged.
+
+**Overflow / "More →" CTA:**
+- Link target: `https://www.classbridge.ca/email-digest`
+- Email path: rendered below each section's `<ul>` as `<p><a href="...">And {N} more → View full digest</a></p>`.
+- WhatsApp V1 path: flattened inline as `(And N more)` inside the single-line-with-bullets string.
+- WhatsApp V2 path: appended inside each section block as `+ And N more` below the bullet items.
+
+**Per-channel rendering rules:**
+
+- **Email (3×3 inline-styled HTML):** sections have coloured accents (Urgent 🔴 red `#dc2626`, Announcements 📢 grey `#6b7280`, Action Items ✅ blue `#2563eb`). `<h3>` heading + `<ul>` with up to 3 `<li>` + overflow `<p>` CTA. Inline CSS only (email clients strip `<style>`). Empty sections skipped entirely — no empty card is rendered.
+- **WhatsApp V1 (current `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` single-variable template):** sectioned content is flattened into a single-line-with-bullets string: `"Urgent • item1 • item2 • item3 • (And N more) • Announcements • ... • Action Items • ..."`. Empty sections are omitted (no heading appears). The existing #3941 sanitisation (`\n\n` → `•`, control-char stripping, 1024-char cap) is applied unchanged.
+- **WhatsApp V2 (new `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` 4-variable template):** when the V2 env var is set, the digest job calls `send_whatsapp_template` with 4 variables:
+  - `1` = parent_name
+  - `2` = urgent block (up to 3 `- item` lines + optional `+ And N more`, newline-separated)
+  - `3` = announcements block (same format)
+  - `4` = action_items block (same format)
+- **Empty-section substitution:** Twilio V2 template variables cannot be empty. Empty sections in the V2 path are substituted with the literal string `"(none)"`. V1 flatten and email renderers simply omit empty sections instead.
+
+**V1 / V2 toggle:**
+- `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` empty (default) → silent V1 fallback. No user-visible change.
+- `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` set → V2 4-variable template used. Scheduled for Phase B once Meta approves.
+- Env var is plumbed through `.github/workflows/deploy.yml` from GitHub Secrets, dormant until Meta approval.
+
+**Supersedes §6.127.1 where it mentions the legacy single-variable template flow** — §6.127.1's three-valued per-channel delivery-status contract still applies unchanged to all three rendering paths (email, V1, V2).
+
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)

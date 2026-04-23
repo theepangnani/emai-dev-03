@@ -71,7 +71,7 @@ class ParentDigestSettingsUpdate(BaseModel):
     digest_enabled: Optional[bool] = None
     delivery_time: Optional[str] = None
     timezone: Optional[str] = None
-    digest_format: Optional[Literal["full", "brief", "actions_only"]] = None
+    digest_format: Optional[Literal["full", "brief", "actions_only", "sectioned"]] = None
     delivery_channels: Optional[str] = None
     notify_on_empty: Optional[bool] = None
 
@@ -95,6 +95,72 @@ class ParentDigestSettingsUpdate(BaseModel):
         if v not in available_timezones():
             raise ValueError(f"Invalid timezone: {v}")
         return v
+
+
+# ---------------------------------------------------------------------------
+# SectionedDigest (#3956 — Phase A of #3905)
+# ---------------------------------------------------------------------------
+
+class SectionedDigest(BaseModel):
+    """3x3 sectioned digest content produced by generate_sectioned_digest.
+
+    Each section caps at 3 items (enforced by validator). ``overflow`` records
+    how many items we would have included if the cap were higher; renderers
+    surface this as an "And N more -> View full digest" CTA.
+
+    ``legacy_blob`` is set when the AI JSON parse failed and we fell back to
+    the old HTML format — renderers MUST check this first and render the
+    legacy HTML instead of the 3x3 layout.
+    """
+    urgent: list[str] = []
+    announcements: list[str] = []
+    action_items: list[str] = []
+    overflow: dict[str, int] = {}
+    legacy_blob: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_fields(cls, data):
+        """Fill missing section/overflow keys BEFORE field validators run.
+
+        Pydantic's ``mode="before"`` field validators don't fire when a field
+        is absent (the default is used as-is). This ensures the normalize/
+        stringify validators always see the caller's intended values — and
+        matches the old hand-rolled coercer's ``parsed.get(k, [])`` behavior.
+        """
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)  # don't mutate caller's dict
+        for key in ("urgent", "announcements", "action_items"):
+            data.setdefault(key, [])
+        data.setdefault("overflow", {})
+        return data
+
+    @field_validator("urgent", "announcements", "action_items", mode="before")
+    @classmethod
+    def stringify_items(cls, v) -> list[str]:
+        if not isinstance(v, list):
+            return []
+        return [str(x) for x in v if x is not None]
+
+    @field_validator("overflow", mode="before")
+    @classmethod
+    def normalize_overflow(cls, v) -> dict[str, int]:
+        if not isinstance(v, dict):
+            return {"urgent": 0, "announcements": 0, "action_items": 0}
+        out: dict[str, int] = {}
+        for key in ("urgent", "announcements", "action_items"):
+            raw = v.get(key, 0)
+            try:
+                out[key] = max(0, int(raw))
+            except (TypeError, ValueError):
+                out[key] = 0
+        return out
+
+    @field_validator("urgent", "announcements", "action_items")
+    @classmethod
+    def cap_at_three(cls, v: list[str]) -> list[str]:
+        return v[:3]
 
 
 # ---------------------------------------------------------------------------
