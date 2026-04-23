@@ -758,6 +758,32 @@
 .tutor-drill__custom-toggle:hover {
   color: var(--color-accent);
 }
+.tutor-drill__show-all {
+  align-self: center;
+  background: transparent;
+  border: none;
+  color: var(--color-accent-strong);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 14px;
+  text-decoration: underline;
+}
+.tutor-drill__show-all:hover {
+  color: var(--color-accent);
+}
+.tutor-drill__submode {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.tutor-drill__children {
+  padding: var(--space-sm) 0;
+}
 .tutor-drill__custom {
   display: flex;
   flex-direction: column;
