@@ -96,7 +96,7 @@ export function HelpChatbot() {
           onClick={() => setIsOpen(true)}
           aria-label="Open help chat"
         >
-          <ArcMascot size={56} mood="waving" glow />
+          <ArcMascot size={56} mood="waving" glow decorative />
         </button>
       )}
 
@@ -113,7 +113,7 @@ export function HelpChatbot() {
             onDoubleClick={toggleMaximize}
           >
             <div className="help-chatbot-header-title">
-              <ArcMascot size={32} mood={isLoading ? 'thinking' : 'happy'} />
+              <ArcMascot size={32} mood={isLoading ? 'thinking' : 'happy'} decorative />
               <h3>Arc · ClassBridge Help</h3>
             </div>
             <div className="help-chatbot-header-actions">
