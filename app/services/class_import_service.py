@@ -106,9 +106,7 @@ def import_one_row(
 
     # Role-driven defaults (match create_course behavior).
     is_private = True
-    if current_user.role == UserRole.TEACHER or current_user.has_role(
-        UserRole.TEACHER
-    ):
+    if current_user.has_role(UserRole.TEACHER):
         is_private = False
 
     course = Course(

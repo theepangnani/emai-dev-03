@@ -28,11 +28,28 @@ class BulkCreateRequest(BaseModel):
     rows: list[BulkCreateRow] = Field(min_length=1, max_length=50)
 
 
+class BulkCreatedItem(BaseModel):
+    """One successfully-created row in the /bulk response."""
+
+    index: int
+    course_id: int
+    name: str
+
+
+class BulkFailedItem(BaseModel):
+    """One failed row in the /bulk response."""
+
+    index: int
+    error: str
+    existing_course_id: Optional[int] = None
+    details: Optional[list] = None
+
+
 class BulkCreateResult(BaseModel):
     """Top-level response from POST /bulk."""
 
-    created: list[dict]
-    failed: list[dict]
+    created: list[BulkCreatedItem]
+    failed: list[BulkFailedItem]
 
 
 class ParsedScreenshotRow(BaseModel):
