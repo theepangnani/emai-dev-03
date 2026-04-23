@@ -11,6 +11,7 @@ import { isValidEmail } from '../utils/validation';
 import { SearchableSelect, MultiSearchableSelect } from '../components/SearchableSelect';
 import type { SearchableOption } from '../components/SearchableSelect';
 import CreateClassModal from '../components/CreateClassModal';
+import ImportClassesModal from '../components/ImportClassesModal';
 import { getCourseColor } from '../components/calendar/types';
 import { PageSkeleton, CardSkeleton } from '../components/Skeleton';
 import { PageNav } from '../components/PageNav';
@@ -110,6 +111,7 @@ export function CoursesPage() {
 
   // Create course modal
   const [showCreateModal, setShowCreateModal] = useState(() => searchParams.get('create') === '1');
+  const [showImportModal, setShowImportModal] = useState(false);
   const [courseName, setCourseName] = useState('');
   const [courseSubject, setCourseSubject] = useState('');
   const [courseDescription, setCourseDescription] = useState('');
@@ -871,6 +873,9 @@ export function CoursesPage() {
                 <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => setShowCreateModal(true)}>
                   + Create Class
                 </button>
+                <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => setShowImportModal(true)}>
+                  Import classes
+                </button>
                 {myCourses.length > 0 && selectedChild && (
                   <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => { setSelectedCoursesForAssign(new Set()); setShowAssignModal(true); }}>
                     Assign Class
@@ -1175,12 +1180,17 @@ export function CoursesPage() {
               <h3 className="cp-section-title">{isParent || isStudent ? 'My Created Classes' : 'Classes'} ({myCourses.length})</h3>
             </button>
             {!isParent && !isStudent && (
-              <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                </svg>
-              </button>
+              <>
+                <button className="title-add-btn" onClick={() => setShowCreateModal(true)} title="Create Class" aria-label="Create Class">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                </button>
+                <button className="courses-btn secondary btn-secondary btn-sm" onClick={() => setShowImportModal(true)}>
+                  Import classes
+                </button>
+              </>
             )}
           </div>
           {myCoursesExpanded && myCourses.length > 0 ? (
@@ -1228,6 +1238,30 @@ export function CoursesPage() {
         </div>
         )}
       </div>
+
+      {/* Import Classes Modal (CB-ONBOARD-001) */}
+      <ImportClassesModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onCreated={async () => {
+          setShowImportModal(false);
+          if (isParent) {
+            const courses = await coursesApi.createdByMe();
+            setMyCourses(courses);
+            if (selectedChild) loadChildOverview(selectedChild);
+          } else if (isStudent) {
+            const [enrolled, created] = await Promise.all([
+              coursesApi.enrolledByMe(),
+              coursesApi.createdByMe(),
+            ]);
+            setEnrolledCourses(enrolled);
+            setMyCourses(created);
+          } else {
+            const courses = await coursesApi.list();
+            setMyCourses(courses);
+          }
+        }}
+      />
 
       {/* Create Course Modal (teacher/admin — single form) */}
       <CreateClassModal
