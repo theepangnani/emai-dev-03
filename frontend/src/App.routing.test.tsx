@@ -1,31 +1,19 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation, useParams } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactNode } from 'react';
+import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 
 // These tests cover the two regressions fixed alongside PR #3966
 // (Ask + Flash-Tutor → /tutor unification):
 //
 // - #3967: /ask and /flash-tutor must preserve ?query params through the
-//   redirect (RedirectPreservingQuery helper in App.tsx).
+//   redirect (RedirectPreservingQuery helper in src/lib/routing-helpers).
 // - #3968: /tutor must admit teachers (teacher was missing from
 //   ProtectedRoute's allowedRoles despite the sidebar linking to /tutor).
 //
-// We duplicate the helper locally so the test exercises the same logic the
-// router mounts. If either definition drifts, the test will still catch the
-// regression because the routes in App.tsx use the identical contract.
-
-function RedirectPreservingQuery({ to }: { to: string }) {
-  const location = useLocation();
-  const [pathname, targetSearch] = to.split('?');
-  const source = new URLSearchParams(location.search);
-  const target = new URLSearchParams(targetSearch ?? '');
-  source.forEach((v, k) => {
-    if (!target.has(k)) target.set(k, v);
-  });
-  const qs = target.toString();
-  return <Navigate to={qs ? `${pathname}?${qs}` : pathname} replace />;
-}
+// We import the helpers from the same shared module App.tsx uses, so the test
+// exercises the exact same logic the router mounts — no drift risk.
 
 // A tiny landing component at /tutor that just echoes the current search
 // string so tests can assert on what survived the redirect.
@@ -167,14 +155,9 @@ describe('/tutor allowedRoles (#3968)', () => {
 // ── #3977: /tutor/session/:id canonical URL + legacy redirect ───
 //
 // /flash-tutor/session/:id is a legacy alias that must redirect to the new
-// /tutor/session/:id path. We duplicate the LegacySessionRedirect helper
-// locally (same contract as App.tsx) and verify both the forward and the
-// canonical mount render the expected target.
-
-function LegacySessionRedirect() {
-  const { id } = useParams();
-  return <Navigate to={`/tutor/session/${id}`} replace />;
-}
+// /tutor/session/:id path. LegacySessionRedirect is imported from the shared
+// module above; we verify both the forward and the canonical mount render
+// the expected target.
 
 function SessionStub() {
   const { id } = useParams();

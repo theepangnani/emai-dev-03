@@ -1,7 +1,15 @@
 import { screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useLocation } from 'react-router-dom';
 import { renderWithProviders } from '../test/helpers';
+
+/** Test helper: surfaces the current MemoryRouter location.search to the DOM
+ *  so tests can assert directly on URL-sync behavior (#3991). */
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="current-search">{loc.search}</div>;
+}
 
 // ── Mocks ──────────────────────────────────────────────────────
 const mockCreateSession = vi.fn();
@@ -431,7 +439,16 @@ describe('TutorPage — drill mode round-1 fixes', () => {
 
   it('#3981: mode tab click updates URL search params', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+    // Mount a LocationProbe alongside TutorPage so we can assert directly on
+    // the MemoryRouter-managed location.search (#3991 — stronger than the
+    // aria-pressed round-trip the original test used).
+    renderWithProviders(
+      <>
+        <TutorPage />
+        <LocationProbe />
+      </>,
+      { initialEntries: ['/tutor'] },
+    );
 
     // Default mode is 'explain', Drill tab is aria-pressed=false.
     const drillTab = await screen.findByRole('button', { name: /Drill a topic/i });
@@ -441,14 +458,17 @@ describe('TutorPage — drill mode round-1 fixes', () => {
       await user.click(drillTab);
     });
 
-    // After click, Drill tab is pressed.
+    // After click, Drill tab is pressed AND the URL carries ?mode=drill.
     await waitFor(() => {
       expect(drillTab).toHaveAttribute('aria-pressed', 'true');
     });
-    // And the URL now carries ?mode=drill. JSDOM's location reflects
-    // MemoryRouter writes via setSearchParams updating the url via history.
-    // We assert indirectly: clicking Explain back should flip aria-pressed,
-    // proving URL-sync round-trips and doesn't break selection.
+    await waitFor(() => {
+      expect(screen.getByTestId('current-search').textContent ?? '').toContain(
+        'mode=drill',
+      );
+    });
+
+    // Round-trip: click Explain back — URL must drop mode=drill.
     const explainTab = screen.getByRole('button', { name: /Explain & learn/i });
     await act(async () => {
       await user.click(explainTab);
@@ -457,6 +477,11 @@ describe('TutorPage — drill mode round-1 fixes', () => {
       expect(explainTab).toHaveAttribute('aria-pressed', 'true');
     });
     expect(drillTab).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      expect(screen.getByTestId('current-search').textContent ?? '').not.toContain(
+        'mode=drill',
+      );
+    });
   });
 
   it('#3980: mode switcher exposes segmented-button (role=group) not tablist', async () => {

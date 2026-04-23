@@ -94,6 +94,21 @@ export function TutorPage() {
       ? 'parent_teaching'
       : 'learning',
   );
+  // #3989: Re-evaluate drillSubMode if the user resolves AFTER first render.
+  // The useState initializer above runs once with whatever `user` is at mount;
+  // if auth resolves async (future refactors), `?submode=parent_teaching` would
+  // silently drop to 'learning'. This defensive sync restores it when the
+  // parent role becomes known.
+  useEffect(() => {
+    if (
+      user?.role === 'parent' &&
+      searchParams.get('submode') === 'parent_teaching' &&
+      drillSubMode !== 'parent_teaching'
+    ) {
+      setDrillSubMode('parent_teaching');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
   const [drillChildId, setDrillChildId] = useState<number | null>(
     queryChildId ? parseInt(queryChildId, 10) : null,
   );
@@ -184,8 +199,14 @@ export function TutorPage() {
     return showAllDrillTopics ? sorted : sorted.slice(0, 10);
   }, [filteredDrillTopics, showAllDrillTopics]);
 
-  // Reset "show all" when search changes (#3972)
+  // Reset "show all" when search changes (#3972). Skip the initial mount so
+  // we don't write false→false on first render (#3992).
+  const showAllDrillTopicsFirstRenderRef = useRef(true);
   useEffect(() => {
+    if (showAllDrillTopicsFirstRenderRef.current) {
+      showAllDrillTopicsFirstRenderRef.current = false;
+      return;
+    }
     setShowAllDrillTopics(false);
   }, [drillTopicSearch]);
 
