@@ -8,7 +8,7 @@ export interface ChildSelectorTabsProps {
   selectedChild: number | null;
   onSelectChild: (studentId: number | null) => void;
   /** Map from student_id to overdue count */
-  childOverdueCounts: Map<number, number>;
+  childOverdueCounts?: Map<number, number>;
 }
 
 export function ChildSelectorTabs({
@@ -116,7 +116,7 @@ export function ChildSelectorTabs({
         )}
         {children.map((child, index) => {
           const isSelected = selectedChild === child.student_id;
-          const overdueCount = childOverdueCounts.get(child.student_id) ?? 0;
+          const overdueCount = childOverdueCounts?.get(child.student_id) ?? 0;
           const tabKeyIndex = children.length > 1 ? index + 1 : index;
           return (
             <button

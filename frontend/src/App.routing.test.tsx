@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
@@ -161,5 +161,50 @@ describe('/tutor allowedRoles (#3968)', () => {
     // The old (broken) config would bounce teachers to /dashboard.
     expect(screen.queryByTestId('tutor-rendered')).not.toBeInTheDocument();
     expect(screen.getByTestId('dashboard')).toBeInTheDocument();
+  });
+});
+
+// ── #3977: /tutor/session/:id canonical URL + legacy redirect ───
+//
+// /flash-tutor/session/:id is a legacy alias that must redirect to the new
+// /tutor/session/:id path. We duplicate the LegacySessionRedirect helper
+// locally (same contract as App.tsx) and verify both the forward and the
+// canonical mount render the expected target.
+
+function LegacySessionRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/tutor/session/${id}`} replace />;
+}
+
+function SessionStub() {
+  const { id } = useParams();
+  return <div data-testid="session-stub">session-{id}</div>;
+}
+
+describe('/tutor/session/:id canonical URL (#3977)', () => {
+  it('redirects /flash-tutor/session/42 to /tutor/session/42', () => {
+    render(
+      <MemoryRouter initialEntries={['/flash-tutor/session/42']}>
+        <Routes>
+          <Route path="/tutor/session/:id" element={<SessionStub />} />
+          <Route path="/flash-tutor/session/:id" element={<LegacySessionRedirect />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const el = screen.getByTestId('session-stub');
+    expect(el.textContent).toBe('session-42');
+  });
+
+  it('/tutor/session/99 renders the canonical session page', () => {
+    render(
+      <MemoryRouter initialEntries={['/tutor/session/99']}>
+        <Routes>
+          <Route path="/tutor/session/:id" element={<SessionStub />} />
+          <Route path="/flash-tutor/session/:id" element={<LegacySessionRedirect />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const el = screen.getByTestId('session-stub');
+    expect(el.textContent).toBe('session-99');
   });
 });

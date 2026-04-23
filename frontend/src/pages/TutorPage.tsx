@@ -43,8 +43,6 @@ import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { ArcMascot, type ArcMood } from '../components/arc';
 import './TutorPage.css';
 
-const EMPTY_OVERDUE_MAP = new Map<number, number>();
-
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
 type TutorMode = 'explain' | 'drill';
 type DrillSubMode = 'learning' | 'testing' | 'parent_teaching';
@@ -65,7 +63,7 @@ function greeting(firstName: string | undefined): string {
 export function TutorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Mode: 'explain' (chat → slides + quiz) | 'drill' (topic picker → ILE quiz)
   const initialMode = (searchParams.get('mode') === 'drill' ? 'drill' : 'explain') as TutorMode;
@@ -92,7 +90,9 @@ export function TutorPage() {
   const [drillStarting, setDrillStarting] = useState(false);
   const [drillError, setDrillError] = useState<string | null>(null);
   const [drillSubMode, setDrillSubMode] = useState<DrillSubMode>(
-    searchParams.get('mode') === 'parent_teaching' && user?.role === 'parent' ? 'parent_teaching' : 'learning',
+    searchParams.get('submode') === 'parent_teaching' && user?.role === 'parent'
+      ? 'parent_teaching'
+      : 'learning',
   );
   const [drillChildId, setDrillChildId] = useState<number | null>(
     queryChildId ? parseInt(queryChildId, 10) : null,
@@ -151,6 +151,19 @@ export function TutorPage() {
     enabled: mode === 'drill' && user?.role === 'parent',
   });
 
+  // #3978: When a parent switches into Parent Teaching sub-mode, auto-select
+  // the first linked child so the API call carries a valid child_student_id
+  // (the backend silently rejects parent_teaching without one).
+  useEffect(() => {
+    if (
+      drillSubMode === 'parent_teaching' &&
+      drillChildId === null &&
+      parentChildren.length > 0
+    ) {
+      setDrillChildId(parentChildren[0].student_id);
+    }
+  }, [drillSubMode, drillChildId, parentChildren]);
+
   const filteredDrillTopics = useMemo(() => {
     if (!drillTopicSearch.trim()) return drillTopics;
     const q = drillTopicSearch.toLowerCase();
@@ -176,11 +189,20 @@ export function TutorPage() {
     setShowAllDrillTopics(false);
   }, [drillTopicSearch]);
 
-  // Auto-start session from study-guide deep link (#3969)
+  // Auto-start session from study-guide deep link (#3969). We sync ?mode=drill
+  // into the URL BEFORE firing the API call so that a failure + refresh lands
+  // the user back on the drill picker (not the explain chat) — #3979.
   useEffect(() => {
     if (!contentIdParam || autoStartRef.current) return;
     autoStartRef.current = true;
     setMode('drill');
+    setSearchParams(
+      (prev) => {
+        prev.set('mode', 'drill');
+        return prev;
+      },
+      { replace: true },
+    );
     setDrillStarting(true);
     setDrillError(null);
     ileApi
@@ -188,7 +210,7 @@ export function TutorPage() {
         course_content_id: parseInt(contentIdParam, 10),
         mode: 'learning',
       })
-      .then((session) => navigate(`/flash-tutor/session/${session.id}`, { replace: true }))
+      .then((session) => navigate(`/tutor/session/${session.id}`, { replace: true }))
       .catch((err: unknown) => {
         const msg =
           err && typeof err === 'object' && 'response' in err
@@ -218,11 +240,9 @@ export function TutorPage() {
         course_id: drillTopic?.course_id ?? undefined,
         timer_enabled: drillSubMode === 'parent_teaching' ? false : undefined,
         child_student_id:
-          drillSubMode === 'parent_teaching' && queryChildId
-            ? parseInt(queryChildId, 10)
-            : undefined,
+          drillSubMode === 'parent_teaching' ? (drillChildId ?? undefined) : undefined,
       });
-      navigate(`/flash-tutor/session/${session.id}`);
+      navigate(`/tutor/session/${session.id}`);
     } catch (err: unknown) {
       const msg =
         err && typeof err === 'object' && 'response' in err
@@ -239,7 +259,7 @@ export function TutorPage() {
     drillQuestionCount,
     drillDifficulty,
     drillSubMode,
-    queryChildId,
+    drillChildId,
     navigate,
   ]);
 
@@ -547,14 +567,26 @@ export function TutorPage() {
             </div>
           )}
 
-          {/* ── MODE SWITCHER (input stage only) ───────────────── */}
+          {/* ── MODE SWITCHER (input stage only) ─────────────────
+              #3980: Segmented-button semantics (role=group + aria-pressed)
+              match the drill sub-mode pill group and sidestep the
+              tablist+arrow-key keyboard contract a `role=tab` group owes.
+              #3981: Both onClicks sync the active mode to the URL. */}
           {stage === 'input' && (
-            <div className="tutor-mode-switcher" role="tablist" aria-label="Choose a tutor mode">
+            <div className="tutor-mode-switcher" role="group" aria-label="Choose a tutor mode">
               <button
-                role="tab"
-                aria-selected={mode === 'explain'}
+                aria-pressed={mode === 'explain'}
                 className={`tutor-mode-tab ${mode === 'explain' ? 'tutor-mode-tab--active' : ''}`}
-                onClick={() => setMode('explain')}
+                onClick={() => {
+                  setMode('explain');
+                  setSearchParams(
+                    (prev) => {
+                      prev.delete('mode');
+                      return prev;
+                    },
+                    { replace: true },
+                  );
+                }}
                 type="button"
               >
                 <span className="tutor-mode-tab__icon" aria-hidden="true">💬</span>
@@ -564,10 +596,18 @@ export function TutorPage() {
                 </div>
               </button>
               <button
-                role="tab"
-                aria-selected={mode === 'drill'}
+                aria-pressed={mode === 'drill'}
                 className={`tutor-mode-tab ${mode === 'drill' ? 'tutor-mode-tab--active' : ''}`}
-                onClick={() => setMode('drill')}
+                onClick={() => {
+                  setMode('drill');
+                  setSearchParams(
+                    (prev) => {
+                      prev.set('mode', 'drill');
+                      return prev;
+                    },
+                    { replace: true },
+                  );
+                }}
                 type="button"
               >
                 <span className="tutor-mode-tab__icon" aria-hidden="true">🎯</span>
@@ -765,14 +805,16 @@ export function TutorPage() {
                 </div>
               </div>
 
-              {/* Parent child selector (#3970) */}
+              {/* Parent child selector (#3970). Overdue counts are
+                  intentionally omitted here — the drill flow doesn't surface
+                  task pressure and the prop is optional on ChildSelectorTabs
+                  (#3984). */}
               {user?.role === 'parent' && parentChildren.length >= 2 && (
                 <div className="tutor-drill__children">
                   <ChildSelectorTabs
                     children={parentChildren}
                     selectedChild={drillChildId}
                     onSelectChild={setDrillChildId}
-                    childOverdueCounts={EMPTY_OVERDUE_MAP}
                   />
                 </div>
               )}
@@ -913,7 +955,8 @@ export function TutorPage() {
                   drillStarting ||
                   (drillUseCustom
                     ? !drillCustom.subject.trim() || !drillCustom.topic.trim()
-                    : !drillTopic)
+                    : !drillTopic) ||
+                  (drillSubMode === 'parent_teaching' && !drillChildId)
                 }
               >
                 {drillStarting ? 'Starting drill…' : 'Start Drill'}

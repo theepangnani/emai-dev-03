@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ComponentType, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { FABProvider } from './context/FABContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -285,13 +285,14 @@ function App() {
               <Route path="/ask" element={<RedirectPreservingQuery to="/tutor" />} />
               <Route path="/flash-tutor" element={<RedirectPreservingQuery to="/tutor?mode=drill" />} />
               <Route
-                path="/flash-tutor/session/:id"
+                path="/tutor/session/:id"
                 element={
                   <ProtectedRoute>
                     <FlashTutorSessionPage />
                   </ProtectedRoute>
                 }
               />
+              <Route path="/flash-tutor/session/:id" element={<LegacySessionRedirect />} />
               <Route
                 path="/quiz-history"
                 element={
@@ -607,6 +608,14 @@ function App() {
 // `navigate('/ask?content_id=42')` don't silently lose their params.
 // Target's own query params take precedence on key collisions so `mode=drill`
 // always sticks on /flash-tutor.
+// Legacy /flash-tutor/session/:id → /tutor/session/:id redirect. A plain
+// RedirectPreservingQuery can't handle path params, so we read :id and
+// forward explicitly.
+function LegacySessionRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/tutor/session/${id}`} replace />;
+}
+
 function RedirectPreservingQuery({ to }: { to: string }) {
   const location = useLocation();
   const [pathname, targetSearch] = to.split('?');
