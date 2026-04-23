@@ -4,6 +4,7 @@ import { useHelpChat } from './useHelpChat';
 import { ChatMessage } from './ChatMessage';
 import { SuggestionChips } from './SuggestionChips';
 import { useChatPanelInteraction } from '../../hooks/useChatPanelInteraction';
+import { ArcMascot } from '../arc';
 import './HelpChatbot.css';
 
 const STORAGE_KEY = 'classbridge-help-open';
@@ -88,14 +89,14 @@ export function HelpChatbot() {
 
   return (
     <>
-      {/* FAB button */}
+      {/* FAB button — Arc, the ClassBridge Learning Companion */}
       {!isOpen && (
         <button
-          className="help-chatbot-fab"
+          className="help-chatbot-fab help-chatbot-fab--arc"
           onClick={() => setIsOpen(true)}
           aria-label="Open help chat"
         >
-          <img src="/chat-icon.png" alt="" className="help-chatbot-fab-logo" />
+          <ArcMascot size={56} mood="waving" glow />
         </button>
       )}
 
@@ -112,8 +113,8 @@ export function HelpChatbot() {
             onDoubleClick={toggleMaximize}
           >
             <div className="help-chatbot-header-title">
-              <img src="/chat-icon.png" alt="" className="help-chatbot-header-logo" />
-              <h3>ClassBridge Help</h3>
+              <ArcMascot size={32} mood={isLoading ? 'thinking' : 'happy'} />
+              <h3>Arc · ClassBridge Help</h3>
             </div>
             <div className="help-chatbot-header-actions">
               {messages.length > 0 && (

@@ -80,7 +80,7 @@ vi.mock('../components/asgf/ASGFContextPanel', () => ({
 }));
 
 // ── Import after mocks ────────────────────────────────────────
-import { ASGFPage } from './ASGFPage';
+import { TutorPage } from './TutorPage';
 
 // ── Helpers ────────────────────────────────────────────────────
 const MOCK_SESSION = {
@@ -102,7 +102,7 @@ function makeSlideGenerator(slides: { event: string; data: string }[]) {
 }
 
 // ── Tests ──────────────────────────────────────────────────────
-describe('ASGFPage — eager SSE streaming (#3735)', () => {
+describe('TutorPage — ASGF (explain mode) eager SSE streaming (#3735)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetActiveSessions.mockResolvedValue({ sessions: [] });
@@ -145,7 +145,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])();
     });
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     // Fill the question input (>= 15 chars required)
     const textarea = await screen.findByRole('textbox');
@@ -218,7 +218,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])();
     });
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     // Session A — fill textarea and start.
     const textarea = await screen.findByRole('textbox');
@@ -278,7 +278,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])(),
     );
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     const textarea = await screen.findByRole('textbox');
     await user.type(textarea, 'How do fractions work in math?');

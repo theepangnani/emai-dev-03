@@ -1,0 +1,170 @@
+/* ArcMascot — ClassBridge Learning Companion
+   Mood-driven SVG animations. Respects prefers-reduced-motion via the `animate`
+   prop (consumer-controlled, not CSS-media-query-controlled, so component stays
+   deterministic in tests). */
+
+.arc-mascot {
+  display: inline-block;
+  overflow: visible; /* sparkles + halo draw outside viewBox on large moods */
+}
+
+/* ── Idle bob ─────────────────────────────────────────── */
+.arc-mascot--animate .arc-body-group {
+  transform-origin: 60px 72px;
+  animation: arc-idle-bob 4s ease-in-out infinite;
+}
+
+@keyframes arc-idle-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-1.5px) scale(1.005); }
+}
+
+/* ── Sparkles ─────────────────────────────────────────── */
+.arc-sparkles {
+  transform-origin: 60px 20px;
+}
+
+.arc-sparkle {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.arc-mascot--animate .arc-sparkle--left {
+  animation: arc-spark-float 3.2s ease-in-out infinite;
+}
+.arc-mascot--animate .arc-sparkle--center {
+  animation: arc-spark-float 3.2s ease-in-out infinite 0.4s;
+}
+.arc-mascot--animate .arc-sparkle--right {
+  animation: arc-spark-float 3.2s ease-in-out infinite 0.8s;
+}
+
+@keyframes arc-spark-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.85; }
+  50%      { transform: translateY(-3px) scale(1.12); opacity: 1; }
+}
+
+/* ── Default visibility of mood-conditional elements ──── */
+.arc-thinking-dots,
+.arc-celebration,
+.arc-hand {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.arc-mouth {
+  transition: opacity 0.2s ease, d 0.35s ease;
+  opacity: 1;
+}
+
+/* ── Mood: NEUTRAL (default) — nothing extra ──────────── */
+
+/* ── Mood: THINKING ───────────────────────────────────── */
+.arc-mascot--thinking .arc-mouth {
+  opacity: 0;
+}
+.arc-mascot--thinking .arc-thinking-dots {
+  opacity: 1;
+}
+.arc-mascot--thinking.arc-mascot--animate .arc-thinking-dots circle:nth-child(1) {
+  animation: arc-think 1.2s ease-in-out infinite;
+}
+.arc-mascot--thinking.arc-mascot--animate .arc-thinking-dots circle:nth-child(2) {
+  animation: arc-think 1.2s ease-in-out infinite 0.2s;
+}
+.arc-mascot--thinking.arc-mascot--animate .arc-thinking-dots circle:nth-child(3) {
+  animation: arc-think 1.2s ease-in-out infinite 0.4s;
+}
+@keyframes arc-think {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50%      { opacity: 1;   transform: translateY(-1.5px); }
+}
+/* Eye squint while thinking — scale the oval eyes vertically */
+.arc-mascot--thinking .arc-eye {
+  transform: scaleY(0.6);
+  transform-origin: center;
+  transform-box: fill-box;
+  transition: transform 0.25s ease;
+}
+.arc-mascot--thinking .arc-pupil--left {
+  transform: translateX(-1px);
+  transition: transform 0.25s ease;
+}
+
+/* ── Mood: HAPPY ──────────────────────────────────────── */
+.arc-mascot--happy .arc-mouth {
+  /* Bigger, wider smile */
+  d: path("M 44 88 Q 60 102 76 88");
+  stroke-width: 3.4;
+}
+.arc-mascot--happy .arc-eye {
+  transform: scaleY(0.75);
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.arc-mascot--happy .arc-cheek {
+  opacity: 0.55;
+}
+
+/* ── Mood: CELEBRATING ────────────────────────────────── */
+.arc-mascot--celebrating .arc-mouth {
+  d: path("M 42 86 Q 60 106 78 86");
+  stroke-width: 3.6;
+}
+.arc-mascot--celebrating .arc-celebration {
+  opacity: 1;
+}
+.arc-mascot--celebrating.arc-mascot--animate .arc-celebration path {
+  animation: arc-star-twinkle 1.4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.arc-mascot--celebrating.arc-mascot--animate .arc-celebration path:nth-child(2) { animation-delay: 0.3s; }
+.arc-mascot--celebrating.arc-mascot--animate .arc-celebration path:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes arc-star-twinkle {
+  0%, 100% { opacity: 0.4; transform: scale(0.85) rotate(0deg); }
+  50%      { opacity: 1;   transform: scale(1.15) rotate(15deg); }
+}
+/* Bigger sparkle pop while celebrating */
+.arc-mascot--celebrating.arc-mascot--animate .arc-sparkle--left,
+.arc-mascot--celebrating.arc-mascot--animate .arc-sparkle--center,
+.arc-mascot--celebrating.arc-mascot--animate .arc-sparkle--right {
+  animation: arc-spark-burst 1s ease-in-out infinite;
+}
+@keyframes arc-spark-burst {
+  0%, 100% { transform: translateY(0)   scale(1); }
+  50%      { transform: translateY(-6px) scale(1.5); }
+}
+
+/* ── Mood: WAVING ─────────────────────────────────────── */
+.arc-mascot--waving .arc-hand {
+  opacity: 1;
+}
+.arc-mascot--waving.arc-mascot--animate .arc-hand {
+  transform-origin: 100px 74px;
+  animation: arc-wave 1.8s ease-in-out infinite;
+}
+@keyframes arc-wave {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25%      { transform: translate(0, 0) rotate(-18deg); }
+  75%      { transform: translate(0, 0) rotate(18deg); }
+}
+
+/* ── Halo glow (prop-driven) ──────────────────────────── */
+.arc-mascot--glow.arc-mascot--animate {
+  animation: arc-halo-pulse 3s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes arc-halo-pulse {
+  0%, 100% { filter: drop-shadow(0 6px 18px rgba(244, 128, 31, 0.20)); }
+  50%      { filter: drop-shadow(0 10px 26px rgba(244, 128, 31, 0.38)); }
+}
+
+/* ── Reduced motion safeguard (browser-level override) ── */
+@media (prefers-reduced-motion: reduce) {
+  .arc-mascot,
+  .arc-mascot * {
+    animation: none !important;
+  }
+}

@@ -49,7 +49,8 @@ const Dashboard = lazyRetry(() => import('./pages/Dashboard').then((m) => ({ def
 const StudyGuidePage = lazyRetry(() => import('./pages/StudyGuidePage').then((m) => ({ default: m.StudyGuidePage })));
 const QuizPage = lazyRetry(() => import('./pages/QuizPage').then((m) => ({ default: m.QuizPage })));
 const FlashcardsPage = lazyRetry(() => import('./pages/FlashcardsPage').then((m) => ({ default: m.FlashcardsPage })));
-const FlashTutorPage = lazyRetry(() => import('./pages/FlashTutorPage').then((m) => ({ default: m.FlashTutorPage })));
+// FlashTutorPage removed — merged into TutorPage (drill mode). Session runner
+// still uses FlashTutorSessionPage below.
 const FlashTutorSessionPage = lazyRetry(() => import('./pages/FlashTutorSessionPage').then((m) => ({ default: m.FlashTutorSessionPage })));
 const MessagesPage = lazyRetry(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const TeacherCommsPage = lazyRetry(() => import('./pages/TeacherCommsPage').then((m) => ({ default: m.TeacherCommsPage })));
@@ -112,7 +113,7 @@ const StudyTimelinePage = lazyRetry(() => import('./pages/StudyTimelinePage').th
 const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m) => ({ default: m.ReportCardPage })));
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
-const ASGFPage = lazyRetry(() => import('./pages/ASGFPage').then((m) => ({ default: m.ASGFPage })));
+const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
 
 const queryClient = new QueryClient({
@@ -270,21 +271,17 @@ function App() {
                 }
               />
               <Route
-                path="/ask"
+                path="/tutor"
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student']}>
-                    <ASGFPage />
+                    <TutorPage />
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/flash-tutor"
-                element={
-                  <ProtectedRoute>
-                    <FlashTutorPage />
-                  </ProtectedRoute>
-                }
-              />
+              {/* Legacy redirects — keeps deep links working after the
+                  Ask + Flash-Tutor merger into /tutor. */}
+              <Route path="/ask" element={<Navigate to="/tutor" replace />} />
+              <Route path="/flash-tutor" element={<Navigate to="/tutor?mode=drill" replace />} />
               <Route
                 path="/flash-tutor/session/:id"
                 element={
