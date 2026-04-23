@@ -9,8 +9,8 @@
  *   • "explain" (default) — conversational chat input → ASGF slides + quiz
  *   • "drill"             — course topic picker → ILE quiz session
  *
- * Subtle gamification: Arc mood transitions with stage, XP+streak badge in
- * the hero, celebration ring + XP pop on results.
+ * Subtle gamification: Arc mood transitions with stage, celebration ring +
+ * XP pop on results. (XP/streak hero badge removed until real data is wired.)
  */
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { asgfApi } from '../api/asgf';
 import { ileApi, type ILETopic } from '../api/ile';
+import { parentApi } from '../api/parent';
 import type {
   IntentClassifyResponse,
   FileUploadResponse,
@@ -38,11 +39,15 @@ import { ASGFQuizBridge } from '../components/asgf/ASGFQuizBridge';
 import ASGFAssignment from '../components/asgf/ASGFAssignment';
 import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
+import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
+import { ArcMascot, type ArcMood } from '../components/arc';
 import './TutorPage.css';
+
+const EMPTY_OVERDUE_MAP = new Map<number, number>();
 
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
 type TutorMode = 'explain' | 'drill';
+type DrillSubMode = 'learning' | 'testing' | 'parent_teaching';
 
 const QUICK_PROMPTS = [
   { icon: '✏️', label: 'Explain a concept', seed: 'Explain ' },
@@ -72,6 +77,11 @@ export function TutorPage() {
   // Input stage state
   const [question, setQuestion] = useState(searchParams.get('question') || '');
 
+  // Drill mode — deep-link params (#3969, #3970, #3971)
+  const contentIdParam = searchParams.get('content_id');
+  const queryChildId = searchParams.get('child_id');
+  const autoStartRef = useRef(false);
+
   // Drill mode state
   const [drillTopic, setDrillTopic] = useState<ILETopic | null>(null);
   const [drillCustom, setDrillCustom] = useState({ subject: '', topic: '' });
@@ -81,6 +91,13 @@ export function TutorPage() {
   const [drillTopicSearch, setDrillTopicSearch] = useState('');
   const [drillStarting, setDrillStarting] = useState(false);
   const [drillError, setDrillError] = useState<string | null>(null);
+  const [drillSubMode, setDrillSubMode] = useState<DrillSubMode>(
+    searchParams.get('mode') === 'parent_teaching' && user?.role === 'parent' ? 'parent_teaching' : 'learning',
+  );
+  const [drillChildId, setDrillChildId] = useState<number | null>(
+    queryChildId ? parseInt(queryChildId, 10) : null,
+  );
+  const [showAllDrillTopics, setShowAllDrillTopics] = useState(false);
   const [intentResult, setIntentResult] = useState<IntentClassifyResponse | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<FileUploadResponse[]>([]);
   const [context, setContext] = useState<ASGFContext | null>(null);
@@ -120,11 +137,18 @@ export function TutorPage() {
 
   const userRole = (user?.role || user?.roles?.[0] || 'student') as 'parent' | 'student' | 'teacher';
 
-  // Drill mode — fetch available course topics
+  // Drill mode — fetch available course topics (#3970: scoped to drillChildId for parents)
   const { data: drillTopics = [], isLoading: drillTopicsLoading } = useQuery({
-    queryKey: ['tutor-ile-topics'],
-    queryFn: () => ileApi.getTopics(),
+    queryKey: ['tutor-ile-topics', drillChildId],
+    queryFn: () => ileApi.getTopics(drillChildId ?? undefined),
     enabled: mode === 'drill',
+  });
+
+  // Drill mode — parent child selector (#3970)
+  const { data: parentChildren = [] } = useQuery({
+    queryKey: ['tutor-parent-children'],
+    queryFn: () => parentApi.getChildren(),
+    enabled: mode === 'drill' && user?.role === 'parent',
   });
 
   const filteredDrillTopics = useMemo(() => {
@@ -138,6 +162,43 @@ export function TutorPage() {
     );
   }, [drillTopics, drillTopicSearch]);
 
+  // Drill mode — sorted + paginated topic list (#3972)
+  const displayedDrillTopics = useMemo(() => {
+    const sorted = [...filteredDrillTopics].sort((a, b) => {
+      if (a.is_weak_area !== b.is_weak_area) return a.is_weak_area ? -1 : 1;
+      return a.topic.localeCompare(b.topic);
+    });
+    return showAllDrillTopics ? sorted : sorted.slice(0, 10);
+  }, [filteredDrillTopics, showAllDrillTopics]);
+
+  // Reset "show all" when search changes (#3972)
+  useEffect(() => {
+    setShowAllDrillTopics(false);
+  }, [drillTopicSearch]);
+
+  // Auto-start session from study-guide deep link (#3969)
+  useEffect(() => {
+    if (!contentIdParam || autoStartRef.current) return;
+    autoStartRef.current = true;
+    setMode('drill');
+    setDrillStarting(true);
+    setDrillError(null);
+    ileApi
+      .createSessionFromStudyGuide({
+        course_content_id: parseInt(contentIdParam, 10),
+        mode: 'learning',
+      })
+      .then((session) => navigate(`/flash-tutor/session/${session.id}`, { replace: true }))
+      .catch((err: unknown) => {
+        const msg =
+          err && typeof err === 'object' && 'response' in err
+            ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+            : undefined;
+        setDrillError(msg || 'Failed to start session from content.');
+      })
+      .finally(() => setDrillStarting(false));
+  }, [contentIdParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleStartDrill = useCallback(async () => {
     const subject = drillUseCustom ? drillCustom.subject : drillTopic?.subject;
     const topic = drillUseCustom ? drillCustom.topic : drillTopic?.topic;
@@ -149,12 +210,17 @@ export function TutorPage() {
     setDrillStarting(true);
     try {
       const session = await ileApi.createSession({
-        mode: 'learning',
+        mode: drillSubMode,
         subject,
         topic,
         question_count: drillQuestionCount,
         difficulty: drillDifficulty,
         course_id: drillTopic?.course_id ?? undefined,
+        timer_enabled: drillSubMode === 'parent_teaching' ? false : undefined,
+        child_student_id:
+          drillSubMode === 'parent_teaching' && queryChildId
+            ? parseInt(queryChildId, 10)
+            : undefined,
       });
       navigate(`/flash-tutor/session/${session.id}`);
     } catch (err: unknown) {
@@ -166,7 +232,16 @@ export function TutorPage() {
     } finally {
       setDrillStarting(false);
     }
-  }, [drillUseCustom, drillCustom, drillTopic, drillQuestionCount, drillDifficulty, navigate]);
+  }, [
+    drillUseCustom,
+    drillCustom,
+    drillTopic,
+    drillQuestionCount,
+    drillDifficulty,
+    drillSubMode,
+    queryChildId,
+    navigate,
+  ]);
 
   const handleSurpriseMe = useCallback(async () => {
     setDrillError(null);
@@ -428,9 +503,6 @@ export function TutorPage() {
     user?.full_name?.split(' ')[0] ??
     (user as { first_name?: string } | null)?.first_name ??
     '';
-  // Demo gamification values — wired to real XP API in a follow-up PR.
-  const xp = (user as { xp_total?: number } | null)?.xp_total ?? 0;
-  const streak = (user as { streak_days?: number } | null)?.streak_days ?? 0;
 
   return (
     <DashboardLayout>
@@ -451,9 +523,6 @@ export function TutorPage() {
                 {stage === 'quiz' && 'quick quiz time.'}
                 {stage === 'results' && 'nice work!'}
               </h1>
-            </div>
-            <div className="ask-arc-hero__meta">
-              <XpStreakBadge xp={xp} streak={streak} />
             </div>
           </header>
 
@@ -656,6 +725,58 @@ export function TutorPage() {
                 </div>
               )}
 
+              {/* Sub-mode pills (#3971) */}
+              <div
+                className="tutor-drill__setting tutor-drill__submode"
+                role="radiogroup"
+                aria-label="Drill sub-mode"
+              >
+                <span className="tutor-drill__setting-label">Mode</span>
+                <div className="tutor-drill__pill-group">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={drillSubMode === 'learning'}
+                    className={`tutor-drill__pill ${drillSubMode === 'learning' ? 'tutor-drill__pill--active' : ''}`}
+                    onClick={() => setDrillSubMode('learning')}
+                  >
+                    Learning
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={drillSubMode === 'testing'}
+                    className={`tutor-drill__pill ${drillSubMode === 'testing' ? 'tutor-drill__pill--active' : ''}`}
+                    onClick={() => setDrillSubMode('testing')}
+                  >
+                    Testing
+                  </button>
+                  {user?.role === 'parent' && (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={drillSubMode === 'parent_teaching'}
+                      className={`tutor-drill__pill ${drillSubMode === 'parent_teaching' ? 'tutor-drill__pill--active' : ''}`}
+                      onClick={() => setDrillSubMode('parent_teaching')}
+                    >
+                      Teach
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Parent child selector (#3970) */}
+              {user?.role === 'parent' && parentChildren.length >= 2 && (
+                <div className="tutor-drill__children">
+                  <ChildSelectorTabs
+                    children={parentChildren}
+                    selectedChild={drillChildId}
+                    onSelectChild={setDrillChildId}
+                    childOverdueCounts={EMPTY_OVERDUE_MAP}
+                  />
+                </div>
+              )}
+
               <div className="tutor-drill__toolbar">
                 {drillTopics.length > 5 && (
                   <input
@@ -677,23 +798,18 @@ export function TutorPage() {
               </div>
 
               {!drillUseCustom && (
-                <div className="tutor-drill__grid">
-                  {drillTopicsLoading && <p className="tutor-drill__empty">Loading topics…</p>}
-                  {!drillTopicsLoading && filteredDrillTopics.length === 0 && (
-                    <p className="tutor-drill__empty">
-                      {drillTopicSearch
-                        ? 'No topics match your search.'
-                        : 'No course topics yet — enter your own below.'}
-                    </p>
-                  )}
-                  {!drillTopicsLoading &&
-                    [...filteredDrillTopics]
-                      .sort((a, b) => {
-                        if (a.is_weak_area !== b.is_weak_area) return a.is_weak_area ? -1 : 1;
-                        return a.topic.localeCompare(b.topic);
-                      })
-                      .slice(0, 10)
-                      .map((t, i) => {
+                <>
+                  <div className="tutor-drill__grid">
+                    {drillTopicsLoading && <p className="tutor-drill__empty">Loading topics…</p>}
+                    {!drillTopicsLoading && filteredDrillTopics.length === 0 && (
+                      <p className="tutor-drill__empty">
+                        {drillTopicSearch
+                          ? 'No topics match your search.'
+                          : 'No course topics yet — enter your own below.'}
+                      </p>
+                    )}
+                    {!drillTopicsLoading &&
+                      displayedDrillTopics.map((t, i) => {
                         const selected =
                           drillTopic?.subject === t.subject && drillTopic?.topic === t.topic;
                         return (
@@ -714,7 +830,19 @@ export function TutorPage() {
                           </button>
                         );
                       })}
-                </div>
+                  </div>
+                  {filteredDrillTopics.length > 10 && (
+                    <button
+                      type="button"
+                      className="tutor-drill__show-all"
+                      onClick={() => setShowAllDrillTopics((v) => !v)}
+                    >
+                      {showAllDrillTopics
+                        ? 'Show less'
+                        : `Show all ${filteredDrillTopics.length} topics`}
+                    </button>
+                  )}
+                </>
               )}
 
               <button
