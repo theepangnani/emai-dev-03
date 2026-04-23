@@ -24,6 +24,9 @@ export interface ArcMascotProps {
   animate?: boolean;
   /** Accessible label. Defaults to "ClassBridge companion". */
   label?: string;
+  /** When true, mark as presentational (aria-hidden="true", no role/label).
+   *  Use this when Arc is visually inside an already-labeled element. */
+  decorative?: boolean;
 }
 
 export function ArcMascot({
@@ -33,6 +36,7 @@ export function ArcMascot({
   glow = false,
   animate = true,
   label = 'ClassBridge companion',
+  decorative = false,
 }: ArcMascotProps) {
   const uid = useId().replace(/:/g, '');
   const gradBody = `arc-body-${uid}`;
@@ -69,8 +73,9 @@ export function ArcMascot({
       viewBox="0 0 120 120"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label={label}
+      {...(decorative
+        ? { 'aria-hidden': true, focusable: false }
+        : { role: 'img', 'aria-label': label })}
     >
       <defs>
         {/* Body gradient — blends brand blue into a warmer teal */}
