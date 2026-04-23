@@ -200,4 +200,36 @@ describe('ImportClassesModal', () => {
 
     await screen.findByText(/couldn't read that screenshot/i);
   });
+
+  it('rejects non-whitelisted image types with a friendly error', async () => {
+    mockedPreview.mockResolvedValueOnce({ connected: false, connect_url: '', courses: [] });
+    render(<ImportClassesModal open={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: /From screenshot/i }));
+    // gif should be rejected
+    const file = new File(['gif'], 'animated.gif', { type: 'image/gif' });
+    // URL.createObjectURL shim (match existing shim pattern in the file)
+    if (!('createObjectURL' in URL)) {
+      Object.defineProperty(URL, 'createObjectURL', { writable: true, value: vi.fn(() => 'blob:mock') });
+      Object.defineProperty(URL, 'revokeObjectURL', { writable: true, value: vi.fn() });
+    }
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file] });
+    fireEvent.change(input);
+    await screen.findByText(/Unsupported image type/i);
+  });
+
+  it('shows friendly error copy when preview returns 500', async () => {
+    const err: any = new Error('Request failed');
+    err.response = { status: 500 };
+    mockedPreview.mockRejectedValueOnce(err);
+    render(<ImportClassesModal open={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+    await screen.findByText(/Service temporarily unavailable/i);
+  });
+
+  it('shows Anthropic privacy disclosure on the screenshot tab', async () => {
+    mockedPreview.mockResolvedValueOnce({ connected: false, connect_url: '', courses: [] });
+    render(<ImportClassesModal open={true} onClose={vi.fn()} onCreated={vi.fn()} />);
+    fireEvent.click(screen.getByRole('tab', { name: /From screenshot/i }));
+    expect(screen.getByText(/processed by Anthropic Claude/i)).toBeInTheDocument();
+  });
 });
