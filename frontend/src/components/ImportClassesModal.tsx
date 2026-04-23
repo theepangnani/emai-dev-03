@@ -19,6 +19,23 @@ type Props = {
 };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+function friendlyAxiosError(err: unknown, fallback: string): string {
+  const axErr = err as { response?: { status?: number; data?: { detail?: string | { error?: string } } }; message?: string };
+  const status = axErr?.response?.status;
+  const detail = axErr?.response?.data?.detail;
+
+  // Server returned a specific string detail — use it
+  if (typeof detail === 'string' && detail) return detail;
+  if (detail && typeof detail === 'object' && typeof detail.error === 'string') return detail.error;
+
+  if (status === 401 || status === 403) return 'Your session expired. Please sign in again.';
+  if (status === 429) return 'Too many requests — please wait a minute and try again.';
+  if (status && status >= 500) return 'Service temporarily unavailable. Please try again in a moment.';
+  if (axErr?.message && /Network Error/i.test(axErr.message)) return 'Network error — check your connection and try again.';
+  return fallback;
+}
 
 function emptyRow(): EditableRow {
   return {
@@ -113,8 +130,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
         setGoogleRows([]);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to load Google Classroom preview';
-      setPreviewError(msg);
+      setPreviewError(friendlyAxiosError(err, 'Failed to load Google Classroom preview'));
     } finally {
       setPreviewLoading(false);
       setPreviewLoaded(true);
@@ -135,8 +151,8 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
       setParseError('File is larger than 10 MB.');
       return;
     }
-    if (!f.type.startsWith('image/')) {
-      setParseError('Please choose an image file.');
+    if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+      setParseError('Unsupported image type. Use JPEG, PNG, or WebP.');
       return;
     }
     setParseError(null);
@@ -172,8 +188,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
           "We couldn't read that screenshot. Try a clearer one or use the Google Classroom tab if your account is connected.",
         );
       } else {
-        const msg = err instanceof Error ? err.message : 'Failed to parse screenshot';
-        setParseError(msg);
+        setParseError(friendlyAxiosError(err, 'Failed to parse screenshot'));
       }
     } finally {
       setParseLoading(false);
@@ -208,8 +223,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
       const res = await bulkCreateClasses(payload);
       setResult(res);
     } catch (err: unknown) {
-      const anyErr = err as { response?: { data?: { detail?: string } } };
-      setSubmitError(anyErr?.response?.data?.detail || 'Failed to create classes');
+      setSubmitError(friendlyAxiosError(err, 'Failed to create classes'));
     } finally {
       setSubmitting(false);
     }
@@ -388,7 +402,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
                   style={{ display: 'none' }}
                   onChange={(e) => handleFileSelected(e.target.files?.[0] ?? null)}
                 />
@@ -396,7 +410,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
                   <p>
                     Drag an image here, or <span className="import-dropzone-link">click to browse</span>.
                     <br />
-                    <small>PNG / JPG up to 10 MB.</small>
+                    <small>JPEG, PNG, or WebP up to 10 MB.</small>
                   </p>
                 )}
                 {file && filePreviewUrl && (
@@ -424,6 +438,10 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
                   </div>
                 )}
               </div>
+
+              <p className="import-privacy-note">
+                Your screenshot is processed by Anthropic Claude to extract class and teacher names. It is not stored after parsing.
+              </p>
 
               {parseError && <div className="import-error">{parseError}</div>}
 
