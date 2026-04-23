@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ComponentType, type ReactNode } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { FABProvider } from './context/FABContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -273,15 +273,17 @@ function App() {
               <Route
                 path="/tutor"
                 element={
-                  <ProtectedRoute allowedRoles={['parent', 'student']}>
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher']}>
                     <TutorPage />
                   </ProtectedRoute>
                 }
               />
               {/* Legacy redirects — keeps deep links working after the
-                  Ask + Flash-Tutor merger into /tutor. */}
-              <Route path="/ask" element={<Navigate to="/tutor" replace />} />
-              <Route path="/flash-tutor" element={<Navigate to="/tutor?mode=drill" replace />} />
+                  Ask + Flash-Tutor merger into /tutor. Uses
+                  RedirectPreservingQuery so `?content_id=…`, `?question=…`,
+                  etc. from old entry points survive the hop. */}
+              <Route path="/ask" element={<RedirectPreservingQuery to="/tutor" />} />
+              <Route path="/flash-tutor" element={<RedirectPreservingQuery to="/tutor?mode=drill" />} />
               <Route
                 path="/flash-tutor/session/:id"
                 element={
@@ -598,6 +600,23 @@ function App() {
     </QueryClientProvider>
     </ThemeProvider>
   );
+}
+
+// Redirect helper that preserves the source URL's query string when forwarding
+// to `to`. Used by the /ask and /flash-tutor legacy redirects so callers like
+// `navigate('/ask?content_id=42')` don't silently lose their params.
+// Target's own query params take precedence on key collisions so `mode=drill`
+// always sticks on /flash-tutor.
+function RedirectPreservingQuery({ to }: { to: string }) {
+  const location = useLocation();
+  const [pathname, targetSearch] = to.split('?');
+  const source = new URLSearchParams(location.search);
+  const target = new URLSearchParams(targetSearch ?? '');
+  source.forEach((v, k) => {
+    if (!target.has(k)) target.set(k, v);
+  });
+  const qs = target.toString();
+  return <Navigate to={qs ? `${pathname}?${qs}` : pathname} replace />;
 }
 
 function OnboardingGuard({ children }: { children: ReactNode }) {
