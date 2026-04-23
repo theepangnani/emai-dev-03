@@ -6,6 +6,13 @@
 - **Other closed:** 1,420+ (pilot prep, docs, testing, infra, misc)
 - **Past 3 days (Apr 18–21):** 90+ PRs merged · 195 issues created · 132 issues closed
 
+**Apr 22 — classbridge.ai domain registered (#3988):**
+- Registered `classbridge.ai` on GoDaddy. To be pointed at the same Cloud Run service (`classbridge` / `emai-dev-01` / `us-central1`) as `classbridge.ca` and `clazzbridge.com`.
+- **Setup plan:** (1) `gcloud beta run domain-mappings create` for `classbridge.ai` and `www.classbridge.ai`; (2) GoDaddy DNS — apex A records `216.239.32.21/.34.21/.36.21/.38.21` and `www` CNAME `ghs.googlehosted.com`; (3) wait for Google-managed TLS cert (15-60 min); (4) smoke-test `.ai` + regression-check `.ca` and `.com`.
+- **Out of scope:** MX records (email stays on `.ca`), canonical-domain / 301-redirect policy (`.ai` vs `.ca` as primary — separate decision).
+- **No deploy required** — DNS + Cloud Run domain mapping only.
+- Snapshot date: 2026-04-22.
+
 **Apr 21 (late evening) — Digest delivery honesty (PR #3886, deployed):**
 
 Production defect: parent clicked "Send Digest Now" → UI showed `Digest delivered with 7 emails` → user received nothing. Investigation surfaced 6 distinct issues feeding the same broken parent experience, all fixed in one integration PR via 5 parallel worktree streams + 4 /pr-review passes.
