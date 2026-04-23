@@ -621,6 +621,36 @@ Parents, teachers, and admins can download CSV templates and upload populated fi
 - `app/services/csv_import_service.py` — Parse, validate, bulk create logic
 - `frontend/src/pages/CSVImportPage.tsx` — Upload UI with preview
 
+#### 6.67.5 Bulk Class Import — Google Classroom + Screenshot (CB-ONBOARD-001)
+
+**Status:** IMPLEMENTED (2026-04-23, CB-ONBOARD-001)
+**GitHub Issue:** #3985 (tracking) | Closes #3986 | Partially addresses #2163 | Part of epic #2160
+
+Any logged-in user can bulk-import their classes and teachers into ClassBridge via two pathways that converge on one shared review step. Unlocks <60-second onboarding for parents/students/teachers without a school-board data feed.
+
+**Pathways:**
+- **From Google Classroom** — one-click import for users who have connected Google (uses existing `classroom.courses.readonly` scope, no new scopes requested). `GET /api/courses/google-classroom/preview` normalizes courses + teachers and detects already-imported entries.
+- **From screenshot** — upload a Google Classroom screenshot; Claude vision (`claude-sonnet-4-6`) parses classes + teachers into an editable table. Works when Google isn't connected.
+
+**Unified review step:**
+- Editable table — users can edit names, add teacher emails, remove rows, and confirm
+- Courses already imported surface with "Already imported" badge and are skipped on bulk create
+- `POST /api/courses/bulk` loops the existing `create_course` logic per row with SAVEPOINT rollback; partial success is returned
+
+**Teacher handling:**
+- Teachers without a matching User record are created as shadow teachers
+- If a teacher email is provided, an invite is sent (SendGrid)
+
+**Scope:** Classes + teachers only. Phase-2 scope (assignments, announcements, materials, `ImportSession` staging model, `ImportReviewWizard` page) remains tracked in epic #2160.
+
+**Key files:**
+- `app/api/routes/class_import.py` — `google-classroom/preview`, `parse-screenshot`, `bulk` endpoints
+- `app/schemas/class_import.py` — Pydantic schemas for the three endpoints
+- `app/services/class_import_service.py` — Google preview, screenshot parse, bulk create logic
+- `frontend/src/components/ImportClassesModal.tsx` — Two-tab modal (Google / Screenshot)
+- `frontend/src/components/ImportReviewTable.tsx` — Shared editable review table
+- `frontend/src/api/classImport.ts` — Frontend API client
+
 ### 6.68 AI Integration Strategy — Decision Log
 
 **GitHub Issue:** #1435
