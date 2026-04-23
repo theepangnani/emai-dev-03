@@ -161,6 +161,56 @@ class TestGoogleClassroomPreview:
         assert "temporarily unavailable" in (data.get("error") or "").lower()
         assert data["courses"] == []
 
+    @patch("app.api.routes.class_import.list_course_teachers")
+    @patch("app.api.routes.class_import.list_courses")
+    def test_partial_teacher_fetch_failure_is_tolerated(
+        self,
+        mock_list_courses,
+        mock_list_teachers,
+        client,
+        ci_user_connected,
+    ):
+        """One failing list_course_teachers call must not abort the preview;
+        both courses must still come back (failing one with None teacher)."""
+        mock_list_courses.return_value = (
+            [
+                {"id": "gc-ok", "name": "OK Class", "section": None},
+                {"id": "gc-boom", "name": "Boom Class", "section": None},
+            ],
+            MagicMock(),
+        )
+
+        def _teachers_side_effect(access_token, course_id, refresh_token=None):
+            if course_id == "gc-boom":
+                raise RuntimeError("teacher roster failed")
+            return (
+                [
+                    {
+                        "profile": {
+                            "name": {"fullName": "Ms OK"},
+                            "emailAddress": "ok@board.edu",
+                        }
+                    }
+                ],
+                MagicMock(),
+            )
+
+        mock_list_teachers.side_effect = _teachers_side_effect
+
+        headers = _auth(client, ci_user_connected.email)
+        resp = client.get(
+            "/api/courses/google-classroom/preview", headers=headers
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["connected"] is True
+        courses = {c["google_classroom_id"]: c for c in data["courses"]}
+        assert set(courses) == {"gc-ok", "gc-boom"}
+        assert courses["gc-ok"]["teacher_name"] == "Ms OK"
+        assert courses["gc-ok"]["teacher_email"] == "ok@board.edu"
+        assert courses["gc-boom"]["teacher_name"] is None
+        assert courses["gc-boom"]["teacher_email"] is None
+
 
 # ── POST /parse-screenshot ───────────────────────────────────────
 
@@ -284,6 +334,50 @@ class TestParseScreenshot:
             files={"image": ("big.png", io.BytesIO(big), "image/png")},
         )
         assert resp.status_code == 400
+
+    def test_rejects_bad_magic_bytes(self, client, ci_user):
+        # Payload labelled image/jpeg but contents are plain bytes — must 400.
+        headers = _auth(client, ci_user.email)
+        resp = client.post(
+            "/api/courses/parse-screenshot",
+            headers=headers,
+            files={
+                "image": (
+                    "fake.jpg",
+                    b"not really an image, just some text bytes here",
+                    "image/jpeg",
+                ),
+            },
+        )
+        assert resp.status_code == 400
+        assert "jpeg" in resp.text.lower() or "image" in resp.text.lower()
+
+    @patch("app.services.class_import_service.get_anthropic_client")
+    def test_generic_vision_exception_returns_422(
+        self, mock_client_factory, client, ci_user
+    ):
+        # A non-ValueError, non-anthropic exception from the vision path
+        # still maps to 422 with a friendly detail.
+        fake_client = MagicMock()
+        fake_client.messages.create.side_effect = RuntimeError("boom")
+        mock_client_factory.return_value = fake_client
+
+        headers = _auth(client, ci_user.email)
+        resp = client.post(
+            "/api/courses/parse-screenshot",
+            headers=headers,
+            files={"image": ("gc.png", self._png_bytes(), "image/png")},
+        )
+        assert resp.status_code == 422
+        assert "parse" in json.dumps(resp.json()).lower()
+
+    def test_route_is_async(self):
+        """Smoke check: the route handler is a coroutine function."""
+        import inspect
+
+        from app.api.routes.class_import import parse_screenshot
+
+        assert inspect.iscoroutinefunction(parse_screenshot)
 
 
 # ── POST /bulk ───────────────────────────────────────────────────
@@ -462,3 +556,58 @@ class TestBulkCreate:
             },
         )
         assert resp.status_code == 401
+
+    def test_response_shape_validates_typed_model(
+        self, client, ci_user, db_session
+    ):
+        """The /bulk response body must validate against the typed
+        BulkCreateResult Pydantic model (no raw dicts at the boundary)."""
+        from app.models.course import Course
+        from app.schemas.class_import import (
+            BulkCreatedItem,
+            BulkCreateResult,
+            BulkFailedItem,
+        )
+
+        db_session.add(
+            Course(
+                name="Dup Shape",
+                google_classroom_id="gc-shape-dup",
+                created_by_user_id=ci_user.id,
+                is_private=True,
+            )
+        )
+        db_session.commit()
+
+        headers = _auth(client, ci_user.email)
+        resp = client.post(
+            "/api/courses/bulk",
+            headers=headers,
+            json={
+                "rows": [
+                    {
+                        "class_name": "Shape Good",
+                        "section": None,
+                        "teacher_name": "T",
+                        "teacher_email": None,
+                        "google_classroom_id": "gc-shape-good",
+                    },
+                    {
+                        "class_name": "Shape Dup",
+                        "section": None,
+                        "teacher_name": "T",
+                        "teacher_email": None,
+                        "google_classroom_id": "gc-shape-dup",
+                    },
+                ]
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        # Strict validation — anything extra or missing blows up here.
+        parsed = BulkCreateResult.model_validate(resp.json())
+        assert all(isinstance(item, BulkCreatedItem) for item in parsed.created)
+        assert all(isinstance(item, BulkFailedItem) for item in parsed.failed)
+        assert len(parsed.created) == 1
+        assert parsed.created[0].name == "Shape Good"
+        assert len(parsed.failed) == 1
+        assert parsed.failed[0].error == "already_imported"

@@ -9,8 +9,11 @@ Reuses existing helpers from courses.py and google_classroom service.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import anthropic
 from fastapi import (
     APIRouter,
     Depends,
@@ -31,7 +34,9 @@ from app.models.course import Course
 from app.models.user import User
 from app.schemas.class_import import (
     BulkCreateRequest,
+    BulkCreatedItem,
     BulkCreateResult,
+    BulkFailedItem,
     GoogleClassroomPreviewCourse,
     GoogleClassroomPreviewResponse,
     ParseScreenshotResponse,
@@ -59,6 +64,26 @@ CLASSROOM_READONLY_SCOPE = (
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
+
+
+def _looks_like_allowed_image(data: bytes) -> bool:
+    """Sniff the first few bytes to confirm JPEG, PNG, or WebP content.
+
+    Defends against clients that send a non-image payload with an image MIME
+    type. Standard-library only — no PIL dependency.
+    """
+    if len(data) < 12:
+        return False
+    # JPEG: FF D8 FF
+    if data[:3] == b"\xff\xd8\xff":
+        return True
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    # WebP: "RIFF" ???? "WEBP"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return True
+    return False
 
 
 def _is_google_connected(user: User) -> bool:
@@ -118,6 +143,38 @@ def preview_google_classroom(
         )
         existing_map = {gcid: cid for gcid, cid in rows}
 
+    def _fetch_teacher(
+        gc_id: str,
+    ) -> tuple[str, str | None, str | None]:
+        try:
+            teachers, _ = list_course_teachers(
+                access_token, gc_id, refresh_token
+            )
+            if teachers:
+                profile = teachers[0].get("profile") or {}
+                name_obj = profile.get("name") or {}
+                return (
+                    gc_id,
+                    name_obj.get("fullName") or None,
+                    profile.get("emailAddress") or None,
+                )
+        except Exception as e:
+            logger.debug(
+                "Google Classroom preview: list_course_teachers failed for %s: %s",
+                gc_id,
+                e,
+            )
+        return gc_id, None, None
+
+    teacher_by_id: dict[str, tuple[str | None, str | None]] = {}
+    course_gc_ids = [c.get("id") for c in gc_courses if c.get("id")]
+    if course_gc_ids:
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            futures = [pool.submit(_fetch_teacher, cid) for cid in course_gc_ids]
+            for fut in as_completed(futures):
+                gc_id, t_name, t_email = fut.result()
+                teacher_by_id[gc_id] = (t_name, t_email)
+
     out_courses: list[GoogleClassroomPreviewCourse] = []
     for c in gc_courses:
         gc_id = c.get("id")
@@ -127,24 +184,7 @@ def preview_google_classroom(
         class_name = c.get("name") or ""
         section = c.get("section") or None
 
-        teacher_name: str | None = None
-        teacher_email: str | None = None
-        try:
-            teachers, _ = list_course_teachers(
-                access_token, gc_id, refresh_token
-            )
-            if teachers:
-                # Use the first teacher in the roster as the primary.
-                profile = teachers[0].get("profile") or {}
-                name_obj = profile.get("name") or {}
-                teacher_name = name_obj.get("fullName") or None
-                teacher_email = profile.get("emailAddress") or None
-        except Exception as e:
-            logger.debug(
-                "Google Classroom preview: list_course_teachers failed for %s: %s",
-                gc_id,
-                e,
-            )
+        teacher_name, teacher_email = teacher_by_id.get(gc_id, (None, None))
 
         existing_course_id = existing_map.get(gc_id)
         out_courses.append(
@@ -197,19 +237,32 @@ async def parse_screenshot(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Image too large (max 10 MB).",
         )
+    if not _looks_like_allowed_image(data):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload contents do not look like a JPEG, PNG, or WebP image.",
+        )
 
     # Normalize jpg -> jpeg for Anthropic vision API
     media_type = "image/jpeg" if content_type == "image/jpg" else content_type
 
     try:
-        rows = parse_screenshot_with_vision(data, media_type)
+        rows = await asyncio.to_thread(
+            parse_screenshot_with_vision, data, media_type
+        )
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "Could not parse screenshot. Try a clearer image."},
         )
-    except Exception as e:
-        logger.error("parse_screenshot vision call failed: %s", e)
+    except anthropic.APIError:
+        logger.exception("parse_screenshot: Anthropic API error")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "AI vision service unavailable. Please try again."},
+        )
+    except Exception:
+        logger.exception("parse_screenshot: unexpected error")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": "Could not parse screenshot. Try a clearer image."},
@@ -241,8 +294,8 @@ def bulk_create(
     batch. Rows that point at an existing google_classroom_id are reported
     under ``failed`` with ``error: "already_imported"``.
     """
-    created: list[dict] = []
-    failed: list[dict] = []
+    created: list[BulkCreatedItem] = []
+    failed: list[BulkFailedItem] = []
 
     for idx, row in enumerate(body.rows):
         # SAVEPOINT per row so one failure rolls back only that row.
@@ -259,38 +312,44 @@ def bulk_create(
             )
             nested.commit()
             created.append(
-                {
-                    "index": idx,
-                    "course_id": course.id,
-                    "name": course.name,
-                }
+                BulkCreatedItem(
+                    index=idx,
+                    course_id=course.id,
+                    name=course.name,
+                )
             )
         except AlreadyImportedError as e:
             nested.rollback()
             failed.append(
-                {
-                    "index": idx,
-                    "error": "already_imported",
-                    "existing_course_id": e.existing_course_id,
-                }
+                BulkFailedItem(
+                    index=idx,
+                    error="already_imported",
+                    existing_course_id=e.existing_course_id,
+                )
             )
         except HTTPException as e:
             nested.rollback()
             failed.append(
-                {
-                    "index": idx,
-                    "error": str(e.detail) if e.detail else "http_error",
-                }
+                BulkFailedItem(
+                    index=idx,
+                    error=str(e.detail) if e.detail else "http_error",
+                )
             )
         except ValidationError as e:
             nested.rollback()
             failed.append(
-                {"index": idx, "error": "validation_error", "details": e.errors()}
+                BulkFailedItem(
+                    index=idx, error="validation_error", details=e.errors()
+                )
             )
         except Exception as e:
             logger.exception("bulk_create: row %d failed", idx)
             nested.rollback()
-            failed.append({"index": idx, "error": f"{type(e).__name__}: {e}"})
+            failed.append(
+                BulkFailedItem(
+                    index=idx, error=f"{type(e).__name__}: {e}"
+                )
+            )
 
     db.commit()
     return BulkCreateResult(created=created, failed=failed)
