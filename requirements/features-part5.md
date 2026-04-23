@@ -651,6 +651,23 @@ Any logged-in user can bulk-import their classes and teachers into ClassBridge v
 - `frontend/src/components/ImportReviewTable.tsx` — Shared editable review table
 - `frontend/src/api/classImport.ts` — Frontend API client
 
+#### 6.67.6 Unified Class-Add Modal (planned — CB-ONBOARD-001 fast-follow)
+
+**Status:** PLANNED (tracked in #3997)
+**GitHub Issue:** #3997 (CB-ONBOARD-001 fast-follow)
+
+Collapse the separate "Create class" and "Import classes" entry points on CoursesPage into a single "Add classes" modal with three tabs — *Manual (single)*, *From Google Classroom*, *From screenshot*.
+
+**Motivation:** PR #3996 shipped `ImportClassesModal` alongside the existing `CreateClassModal`, which creates two buttons with overlapping intent. Unifying improves discoverability and removes redundant UI.
+
+**Scope:**
+- Add a Manual tab inside `ImportClassesModal` that mirrors the current `CreateClassModal` form (name, subject, description, teacher select, require-approval) and submits to the existing `POST /api/courses/` endpoint.
+- Update `CoursesPage.tsx` to render a single "Add classes" button.
+- Update `UploadMaterialWizard.tsx` to reuse the unified modal in a `mode="single"` variant that hides the other tabs and returns the created `courseId` to the wizard.
+- Delete `CreateClassModal.tsx` and its test file.
+
+**Out of scope:** backend changes, admin class-management page, bulk-import behaviour changes.
+
 ### 6.68 AI Integration Strategy — Decision Log
 
 **GitHub Issue:** #1435
