@@ -1863,11 +1863,15 @@ One-day post-ship defect sweep after CB-LAND-001 hit production (revision `class
 | #3897 | `LandingFooter.css` used `filter: brightness(0) invert(1)` to whiten the color logo on dark bg | Swapped to existing `/classbridge-logo-dark.png` asset; filter hack removed. |
 | #3898 | CTA copy duplicated per-consumer (nav "Join Waitlist" short vs hero "Join the waitlist" long) | `useLandingCtas` now exposes `secondaryLabel` (long) + `secondaryLabelShort` (short). |
 | #3899 | Section-id string literals scattered across registry / page split / section files | New `frontend/src/components/landing/sectionIds.ts` with `LANDING_SECTION_ID` const + `LandingSectionId` type. All 12 section files + `LandingPageV2` footer-split migrated. |
-| #3930 | Feature-flag kill-switch broken — `useVariantBucket` ignored `enabled` boolean, so admin toggle-off had no effect when variant remained `on_for_all`. Both `landing_v2` and `demo_landing_v1_1` affected. | Defense-in-depth: frontend hook short-circuit (#3931), backend `/api/features` response coercion (#3932), admin UI mismatch warning (#3933), docs (#3935). |
+| #3930 | Feature-flag kill-switch broken — `useVariantBucket` ignored `enabled` boolean, so admin toggle-off had no effect when variant remained `on_for_all`. Both `landing_v2` and `demo_landing_v1_1` affected. | Defense-in-depth: frontend hook short-circuit (#3931), backend `/api/features` response coercion (#3932), admin UI mismatch warning (#3933) + Auto-fix button, docs (#3935). |
+| #3902 | Nav + footer logos too small — user-reported visibility issue | Bumped CSS heights: nav 64px desktop / 44px mobile, footer 80px. Intrinsic `width`/`height` attrs bumped in lockstep for CLS. |
+| #3908 | Logo PNGs had ~70% baked-in whitespace; CSS height bump scaled the padding too | Swapped `/classbridge-logo.png` → `/classbridge-logo-v6.png` (tight-cropped, 400×187, ~5% whitespace, 50 KB). Nav intrinsic attrs `137×64`, footer `171×80` (preserve 2.139:1 ratio). Legacy negative-margin hacks on `.launch-nav-logo` removed (no longer needed). Footer re-added `filter: brightness(0) invert(1)` (v6 is gradient; filter flattens to white on dark bg). |
+| #3939 | PR #3910 accidentally replaced the custom `classbridge-hero-logo.png` illustration (children + book + bridge) on legacy `LaunchLandingPage` with the plain v6 wordmark | Reverted hero `<img src>` + restored compositionally-tuned negative margins on `.launch-hero-logo` (desktop `-24px auto -16px`, mobile `-10px auto -10px`). Inline CSS comment added to prevent re-regression. |
+| #3958 | Deploy #1422 failed — `AdminFeaturesPage.test.tsx` Auto-fix button test triggered an unmocked `/api/features` refetch that crashed jsdom/undici in CI with `InvalidArgumentError: invalid onError method` | Extended the existing `vi.mock('../../api/client')` in the test file to stub the `api` axios instance (get/post/patch/put/delete). Production code untouched. |
 
-**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 109/109 landing tests pass · 2× `/pr-review` per fix branch + 1× orchestrator-level review.
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · all landing tests pass · 2× `/pr-review` per fix branch + orchestrator-level review across PR #3888, #3903, #3910, #3944, #3961.
 
-**Workflow:** 6 parallel isolated-worktree streams (A/B/C/D + combined S2+S3) → integration into `fix/3885-landing-v2-logo` → PR #3888 (merged `49b62f4b`).
+**Workflow:** parallel isolated-worktree streams per fix → per-round integration branches (`fix/3885-landing-v2-logo`, `integrate/killswitch-fix`) → one PR to master per round. 24 PRs total across the redesign + hardening + activation epics.
 
 #### 6.140.9 Open fast-follows (deferred polish — all `CB-LAND-001-fast-follow`)
 
@@ -1886,5 +1890,23 @@ One-day post-ship defect sweep after CB-LAND-001 hit production (revision `class
 - #3852 — add `vitest-axe` + automated axe-core scan to landing-v2
 - #3853 — body-text contrast audit (cyan accents + pastel row bg) against WCAG AA
 - #3858 — S16 analytics: StrictMode-safe step_view + tab_change guards; ref-callback hook; section_view unit test
+- #3911 — v6 hero logo may appear soft at 280px on retina (#3908 follow-up) — post-deploy visual check pending
 
-All non-blocking for `landing_v2` ramp to 100%; epic #3800 tracks overall completion.
+All non-blocking; epic #3800 tracks overall completion. Epic closes once retina visual check passes (#3911) and V2 rolls to 100 % (currently `on_for_all` live).
+
+#### 6.140.10 Deploy trail (2026-04-21 → 2026-04-23)
+
+| Date (UTC) | Revision | SHA | Contents |
+|------------|----------|-----|----------|
+| 2026-04-21 17:30 | classbridge-01125-ksj* | `6147806c` | CB-LAND-001 main redesign (`99a06cf9` #3871) + docs (`e6a5650f` #3818) + CI tweak (`6147806c` #3882) |
+| 2026-04-21 23:09 | classbridge-01128-mwp | `80f6572b` | Digest delivery honesty (#3886 / #3879+#3880+#3884) |
+| 2026-04-21 23:46 | classbridge-01128-mwp | `98467ba6` | Logo size bump (#3903) + WhatsApp \n→ bullet hotfix (#3942) |
+| 2026-04-22 01:49 | classbridge-01128-mwp | `42ca2d06` | v6 logo tight-crop swap (#3910) |
+| 2026-04-22 03:15 | (same) | `a582c150` | WhatsApp template newline hotfix (#3906 + #3942) |
+| 2026-04-22 15:06 | **FAILED** | — | Scheduled deploy of `a8c54abf` (kill-switch PR #3944) blocked by test crash in `AdminFeaturesPage.test.tsx` |
+| 2026-04-23 00:13 | classbridge-01130-jqx | `1be02431` | **Current live.** Kill-switch defense-in-depth (#3944) + test mock (#3961) + CB-TASKSYNC-001 MVP-1 (#3946) + Ask-tab retirement (#3959) + CB-PEDI Phase A (#3962 / #3956 3×3 digest restructure with dormant V2 code path). Snapshot tag: `snapshot/2026-04-22-pre-killswitch-deploy` (at `0a693504`); deploy tag: `deploy/2026-04-22-1be02431`. |
+
+Post-`1be02431` verification (live):
+- `curl /api/features` with enabled=false on `landing_v2` → `_variants.landing_v2 === "off"` ✅ (kill-switch working)
+- Legacy hero renders children + book + bridge illustration ✅
+- V2 WhatsApp Content Template \`classbridge_daily_digest_v2\` (\`HX7f765c17b88be6b90b564748b68458c4\`) submitted to Meta; business-initiated review pending (see #3987 for activation)
