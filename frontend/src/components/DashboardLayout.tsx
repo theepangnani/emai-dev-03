@@ -228,16 +228,14 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <line x1="9" y1="18" x2="11" y2="18"/>
     </svg>
   ),
-  'Flash Tutor': (
+  'Tutor': (
+    // Arc-inspired icon: rounded pebble with sparkle above — echoes the ArcMascot
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-    </svg>
-  ),
-  'Ask a Question': (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-      <line x1="12" y1="17" x2="12.01" y2="17"/>
+      <path d="M12 21c-5 0-8-2.7-8-6 0-3 2.5-6 8-6s8 3 8 6-3 6-8 6z"/>
+      <circle cx="9.5" cy="13.5" r="0.6" fill="currentColor"/>
+      <circle cx="14.5" cy="13.5" r="0.6" fill="currentColor"/>
+      <path d="M10 17 Q 12 18.5 14 17" />
+      <path d="M12 3 L12.8 4.8 L14.5 5 L13.2 6 L13.5 7.8 L12 6.9 L10.5 7.8 L10.8 6 L9.5 5 L11.2 4.8 Z" fill="currentColor" stroke="none"/>
     </svg>
   ),
   Features: (
@@ -375,8 +373,10 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       '/notifications': 'Notifications',
       '/link-requests': 'Link Requests',
       '/quiz-history': 'Quiz History',
-      '/flash-tutor': 'Flash Tutor',
-      '/ask': 'Ask a Question',
+      '/tutor': 'Tutor',
+      // Legacy titles — routes redirect, but kept for any cached deep links.
+      '/flash-tutor': 'Tutor',
+      '/ask': 'Tutor',
       '/settings/emails': 'Email Settings',
       '/settings/notifications': 'Notification Preferences',
       '/settings/account': 'Account Settings',
@@ -424,8 +424,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
-        { label: 'Flash Tutor', path: '/flash-tutor' },
-        { label: 'Ask a Question', path: '/ask' },
+        { label: 'Tutor', path: '/tutor' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
         { label: 'Help', path: '/help' },
@@ -441,8 +440,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });
       items.push(
-        { label: 'Flash Tutor', path: '/flash-tutor' },
-        { label: 'Ask a Question', path: '/ask' },
+        { label: 'Tutor', path: '/tutor' },
         { label: 'Timeline', path: '/activity/timeline' },
         { label: 'Tasks', path: '/tasks' },
         { label: 'Messages', path: '/messages' },
@@ -455,7 +453,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
       { label: 'Home', path: '/dashboard' },
       { label: 'Classes', path: '/courses' },
       { label: 'Materials', path: '/course-materials' },
-      { label: 'Flash Tutor', path: '/flash-tutor' },
+      { label: 'Tutor', path: '/tutor' },
       { label: 'Tasks', path: '/tasks' },
       { label: 'Messages', path: '/messages' },
     ];

@@ -11,6 +11,7 @@ import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
+import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
 // Retry lazy imports to handle stale chunks after deployment.
@@ -49,7 +50,8 @@ const Dashboard = lazyRetry(() => import('./pages/Dashboard').then((m) => ({ def
 const StudyGuidePage = lazyRetry(() => import('./pages/StudyGuidePage').then((m) => ({ default: m.StudyGuidePage })));
 const QuizPage = lazyRetry(() => import('./pages/QuizPage').then((m) => ({ default: m.QuizPage })));
 const FlashcardsPage = lazyRetry(() => import('./pages/FlashcardsPage').then((m) => ({ default: m.FlashcardsPage })));
-const FlashTutorPage = lazyRetry(() => import('./pages/FlashTutorPage').then((m) => ({ default: m.FlashTutorPage })));
+// FlashTutorPage removed — merged into TutorPage (drill mode). Session runner
+// still uses FlashTutorSessionPage below.
 const FlashTutorSessionPage = lazyRetry(() => import('./pages/FlashTutorSessionPage').then((m) => ({ default: m.FlashTutorSessionPage })));
 const MessagesPage = lazyRetry(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const TeacherCommsPage = lazyRetry(() => import('./pages/TeacherCommsPage').then((m) => ({ default: m.TeacherCommsPage })));
@@ -112,7 +114,7 @@ const StudyTimelinePage = lazyRetry(() => import('./pages/StudyTimelinePage').th
 const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m) => ({ default: m.ReportCardPage })));
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
-const ASGFPage = lazyRetry(() => import('./pages/ASGFPage').then((m) => ({ default: m.ASGFPage })));
+const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
 
 const queryClient = new QueryClient({
@@ -270,29 +272,28 @@ function App() {
                 }
               />
               <Route
-                path="/ask"
+                path="/tutor"
                 element={
-                  <ProtectedRoute allowedRoles={['parent', 'student']}>
-                    <ASGFPage />
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher']}>
+                    <TutorPage />
                   </ProtectedRoute>
                 }
               />
+              {/* Legacy redirects — keeps deep links working after the
+                  Ask + Flash-Tutor merger into /tutor. Uses
+                  RedirectPreservingQuery so `?content_id=…`, `?question=…`,
+                  etc. from old entry points survive the hop. */}
+              <Route path="/ask" element={<RedirectPreservingQuery to="/tutor" />} />
+              <Route path="/flash-tutor" element={<RedirectPreservingQuery to="/tutor?mode=drill" />} />
               <Route
-                path="/flash-tutor"
-                element={
-                  <ProtectedRoute>
-                    <FlashTutorPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/flash-tutor/session/:id"
+                path="/tutor/session/:id"
                 element={
                   <ProtectedRoute>
                     <FlashTutorSessionPage />
                   </ProtectedRoute>
                 }
               />
+              <Route path="/flash-tutor/session/:id" element={<LegacySessionRedirect />} />
               <Route
                 path="/quiz-history"
                 element={

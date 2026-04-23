@@ -1909,4 +1909,61 @@ All non-blocking; epic #3800 tracks overall completion. Epic closes once retina 
 Post-`1be02431` verification (live):
 - `curl /api/features` with enabled=false on `landing_v2` → `_variants.landing_v2 === "off"` ✅ (kill-switch working)
 - Legacy hero renders children + book + bridge illustration ✅
-- V2 WhatsApp Content Template \`classbridge_daily_digest_v2\` (\`HX7f765c17b88be6b90b564748b68458c4\`) submitted to Meta; business-initiated review pending (see #3987 for activation)
+- V2 WhatsApp Content Template `classbridge_daily_digest_v2` (`HX7f765c17b88be6b90b564748b68458c4`) submitted to Meta; business-initiated review pending (see #3987 for activation)
+
+---
+
+### 6.141 Unified Tutor + Arc Mascot (CB-TUTOR-001) — 2026-04-22
+
+**Purpose:** Merge the Ask-a-Question (CB-ASGF-001, §6.137) and Flash Tutor (CB-ILE-001, §6.134) surfaces into a single Arc-led `/tutor` page, ending the duplicate AI-tutor entry points that confused parents and students.
+
+**Delivered (PR #3974, `integrate/pr-review-3966` → master):**
+
+**New components**
+- [x] `ArcMascot` — ClassBridge Learning Companion SVG (5 moods: neutral/thinking/happy/celebrating/waving) with `decorative` prop for labeled-container usage. Visual DNA drawn from the ClassBridge logo (arc smile + 3 floating sparkles mirror the bridge + 3 dots).
+- [x] `lib/routing-helpers.tsx` — shared `RedirectPreservingQuery` + `LegacySessionRedirect` used by App.tsx and routing tests.
+
+**Removed**
+- [x] `ASGFPage.tsx` / `.css` deleted; behavior lifted into `TutorPage.tsx`.
+- [x] `FlashTutorPage` no longer routed (file retained in tree as a future-delete marker; all functionality absorbed by drill mode).
+- [x] `XpStreakBadge` component + CSS + export (deferred until real `/api/xp/summary` endpoint is wired — see fast-follows).
+
+**Routing**
+- [x] Canonical: `/tutor` (explain mode default), `/tutor?mode=drill`, `/tutor/session/:id`.
+- [x] Legacy redirects (query-preserving): `/ask` → `/tutor`, `/flash-tutor` → `/tutor?mode=drill`, `/flash-tutor/session/:id` → `/tutor/session/:id`.
+- [x] `/tutor` allows `parent`, `student`, `teacher` roles.
+
+**Page modes (on `/tutor`)**
+- [x] **Explain & learn** — conversational ASGF flow (intent classify → slides → quiz → results). Quick-prompt chips, attach drawer (PDF/DOCX/images), context drawer (child/subject/grade).
+- [x] **Drill a topic** — ILE flow. Course-topic grid (with Show-all-N toggle), search, 🎲 Surprise Me, parent child-selector (2+ kids), sub-modes (Learning / Testing / Parent Teaching — parents only), question count (3/5/7), difficulty (easy/medium/challenging). Start kicks off an ILE session and navigates to `/tutor/session/:id`.
+- [x] URL sync: `?mode`, `?submode`, `?content_id`, `?child_id` — all round-trip through `setSearchParams` so bookmarks + refresh preserve state.
+- [x] Auto-start: `/tutor?content_id=N` triggers `ileApi.createSessionFromStudyGuide` → redirect to session runner. URL synchronized before API call so refresh-on-failure preserves drill intent.
+
+**Sidebar**
+- [x] Collapsed "Ask a Question" + "Flash Tutor" entries into single "Tutor" link (parent/student/teacher variants).
+
+**HelpChatbot FAB**
+- [x] `/chat-icon.png` replaced with `<ArcMascot>` (waving mood, glow halo); header mascot reacts to streaming state (thinking mood). Both usages pass `decorative` so screen readers read the parent button/heading label, not Arc's.
+
+**Accessibility**
+- [x] Mode switcher uses `role="group"` + `aria-pressed` (dropped incomplete `role="tab"` pattern).
+- [x] `ArcMascot` respects `prefers-reduced-motion` via both JS prop and CSS media query.
+- [x] `role="listitem"` anti-pattern removed from quick-prompt chips.
+
+**Tests (46 passing across touched suites)**
+- 3 regression tests from original ASGF work (eager SSE, abort-on-retry, stage transition)
+- 4 new drill-mode tests (child selector, submode deep-link, URL sync, ARIA semantics)
+- 8 routing tests (query preservation, role gating, legacy redirect, canonical session route)
+- 3 ArcMascot component tests (default/custom label/decorative branching)
+- Existing DashboardLayout + HelpChatbot tests unchanged (still green)
+
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors on touched files · 2 rounds of `/pr-review` (pass 1: 10 findings = 3 CRITICAL + 7 IMPORTANT; pass 2: 0 findings, 4 SUGGESTIONS all fixed). All 21 review-tracked issues closed.
+
+**Workflow:** 4 parallel isolated-worktree streams (routing / drill-parity / a11y / XP-cleanup) + 1 round-2 suggestion stream → merged sequentially into `integrate/pr-review-3966` → single PR to master.
+
+#### 6.141.1 Open fast-follows (explicit non-goals of CB-TUTOR-001)
+- **XP API wiring** — resurrect `XpStreakBadge` from git history + wire to a real `/api/xp/summary` endpoint. Hero badge returns when real data is available.
+- **T/F + fill-in-the-blank quiz question types** — backend prompt update (ASGF + ILE) + UI rendering (expand `ASGFQuizBridge` and ILE quiz runner to handle non-MCQ formats).
+- **Delete `FlashTutorPage.tsx`** — file retained in tree as reference; drill mode has absorbed all live affordances, so the file is orphaned and safe to remove in a dedicated cleanup PR.
+- **Drill child overdue counts** — `ChildSelectorTabs` in drill mode receives no `childOverdueCounts`; align with dashboard source when the lift is cheap.
+- **`FlashTutorSessionPage` Arc refresh** — session runner still uses the original owl `TutorAvatar`; migrate to Arc for visual consistency.

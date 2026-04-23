@@ -1,7 +1,15 @@
 import { screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useLocation } from 'react-router-dom';
 import { renderWithProviders } from '../test/helpers';
+
+/** Test helper: surfaces the current MemoryRouter location.search to the DOM
+ *  so tests can assert directly on URL-sync behavior (#3991). */
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="current-search">{loc.search}</div>;
+}
 
 // ── Mocks ──────────────────────────────────────────────────────
 const mockCreateSession = vi.fn();
@@ -9,6 +17,12 @@ const mockGenerateSlides = vi.fn();
 const mockClassifyIntent = vi.fn();
 const mockGetActiveSessions = vi.fn();
 const mockGetContextData = vi.fn();
+const mockIleCreateSession = vi.fn();
+const mockIleGetTopics = vi.fn();
+const mockIleGetSurpriseMe = vi.fn();
+const mockIleCreateSessionFromStudyGuide = vi.fn();
+const mockParentGetChildren = vi.fn();
+const mockAuthUser = { current: { role: 'student', roles: ['student'] } as { role: string; roles: string[] } };
 
 vi.mock('../api/asgf', () => ({
   asgfApi: {
@@ -26,10 +40,30 @@ vi.mock('../api/asgf', () => ({
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
-    user: { id: 1, full_name: 'Test User', role: 'student', roles: ['student'] },
+    user: {
+      id: 1,
+      full_name: 'Test User',
+      role: mockAuthUser.current.role,
+      roles: mockAuthUser.current.roles,
+    },
     logout: vi.fn(),
     switchRole: vi.fn(),
   }),
+}));
+
+vi.mock('../api/ile', () => ({
+  ileApi: {
+    createSession: (...args: unknown[]) => mockIleCreateSession(...args),
+    getTopics: (...args: unknown[]) => mockIleGetTopics(...args),
+    getSurpriseMe: (...args: unknown[]) => mockIleGetSurpriseMe(...args),
+    createSessionFromStudyGuide: (...args: unknown[]) => mockIleCreateSessionFromStudyGuide(...args),
+  },
+}));
+
+vi.mock('../api/parent', () => ({
+  parentApi: {
+    getChildren: (...args: unknown[]) => mockParentGetChildren(...args),
+  },
 }));
 
 vi.mock('../components/DashboardLayout', () => ({
@@ -80,7 +114,7 @@ vi.mock('../components/asgf/ASGFContextPanel', () => ({
 }));
 
 // ── Import after mocks ────────────────────────────────────────
-import { ASGFPage } from './ASGFPage';
+import { TutorPage } from './TutorPage';
 
 // ── Helpers ────────────────────────────────────────────────────
 const MOCK_SESSION = {
@@ -102,9 +136,10 @@ function makeSlideGenerator(slides: { event: string; data: string }[]) {
 }
 
 // ── Tests ──────────────────────────────────────────────────────
-describe('ASGFPage — eager SSE streaming (#3735)', () => {
+describe('TutorPage — ASGF (explain mode) eager SSE streaming (#3735)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthUser.current = { role: 'student', roles: ['student'] };
     mockGetActiveSessions.mockResolvedValue({ sessions: [] });
     mockGetContextData.mockResolvedValue({
       children: [],
@@ -119,6 +154,8 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       bloom_tier: 'apply',
       alternatives: [],
     });
+    mockIleGetTopics.mockResolvedValue([]);
+    mockParentGetChildren.mockResolvedValue([]);
   });
 
   it('opens SSE eagerly after createSession (before stage reaches 4)', async () => {
@@ -145,7 +182,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])();
     });
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     // Fill the question input (>= 15 chars required)
     const textarea = await screen.findByRole('textbox');
@@ -218,7 +255,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])();
     });
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     // Session A — fill textarea and start.
     const textarea = await screen.findByRole('textbox');
@@ -278,7 +315,7 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
       ])(),
     );
 
-    renderWithProviders(<ASGFPage />);
+    renderWithProviders(<TutorPage />);
 
     const textarea = await screen.findByRole('textbox');
     await user.type(textarea, 'How do fractions work in math?');
@@ -297,5 +334,159 @@ describe('ASGFPage — eager SSE streaming (#3735)', () => {
     await waitFor(() => {
       expect(screen.getByText('Intro to Fractions')).toBeInTheDocument();
     });
+  });
+});
+
+// ── Round-1 review fixes (drill logic, URL sync, a11y) ─────────
+describe('TutorPage — drill mode round-1 fixes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthUser.current = { role: 'parent', roles: ['parent'] };
+    mockGetActiveSessions.mockResolvedValue({ sessions: [] });
+    mockGetContextData.mockResolvedValue({ children: [], courses: [], upcoming_tasks: [] });
+    mockIleGetTopics.mockResolvedValue([
+      {
+        subject: 'Math',
+        topic: 'Fractions',
+        course_id: 101,
+        course_name: 'Grade 5 Math',
+        is_weak_area: false,
+      },
+    ]);
+    mockParentGetChildren.mockResolvedValue([
+      {
+        student_id: 77,
+        user_id: 77,
+        full_name: 'Kid A',
+        email: null,
+        grade_level: 5,
+        school_name: null,
+        date_of_birth: null,
+        phone: null,
+        address: null,
+        city: null,
+        province: null,
+        postal_code: null,
+        notes: null,
+        interests: [],
+        relationship_type: null,
+        invite_link: null,
+        course_count: 0,
+        active_task_count: 0,
+        invite_status: null,
+      },
+      {
+        student_id: 88,
+        user_id: 88,
+        full_name: 'Kid B',
+        email: null,
+        grade_level: 7,
+        school_name: null,
+        date_of_birth: null,
+        phone: null,
+        address: null,
+        city: null,
+        province: null,
+        postal_code: null,
+        notes: null,
+        interests: [],
+        relationship_type: null,
+        invite_link: null,
+        course_count: 0,
+        active_task_count: 0,
+        invite_status: null,
+      },
+    ]);
+    mockIleCreateSession.mockResolvedValue({ id: 999 });
+  });
+
+  it('#3975: handleStartDrill uses drillChildId (state) not URL child_id', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor?mode=drill&submode=parent_teaching&child_id=77'] });
+
+    // Both children render in the selector (grab Kid B's tab and click it).
+    const kidB = await screen.findByRole('tab', { name: /Kid B/i });
+    await act(async () => {
+      await user.click(kidB);
+    });
+
+    // Pick the topic card then start the drill.
+    const topicCard = await screen.findByRole('button', { name: /Fractions/i });
+    await act(async () => {
+      await user.click(topicCard);
+    });
+
+    const startBtn = screen.getByRole('button', { name: /Start Drill/i });
+    await act(async () => {
+      await user.click(startBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockIleCreateSession).toHaveBeenCalledTimes(1);
+    });
+    expect(mockIleCreateSession).toHaveBeenCalledWith(
+      expect.objectContaining({ child_student_id: 88, mode: 'parent_teaching' }),
+    );
+  });
+
+  it('#3976: ?submode=parent_teaching starts in parent_teaching sub-mode', async () => {
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor?mode=drill&submode=parent_teaching'] });
+
+    // Find the "Teach" radio — it should be checked.
+    const teachPill = await screen.findByRole('radio', { name: /Teach/i });
+    expect(teachPill).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('#3981: mode tab click updates URL search params', async () => {
+    const user = userEvent.setup();
+    // Mount a LocationProbe alongside TutorPage so we can assert directly on
+    // the MemoryRouter-managed location.search (#3991 — stronger than the
+    // aria-pressed round-trip the original test used).
+    renderWithProviders(
+      <>
+        <TutorPage />
+        <LocationProbe />
+      </>,
+      { initialEntries: ['/tutor'] },
+    );
+
+    // Default mode is 'explain', Drill tab is aria-pressed=false.
+    const drillTab = await screen.findByRole('button', { name: /Drill a topic/i });
+    expect(drillTab).toHaveAttribute('aria-pressed', 'false');
+
+    await act(async () => {
+      await user.click(drillTab);
+    });
+
+    // After click, Drill tab is pressed AND the URL carries ?mode=drill.
+    await waitFor(() => {
+      expect(drillTab).toHaveAttribute('aria-pressed', 'true');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('current-search').textContent ?? '').toContain(
+        'mode=drill',
+      );
+    });
+
+    // Round-trip: click Explain back — URL must drop mode=drill.
+    const explainTab = screen.getByRole('button', { name: /Explain & learn/i });
+    await act(async () => {
+      await user.click(explainTab);
+    });
+    await waitFor(() => {
+      expect(explainTab).toHaveAttribute('aria-pressed', 'true');
+    });
+    expect(drillTab).toHaveAttribute('aria-pressed', 'false');
+    await waitFor(() => {
+      expect(screen.getByTestId('current-search').textContent ?? '').not.toContain(
+        'mode=drill',
+      );
+    });
+  });
+
+  it('#3980: mode switcher exposes segmented-button (role=group) not tablist', async () => {
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+    await screen.findByRole('group', { name: /Choose a tutor mode/i });
+    expect(screen.queryByRole('tablist', { name: /Choose a tutor mode/i })).toBeNull();
   });
 });
