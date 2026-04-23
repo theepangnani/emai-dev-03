@@ -1446,7 +1446,8 @@ async def test_digest_overflow_renders_more_cta(db_session):
     assert result["status"] == "delivered"
     html = captured.get("content") or ""
     assert "And 5 more" in html
-    assert "classbridge.ca/email-digest" in html
+    # #3965 — CTA href is resolved from settings.frontend_url at render time.
+    assert "/email-digest" in html
 
 
 @pytest.mark.asyncio
@@ -1488,3 +1489,23 @@ async def test_digest_sectioned_legacy_blob_falls_back_to_legacy_html(db_session
     assert result["status"] == "delivered"
     # Legacy HTML is passed through unchanged (3x3 email renderer not used).
     assert captured.get("content") == "<h3>Legacy Full Digest</h3><p>Content here</p>"
+
+
+def test_sectioned_digest_email_uses_settings_frontend_url(db_session):
+    """#3965 — full-digest CTA URL must come from settings.frontend_url, not a hardcoded prod URL."""
+    from app.services.notification_service import build_sectioned_digest_email_body
+
+    with patch(
+        "app.core.config.settings.frontend_url",
+        "https://staging.classbridge.ca",
+    ):
+        html = build_sectioned_digest_email_body({
+            "urgent": ["item1", "item2", "item3"],
+            "announcements": [],
+            "action_items": [],
+            "overflow": {"urgent": 2, "announcements": 0, "action_items": 0},
+        })
+
+    # Link must come from settings, NOT hardcoded prod
+    assert 'href="https://staging.classbridge.ca/email-digest"' in html
+    assert 'href="https://www.classbridge.ca/email-digest"' not in html

@@ -306,9 +306,6 @@ _SECTIONED_SECTION_STYLES = {
     },
 }
 
-_SECTIONED_FULL_DIGEST_URL = "https://www.classbridge.ca/email-digest"
-
-
 def _html_escape(text: str) -> str:
     """Minimal HTML-escape for user-facing strings rendered into the digest."""
     return (
@@ -337,6 +334,10 @@ def build_sectioned_digest_email_body(sectioned: dict) -> str:
     legacy = sectioned.get("legacy_blob")
     if legacy:
         return legacy
+
+    # #3965 — resolve digest URL from settings so dev/staging don't link to prod.
+    from app.core.config import settings as app_settings
+    full_digest_url = f"{app_settings.frontend_url.rstrip('/')}/email-digest"
 
     overflow = sectioned.get("overflow") or {}
     sections_html: list[str] = []
@@ -373,7 +374,7 @@ def build_sectioned_digest_email_body(sectioned: dict) -> str:
         if more > 0:
             more_html = (
                 f'<p style="margin:4px 0 0 0;font-size:14px;">'
-                f'<a href="{_SECTIONED_FULL_DIGEST_URL}" '
+                f'<a href="{full_digest_url}" '
                 f'style="color:#4f46e5;text-decoration:none;">'
                 f'And {more} more &rarr; View full digest</a></p>'
             )
