@@ -132,4 +132,10 @@ describe('UploadMaterialWizard', () => {
       screen.getByText('Your parent will be notified about this upload.'),
     ).toBeInTheDocument()
   })
+
+  // #3955 — the in-modal "Ask a Question" tab was removed; /ask (ASGFPage) is the canonical Ask flow.
+  it('does not render an "Ask a Question" tab (ASGF /ask is canonical)', () => {
+    render(<UploadMaterialWizard {...defaultProps} />)
+    expect(screen.queryByRole('tab', { name: /ask a question/i })).not.toBeInTheDocument()
+  })
 })

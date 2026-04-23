@@ -641,6 +641,60 @@ Frontends MUST gate "Open preferences" / "Change settings" style CTAs on `reason
 
 Both per-channel columns enable analytics on channel reliability independent of the top-level summary status. Analytics queries distinguishing "delivery reliability" from "parent setup completeness" should filter on the column values: `"failed"` for reliability, `"skipped"` for setup completeness.
 
+#### §6.127.2 Sectioned 3×3 Digest Contract (#3956 — Phase A of #3905)
+
+**Added:** 2026-04-21 | **GitHub Issue:** #3956 (Phase A) — parent of #3905 multi-variable Twilio template redesign.
+
+Parent feedback on the original single-HTML-blob digest: "text heavy, group in 3, 'More' opens ClassBridge". Phase A ships everything that can go live **without** Meta approval dependency; Phase B (#3905) adds the V2 Twilio template once Meta approves.
+
+**Digest format:** `digest_format="sectioned"` is added alongside existing `full` / `brief` / `actions_only`. New parents default to `"sectioned"`; existing parents keep their configured format until explicitly migrated.
+
+**AI-service JSON contract:**
+
+`generate_sectioned_digest(emails, child_name, parent_name) -> dict` produces:
+
+```json
+{
+  "urgent":        ["str", "str", "str"],
+  "announcements": ["str", "str", "str"],
+  "action_items":  ["str", "str", "str"],
+  "overflow": {
+    "urgent": 0, "announcements": 0, "action_items": 0
+  },
+  "legacy_blob":  null
+}
+```
+
+- Each section: AT MOST 3 items, each ONE SHORT SENTENCE (max 140 chars), no HTML.
+- `urgent` = due today or tomorrow. `announcements` = classroom posts, not time-sensitive. `action_items` = things the parent or child must DO.
+- `overflow.<section>` = count of additional items we would have included if the cap were higher. Drives the "And N more →" CTA.
+- Empty sections = `[]`. Empty overflow entries = `0` (never missing — Pydantic `SectionedDigest` coerces).
+- On JSON parse failure or upstream AI error, the service falls back to the legacy `generate_parent_digest` call and returns `{"legacy_blob": "<html>"}`. Downstream renderers MUST check `legacy_blob` first and render the legacy HTML unchanged.
+
+**Overflow / "More →" CTA:**
+- Link target: `https://www.classbridge.ca/email-digest`
+- Email path: rendered below each section's `<ul>` as `<p><a href="...">And {N} more → View full digest</a></p>`.
+- WhatsApp V1 path: flattened inline as `(And N more)` inside the single-line-with-bullets string.
+- WhatsApp V2 path: appended inside each section block as `+ And N more` below the bullet items.
+
+**Per-channel rendering rules:**
+
+- **Email (3×3 inline-styled HTML):** sections have coloured accents (Urgent 🔴 red `#dc2626`, Announcements 📢 grey `#6b7280`, Action Items ✅ blue `#2563eb`). `<h3>` heading + `<ul>` with up to 3 `<li>` + overflow `<p>` CTA. Inline CSS only (email clients strip `<style>`). Empty sections skipped entirely — no empty card is rendered.
+- **WhatsApp V1 (current `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` single-variable template):** sectioned content is flattened into a single-line-with-bullets string: `"Urgent • item1 • item2 • item3 • (And N more) • Announcements • ... • Action Items • ..."`. Empty sections are omitted (no heading appears). The existing #3941 sanitisation (`\n\n` → `•`, control-char stripping, 1024-char cap) is applied unchanged.
+- **WhatsApp V2 (new `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` 4-variable template):** when the V2 env var is set, the digest job calls `send_whatsapp_template` with 4 variables:
+  - `1` = parent_name
+  - `2` = urgent block (up to 3 `- item` lines + optional `+ And N more`, newline-separated)
+  - `3` = announcements block (same format)
+  - `4` = action_items block (same format)
+- **Empty-section substitution:** Twilio V2 template variables cannot be empty. Empty sections in the V2 path are substituted with the literal string `"(none)"`. V1 flatten and email renderers simply omit empty sections instead.
+
+**V1 / V2 toggle:**
+- `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` empty (default) → silent V1 fallback. No user-visible change.
+- `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` set → V2 4-variable template used. Scheduled for Phase B once Meta approves.
+- Env var is plumbed through `.github/workflows/deploy.yml` from GitHub Secrets, dormant until Meta approval.
+
+**Supersedes §6.127.1 where it mentions the legacy single-variable template flow** — §6.127.1's three-valued per-channel delivery-status contract still applies unchanged to all three rendering paths (email, V1, V2).
+
 **Phase 2 Features (M4, July-August 2026):**
 - [ ] F-09: Digest format selector — Brief bullets / Full summary / Action items only (#2655)
 - [ ] F-10: Email categorization — Teacher / School admin / Board announcements (#2655)
@@ -691,13 +745,19 @@ Both per-channel columns enable analytics on channel reliability independent of 
 | M4 | July-Aug 2026 | Phase 2: format selector, categorization, multi-child |
 | M5 | September 2026 | Public launch — feature GA |
 
-### 6.128 Ask a Question — Parent Open-Ended Study Guide Generation (Phase 2) - IMPLEMENTED
+### 6.128 Ask a Question — Parent Open-Ended Study Guide Generation (Phase 2) - DEPRECATED (superseded by §6.137 / CB-ASGF-001)
 
-Parents can type free-form education questions (e.g., "My son is doing OSSLT — how can I help him prep?") and get a structured, actionable study guide generated through the existing pipeline. No file upload or course content required.
+> **⚠️ DEPRECATED 2026-04-22 (#3955):** The in-wizard "Ask a Question" tab was removed. The canonical Ask flow is now **§6.137 AI Study Guide Generator (CB-ASGF-001)** at route `/ask` (ASGFPage). The legacy `document_type='parent_question'` → `CourseMaterialDetailPage` autoGenerate pipeline is no longer reachable from the UI. Any lingering `mode: 'question'` callers in `useParentStudyTools` are safely redirected to `/ask?question=<encoded>`. Backend prompts and services listed below remain in the codebase so existing parent-question study guides keep rendering, but no new ones can be created via this path.
 
-**GitHub Epic:** #2861
+**Why deprecated:** The modal flow created a CourseContent + relied on an autoGenerate redirect that produced the "We couldn't determine the document type" empty state when the stream kick-off failed (e.g. session expiry, stale content). ASGFPage replaces it with a first-class 5-stage wizard (Input → Processing → Slides → Quiz → Results) and is the only supported entry point going forward (sidebar nav + dashboard quick actions already route there).
 
-**User Flow:**
+---
+
+**Historical reference (superseded):** Parents could type free-form education questions and get a structured study guide through the existing pipeline. No file upload or course content required.
+
+**GitHub Epic:** #2861 — *Closed; see §6.137 for the successor feature.*
+
+**User Flow (historical):**
 1. Parent opens Upload Material wizard (from Dashboard or Study Guides page)
 2. Clicks "Ask a Question" tab (new mode alongside "Upload Material")
 3. Types open-ended question in textarea
@@ -766,10 +826,11 @@ Parents can type free-form education questions (e.g., "My son is doing OSSLT —
 | #2884 | fix: `_build_study_guide_prompt()` uses full guide user prompt for `parent_question` |
 | #2888 | fix: CourseContent create endpoint stores `document_type`/`study_goal` (root cause fix) |
 
-**Known future enhancements:**
+**Known future enhancements (historical — no longer actionable since §6.128 is deprecated):**
 - [ ] Document dual prompt locations — system in `study_guide_strategy.py`, user in `ai_service.py` (#2886)
 - [ ] Add `CRITICAL_DATES` extraction to parent_question prompt for auto-task creation (#2887)
 - [x] Convert continue endpoint to SSE streaming — spinner shows but no content streams (#2896) (FIXED — PR #2906)
+- [x] Retire legacy in-wizard Ask tab; route parent questions to `/ask` (ASGFPage) (#3955) — **DEPRECATED ON 2026-04-22**
 
 ### 6.129 Study Guide Section Navigation — Collapsible Sections & Table of Contents (#2894) - IMPLEMENTED
 
@@ -1355,8 +1416,9 @@ Ten entry points connecting ASGF with existing ClassBridge UX surfaces:
 - [x] **SelectionTooltip:** "Start Session" button on text selection (#3538, PR #3555)
 - [x] **ASGF page escape hatch:** "Generate study guide instead" link on ASGFPage (#3535, PR #3555)
 - [x] **ASGFPage at /ask route:** Full 5-stage wizard (question → upload → context → slides → quiz) (#3518, PR #3518)
+- [x] **Legacy in-wizard Ask tab removed (#3955):** The "Ask a Question" tab inside `UploadMaterialWizard` (originally part of §6.128) was retired; `/ask` is now the single canonical entry point for open-ended parent/student questions. `useParentStudyTools.handleGenerateFromModal` redirects any stray `mode: 'question'` caller to `/ask?question=<encoded>` as a safety net.
 
-**Issues:** #3531-#3539 | **Key PR:** #3555
+**Issues:** #3531-#3539, #3955 | **Key PR:** #3555
 
 #### §6.137.11 Incremental Slide Streaming (NFR) — DEPLOYED (#3735)
 
@@ -1801,11 +1863,15 @@ One-day post-ship defect sweep after CB-LAND-001 hit production (revision `class
 | #3897 | `LandingFooter.css` used `filter: brightness(0) invert(1)` to whiten the color logo on dark bg | Swapped to existing `/classbridge-logo-dark.png` asset; filter hack removed. |
 | #3898 | CTA copy duplicated per-consumer (nav "Join Waitlist" short vs hero "Join the waitlist" long) | `useLandingCtas` now exposes `secondaryLabel` (long) + `secondaryLabelShort` (short). |
 | #3899 | Section-id string literals scattered across registry / page split / section files | New `frontend/src/components/landing/sectionIds.ts` with `LANDING_SECTION_ID` const + `LandingSectionId` type. All 12 section files + `LandingPageV2` footer-split migrated. |
-| #3930 | Feature-flag kill-switch broken — `useVariantBucket` ignored `enabled` boolean, so admin toggle-off had no effect when variant remained `on_for_all`. Both `landing_v2` and `demo_landing_v1_1` affected. | Defense-in-depth: frontend hook short-circuit (#3931), backend `/api/features` response coercion (#3932), admin UI mismatch warning (#3933), docs (#3935). |
+| #3930 | Feature-flag kill-switch broken — `useVariantBucket` ignored `enabled` boolean, so admin toggle-off had no effect when variant remained `on_for_all`. Both `landing_v2` and `demo_landing_v1_1` affected. | Defense-in-depth: frontend hook short-circuit (#3931), backend `/api/features` response coercion (#3932), admin UI mismatch warning (#3933) + Auto-fix button, docs (#3935). |
+| #3902 | Nav + footer logos too small — user-reported visibility issue | Bumped CSS heights: nav 64px desktop / 44px mobile, footer 80px. Intrinsic `width`/`height` attrs bumped in lockstep for CLS. |
+| #3908 | Logo PNGs had ~70% baked-in whitespace; CSS height bump scaled the padding too | Swapped `/classbridge-logo.png` → `/classbridge-logo-v6.png` (tight-cropped, 400×187, ~5% whitespace, 50 KB). Nav intrinsic attrs `137×64`, footer `171×80` (preserve 2.139:1 ratio). Legacy negative-margin hacks on `.launch-nav-logo` removed (no longer needed). Footer re-added `filter: brightness(0) invert(1)` (v6 is gradient; filter flattens to white on dark bg). |
+| #3939 | PR #3910 accidentally replaced the custom `classbridge-hero-logo.png` illustration (children + book + bridge) on legacy `LaunchLandingPage` with the plain v6 wordmark | Reverted hero `<img src>` + restored compositionally-tuned negative margins on `.launch-hero-logo` (desktop `-24px auto -16px`, mobile `-10px auto -10px`). Inline CSS comment added to prevent re-regression. |
+| #3958 | Deploy #1422 failed — `AdminFeaturesPage.test.tsx` Auto-fix button test triggered an unmocked `/api/features` refetch that crashed jsdom/undici in CI with `InvalidArgumentError: invalid onError method` | Extended the existing `vi.mock('../../api/client')` in the test file to stub the `api` axios instance (get/post/patch/put/delete). Production code untouched. |
 
-**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 109/109 landing tests pass · 2× `/pr-review` per fix branch + 1× orchestrator-level review.
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · all landing tests pass · 2× `/pr-review` per fix branch + orchestrator-level review across PR #3888, #3903, #3910, #3944, #3961.
 
-**Workflow:** 6 parallel isolated-worktree streams (A/B/C/D + combined S2+S3) → integration into `fix/3885-landing-v2-logo` → PR #3888 (merged `49b62f4b`).
+**Workflow:** parallel isolated-worktree streams per fix → per-round integration branches (`fix/3885-landing-v2-logo`, `integrate/killswitch-fix`) → one PR to master per round. 24 PRs total across the redesign + hardening + activation epics.
 
 #### 6.140.9 Open fast-follows (deferred polish — all `CB-LAND-001-fast-follow`)
 
@@ -1824,8 +1890,26 @@ One-day post-ship defect sweep after CB-LAND-001 hit production (revision `class
 - #3852 — add `vitest-axe` + automated axe-core scan to landing-v2
 - #3853 — body-text contrast audit (cyan accents + pastel row bg) against WCAG AA
 - #3858 — S16 analytics: StrictMode-safe step_view + tab_change guards; ref-callback hook; section_view unit test
+- #3911 — v6 hero logo may appear soft at 280px on retina (#3908 follow-up) — post-deploy visual check pending
 
-All non-blocking for `landing_v2` ramp to 100%; epic #3800 tracks overall completion.
+All non-blocking; epic #3800 tracks overall completion. Epic closes once retina visual check passes (#3911) and V2 rolls to 100 % (currently `on_for_all` live).
+
+#### 6.140.10 Deploy trail (2026-04-21 → 2026-04-23)
+
+| Date (UTC) | Revision | SHA | Contents |
+|------------|----------|-----|----------|
+| 2026-04-21 17:30 | classbridge-01125-ksj* | `6147806c` | CB-LAND-001 main redesign (`99a06cf9` #3871) + docs (`e6a5650f` #3818) + CI tweak (`6147806c` #3882) |
+| 2026-04-21 23:09 | classbridge-01128-mwp | `80f6572b` | Digest delivery honesty (#3886 / #3879+#3880+#3884) |
+| 2026-04-21 23:46 | classbridge-01128-mwp | `98467ba6` | Logo size bump (#3903) + WhatsApp \n→ bullet hotfix (#3942) |
+| 2026-04-22 01:49 | classbridge-01128-mwp | `42ca2d06` | v6 logo tight-crop swap (#3910) |
+| 2026-04-22 03:15 | (same) | `a582c150` | WhatsApp template newline hotfix (#3906 + #3942) |
+| 2026-04-22 15:06 | **FAILED** | — | Scheduled deploy of `a8c54abf` (kill-switch PR #3944) blocked by test crash in `AdminFeaturesPage.test.tsx` |
+| 2026-04-23 00:13 | classbridge-01130-jqx | `1be02431` | **Current live.** Kill-switch defense-in-depth (#3944) + test mock (#3961) + CB-TASKSYNC-001 MVP-1 (#3946) + Ask-tab retirement (#3959) + CB-PEDI Phase A (#3962 / #3956 3×3 digest restructure with dormant V2 code path). Snapshot tag: `snapshot/2026-04-22-pre-killswitch-deploy` (at `0a693504`); deploy tag: `deploy/2026-04-22-1be02431`. |
+
+Post-`1be02431` verification (live):
+- `curl /api/features` with enabled=false on `landing_v2` → `_variants.landing_v2 === "off"` ✅ (kill-switch working)
+- Legacy hero renders children + book + bridge illustration ✅
+- V2 WhatsApp Content Template `classbridge_daily_digest_v2` (`HX7f765c17b88be6b90b564748b68458c4`) submitted to Meta; business-initiated review pending (see #3987 for activation)
 
 ---
 
@@ -1883,4 +1967,3 @@ All non-blocking for `landing_v2` ramp to 100%; epic #3800 tracks overall comple
 - **Delete `FlashTutorPage.tsx`** — file retained in tree as reference; drill mode has absorbed all live affordances, so the file is orphaned and safe to remove in a dedicated cleanup PR.
 - **Drill child overdue counts** — `ChildSelectorTabs` in drill mode receives no `childOverdueCounts`; align with dashboard source when the lift is cheap.
 - **`FlashTutorSessionPage` Arc refresh** — session runner still uses the original owl `TutorAvatar`; migrate to Arc for visual consistency.
-
