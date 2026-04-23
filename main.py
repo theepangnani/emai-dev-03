@@ -37,6 +37,7 @@ from app.api.routes import asgf
 from app.api.routes import demo_verify  # CB-DEMO-001 B2 (#3604)
 from app.api.routes import public as public_routes  # CB-DEMO-001 B2 (#3604)
 from app.api.routes import demo  # CB-DEMO-001 B1 (#3603)
+from app.api.routes import class_import  # CB-ONBOARD-001 (#3985)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -584,6 +585,7 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(students.router, prefix="/api")
+app.include_router(class_import.router, prefix="/api")  # CB-ONBOARD-001 (#3985) — must come before courses to win over /{course_id}
 app.include_router(courses.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(google_classroom.router, prefix="/api")
