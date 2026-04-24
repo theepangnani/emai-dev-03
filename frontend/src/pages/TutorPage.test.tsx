@@ -72,6 +72,14 @@ vi.mock('../hooks/useChildOverdueCounts', () => ({
   useChildOverdueCounts: (...args: unknown[]) => mockUseChildOverdueCounts(...args),
 }));
 
+// Feature-flag hook. Most tests keep `tutor_chat_enabled` OFF so the legacy
+// ASGF form renders (existing tests were written against that tree). The
+// #4095 mode-toggle integration tests flip the default in a nested describe.
+const mockUseFeatureFlagEnabled = vi.fn<(key: string) => boolean>(() => false);
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeatureFlagEnabled: (key: string) => mockUseFeatureFlagEnabled(key),
+}));
+
 vi.mock('../api/client', () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
@@ -595,5 +603,132 @@ describe('TutorPage — hero XpStreakBadge (#4019)', () => {
     await waitFor(() => {
       expect(screen.getByText('XP')).toBeInTheDocument();
     });
+  });
+});
+
+// ── #4095 Phase 1.1 hotfixes — mode-toggle state persistence + carry-topic ──
+describe('TutorPage — #4095 mode-toggle integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthUser.current = { role: 'student', roles: ['student'] };
+    mockGetActiveSessions.mockResolvedValue({ sessions: [] });
+    mockGetContextData.mockResolvedValue({ children: [], courses: [], upcoming_tasks: [] });
+    mockIleGetTopics.mockResolvedValue([]);
+    mockParentGetChildren.mockResolvedValue([]);
+    mockUseChildOverdueCounts.mockReturnValue(new Map());
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 0, streak_days: 0 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
+    // Flip tutor_chat_enabled ON so <TutorChat /> mounts.
+    mockUseFeatureFlagEnabled.mockImplementation(
+      (key: string) => key === 'tutor_chat_enabled',
+    );
+  });
+
+  function makeSSEStream(lines: string[]): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder();
+    return new ReadableStream({
+      start(controller) {
+        for (const line of lines) controller.enqueue(encoder.encode(line));
+        controller.close();
+      },
+    });
+  }
+
+  it('Bug 2 — chat messages survive Explain → Drill → Explain toggle', async () => {
+    // Mock the /api/tutor/chat/stream fetch so sendMessage resolves.
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Sure thing."}\n\n',
+        'data: {"type":"done","conversation_id":"conv-xyz"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    localStorage.setItem('token', 'test-token');
+
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+
+      // Type in the chat input and hit Enter.
+      const chatInput = await screen.findByRole('textbox', { name: /message arc/i });
+      await act(async () => {
+        await user.type(chatInput, 'How do fractions work?{Enter}');
+      });
+
+      // User bubble shows the message.
+      await waitFor(() => {
+        expect(screen.getByText('How do fractions work?')).toBeInTheDocument();
+      });
+
+      // Switch to drill mode.
+      const drillTab = screen.getByRole('button', { name: /Drill a topic/i });
+      await act(async () => {
+        await user.click(drillTab);
+      });
+      await waitFor(() => {
+        expect(drillTab).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      // Switch back to explain mode.
+      const explainTab = screen.getByRole('button', { name: /Explain & learn/i });
+      await act(async () => {
+        await user.click(explainTab);
+      });
+      await waitFor(() => {
+        expect(explainTab).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      // The original user message must still be on screen — state survived
+      // the toggle because <TutorChat> is display:none hidden (still mounted).
+      expect(screen.getByText('How do fractions work?')).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+      localStorage.removeItem('token');
+    }
+  });
+
+  it('Bug 4 — switching Explain → Drill pre-fills custom-topic with last user msg', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"ok"}\n\n',
+        'data: {"type":"done","conversation_id":"conv-1"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    localStorage.setItem('token', 'test-token');
+
+    try {
+      const user = userEvent.setup();
+      renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+
+      const chatInput = await screen.findByRole('textbox', { name: /message arc/i });
+      await act(async () => {
+        await user.type(chatInput, 'Explain photosynthesis{Enter}');
+      });
+      await waitFor(() => {
+        expect(screen.getByText('Explain photosynthesis')).toBeInTheDocument();
+      });
+
+      // Flip to drill mode — the custom-topic toggle should auto-open and
+      // be pre-populated with the last user message.
+      const drillTab = screen.getByRole('button', { name: /Drill a topic/i });
+      await act(async () => {
+        await user.click(drillTab);
+      });
+
+      // Custom topic input shows the pre-filled value (truncated to 200 chars;
+      // our message is well under).
+      const topicInput = await screen.findByPlaceholderText(/Topic \(e\.g\./i);
+      expect(topicInput).toHaveValue('Explain photosynthesis');
+    } finally {
+      vi.unstubAllGlobals();
+      localStorage.removeItem('token');
+    }
   });
 });

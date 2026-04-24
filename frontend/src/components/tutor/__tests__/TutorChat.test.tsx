@@ -47,7 +47,7 @@ describe('TutorChat', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders empty state with Arc greeting and starter prompts', () => {
+  it('renders empty state with Arc greeting and headline only (no starter cards — #4095 Bug 1)', () => {
     render(<TutorChat firstName="Maya" />);
 
     // Eyebrow greeting uses first name
@@ -58,9 +58,11 @@ describe('TutorChat', () => {
       screen.getByRole('heading', { name: /what do you want to/i }),
     ).toBeInTheDocument();
 
-    // Starter prompts — there should be 3
-    const starters = screen.getByRole('list', { name: /starter prompts/i });
-    expect(within(starters).getAllByRole('listitem')).toHaveLength(3);
+    // Starter prompts removed — the misleading pre-canned cards
+    // ("Explain photosynthesis like I'm in grade 7" etc.) were dropped in
+    // #4095 Bug 1 because they were pre-canned / not personalized.
+    expect(screen.queryByRole('list', { name: /starter prompts/i })).toBeNull();
+    expect(screen.queryByText(/Explain photosynthesis like I/i)).toBeNull();
   });
 
   it('sends a message via Enter and surfaces the user bubble', async () => {

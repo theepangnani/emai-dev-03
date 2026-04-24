@@ -409,6 +409,108 @@ def test_stream_inter_token_stall_emits_error_frame(client, db_session):
         set_tutor_flag(db_session, enabled=False)
 
 
+def test_stream_suppresses_chips_block_from_token_frames(client, db_session):
+    """#4095 Bug 3 — the ``[[CHIPS: "..."]]`` block must not leak into the
+    token-frame stream (it paints as raw text in the assistant bubble).
+
+    We feed the mock OpenAI stream a completion whose tail is the chips
+    block, then parse every ``data: {...}`` line out of the SSE body and
+    assert that no ``type: token`` frame contains ``[[``, ``]]``, or
+    ``CHIPS``. The chips frame itself must still arrive with the parsed
+    list.
+    """
+    import json as _json
+
+    make_user(db_session, email="tutor_chips_leak@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    # Split the chips block awkwardly across deltas so the buffer logic
+    # is exercised — the model can emit `[[` and `CHIPS` as separate chunks.
+    mock_client = mock_openai_client(
+        stream_pieces=[
+            "Photo",
+            "synth",
+            " is...",
+            "\n[[",
+            'CHIPS: "A", ',
+            '"B"]]',
+        ],
+    )
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_chips_leak@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "Explain photosynthesis"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
+
+        token_frames: list[str] = []
+        chips_payload: list[str] | None = None
+        for line in resp.text.splitlines():
+            if not line.startswith("data: "):
+                continue
+            payload = _json.loads(line[6:])
+            if payload.get("type") == "token":
+                token_frames.append(payload.get("text", ""))
+            elif payload.get("type") == "chips":
+                chips_payload = payload.get("suggestions")
+
+        # NO token frame carries the raw CHIPS sigils.
+        joined_tokens = "".join(token_frames)
+        assert "[[" not in joined_tokens
+        assert "]]" not in joined_tokens
+        assert "CHIPS" not in joined_tokens
+        # The chips frame still arrives with the parsed list.
+        assert chips_payload == ["A", "B"]
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_literal_double_bracket_not_dropped(client, db_session):
+    """#4095 Bug 3 (edge) — a literal ``[[something]]`` that is NOT a CHIPS
+    block must still be delivered as token text, not silently swallowed."""
+    import json as _json
+
+    make_user(db_session, email="tutor_brackets_literal@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(
+        stream_pieces=["Hello ", "[[note]]", " world"],
+    )
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_brackets_literal@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "greet me"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
+
+        token_text = ""
+        for line in resp.text.splitlines():
+            if not line.startswith("data: "):
+                continue
+            payload = _json.loads(line[6:])
+            if payload.get("type") == "token":
+                token_text += payload.get("text", "")
+
+        # The literal "[[note]]" comes through intact once buffered/flushed.
+        assert "[[note]]" in token_text
+        assert "Hello " in token_text
+        assert "world" in token_text
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
 def test_load_history_stable_order_on_timestamp_tie(db_session):
     """Two rows with identical created_at must pair deterministically.
 
