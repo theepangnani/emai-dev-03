@@ -36,11 +36,12 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
  * Articles (a/an/the) are intentionally NOT stripped — see #3265 for the
  * edge case where stripping articles broke answers like "the" itself.
  */
-const normalizeAnswer = (s: string) =>
-  s.trim()
+const normalizeAnswer = (s: string): string =>
+  s
     .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
+    .replace(/[^\w\s]/g, ' ')    // punctuation → space (preserves word boundaries)
+    .replace(/\s+/g, ' ')        // collapse multi-space
+    .trim();
 
 export interface ASGFQuizBridgeProps {
   questions: ASGFQuizQuestion[];

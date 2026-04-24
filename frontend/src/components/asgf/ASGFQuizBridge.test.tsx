@@ -146,6 +146,82 @@ describe('ASGFQuizBridge — #4020 true_false + fill_blank rendering', () => {
     });
   });
 
+  it('fill_blank: normalizer preserves word boundaries — "it\'s" ≠ "its" (#4034 I1)', async () => {
+    // Canonical answer: "its". Typed: "it's" → normalizes to "it s" (two tokens),
+    // so must NOT match.
+    const question: ASGFQuizQuestion = {
+      question_text: 'Fill in: The dog wagged ____ tail.',
+      options: ['its', '', '', ''],
+      correct_index: 0,
+      bloom_tier: 'recall',
+      slide_reference: 0,
+      hint_text: 'Possessive form, no apostrophe.',
+      explanation: '"its" is the possessive form.',
+      format: 'fill_blank',
+    };
+
+    render(<ASGFQuizBridge questions={[question]} sessionId="s-4034-its" />);
+    const input = screen.getByLabelText(/your answer/i) as HTMLInputElement;
+    const user = userEvent.setup();
+    await user.type(input, "it's");
+    await user.click(screen.getByRole('button', { name: /submit answer/i }));
+
+    // Should be WRONG — hint visible, no "Why correct"
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: /hint for attempt/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Why correct')).not.toBeInTheDocument();
+  });
+
+  it('fill_blank: normalizer preserves word boundaries — "12-7" ≠ "127" (#4034 I1)', async () => {
+    // Canonical: "127". Typed: "12-7" → normalizes to "12 7", must NOT match.
+    const question: ASGFQuizQuestion = {
+      question_text: 'What is the number?',
+      options: ['127', '', '', ''],
+      correct_index: 0,
+      bloom_tier: 'recall',
+      slide_reference: 0,
+      hint_text: 'One hundred twenty-seven.',
+      explanation: '127 is the answer.',
+      format: 'fill_blank',
+    };
+
+    render(<ASGFQuizBridge questions={[question]} sessionId="s-4034-127" />);
+    const input = screen.getByLabelText(/your answer/i) as HTMLInputElement;
+    const user = userEvent.setup();
+    await user.type(input, '12-7');
+    await user.click(screen.getByRole('button', { name: /submit answer/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status', { name: /hint for attempt/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Why correct')).not.toBeInTheDocument();
+  });
+
+  it('fill_blank: normalizer converts comma to space — "Ontario, Canada" matches "ontario canada" (#4034 I1)', async () => {
+    const question: ASGFQuizQuestion = {
+      question_text: 'Where is Toronto?',
+      options: ['ontario canada', '', '', ''],
+      correct_index: 0,
+      bloom_tier: 'recall',
+      slide_reference: 0,
+      hint_text: 'Province, Country.',
+      explanation: 'Toronto is in Ontario, Canada.',
+      format: 'fill_blank',
+    };
+
+    render(<ASGFQuizBridge questions={[question]} sessionId="s-4034-ontario" />);
+    const input = screen.getByLabelText(/your answer/i) as HTMLInputElement;
+    const user = userEvent.setup();
+    await user.type(input, 'Ontario, Canada');
+    await user.click(screen.getByRole('button', { name: /submit answer/i }));
+
+    // "Ontario, Canada" → "ontario canada" (comma → space, then collapsed).
+    await waitFor(() => {
+      expect(screen.getByText('Why correct')).toBeInTheDocument();
+    });
+  });
+
   it('true_false: after correct answer, the other option is disabled (#4030 I7)', async () => {
     const question: ASGFQuizQuestion = {
       question_text: 'The sky is blue.',
