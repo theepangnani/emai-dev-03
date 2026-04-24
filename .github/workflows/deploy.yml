@@ -156,6 +156,30 @@ jobs:
             echo "Database mode: GCE self-hosted (no Cloud SQL proxy)"
           fi
 
+      - name: Verify required secrets are present
+        env:
+          # Must match every secret referenced by --set-env-vars in the deploy step below.
+          BUG_REPORT_GITHUB_TOKEN: ${{ secrets.BUG_REPORT_GITHUB_TOKEN }}
+          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
+          TWILIO_WHATSAPP_DIGEST_CONTENT_SID: ${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID }}
+          TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2: ${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2 }}
+          TWILIO_WHATSAPP_OTP_CONTENT_SID: ${{ secrets.TWILIO_WHATSAPP_OTP_CONTENT_SID }}
+        run: |
+          set -e
+          missing=""
+          for var in BUG_REPORT_GITHUB_TOKEN TWILIO_WHATSAPP_FROM TWILIO_WHATSAPP_DIGEST_CONTENT_SID TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2 TWILIO_WHATSAPP_OTP_CONTENT_SID; do
+            if [ -z "${!var}" ]; then
+              missing="$missing $var"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error title=Missing required secrets::The following secrets are empty or unset:$missing"
+            echo "::error::Add them under Repo Settings → Secrets and variables → Actions."
+            echo "::error::Missing secrets silently wipe env vars via --set-env-vars. Refusing to deploy."
+            exit 1
+          fi
+          echo "All required secrets are present."
+
       - name: Deploy to Cloud Run
         run: |
           # Build Cloud SQL flag only if currently using Cloud SQL
