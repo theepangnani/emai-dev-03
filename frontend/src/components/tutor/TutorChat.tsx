@@ -38,13 +38,17 @@ export function TutorChat({ firstName, onFilesUploaded }: TutorChatProps) {
   const lastMessageId = messages[messages.length - 1]?.id;
 
   // Auto-scroll to bottom whenever a new message lands or tokens stream in.
+  // During active streaming, use instant scroll to avoid interrupt-smooth
+  // jank (each token kicks off a new smooth animation that cancels the
+  // previous one). On settled state, use smooth for the final scroll.
   // `scrollTo` isn't always available (e.g. jsdom), so fall back to assigning
   // scrollTop directly.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const behavior: ScrollBehavior = isStreaming ? 'auto' : 'smooth';
     if (typeof el.scrollTo === 'function') {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      el.scrollTo({ top: el.scrollHeight, behavior });
     } else {
       el.scrollTop = el.scrollHeight;
     }
@@ -97,7 +101,7 @@ export function TutorChat({ firstName, onFilesUploaded }: TutorChatProps) {
 
   return (
     <div className="tutor-chat" data-testid="tutor-chat">
-      <div className="tutor-chat__stream" ref={scrollRef} aria-live="polite">
+      <div className="tutor-chat__stream" ref={scrollRef}>
         {isEmpty && (
           <div className="tutor-chat__empty">
             <div className="tutor-chat__empty-mascot" aria-hidden="true">
