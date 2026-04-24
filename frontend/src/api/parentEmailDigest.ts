@@ -193,8 +193,12 @@ export interface ChildProfile {
   first_name: string;
   school_emails: ChildSchoolEmail[];
   created_at: string;
-  updated_at: string;
 }
+
+// Aliases kept for call-sites that use the `Parent*`-prefixed naming
+// introduced by Stream 5 (#4017). Keep both to avoid churn across streams.
+export type ParentChildSchoolEmail = ChildSchoolEmail;
+export type ParentChildProfile = ChildProfile;
 
 export interface MonitoredSenderAssignment {
   child_profile_id: number;
@@ -227,6 +231,16 @@ export interface AddMonitoredSenderPayload {
 export const listChildProfiles = () =>
   api.get<ChildProfile[]>('/api/parent/child-profiles');
 
+/**
+ * Wizard-only stub (#4017). Stream 2 did not expose a child-profile CREATE
+ * endpoint; profiles are currently seeded via the Stream 1 backfill from
+ * existing integrations. Calling this hits the backend POST which currently
+ * 404s — the wizard catches and surfaces a soft error to the user. A
+ * follow-up issue tracks adding a real endpoint.
+ */
+export const createChildProfile = (data: { student_id?: number | null; first_name: string }) =>
+  api.post<ChildProfile>('/api/parent/child-profiles', data);
+
 export const addChildSchoolEmail = (profileId: number, email_address: string) =>
   api.post<ChildSchoolEmail>(
     `/api/parent/child-profiles/${profileId}/school-emails`,
@@ -237,18 +251,18 @@ export const removeChildSchoolEmail = (profileId: number, emailId: number) =>
   api.delete(`/api/parent/child-profiles/${profileId}/school-emails/${emailId}`);
 
 export const listMonitoredSenders = () =>
-  api.get<MonitoredSender[]>('/api/parent/monitored-senders');
+  api.get<MonitoredSender[]>('/api/parent/email-digest/monitored-senders');
 
 export const addMonitoredSender = (data: AddMonitoredSenderPayload) =>
-  api.post<MonitoredSender>('/api/parent/monitored-senders', data);
+  api.post<MonitoredSender>('/api/parent/email-digest/monitored-senders', data);
 
 export const removeMonitoredSender = (id: number) =>
-  api.delete(`/api/parent/monitored-senders/${id}`);
+  api.delete(`/api/parent/email-digest/monitored-senders/${id}`);
 
 export const updateSenderAssignments = (
   id: number,
   child_profile_ids: SenderKidSelection,
 ) =>
-  api.patch<MonitoredSender>(`/api/parent/monitored-senders/${id}`, {
+  api.patch<MonitoredSender>(`/api/parent/email-digest/monitored-senders/${id}/assignments`, {
     child_profile_ids,
   });
