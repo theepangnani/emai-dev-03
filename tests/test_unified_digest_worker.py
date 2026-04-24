@@ -1,0 +1,347 @@
+"""Worker tests for unified digest v2 (#4012, #4015).
+
+Covers:
+- Feature flag OFF → legacy per-integration path is called, unified path
+  is NOT.
+- Feature flag ON → unified per-parent path is called, legacy path is
+  NOT.
+- ``send_unified_digest_for_parent`` groups integrations, attributes
+  emails, and emits exactly one DigestDeliveryLog per integration
+  (parent-level digest surfaced through the existing history table).
+- Empty-inbox short-circuit skips delivery.
+- Attribution counts land in the result dict.
+"""
+
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Flag dispatch: OFF
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_process_digests_flag_off_runs_legacy_path(app):
+    # Depend on the ``app`` fixture so the conftest model reload has
+    # happened before we import the job module — otherwise running this
+    # test in isolation leaves the SQLAlchemy registry in a stale state
+    # that corrupts later DB tests in the same session.
+    from app.jobs import parent_email_digest_job as job
+
+    mock_db = MagicMock()
+    with patch.object(job, "SessionLocal", return_value=mock_db), patch(
+        "app.services.feature_flag_service.is_feature_enabled",
+        return_value=False,
+    ), patch.object(
+        job, "_process_legacy_parent_email_digests", new=AsyncMock()
+    ) as mock_legacy, patch.object(
+        job, "process_unified_parent_email_digests", new=AsyncMock()
+    ) as mock_unified:
+        await job.process_parent_email_digests()
+
+    mock_legacy.assert_awaited_once_with(mock_db)
+    mock_unified.assert_not_awaited()
+    mock_db.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_process_digests_flag_on_runs_unified_path(app):
+    from app.jobs import parent_email_digest_job as job
+
+    mock_db = MagicMock()
+    with patch.object(job, "SessionLocal", return_value=mock_db), patch(
+        "app.services.feature_flag_service.is_feature_enabled",
+        return_value=True,
+    ), patch.object(
+        job, "_process_legacy_parent_email_digests", new=AsyncMock()
+    ) as mock_legacy, patch.object(
+        job, "process_unified_parent_email_digests", new=AsyncMock()
+    ) as mock_unified:
+        await job.process_parent_email_digests()
+
+    mock_unified.assert_awaited_once_with(mock_db)
+    mock_legacy.assert_not_awaited()
+    mock_db.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# send_unified_digest_for_parent — integration-level behavior
+# ---------------------------------------------------------------------------
+
+
+def _make_parent_with_integrations(db_session, email, child_emails):
+    """Build parent + 1 integration per entry in ``child_emails`` + child
+    profiles wired to ParentChildSchoolEmail so attribution matches.
+
+    Returns (parent, [integration_id, ...], [profile_id, ...]).
+    """
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import (
+        ParentChildProfile,
+        ParentChildSchoolEmail,
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email=email,
+        full_name="Unified Worker Parent",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.commit()
+
+    integration_ids: list[int] = []
+    profile_ids: list[int] = []
+    for idx, child_email in enumerate(child_emails):
+        integration = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address=f"{email}.gmail{idx}@gmail.com",
+            google_id=f"google_{email}_{idx}",
+            access_token="enc_access",
+            refresh_token="enc_refresh",
+            child_school_email=child_email,
+            child_first_name=f"Kid{idx}",
+        )
+        db_session.add(integration)
+        db_session.commit()
+        db_session.add(ParentDigestSettings(integration_id=integration.id))
+        db_session.commit()
+        integration_ids.append(integration.id)
+
+        profile = ParentChildProfile(
+            parent_id=parent.id,
+            first_name=f"Kid{idx}",
+        )
+        db_session.add(profile)
+        db_session.commit()
+        db_session.add(ParentChildSchoolEmail(
+            child_profile_id=profile.id,
+            email_address=child_email,
+        ))
+        db_session.commit()
+        profile_ids.append(profile.id)
+
+    return parent, integration_ids, profile_ids
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_groups_integrations_and_attributes(db_session):
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    parent, int_ids, prof_ids = _make_parent_with_integrations(
+        db_session,
+        "unified1@test.com",
+        ["kida@ocdsb.ca", "kidb@ocdsb.ca"],
+    )
+
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    # First integration yields 1 email to kida; second yields 1 email to kidb.
+    call_count = {"n": 0}
+
+    async def fake_fetch(db, integration, since=None):
+        call_count["n"] += 1
+        if integration.child_school_email == "kida@ocdsb.ca":
+            return [{
+                "source_id": "m1",
+                "sender_name": "Teacher A",
+                "sender_email": "ta@school.ca",
+                "subject": "Hello A",
+                "snippet": "body a",
+                "to_addresses": ["kida@ocdsb.ca"],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }]
+        return [{
+            "source_id": "m2",
+            "sender_name": "Teacher B",
+            "sender_email": "tb@school.ca",
+            "subject": "Hello B",
+            "snippet": "body b",
+            "to_addresses": ["kidb@ocdsb.ca"],
+            "delivered_to_addresses": [],
+            "received_at": since,
+        }]
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=fake_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["status"] == "delivered"
+    assert result["email_count"] == 2
+    assert call_count["n"] == 2
+    # Both emails attributed via school_email
+    assert result["attribution_counts"]["school_email"] == 2
+    assert result["attribution_counts"]["unattributed"] == 0
+
+    # One DigestDeliveryLog per integration (dual-maintain window).
+    logs = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .all()
+    )
+    assert len(logs) == len(int_ids)
+    for log in logs:
+        assert log.status == "delivered"
+        assert log.email_count == 2
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_sends_one_notification_per_parent(db_session):
+    """One parent with two integrations should trigger exactly ONE
+    send_multi_channel_notification call, not one per integration."""
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, int_ids, _ = _make_parent_with_integrations(
+        db_session,
+        "unified_onenotif@test.com",
+        ["x1@ocdsb.ca", "x2@ocdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    async def fake_fetch(db, integration, since=None):
+        return [{
+            "source_id": f"m-{integration.id}",
+            "sender_email": "t@school.ca",
+            "subject": "s",
+            "snippet": "b",
+            "to_addresses": [integration.child_school_email],
+            "delivered_to_addresses": [],
+            "received_at": since,
+        }]
+
+    mock_notify = MagicMock(return_value={"in_app": True, "email": True})
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=fake_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=mock_notify,
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["status"] == "delivered"
+    assert mock_notify.call_count == 1
+    # Verify the call targeted the unified title, not a per-kid title.
+    kwargs = mock_notify.call_args.kwargs
+    assert "kids" in kwargs["title"].lower()
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_skips_when_no_emails_and_notify_on_empty_false(db_session):
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _int, _prof = _make_parent_with_integrations(
+        db_session,
+        "unified_empty@test.com",
+        ["solo@ocdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=[]),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(),
+    ) as mock_notify:
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["status"] == "skipped"
+    assert result["email_count"] == 0
+    assert result["reason"] == "no_new_emails"
+    mock_notify.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_counts_unattributed(db_session):
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _int, _prof = _make_parent_with_integrations(
+        db_session,
+        "unified_unattrib@test.com",
+        ["only@ocdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    async def fake_fetch(db, integration, since=None):
+        # No recipient match, no monitored sender registered for this
+        # parent -> unattributed.
+        return [{
+            "source_id": "mx",
+            "sender_email": "mystery@nowhere.ca",
+            "subject": "?",
+            "snippet": "?",
+            "to_addresses": ["someone_else@ocdsb.ca"],
+            "delivered_to_addresses": [],
+            "received_at": since,
+        }]
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=fake_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["email_count"] == 1
+    assert result["attribution_counts"]["unattributed"] == 1
+    assert result["attribution_counts"]["school_email"] == 0
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_dedup_prevents_second_run_same_day(db_session):
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    parent, int_ids, _ = _make_parent_with_integrations(
+        db_session,
+        "unified_dedup@test.com",
+        ["dedup@ocdsb.ca"],
+    )
+    # Seed a delivered log for today under the integration id.
+    log = DigestDeliveryLog(
+        parent_id=parent.id,
+        integration_id=int_ids[0],
+        email_count=1,
+        digest_content="prior",
+        status="delivered",
+        channels_used="in_app,email",
+    )
+    db_session.add(log)
+    db_session.commit()
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=[]),
+    ) as mock_fetch:
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, since=datetime.now(timezone.utc)
+        )
+
+    assert result["status"] == "skipped"
+    assert result["reason"] == "already_delivered"
+    # fetch should NOT have been invoked (dedup short-circuits).
+    mock_fetch.assert_not_called()
