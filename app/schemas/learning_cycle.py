@@ -33,14 +33,14 @@ class LearningCycleSessionResponse(BaseModel):
 # --- Chunk ---
 
 class LearningCycleChunkCreate(BaseModel):
-    order: int = Field(..., ge=0)
+    order_index: int = Field(..., ge=0)
     teach_content_md: str = Field(..., min_length=1)
 
 
 class LearningCycleChunkResponse(BaseModel):
     id: str
     session_id: str
-    order: int
+    order_index: int
     teach_content_md: str
     mastery_status: str
 
@@ -51,7 +51,7 @@ class LearningCycleChunkResponse(BaseModel):
 # --- Question ---
 
 class LearningCycleQuestionCreate(BaseModel):
-    order: int = Field(..., ge=0)
+    order_index: int = Field(..., ge=0)
     format: str = Field(..., pattern="^(mcq|true_false|fill_blank)$")
     prompt: str = Field(..., min_length=1)
     options: dict[str, Any] | list[Any] | None = None
@@ -62,7 +62,7 @@ class LearningCycleQuestionCreate(BaseModel):
 class LearningCycleQuestionResponse(BaseModel):
     id: str
     chunk_id: str
-    order: int
+    order_index: int
     format: str
     prompt: str
     options: Any | None

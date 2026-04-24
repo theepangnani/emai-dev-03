@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.rate_limit import get_user_id_or_ip, limiter
-from app.db.database import get_db
+from app.db.database import SessionLocal, get_db
 from app.models.tutor import TutorConversation, TutorMessage
 from app.models.user import User
 from app.prompts.tutor_chat import build_system_prompt, build_user_prompt
@@ -257,11 +257,13 @@ async def tutor_chat_stream(
         scrubbed_content, _redactions = scrub_pii(assistant_content)
 
         # Persist the turn (user + assistant) once streaming completes.
-        # The user message is stored with PII scrubbed too; assistant content
-        # is stored scrubbed rather than raw.
+        # Use a fresh SessionLocal rather than the request-scoped `db`, which
+        # may already be closed by the time the generator's finally runs.
+        # Both user and assistant content are stored with PII scrubbed.
+        stream_db = SessionLocal()
         try:
             scrubbed_user, _ = scrub_pii(body.message)
-            db.add(
+            stream_db.add(
                 TutorMessage(
                     id=str(uuid.uuid4()),
                     conversation_id=conversation_id,
@@ -270,7 +272,7 @@ async def tutor_chat_stream(
                 )
             )
             if scrubbed_content:
-                db.add(
+                stream_db.add(
                     TutorMessage(
                         id=assistant_message_id,
                         conversation_id=conversation_id,
@@ -278,13 +280,15 @@ async def tutor_chat_stream(
                         content=scrubbed_content,
                     )
                 )
-            db.commit()
+            stream_db.commit()
         except Exception:
-            db.rollback()
+            stream_db.rollback()
             logger.exception(
                 "Tutor failed to persist conversation turn (conv=%s)",
                 conversation_id,
             )
+        finally:
+            stream_db.close()
 
         if chips:
             yield _sse({"type": "chips", "suggestions": chips})
