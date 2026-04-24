@@ -263,13 +263,25 @@ async def tutor_chat_stream(
         assistant_message_id = str(uuid.uuid4())
 
         if mod_result.flagged:
-            yield _sse(
-                {
-                    "type": "safety",
-                    "code": "moderation_blocked",
-                    "text": "This message was blocked by the safety filter.",
-                }
-            )
+            if "moderation_unavailable" in mod_result.categories:
+                yield _sse(
+                    {
+                        "type": "safety",
+                        "code": "moderation_unavailable",
+                        "text": (
+                            "Safety checks are temporarily unavailable. "
+                            "Please try again in a moment."
+                        ),
+                    }
+                )
+            else:
+                yield _sse(
+                    {
+                        "type": "safety",
+                        "code": "moderation_blocked",
+                        "text": "This message was blocked by the safety filter.",
+                    }
+                )
             return
 
         # Moderation passed — create the conversation now if the caller

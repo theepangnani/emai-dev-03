@@ -5,9 +5,13 @@ Exports:
   - moderate(text): async wrapper over the OpenAI moderation API
   - scrub_pii(text): regex-based scrubber for phone, email, SIN
 
-The moderation call degrades gracefully: when the API key is missing or the
-API errors, moderate() returns an unflagged result rather than blocking the
-conversation.
+The moderation call's failure mode is controlled by
+``settings.moderation_fail_mode`` (default ``"closed"``): for K-12 safety,
+when the OpenAI API key is absent or the API errors, moderate() returns
+``flagged=True`` with category ``"moderation_unavailable"`` so callers can
+distinguish an outage-block from a content-block. Setting
+``MODERATION_FAIL_MODE=open`` restores the legacy permissive behaviour for
+dev/staging.
 """
 
 from __future__ import annotations
@@ -36,17 +40,36 @@ class ModerationResult:
     categories: list[str] = field(default_factory=list)
 
 
+def _unavailable_result() -> ModerationResult:
+    """Build the result returned when moderation cannot be performed.
+
+    In ``closed`` mode (default, K-12 safety) return ``flagged=True`` with a
+    distinctive category so callers can render an outage-specific message.
+    In ``open`` mode return an unflagged result — the legacy behaviour.
+    """
+    if settings.moderation_fail_mode == "closed":
+        return ModerationResult(flagged=True, categories=["moderation_unavailable"])
+    return ModerationResult()
+
+
 async def moderate(text: str) -> ModerationResult:
     """Check text against the OpenAI moderation API.
 
-    Returns an unflagged result if the API key is absent, the text is empty,
-    or the API call fails — callers should not rely on this as a hard gate.
+    Fail-mode is controlled by ``settings.moderation_fail_mode``:
+      - ``"closed"`` (default): on missing key or API error, return
+        ``flagged=True, categories=["moderation_unavailable"]``.
+      - ``"open"``: on missing key or API error, return an unflagged result
+        (legacy behaviour — suitable only for dev/staging).
+    Empty / whitespace-only input always returns unflagged.
     """
     if not text or not text.strip():
         return ModerationResult()
     if not settings.openai_api_key:
-        logger.warning("OpenAI API key not configured — skipping moderation check")
-        return ModerationResult()
+        logger.warning(
+            "OPENAI_API_KEY missing; moderation in fail-%s mode",
+            settings.moderation_fail_mode,
+        )
+        return _unavailable_result()
 
     try:
         client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=5.0)
@@ -77,11 +100,19 @@ async def moderate(text: str) -> ModerationResult:
             categories=flagged_categories,
         )
     except (openai.APIError, openai.APITimeoutError) as e:
-        logger.warning("Moderation API error — failing open: %s", e)
-        return ModerationResult()
-    except Exception as e:  # defensive: never block chat on moderation fault
-        logger.exception("Unexpected moderation error — failing open: %s", e)
-        return ModerationResult()
+        logger.error(
+            "Moderation API call failed (fail-%s mode): %s",
+            settings.moderation_fail_mode,
+            e,
+        )
+        return _unavailable_result()
+    except Exception as e:  # defensive: unexpected errors still honour fail-mode
+        logger.exception(
+            "Unexpected moderation error (fail-%s mode): %s",
+            settings.moderation_fail_mode,
+            e,
+        )
+        return _unavailable_result()
 
 
 # -- PII scrubbers -----------------------------------------------------------
@@ -101,6 +132,9 @@ _PHONE_RE = re.compile(
     re.VERBOSE,
 )
 
+# _EMAIL_RE intentionally matches email addresses inside URLs (mailto:, etc.)
+# and free text. All matches are redacted regardless of context — this is
+# a defensive PII scrubber, not a URL parser.
 _EMAIL_RE = re.compile(
     r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+",
 )

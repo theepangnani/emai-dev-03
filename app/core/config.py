@@ -1,4 +1,5 @@
 import secrets
+from typing import Literal
 
 from pydantic_settings import BaseSettings
 
@@ -63,6 +64,12 @@ class Settings(BaseSettings):
 
     # OpenAI (used for embeddings in help chatbot RAG pipeline)
     openai_api_key: str = ""
+
+    # Moderation fail mode (#4084). For K-12 safety, when the moderation API
+    # is unavailable (missing key or network error) we fail CLOSED by default
+    # — block the message rather than stream unfiltered content. Dev/staging
+    # can override with MODERATION_FAIL_MODE=open.
+    moderation_fail_mode: Literal["closed", "open"] = "closed"
 
     # Study guide limits
     max_study_guides_per_student: int = 100
