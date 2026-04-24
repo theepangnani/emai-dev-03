@@ -57,6 +57,12 @@ from app.models.ile_question_bank import ILEQuestionBank
 from app.models.ile_student_calibration import ILEStudentCalibration
 from app.models.learning_history import LearningHistory
 from app.models.demo_session import DemoSession
+from app.models.learning_cycle import (
+    LearningCycleSession,
+    LearningCycleChunk,
+    LearningCycleQuestion,
+    LearningCycleAnswer,
+)
 
 
 __all__ = [
@@ -146,4 +152,8 @@ __all__ = [
     "ILEStudentCalibration",
     "LearningHistory",
     "DemoSession",
+    "LearningCycleSession",
+    "LearningCycleChunk",
+    "LearningCycleQuestion",
+    "LearningCycleAnswer",
 ]
