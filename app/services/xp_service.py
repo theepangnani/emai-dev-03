@@ -39,8 +39,11 @@ XP_ACTIONS: dict[str, dict] = {
     # Short learning cycle (CB-TUTOR-002 Phase 2)
     # cycle_question_correct amount is variable (100/70/40 per attempt), so "xp"
     # is informational only — the award path below supplies the amount directly.
-    "cycle_question_correct": {"xp": 100, "daily_cap": 1000},
-    "cycle_chunk_bonus": {"xp": 50, "daily_cap": 500},
+    # Daily caps tuned to ~2 sessions/day target:
+    #   - cycle_question_correct: 600 (≈2 sessions of 3 correct attempts)
+    #   - cycle_chunk_bonus: 300 (≈6 chunks × 50)
+    "cycle_question_correct": {"xp": 100, "daily_cap": 600},
+    "cycle_chunk_bonus": {"xp": 50, "daily_cap": 300},
 }
 
 # Per-question diminishing returns for the short learning cycle (#4072).
@@ -516,17 +519,21 @@ def award_cycle_question_xp(
     student_id: int,
     question_id: str,
     attempt_number: int,
+    user_role: str,
 ) -> int:
     """Award XP for a correct answer in the short learning cycle.
+
+    Students only. Returns 0 (no XP) for teacher or parent roles — the
+    students-only gate is enforced INSIDE the function, so every caller is
+    safe by default (single source of truth).
 
     Amounts diminish: 100 / 70 / 40 for tries 1 / 2 / 3; 0 after.
     Uses context_id=cycle_question_{question_id} for lifetime dedup.
     Respects existing daily caps + streak multipliers.
-    Returns XP awarded (0 if capped, duplicate, or past attempt 3).
-
-    TEACHER and PARENT_TEACHING mode callers should NOT call this
-    (per decision 4: students-only XP). Enforcement is caller responsibility.
+    Returns XP awarded (0 if not a student, capped, duplicate, or past attempt 3).
     """
+    if (user_role or "").lower() != "student":
+        return 0
     amount = CYCLE_QUESTION_XP_BY_ATTEMPT.get(attempt_number, 0)
     if amount == 0:
         return 0
@@ -540,16 +547,20 @@ def award_cycle_chunk_bonus(
     db: Session,
     student_id: int,
     chunk_id: str,
+    user_role: str,
 ) -> int:
     """Award 50 XP bonus when a chunk is fully completed.
 
+    Students only. Returns 0 (no XP) for teacher or parent roles — the
+    students-only gate is enforced INSIDE the function, so every caller is
+    safe by default (single source of truth).
+
     Uses context_id=cycle_chunk_bonus_{chunk_id} for lifetime dedup.
     Respects daily caps + streak multipliers.
-    Returns XP awarded (0 if capped or duplicate).
-
-    TEACHER and PARENT_TEACHING mode callers should NOT call this
-    (students-only XP). Enforcement is caller responsibility.
+    Returns XP awarded (0 if not a student, capped, or duplicate).
     """
+    if (user_role or "").lower() != "student":
+        return 0
     context_id = f"cycle_chunk_bonus_{chunk_id}"
     return _award_cycle_xp(
         db, student_id, "cycle_chunk_bonus", CYCLE_CHUNK_BONUS_XP, context_id,
@@ -678,12 +689,16 @@ class XpService:
         return award_xp(db, student_id, action_type, context_id=context_id)
 
     @staticmethod
-    def award_cycle_question_xp(db, student_id: int, question_id: str, attempt_number: int) -> int:
-        return award_cycle_question_xp(db, student_id, question_id, attempt_number)
+    def award_cycle_question_xp(
+        db, student_id: int, question_id: str, attempt_number: int, user_role: str,
+    ) -> int:
+        return award_cycle_question_xp(
+            db, student_id, question_id, attempt_number, user_role,
+        )
 
     @staticmethod
-    def award_cycle_chunk_bonus(db, student_id: int, chunk_id: str) -> int:
-        return award_cycle_chunk_bonus(db, student_id, chunk_id)
+    def award_cycle_chunk_bonus(db, student_id: int, chunk_id: str, user_role: str) -> int:
+        return award_cycle_chunk_bonus(db, student_id, chunk_id, user_role)
 
     @staticmethod
     def get_summary(db, student_id: int):

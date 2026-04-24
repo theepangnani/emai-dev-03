@@ -48,15 +48,29 @@ def test_scrub_pii_redacts_sin_dashed() -> None:
     assert "sin" in redactions
 
 
-def test_scrub_pii_redacts_sin_runon() -> None:
-    scrubbed, redactions = scrub_pii("sin123456789end")
-    # The 9-digit run-on is not padded by digits/word-chars and should match.
-    # (We check the helper handles at least the padded variant.)
-    scrubbed2, redactions2 = scrub_pii("sin 123456789 end")
-    assert "[REDACTED_SIN]" in scrubbed2
-    assert "sin" in redactions2
-    # The non-padded case is best-effort — just ensure no crash.
-    assert isinstance(scrubbed, str)
+def test_scrub_pii_redacts_sin_spaced() -> None:
+    """Space-separated SIN still matches."""
+    scrubbed, redactions = scrub_pii("SIN is 123 456 789 for records")
+    assert "123 456 789" not in scrubbed
+    assert "[REDACTED_SIN]" in scrubbed
+    assert "sin" in redactions
+
+
+def test_scrub_pii_does_not_match_bare_nine_digits() -> None:
+    """Bare 9-digit runs no longer match — avoids false positives on
+    student IDs and partial phone numbers (#4078)."""
+    scrubbed, redactions = scrub_pii("student id 123456789 please")
+    assert "[REDACTED_SIN]" not in scrubbed
+    assert "sin" not in redactions
+
+
+def test_scrub_pii_does_not_match_ten_digit_phone_as_sin() -> None:
+    """10-digit phone number must not be flagged as a SIN.
+
+    The phone pattern may still redact it as a phone, but never as a SIN.
+    """
+    _, redactions = scrub_pii("Call 4165551234 anytime")
+    assert "sin" not in redactions
 
 
 def test_scrub_pii_multiple_redactions() -> None:

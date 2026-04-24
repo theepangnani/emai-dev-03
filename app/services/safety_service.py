@@ -105,9 +105,13 @@ _EMAIL_RE = re.compile(
     r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+",
 )
 
-# Canadian SIN: 9 digits in 3-3-3 with - or space separators, or 9 run-on digits.
+# Canadian SIN: 9 digits in 3-3-3 with - or space separators. We deliberately
+# do NOT match bare 9-digit runs because that branch over-matches student IDs
+# and partial phone numbers (e.g. a 9-digit substring of a 10-digit phone).
+# The separator form covers the common "write out your SIN" case without
+# false positives. (#4078)
 _SIN_RE = re.compile(
-    r"(?<!\d)(?:\d{3}[\s-]\d{3}[\s-]\d{3}|\d{9})(?!\d)",
+    r"(?<!\d)\d{3}[\s-]\d{3}[\s-]\d{3}(?!\d)",
 )
 
 

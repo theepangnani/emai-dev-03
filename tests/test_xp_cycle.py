@@ -44,44 +44,60 @@ def cycle_student(db_session):
 class TestCycleQuestionXp:
     def test_attempt_1_awards_100(self, db_session, cycle_student):
         from app.services.xp_service import award_cycle_question_xp
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q1", 1)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q1", 1, user_role="student",
+        )
         assert xp == 100
         db_session.commit()
 
     def test_attempt_2_awards_70(self, db_session, cycle_student):
         from app.services.xp_service import award_cycle_question_xp
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q2", 2)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q2", 2, user_role="student",
+        )
         assert xp == 70
         db_session.commit()
 
     def test_attempt_3_awards_40(self, db_session, cycle_student):
         from app.services.xp_service import award_cycle_question_xp
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q3", 3)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q3", 3, user_role="student",
+        )
         assert xp == 40
         db_session.commit()
 
     def test_attempt_4_awards_zero(self, db_session, cycle_student):
         """Attempts past the 3rd award 0 XP (past cap)."""
         from app.services.xp_service import award_cycle_question_xp
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q4", 4)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q4", 4, user_role="student",
+        )
         assert xp == 0
         db_session.commit()
 
     def test_attempt_zero_awards_zero(self, db_session, cycle_student):
         """Attempt 0 (or negative) is defensive — awards 0."""
         from app.services.xp_service import award_cycle_question_xp
-        assert award_cycle_question_xp(db_session, cycle_student.id, "q5", 0) == 0
-        assert award_cycle_question_xp(db_session, cycle_student.id, "q5", -1) == 0
+        assert award_cycle_question_xp(
+            db_session, cycle_student.id, "q5", 0, user_role="student",
+        ) == 0
+        assert award_cycle_question_xp(
+            db_session, cycle_student.id, "q5", -1, user_role="student",
+        ) == 0
         db_session.commit()
 
     def test_double_award_same_question_dedupes(self, db_session, cycle_student):
         """Second award for the same question_id returns 0 (context_id dedup)."""
         from app.services.xp_service import award_cycle_question_xp
 
-        first = award_cycle_question_xp(db_session, cycle_student.id, "q_dup", 1)
+        first = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_dup", 1, user_role="student",
+        )
         assert first == 100
 
-        second = award_cycle_question_xp(db_session, cycle_student.id, "q_dup", 2)
+        second = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_dup", 2, user_role="student",
+        )
         assert second == 0, "Same question_id must not award twice"
         db_session.commit()
 
@@ -89,8 +105,12 @@ class TestCycleQuestionXp:
         """Different question_ids both award (dedup is per question)."""
         from app.services.xp_service import award_cycle_question_xp
 
-        first = award_cycle_question_xp(db_session, cycle_student.id, "q_a", 1)
-        second = award_cycle_question_xp(db_session, cycle_student.id, "q_b", 1)
+        first = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_a", 1, user_role="student",
+        )
+        second = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_b", 1, user_role="student",
+        )
         assert first == 100
         assert second == 100
         db_session.commit()
@@ -100,7 +120,9 @@ class TestCycleQuestionXp:
         from app.models.xp import XpLedger
         from app.services.xp_service import award_cycle_question_xp
 
-        award_cycle_question_xp(db_session, cycle_student.id, "q_fields", 1)
+        award_cycle_question_xp(
+            db_session, cycle_student.id, "q_fields", 1, user_role="student",
+        )
         db_session.commit()
 
         entry = (
@@ -118,7 +140,9 @@ class TestCycleQuestionXp:
         from app.models.xp import XpSummary
         from app.services.xp_service import award_cycle_question_xp
 
-        award_cycle_question_xp(db_session, cycle_student.id, "q_sum", 1)
+        award_cycle_question_xp(
+            db_session, cycle_student.id, "q_sum", 1, user_role="student",
+        )
         db_session.commit()
 
         summary = (
@@ -135,7 +159,9 @@ class TestCycleQuestionXp:
 class TestCycleChunkBonus:
     def test_chunk_bonus_awards_50(self, db_session, cycle_student):
         from app.services.xp_service import award_cycle_chunk_bonus
-        xp = award_cycle_chunk_bonus(db_session, cycle_student.id, "chunk_1")
+        xp = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_1", user_role="student",
+        )
         assert xp == 50
         db_session.commit()
 
@@ -143,10 +169,14 @@ class TestCycleChunkBonus:
         """Same chunk awards bonus only once."""
         from app.services.xp_service import award_cycle_chunk_bonus
 
-        first = award_cycle_chunk_bonus(db_session, cycle_student.id, "chunk_dup")
+        first = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_dup", user_role="student",
+        )
         assert first == 50
 
-        second = award_cycle_chunk_bonus(db_session, cycle_student.id, "chunk_dup")
+        second = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_dup", user_role="student",
+        )
         assert second == 0
         db_session.commit()
 
@@ -154,7 +184,9 @@ class TestCycleChunkBonus:
         from app.models.xp import XpLedger
         from app.services.xp_service import award_cycle_chunk_bonus
 
-        award_cycle_chunk_bonus(db_session, cycle_student.id, "chunk_fields")
+        award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_fields", user_role="student",
+        )
         db_session.commit()
 
         entry = (
@@ -182,7 +214,9 @@ class TestCycleStreakMultiplier:
         db_session.add(summary)
         db_session.flush()
 
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q_streak_7", 1)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_streak_7", 1, user_role="student",
+        )
         # base 100 * 1.25 = 125
         assert xp == 125
         db_session.commit()
@@ -196,7 +230,9 @@ class TestCycleStreakMultiplier:
         db_session.add(summary)
         db_session.flush()
 
-        xp = award_cycle_question_xp(db_session, cycle_student.id, "q_streak_14", 2)
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_streak_14", 2, user_role="student",
+        )
         # base 70 * 1.5 = 105
         assert xp == 105
         db_session.commit()
@@ -210,9 +246,106 @@ class TestCycleStreakMultiplier:
         db_session.add(summary)
         db_session.flush()
 
-        xp = award_cycle_chunk_bonus(db_session, cycle_student.id, "chunk_streak_30")
+        xp = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_streak_30", user_role="student",
+        )
         # base 50 * 1.75 = 87
         assert xp == 87
+        db_session.commit()
+
+
+# ── Students-only gate (#4081) ──
+
+class TestStudentsOnlyGate:
+    """award_cycle_question_xp + award_cycle_chunk_bonus return 0 for non-students.
+
+    The gate is enforced INSIDE the function, so every caller is safe by default.
+    """
+
+    def test_teacher_role_awards_zero_question(self, db_session, cycle_student):
+        """user_role='teacher' → returns 0, no ledger row written."""
+        from app.models.xp import XpLedger
+        from app.services.xp_service import award_cycle_question_xp
+
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_teacher", 1, user_role="teacher",
+        )
+        assert xp == 0
+        db_session.commit()
+
+        entry = (
+            db_session.query(XpLedger)
+            .filter(
+                XpLedger.student_id == cycle_student.id,
+                XpLedger.context_id == "cycle_question_q_teacher",
+            )
+            .first()
+        )
+        assert entry is None, "No ledger row should be written for teacher role"
+
+    def test_parent_role_awards_zero_question(self, db_session, cycle_student):
+        """user_role='parent' → returns 0."""
+        from app.services.xp_service import award_cycle_question_xp
+
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_parent", 1, user_role="parent",
+        )
+        assert xp == 0
+        db_session.commit()
+
+    def test_missing_role_awards_zero_question(self, db_session, cycle_student):
+        """Missing/empty role → returns 0."""
+        from app.services.xp_service import award_cycle_question_xp
+
+        assert award_cycle_question_xp(
+            db_session, cycle_student.id, "q_empty", 1, user_role="",
+        ) == 0
+        assert award_cycle_question_xp(
+            db_session, cycle_student.id, "q_none", 1, user_role=None,
+        ) == 0
+        db_session.commit()
+
+    def test_teacher_role_awards_zero_chunk(self, db_session, cycle_student):
+        """user_role='teacher' → chunk bonus returns 0, no ledger row written."""
+        from app.models.xp import XpLedger
+        from app.services.xp_service import award_cycle_chunk_bonus
+
+        xp = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_teacher", user_role="teacher",
+        )
+        assert xp == 0
+        db_session.commit()
+
+        entry = (
+            db_session.query(XpLedger)
+            .filter(
+                XpLedger.student_id == cycle_student.id,
+                XpLedger.context_id == "cycle_chunk_bonus_chunk_teacher",
+            )
+            .first()
+        )
+        assert entry is None, "No ledger row should be written for teacher role"
+
+    def test_parent_role_awards_zero_chunk(self, db_session, cycle_student):
+        """user_role='parent' → chunk bonus returns 0."""
+        from app.services.xp_service import award_cycle_chunk_bonus
+
+        xp = award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_parent", user_role="parent",
+        )
+        assert xp == 0
+        db_session.commit()
+
+    def test_missing_role_awards_zero_chunk(self, db_session, cycle_student):
+        """Missing/empty role → chunk bonus returns 0."""
+        from app.services.xp_service import award_cycle_chunk_bonus
+
+        assert award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_empty", user_role="",
+        ) == 0
+        assert award_cycle_chunk_bonus(
+            db_session, cycle_student.id, "chunk_none", user_role=None,
+        ) == 0
         db_session.commit()
 
 
@@ -225,10 +358,18 @@ class TestActionTypesRegistered:
         assert "cycle_question_correct" in XP_ACTIONS
         assert "cycle_chunk_bonus" in XP_ACTIONS
 
+    def test_daily_caps_tuned_for_two_sessions(self):
+        """Daily caps reflect ~2 sessions/day target (#4081)."""
+        from app.services.xp_service import XP_ACTIONS
+        # 2 sessions × 3 correct attempts × 100 = 600
+        assert XP_ACTIONS["cycle_question_correct"]["daily_cap"] == 600
+        # ~6 chunks × 50 = 300
+        assert XP_ACTIONS["cycle_chunk_bonus"]["daily_cap"] == 300
+
     def test_attempt_map_values(self):
         """Verify the documented diminishing-returns mapping."""
         from app.services.xp_service import CYCLE_QUESTION_XP_BY_ATTEMPT
         assert CYCLE_QUESTION_XP_BY_ATTEMPT[1] == 100
         assert CYCLE_QUESTION_XP_BY_ATTEMPT[2] == 70
-        assert CYCLE_QUESTION_XP_BY_ATTEMPT[3] == 40
+        assert CYCLE_QUESTION_XP_BY_ATTEMPT.get(3) == 40
         assert CYCLE_QUESTION_XP_BY_ATTEMPT.get(4, 0) == 0
