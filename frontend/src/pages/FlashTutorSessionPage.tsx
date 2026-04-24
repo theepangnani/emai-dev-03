@@ -98,16 +98,10 @@ export function FlashTutorSessionPage() {
     loadQuestion();
   }, [sessionId, loadQuestion]);
 
-  const handleSelectAnswer = (answer: string) => {
-    if (submitting || phase !== 'question') return;
-    // In Learning Mode, don't allow re-selecting disabled options
-    if (currentQ?.disabled_options.includes(answer)) return;
-    setSelectedAnswer(answer);
-  };
-
   const handleSubmitAnswer = async (answerToSubmit: string) => {
-    if (!answerToSubmit || submitting || !currentQ) return;
+    if (!answerToSubmit || submitting || !currentQ || phase !== 'question') return;
     setSubmitting(true);
+    setSelectedAnswer(answerToSubmit);
 
     try {
       const timeTaken = Date.now() - startTime;
@@ -139,11 +133,6 @@ export function FlashTutorSessionPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedAnswer) return;
-    await handleSubmitAnswer(selectedAnswer);
   };
 
   const handleNext = async () => {
@@ -384,8 +373,8 @@ export function FlashTutorSessionPage() {
                   <button
                     key={value}
                     className={className}
-                    onClick={() => handleSelectAnswer(value)}
-                    disabled={phase === 'feedback'}
+                    onClick={() => handleSubmitAnswer(value)}
+                    disabled={phase === 'feedback' || submitting}
                     role="radio"
                     aria-checked={isSelected}
                     aria-label={value}
@@ -420,8 +409,11 @@ export function FlashTutorSessionPage() {
                   <button
                     key={key}
                     className={className}
-                    onClick={() => handleSelectAnswer(key)}
-                    disabled={isDisabled || phase === 'feedback'}
+                    onClick={() => {
+                      if (currentQ.disabled_options.includes(key)) return;
+                      handleSubmitAnswer(key);
+                    }}
+                    disabled={isDisabled || phase === 'feedback' || submitting}
                   >
                     <span className="fts-option-key">{key}</span>
                     <span className="fts-option-text">{text}</span>
@@ -437,10 +429,7 @@ export function FlashTutorSessionPage() {
           {q.format === 'fill_blank' && phase === 'question' && (
             <FillBlankCard
               question={q.question}
-              onSubmit={(answer) => {
-                setSelectedAnswer(answer);
-                handleSubmitAnswer(answer);
-              }}
+              onSubmit={(answer) => handleSubmitAnswer(answer)}
               disabled={submitting || phase !== 'question'}
             />
           )}
@@ -495,16 +484,6 @@ export function FlashTutorSessionPage() {
 
         {/* Action buttons */}
         <div className="fts-actions">
-          {phase === 'question' && q.format !== 'fill_blank' && (
-            <button
-              className="fts-btn fts-btn-primary"
-              onClick={handleSubmit}
-              disabled={!selectedAnswer || submitting}
-            >
-              {submitting ? 'Submitting...' : 'Submit Answer'}
-            </button>
-          )}
-
           {phase === 'feedback' && (
             <button className="fts-btn fts-btn-primary" onClick={handleNext}>
               {feedback?.session_complete
