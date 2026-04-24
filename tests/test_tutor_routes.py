@@ -356,6 +356,10 @@ def test_stream_moderation_blocked_does_not_create_orphan_conversation(
         assert after == before, (
             "Blocked request should not create any tutor_conversations rows"
         )
+    finally:
+        pass
+
+
 def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
     """Persistence in the generator must use a fresh SessionLocal that is
     opened and closed inside the generator — protects against silent write
