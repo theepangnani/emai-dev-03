@@ -305,6 +305,55 @@ def test_stream_moderation_blocked_emits_safety_event(client, db_session):
         _set_tutor_flag(db_session, enabled=False)
 
 
+def test_stream_moderation_unavailable_emits_distinct_frame(client, db_session):
+    """When the moderation API raises (outage), fail-closed mode emits a
+    `moderation_unavailable` SSE frame — distinct from `moderation_blocked`
+    so the UI can show a retry message instead of a content-block message.
+    (#4084)"""
+    import openai as _openai
+
+    _make_user(db_session, email="tutor_mod_unavail@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    # Build a client whose moderations.create raises, but whose chat stream
+    # would work if reached. The route must NOT reach the chat stream.
+    client_mock = MagicMock()
+
+    async def _raise_mod(*args, **kwargs):
+        raise _openai.APITimeoutError(request=None)
+
+    client_mock.moderations.create = AsyncMock(side_effect=_raise_mod)
+
+    async def _create_chat(*args, **kwargs):
+        return _FakeAsyncStream(["should-not-appear"])
+
+    client_mock.chat.completions.create = AsyncMock(side_effect=_create_chat)
+
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=client_mock
+        ), patch(
+            "app.services.safety_service.settings.moderation_fail_mode", "closed"
+        ):
+            headers = _auth(client, "tutor_mod_unavail@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "Explain photosynthesis"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
+        body = resp.text
+        assert '"type": "safety"' in body
+        assert "moderation_unavailable" in body
+        # Distinct from the generic blocked frame.
+        assert "moderation_blocked" not in body
+        # No tokens streamed when moderation is unavailable.
+        assert '"type": "token"' not in body
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
 def test_stream_moderation_blocked_does_not_create_orphan_conversation(
     client, db_session
 ):

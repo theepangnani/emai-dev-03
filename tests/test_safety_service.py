@@ -99,12 +99,90 @@ def test_scrub_pii_handles_empty() -> None:
 
 
 @pytest.mark.asyncio
-async def test_moderate_returns_unflagged_when_api_key_missing(monkeypatch) -> None:
+async def test_moderate_fails_closed_when_api_key_missing(monkeypatch) -> None:
+    """Default fail_mode='closed': missing key returns flagged with
+    category 'moderation_unavailable' so callers can surface an outage
+    message rather than streaming unfiltered content (#4084)."""
     from app.services import safety_service
 
     monkeypatch.setattr(safety_service.settings, "openai_api_key", "", raising=False)
+    monkeypatch.setattr(
+        safety_service.settings, "moderation_fail_mode", "closed", raising=False
+    )
     result = await moderate("anything")
     assert isinstance(result, ModerationResult)
+    assert result.flagged is True
+    assert result.categories == ["moderation_unavailable"]
+
+
+@pytest.mark.asyncio
+async def test_moderate_fails_open_when_api_key_missing_and_mode_open(
+    monkeypatch,
+) -> None:
+    """fail_mode='open' restores the legacy permissive behaviour (#4084)."""
+    from app.services import safety_service
+
+    monkeypatch.setattr(safety_service.settings, "openai_api_key", "", raising=False)
+    monkeypatch.setattr(
+        safety_service.settings, "moderation_fail_mode", "open", raising=False
+    )
+    result = await moderate("anything")
+    assert result.flagged is False
+    assert result.categories == []
+
+
+@pytest.mark.asyncio
+async def test_moderate_fails_closed_when_api_raises(monkeypatch) -> None:
+    """An APIError with fail_mode='closed' returns flagged=True (#4084)."""
+    import openai as _openai
+
+    from app.services import safety_service
+
+    monkeypatch.setattr(
+        safety_service.settings, "openai_api_key", "sk-test", raising=False
+    )
+    monkeypatch.setattr(
+        safety_service.settings, "moderation_fail_mode", "closed", raising=False
+    )
+
+    async def _raise(*args, **kwargs):
+        raise _openai.APITimeoutError(request=None)
+
+    fake_client = SimpleNamespace(
+        moderations=SimpleNamespace(create=_raise),
+    )
+    with patch.object(
+        safety_service.openai, "AsyncOpenAI", return_value=fake_client
+    ):
+        result = await moderate("anything")
+    assert result.flagged is True
+    assert result.categories == ["moderation_unavailable"]
+
+
+@pytest.mark.asyncio
+async def test_moderate_fails_open_when_api_raises_and_mode_open(monkeypatch) -> None:
+    """An APIError with fail_mode='open' returns an unflagged result (#4084)."""
+    import openai as _openai
+
+    from app.services import safety_service
+
+    monkeypatch.setattr(
+        safety_service.settings, "openai_api_key", "sk-test", raising=False
+    )
+    monkeypatch.setattr(
+        safety_service.settings, "moderation_fail_mode", "open", raising=False
+    )
+
+    async def _raise(*args, **kwargs):
+        raise _openai.APITimeoutError(request=None)
+
+    fake_client = SimpleNamespace(
+        moderations=SimpleNamespace(create=_raise),
+    )
+    with patch.object(
+        safety_service.openai, "AsyncOpenAI", return_value=fake_client
+    ):
+        result = await moderate("anything")
     assert result.flagged is False
     assert result.categories == []
 
