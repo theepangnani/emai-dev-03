@@ -157,4 +157,8 @@ class SenderChildAssignment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     sender = relationship("ParentDigestMonitoredSender", back_populates="child_assignments")
-    child_profile = relationship("ParentChildProfile", back_populates="sender_assignments")
+    child_profile = relationship(
+        "ParentChildProfile",
+        back_populates="sender_assignments",
+        lazy="selectin",
+    )

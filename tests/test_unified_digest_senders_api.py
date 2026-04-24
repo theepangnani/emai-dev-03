@@ -139,6 +139,9 @@ class TestCreateSender:
         assert data["label"] == "Math"
         assert data["applies_to_all"] is False
         assert data["child_profile_ids"] == [setup["profile_a"].id]
+        assert data["assignments"] == [
+            {"child_profile_id": setup["profile_a"].id, "first_name": "Alex"},
+        ]
 
     def test_create_sender_with_all(self, client, setup):
         headers = _auth(client, PARENT_EMAIL)
@@ -154,6 +157,7 @@ class TestCreateSender:
         data = resp.json()
         assert data["applies_to_all"] is True
         assert data["child_profile_ids"] == []
+        assert data["assignments"] == []
 
     def test_create_sender_dedupes_on_email(self, client, setup):
         """Re-POSTing the same email updates assignments instead of erroring."""
@@ -269,6 +273,25 @@ class TestListSenders:
         for s in data:
             assert "child_profile_ids" in s
             assert "applies_to_all" in s
+            # #4082: frontend chips render first_name from the response,
+            # so `assignments[].first_name` must be populated for
+            # non-applies_to_all senders. Without this, EmailDigestPage
+            # crashes with "Cannot read properties of undefined (reading 'map')".
+            assert "assignments" in s
+            assert isinstance(s["assignments"], list)
+            if not s["applies_to_all"]:
+                assert len(s["assignments"]) == len(s["child_profile_ids"])
+                for a in s["assignments"]:
+                    assert "child_profile_id" in a
+                    assert "first_name" in a and a["first_name"]
+                # Alex profile_id was used for a@s.ca
+                if s["email_address"] == "a@s.ca":
+                    assert s["assignments"] == [
+                        {
+                            "child_profile_id": setup["profile_a"].id,
+                            "first_name": "Alex",
+                        }
+                    ]
 
     def test_list_does_not_leak_other_parents(self, client, db_session, setup):
         # Seed a sender for the other parent
@@ -315,6 +338,9 @@ class TestPatchAssignments:
         assert resp.status_code == 200
         assert resp.json()["child_profile_ids"] == [setup["profile_b"].id]
         assert resp.json()["applies_to_all"] is False
+        assert resp.json()["assignments"] == [
+            {"child_profile_id": setup["profile_b"].id, "first_name": "Jordan"},
+        ]
 
     def test_replace_with_all(self, client, setup):
         headers = _auth(client, PARENT_EMAIL)
@@ -333,6 +359,7 @@ class TestPatchAssignments:
         assert resp.status_code == 200
         assert resp.json()["applies_to_all"] is True
         assert resp.json()["child_profile_ids"] == []
+        assert resp.json()["assignments"] == []
 
     def test_patch_from_all_back_to_explicit(self, client, setup):
         headers = _auth(client, PARENT_EMAIL)

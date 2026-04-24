@@ -45,6 +45,7 @@ from app.schemas.parent_email_digest import (
     MonitoredEmailResponse,
     MonitoredSenderCreate,
     MonitoredSenderAssignmentsUpdate,
+    MonitoredSenderAssignmentResponse,
     MonitoredSenderResponse,
     ChildSchoolEmailCreate,
     ChildSchoolEmailResponse,
@@ -928,6 +929,24 @@ def disconnect_whatsapp(
 def _sender_to_response(sender: ParentDigestMonitoredSender) -> MonitoredSenderResponse:
     """Shape a sender row + its assignments into the API response."""
     child_ids = [a.child_profile_id for a in sender.child_assignments]
+    # #4082: include first_name alongside each ID so clients can render chips
+    # without a second lookup. Requires child_profile to be eager-loaded.
+    assignments = []
+    for a in sender.child_assignments:
+        if a.child_profile is None:
+            # #4090: FK + cascade make this unreachable in healthy data.
+            # Log instead of silently dropping so orphaned rows surface.
+            logger.warning(
+                "orphaned SenderChildAssignment id=%s sender_id=%s child_profile_id=%s",
+                a.id, sender.id, a.child_profile_id,
+            )
+            continue
+        assignments.append(
+            MonitoredSenderAssignmentResponse(
+                child_profile_id=a.child_profile_id,
+                first_name=a.child_profile.first_name,
+            )
+        )
     return MonitoredSenderResponse(
         id=sender.id,
         email_address=sender.email_address,
@@ -935,6 +954,7 @@ def _sender_to_response(sender: ParentDigestMonitoredSender) -> MonitoredSenderR
         label=sender.label,
         applies_to_all=bool(sender.applies_to_all),
         child_profile_ids=child_ids,
+        assignments=assignments,
         created_at=sender.created_at,
     )
 
@@ -1001,7 +1021,11 @@ def list_monitored_senders(
     """List the current parent's monitored senders with their child assignments."""
     senders = (
         db.query(ParentDigestMonitoredSender)
-        .options(selectinload(ParentDigestMonitoredSender.child_assignments))
+        .options(
+            selectinload(ParentDigestMonitoredSender.child_assignments).selectinload(
+                SenderChildAssignment.child_profile
+            )
+        )
         .filter(ParentDigestMonitoredSender.parent_id == current_user.id)
         .order_by(ParentDigestMonitoredSender.created_at.asc())
         .all()
