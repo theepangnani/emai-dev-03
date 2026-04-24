@@ -113,6 +113,7 @@ const ReportCardPage = lazyRetry(() => import('./pages/ReportCardPage').then((m)
 const StudySessionPage = lazyRetry(() => import('./pages/StudySessionPage').then((m) => ({ default: m.StudySessionPage })));
 const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachComposer').then((m) => ({ default: m.AdminOutreachComposer })));
 const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
+const LearningCyclePage = lazyRetry(() => import('./pages/LearningCyclePage').then((m) => ({ default: m.LearningCyclePage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
 
 const queryClient = new QueryClient({
@@ -288,6 +289,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <FlashTutorSessionPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tutor/cycle/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent', 'student', 'teacher']}>
+                    <LearningCyclePage />
                   </ProtectedRoute>
                 }
               />
