@@ -46,98 +46,104 @@ function xpForAttempts(attempts: number, correct: boolean): number {
 /**
  * Mock session used by the shell. Replaced by a real
  * `useQuery(['cycle-session', id], …)` call in the route PR.
+ *
+ * Wrapped in an `import.meta.env.DEV` guard so Vite tree-shakes the
+ * ~150-line literal out of the production bundle (#4087 S-6). In prod
+ * the page short-circuits to a "not wired yet" placeholder.
  */
-const MOCK_SESSION: CycleSession = {
-  id: 'mock',
-  topic: 'Fractions',
-  status: 'in_progress',
-  current_chunk_idx: 0,
-  chunks: [
-    {
-      order: 0,
-      teach_content_md:
-        'A **fraction** represents a part of a whole. The bottom number (**denominator**) tells you how many equal pieces the whole is split into. The top number (**numerator**) tells you how many of those pieces you have.\n\nFor example, in **3/4**, the denominator is 4 (four equal pieces) and the numerator is 3 (you have three of them).',
-      questions: [
+const MOCK_SESSION: CycleSession | null = import.meta.env.DEV
+  ? {
+      id: 'mock',
+      topic: 'Fractions',
+      status: 'in_progress',
+      current_chunk_idx: 0,
+      chunks: [
         {
-          id: 'q0-0',
-          format: 'multiple_choice',
-          question_text: 'In the fraction 5/8, which number is the denominator?',
-          options: ['5', '8', '13', '3'],
-          correct_index: 1,
-          explanation:
-            'The denominator sits below the line and tells you how many equal pieces make up the whole — here, 8.',
-          reteach_snippet:
-            'Denominator = bottom number. It counts the total equal pieces in the whole.',
+          order: 0,
+          teach_content_md:
+            'A **fraction** represents a part of a whole. The bottom number (**denominator**) tells you how many equal pieces the whole is split into. The top number (**numerator**) tells you how many of those pieces you have.\n\nFor example, in **3/4**, the denominator is 4 (four equal pieces) and the numerator is 3 (you have three of them).',
+          questions: [
+            {
+              id: 'q0-0',
+              format: 'multiple_choice',
+              question_text: 'In the fraction 5/8, which number is the denominator?',
+              options: ['5', '8', '13', '3'],
+              correct_index: 1,
+              explanation:
+                'The denominator sits below the line and tells you how many equal pieces make up the whole — here, 8.',
+              reteach_snippet:
+                'Denominator = bottom number. It counts the total equal pieces in the whole.',
+            },
+            {
+              id: 'q0-1',
+              format: 'true_false',
+              question_text:
+                'True or False: The numerator is the number on top of a fraction.',
+              options: ['True', 'False'],
+              correct_index: 0,
+              explanation:
+                'Correct — numerator is on top, denominator is on the bottom.',
+              reteach_snippet:
+                '"Numerator" = Number on top. "Denominator" = Down below.',
+            },
+            {
+              id: 'q0-2',
+              format: 'fill_blank',
+              question_text:
+                'The bottom number of a fraction is called the ____.',
+              options: ['denominator'],
+              correct_index: 0,
+              explanation:
+                'The denominator describes how many equal parts the whole is cut into.',
+              reteach_snippet:
+                'Hint: it starts with "d" and lives at the Downstairs of the fraction.',
+            },
+          ],
         },
         {
-          id: 'q0-1',
-          format: 'true_false',
-          question_text:
-            'True or False: The numerator is the number on top of a fraction.',
-          options: ['True', 'False'],
-          correct_index: 0,
-          explanation:
-            'Correct — numerator is on top, denominator is on the bottom.',
-          reteach_snippet:
-            '"Numerator" = Number on top. "Denominator" = Down below.',
-        },
-        {
-          id: 'q0-2',
-          format: 'fill_blank',
-          question_text:
-            'The bottom number of a fraction is called the ____.',
-          options: ['denominator'],
-          correct_index: 0,
-          explanation:
-            'The denominator describes how many equal parts the whole is cut into.',
-          reteach_snippet:
-            'Hint: it starts with "d" and lives at the Downstairs of the fraction.',
+          order: 1,
+          teach_content_md:
+            'To **add fractions with the same denominator**, you only add the **numerators**. Keep the denominator the same.\n\nExample: 1/5 + 2/5 = **3/5**. The denominator stays at 5 because the "piece size" hasn\'t changed — we just have more of the same pieces.',
+          questions: [
+            {
+              id: 'q1-0',
+              format: 'multiple_choice',
+              question_text: 'What is 2/7 + 3/7?',
+              options: ['5/14', '5/7', '6/7', '1/7'],
+              correct_index: 1,
+              explanation:
+                'Add only the numerators (2 + 3 = 5). The denominator stays 7 because the pieces are the same size.',
+              reteach_snippet:
+                'Same-denominator rule: add tops, keep bottom.',
+            },
+            {
+              id: 'q1-1',
+              format: 'true_false',
+              question_text:
+                'True or False: When adding 1/6 + 2/6, you should also add the denominators.',
+              options: ['True', 'False'],
+              correct_index: 1,
+              explanation:
+                'False — denominators stay the same when they already match. Only numerators add.',
+              reteach_snippet:
+                'Matching denominators → add tops only, leave the bottom alone.',
+            },
+            {
+              id: 'q1-2',
+              format: 'fill_blank',
+              question_text: '4/9 + 3/9 = ____',
+              options: ['7/9'],
+              correct_index: 0,
+              explanation:
+                '4 + 3 = 7, and the denominator 9 is unchanged. So the answer is 7/9.',
+              reteach_snippet:
+                'Add numerators (4 + 3), keep the denominator (9).',
+            },
+          ],
         },
       ],
-    },
-    {
-      order: 1,
-      teach_content_md:
-        'To **add fractions with the same denominator**, you only add the **numerators**. Keep the denominator the same.\n\nExample: 1/5 + 2/5 = **3/5**. The denominator stays at 5 because the "piece size" hasn\'t changed — we just have more of the same pieces.',
-      questions: [
-        {
-          id: 'q1-0',
-          format: 'multiple_choice',
-          question_text: 'What is 2/7 + 3/7?',
-          options: ['5/14', '5/7', '6/7', '1/7'],
-          correct_index: 1,
-          explanation:
-            'Add only the numerators (2 + 3 = 5). The denominator stays 7 because the pieces are the same size.',
-          reteach_snippet:
-            'Same-denominator rule: add tops, keep bottom.',
-        },
-        {
-          id: 'q1-1',
-          format: 'true_false',
-          question_text:
-            'True or False: When adding 1/6 + 2/6, you should also add the denominators.',
-          options: ['True', 'False'],
-          correct_index: 1,
-          explanation:
-            'False — denominators stay the same when they already match. Only numerators add.',
-          reteach_snippet:
-            'Matching denominators → add tops only, leave the bottom alone.',
-        },
-        {
-          id: 'q1-2',
-          format: 'fill_blank',
-          question_text: '4/9 + 3/9 = ____',
-          options: ['7/9'],
-          correct_index: 0,
-          explanation:
-            '4 + 3 = 7, and the denominator 9 is unchanged. So the answer is 7/9.',
-          reteach_snippet:
-            'Add numerators (4 + 3), keep the denominator (9).',
-        },
-      ],
-    },
-  ],
-};
+    }
+  : null;
 
 export function LearningCyclePage() {
   const { id } = useParams<{ id: string }>();
@@ -151,6 +157,18 @@ export function LearningCyclePage() {
     return <Navigate to="/tutor" replace />;
   }
 
+  // Prod bundle strips MOCK_SESSION — show placeholder until the Phase 2
+  // backend route PR wires the real session fetch (#4087 S-6).
+  if (!MOCK_SESSION) {
+    return (
+      <DashboardLayout>
+        <div className="cycle-shell">
+          <p>Session not available (Phase 2 not yet wired)</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return <LearningCycleShell sessionId={id ?? 'mock'} onExit={() => navigate('/tutor')} />;
 }
 
@@ -162,8 +180,12 @@ interface LearningCycleShellProps {
 function LearningCycleShell({ sessionId, onExit }: LearningCycleShellProps) {
   // Shell uses the mock until the real session API lands. The ID is
   // accepted so deep-links like /tutor/cycle/42 don't break when the API
-  // flips on.
-  const session = useMemo<CycleSession>(() => ({ ...MOCK_SESSION, id: sessionId }), [sessionId]);
+  // flips on. MOCK_SESSION is guaranteed non-null here — the parent page
+  // short-circuits before mounting the shell when the prod build strips it.
+  const session = useMemo<CycleSession>(
+    () => ({ ...(MOCK_SESSION as CycleSession), id: sessionId }),
+    [sessionId],
+  );
 
   const [chunkIdx, setChunkIdx] = useState(session.current_chunk_idx);
   const [questionIdx, setQuestionIdx] = useState(0);

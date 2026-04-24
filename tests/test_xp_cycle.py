@@ -349,6 +349,51 @@ class TestStudentsOnlyGate:
         db_session.commit()
 
 
+# ── attempt_number coercion (#4087 S-3) ──
+
+
+class TestAttemptNumberCoercion:
+    """``attempt_number`` should coerce via ``int()`` so callers passing
+    strings or floats still receive XP instead of silently getting 0.
+    """
+
+    def test_string_attempt_number_accepted(self, db_session, cycle_student):
+        """String '1' coerces to int(1) → full 100 XP."""
+        from app.services.xp_service import award_cycle_question_xp
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_str", "1", user_role="student",
+        )
+        assert xp == 100
+        db_session.commit()
+
+    def test_float_attempt_number_accepted(self, db_session, cycle_student):
+        """Float 1.0 coerces to int(1) → full 100 XP."""
+        from app.services.xp_service import award_cycle_question_xp
+        xp = award_cycle_question_xp(
+            db_session, cycle_student.id, "q_float", 1.0, user_role="student",
+        )
+        assert xp == 100
+        db_session.commit()
+
+    def test_invalid_attempt_number_logs_and_zero(
+        self, db_session, cycle_student, caplog,
+    ):
+        """Un-coercible values log a warning and return 0."""
+        import logging
+
+        from app.services.xp_service import award_cycle_question_xp
+
+        with caplog.at_level(logging.WARNING, logger="app.services.xp_service"):
+            xp = award_cycle_question_xp(
+                db_session, cycle_student.id, "q_bad", "abc", user_role="student",
+            )
+        assert xp == 0
+        assert any(
+            "Invalid attempt_number" in rec.message for rec in caplog.records
+        )
+        db_session.commit()
+
+
 # ── Action-type registration ──
 
 class TestActionTypesRegistered:

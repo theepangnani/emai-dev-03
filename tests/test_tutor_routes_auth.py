@@ -1,0 +1,93 @@
+"""Auth + feature-flag gating tests for POST /api/tutor/chat/stream (#4063).
+
+Split from the original ``test_tutor_routes.py`` (#4087 S-7).
+
+Covers
+------
+- test_stream_requires_auth — missing token returns 401
+- test_stream_feature_flag_off_returns_403 — flag default-off gates the endpoint
+- test_stream_rate_limit_exceeded_returns_429 — slowapi 20/hour per user
+"""
+from __future__ import annotations
+
+from unittest.mock import patch
+
+import pytest
+
+from conftest import _auth
+from tutor_helpers import make_user, mock_openai_client, set_tutor_flag
+
+
+@pytest.fixture(autouse=True)
+def _force_openai_key():
+    """Tutor endpoint calls OpenAI moderation + streaming.
+
+    Both call sites short-circuit when `settings.openai_api_key` is empty
+    (the default in tests), so we patch the setting to a dummy value so
+    our `openai.AsyncOpenAI` mock actually gets invoked. Reset after each
+    test so other tests stay in their default state. The safety service
+    reads its own `settings` import, so patch it there too.
+    """
+    with patch("app.api.routes.tutor.settings.openai_api_key", "sk-test-dummy"), patch(
+        "app.services.safety_service.settings.openai_api_key", "sk-test-dummy"
+    ):
+        yield
+
+
+def test_stream_requires_auth(client):
+    """POST without an Authorization header returns 401."""
+    resp = client.post(
+        "/api/tutor/chat/stream",
+        json={"message": "Explain photosynthesis"},
+    )
+    assert resp.status_code == 401
+
+
+def test_stream_feature_flag_off_returns_403(client, db_session):
+    """With `tutor_chat_enabled` off, the endpoint returns 403."""
+    make_user(db_session, email="tutor_flagoff@test.com")
+    set_tutor_flag(db_session, enabled=False)
+
+    headers = _auth(client, "tutor_flagoff@test.com")
+    resp = client.post(
+        "/api/tutor/chat/stream",
+        json={"message": "Explain photosynthesis"},
+        headers=headers,
+    )
+    assert resp.status_code == 403
+
+
+def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
+    """With the limiter enabled, the 21st request in an hour returns 429."""
+    make_user(db_session, email="tutor_rl@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    # Re-enable the limiter for this test only (conftest disables it globally).
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        mock_client = mock_openai_client(stream_pieces=["ok"])
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_rl@test.com")
+            # 20 successful calls
+            for _ in range(20):
+                resp = client.post(
+                    "/api/tutor/chat/stream",
+                    json={"message": "Q"},
+                    headers=headers,
+                )
+                assert resp.status_code == 200
+
+            # 21st call trips the limit
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "Q"},
+                headers=headers,
+            )
+            assert resp.status_code == 429
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
+        set_tutor_flag(db_session, enabled=False)
