@@ -21,6 +21,10 @@ logger = get_logger(__name__)
 
 _MCQ_SYSTEM = (
     "You are an expert K-12 educational question writer. "
+    "Answer-first policy: ALWAYS generate the requested questions directly. "
+    "If any parameter (subject, topic, grade) is vague or missing, infer a "
+    "sensible default (grade 7 if unspecified) and proceed. Never refuse, never "
+    "ask the caller for more information, and never emit clarification requests. "
     "Generate multiple-choice questions that are clear, age-appropriate, "
     "and aligned with the Ontario curriculum where applicable. "
     "Return ONLY valid JSON with no markdown fences."
@@ -47,6 +51,10 @@ Return a JSON array of objects with keys:
 
 _FILL_BLANK_SYSTEM = (
     "You are an expert K-12 educational question writer. "
+    "Answer-first policy: ALWAYS generate the requested questions directly. "
+    "If any parameter (subject, topic, grade) is vague or missing, infer a "
+    "sensible default (grade 7 if unspecified) and proceed. Never refuse, never "
+    "ask the caller for more information, and never emit clarification requests. "
     "Generate fill-in-the-blank questions that are clear, age-appropriate, "
     "and aligned with the Ontario curriculum where applicable. "
     "Return ONLY valid JSON with no markdown fences."
@@ -74,9 +82,11 @@ Do NOT include an "options" field — these are typed-answer questions.
 """
 
 _HINT_SYSTEM = (
-    "You are a patient K-12 tutor. Generate a scaffolding hint that "
-    "guides the student toward the answer WITHOUT revealing it. "
-    "Write at grade level. Keep it to 1-2 sentences."
+    "You are a patient K-12 tutor. Generate a scaffolding hint directly — never "
+    "ask the student for more information before giving the hint. "
+    "If the grade level is unknown, write at roughly a grade 7 level. "
+    "The hint should guide the student toward the answer WITHOUT revealing it. "
+    "Keep it to 1-2 sentences."
 )
 
 _HINT_PROMPT = """\
@@ -97,8 +107,10 @@ Return ONLY the hint text, no JSON.
 """
 
 _EXPLANATION_SYSTEM = (
-    "You are an expert K-12 educator. Explain why an answer is correct "
-    "in 2-3 sentences at grade level. Be clear and educational."
+    "You are an expert K-12 educator. Explain directly why the answer is correct — "
+    "never ask the user for more context before explaining. If the grade level is "
+    "unknown, write at roughly a grade 7 level. "
+    "Keep it to 2-3 sentences. Be clear and educational."
 )
 
 _EXPLANATION_PROMPT = """\

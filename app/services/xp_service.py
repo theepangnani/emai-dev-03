@@ -36,7 +36,22 @@ XP_ACTIONS: dict[str, dict] = {
     "ile_first_attempt_correct": {"xp": 5, "daily_cap": 50},
     "ile_testing_correct": {"xp": 10, "daily_cap": 50},
     "ile_parent_teaching": {"xp": 10, "daily_cap": 30},
+    # Short learning cycle (CB-TUTOR-002 Phase 2)
+    # cycle_question_correct amount is variable (100/70/40 per attempt), so "xp"
+    # is informational only — the award path below supplies the amount directly.
+    # Daily caps tuned to ~2 sessions/day target:
+    #   - cycle_question_correct: 600 (≈2 sessions of 3 correct attempts)
+    #   - cycle_chunk_bonus: 300 (≈6 chunks × 50)
+    "cycle_question_correct": {"xp": 100, "daily_cap": 600},
+    "cycle_chunk_bonus": {"xp": 50, "daily_cap": 300},
 }
+
+# Per-question diminishing returns for the short learning cycle (#4072).
+# Attempts past 3 award 0.
+CYCLE_QUESTION_XP_BY_ATTEMPT: dict[int, int] = {1: 100, 2: 70, 3: 40}
+
+# Fixed bonus when a chunk (set of questions) is fully completed.
+CYCLE_CHUNK_BONUS_XP = 50
 
 LEVELS: list[dict] = [
     {"level": 1, "title": "Curious Learner", "xp_required": 0},
@@ -368,6 +383,201 @@ def award_xp(
         return None
 
 
+# ---------------------------------------------------------------------------
+# Short learning cycle — per-question + chunk bonus awards (#4072)
+# ---------------------------------------------------------------------------
+
+def _check_context_dedup(db: Session, student_id: int, context_id: str) -> bool:
+    """Return True if an XP entry for this exact context_id already exists — reject.
+
+    Unlike the 60s dedup window, this is a lifetime dedup keyed on context_id,
+    used for cycle question/chunk awards where each question or chunk may be
+    rewarded at most once.
+    """
+    from app.models.xp import XpLedger
+
+    existing = (
+        db.query(XpLedger.id)
+        .filter(
+            XpLedger.student_id == student_id,
+            XpLedger.context_id == context_id,
+        )
+        .first()
+    )
+    return existing is not None
+
+
+def _award_cycle_xp(
+    db: Session,
+    student_id: int,
+    action_type: str,
+    base_xp: int,
+    context_id: str,
+) -> int:
+    """Shared internal helper for cycle XP awards.
+
+    Uses lifetime dedup (context_id), respects daily caps + streak multipliers.
+    Returns XP awarded (0 if capped or duplicate).
+
+    FAIL-SAFE: never raises — logs errors and returns 0.
+    """
+    try:
+        from app.core.config import settings
+        if not settings.xp_enabled:
+            return 0
+
+        from app.models.xp import XpLedger
+
+        action = XP_ACTIONS.get(action_type)
+        if action is None:
+            logger.warning(
+                "Unknown cycle XP action_type=%s for student_id=%s",
+                action_type, student_id,
+            )
+            return 0
+
+        # Lifetime dedup on context_id — each question/chunk awarded at most once
+        try:
+            if _check_context_dedup(db, student_id, context_id):
+                logger.debug(
+                    "Cycle XP dedup | student_id=%s | action=%s | context=%s",
+                    student_id, action_type, context_id,
+                )
+                return 0
+        except Exception:
+            logger.exception(
+                "Cycle XP dedup check failed (fail-safe, awarding) | student_id=%s | context=%s",
+                student_id, context_id,
+            )
+
+        # Daily cap for this action
+        today_xp = _get_today_xp(db, student_id, action_type)
+        if today_xp >= action["daily_cap"]:
+            logger.debug(
+                "Daily cap reached | student_id=%s | action=%s | today=%d | cap=%d",
+                student_id, action_type, today_xp, action["daily_cap"],
+            )
+            return 0
+
+        # Streak multiplier
+        summary = _get_or_create_summary(db, student_id)
+        multiplier = get_streak_multiplier(summary.current_streak)
+
+        final_xp = int(base_xp * multiplier)
+
+        # Clamp to remaining daily cap
+        remaining_cap = action["daily_cap"] - today_xp
+        if final_xp > remaining_cap:
+            final_xp = remaining_cap
+        if final_xp <= 0:
+            return 0
+
+        entry = XpLedger(
+            student_id=student_id,
+            action_type=action_type,
+            xp_awarded=final_xp,
+            multiplier=multiplier,
+            context_id=context_id,
+        )
+        db.add(entry)
+        db.flush()
+
+        summary.total_xp = (summary.total_xp or 0) + final_xp
+        level_info = get_level_for_xp(summary.total_xp)
+        summary.current_level = level_info["level"]
+        summary.last_qualifying_action_date = date.today()
+        db.flush()
+
+        logger.info(
+            "Cycle XP awarded | student_id=%s | action=%s | xp=%d | multiplier=%.2f | context=%s",
+            student_id, action_type, final_xp, multiplier, context_id,
+        )
+
+        # Badge check (non-blocking)
+        try:
+            from app.services.badge_service import BadgeService
+            BadgeService.check_and_award(db, student_id, action_type)
+        except Exception:
+            logger.exception("Badge check failed (non-blocking) | student_id=%s", student_id)
+
+        return final_xp
+
+    except Exception:
+        logger.exception(
+            "Cycle XP award failed | student_id=%s | action=%s | context=%s",
+            student_id, action_type, context_id,
+        )
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return 0
+
+
+def award_cycle_question_xp(
+    db: Session,
+    student_id: int,
+    question_id: str,
+    attempt_number,
+    user_role: str,
+) -> int:
+    """Award XP for a correct answer in the short learning cycle.
+
+    Students only. Returns 0 (no XP) for teacher or parent roles — the
+    students-only gate is enforced INSIDE the function, so every caller is
+    safe by default (single source of truth).
+
+    Amounts diminish: 100 / 70 / 40 for tries 1 / 2 / 3; 0 after.
+    Uses context_id=cycle_question_{question_id} for lifetime dedup.
+    Respects existing daily caps + streak multipliers.
+    Returns XP awarded (0 if not a student, capped, duplicate, or past attempt 3).
+
+    ``attempt_number`` is coerced via ``int()`` so callers passing strings
+    (e.g. ``"1"``) or floats (e.g. ``1.0``) still get XP instead of a silent
+    0. Values that cannot be coerced log a warning and return 0.
+    """
+    if (user_role or "").lower() != "student":
+        return 0
+    try:
+        attempt_int = int(attempt_number)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid attempt_number %r for question %s", attempt_number, question_id,
+        )
+        return 0
+    amount = CYCLE_QUESTION_XP_BY_ATTEMPT.get(attempt_int, 0)
+    if amount == 0:
+        return 0
+    context_id = f"cycle_question_{question_id}"
+    return _award_cycle_xp(
+        db, student_id, "cycle_question_correct", amount, context_id,
+    )
+
+
+def award_cycle_chunk_bonus(
+    db: Session,
+    student_id: int,
+    chunk_id: str,
+    user_role: str,
+) -> int:
+    """Award 50 XP bonus when a chunk is fully completed.
+
+    Students only. Returns 0 (no XP) for teacher or parent roles — the
+    students-only gate is enforced INSIDE the function, so every caller is
+    safe by default (single source of truth).
+
+    Uses context_id=cycle_chunk_bonus_{chunk_id} for lifetime dedup.
+    Respects daily caps + streak multipliers.
+    Returns XP awarded (0 if not a student, capped, or duplicate).
+    """
+    if (user_role or "").lower() != "student":
+        return 0
+    context_id = f"cycle_chunk_bonus_{chunk_id}"
+    return _award_cycle_xp(
+        db, student_id, "cycle_chunk_bonus", CYCLE_CHUNK_BONUS_XP, context_id,
+    )
+
+
 def get_summary(db: Session, student_id: int):
     """Build an XpSummaryResponse for the student."""
     from app.models.xp import Badge, XpLedger
@@ -488,6 +698,18 @@ class XpService:
     @staticmethod
     def award_xp(db, student_id: int, action_type: str, context_id: Optional[str] = None):
         return award_xp(db, student_id, action_type, context_id=context_id)
+
+    @staticmethod
+    def award_cycle_question_xp(
+        db, student_id: int, question_id: str, attempt_number: int, user_role: str,
+    ) -> int:
+        return award_cycle_question_xp(
+            db, student_id, question_id, attempt_number, user_role,
+        )
+
+    @staticmethod
+    def award_cycle_chunk_bonus(db, student_id: int, chunk_id: str, user_role: str) -> int:
+        return award_cycle_chunk_bonus(db, student_id, chunk_id, user_role)
 
     @staticmethod
     def get_summary(db, student_id: int):

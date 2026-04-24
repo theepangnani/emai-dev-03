@@ -79,6 +79,20 @@ def seed_features(db: Session) -> int:
             "variant": "off",
         },
         {
+            "key": "tutor_chat_enabled",
+            "name": "Tutor Chat (SSE)",
+            "description": "CB-TUTOR-002 Phase 1 — POST /api/tutor/chat/stream SSE tutor chat endpoint. Paywall-relevant.",
+            "enabled": False,
+            "variant": "off",
+        },
+        {
+            "key": "learning_cycle_enabled",
+            "name": "Learning Cycle",
+            "description": "CB-TUTOR-002 Phase 2 — short learning cycle flow gate. Paywall-relevant.",
+            "enabled": False,
+            "variant": "off",
+        },
+        {
             "key": "parent.unified_digest_v2",
             "name": "Unified Multi-Kid Email Digest V2",
             "description": (
