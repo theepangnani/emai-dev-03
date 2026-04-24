@@ -41,8 +41,10 @@ import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
+import { TutorChat } from '../components/tutor';
 import { api } from '../api/client';
 import { useChildOverdueCounts } from '../hooks/useChildOverdueCounts';
+import { useFeatureFlagEnabled } from '../hooks/useFeatureToggle';
 import './TutorPage.css';
 
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
@@ -575,6 +577,10 @@ export function TutorPage() {
     (user as { first_name?: string } | null)?.first_name ??
     '';
 
+  // CB-TUTOR-002 Phase 1: chat-first Explain mode, gated by feature flag.
+  // When OFF, the existing ASGF form renders unchanged.
+  const tutorChatEnabled = useFeatureFlagEnabled('tutor_chat_enabled');
+
   return (
     <DashboardLayout>
       <div className="ask-arc-page">
@@ -680,8 +686,18 @@ export function TutorPage() {
             </div>
           )}
 
-          {/* ── STAGE: INPUT · EXPLAIN MODE (conversational) ───── */}
-          {stage === 'input' && mode === 'explain' && (
+          {/* ── STAGE: INPUT · EXPLAIN MODE · TUTOR CHAT (flag ON) ─
+              CB-TUTOR-002 Phase 1 (#4065): when `tutor_chat_enabled` is
+              on, swap the legacy ASGF form for a chat-first shell. Flag
+              OFF preserves the existing UX exactly. */}
+          {stage === 'input' && mode === 'explain' && tutorChatEnabled && (
+            <section className="ask-arc-convo" aria-label="Ask a question">
+              <TutorChat firstName={firstName} onFilesUploaded={handleFilesUploaded} />
+            </section>
+          )}
+
+          {/* ── STAGE: INPUT · EXPLAIN MODE (conversational — legacy) ── */}
+          {stage === 'input' && mode === 'explain' && !tutorChatEnabled && (
             <section className="ask-arc-convo" aria-label="Ask a question">
               <ASGFResumePrompt onResume={handleResume} />
 
