@@ -71,6 +71,12 @@ from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
 from app.models.learning_history import LearningHistory  # noqa: F401 — ASGF learning history (#3391)
 from app.models.demo_session import DemoSession  # noqa: F401 — CB-DEMO-001 demo sessions (#3600)
+from app.models.learning_cycle import (  # noqa: F401 — CB-TUTOR-002 Phase 2 (#4067)
+    LearningCycleSession,
+    LearningCycleChunk,
+    LearningCycleQuestion,
+    LearningCycleAnswer,
+)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
