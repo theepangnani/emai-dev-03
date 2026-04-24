@@ -75,11 +75,18 @@ def client(app):
 # in CI depending on pytest's collection order.
 #
 # This autouse fixture forces the flag back to OFF before every test. Tests
-# that need it ON flip it inside the test body. The fixture is defensive —
-# if the ``feature_flags`` table does not yet exist (earliest startup-smoke
-# tests) it silently no-ops.
+# that need it ON flip it inside the test body.
+#
+# Scope: intentionally applied to every test in the suite. The per-test cost
+# is a single indexed `SELECT ... WHERE key = 'task_sync_enabled'` — a few
+# microseconds — and narrowing to just the two failing files risks re-
+# introducing the flake for future tests that rely on flag defaults.
+#
+# Naming note: `_isolate_task_sync_flag` (not `_reset_task_sync_flag`) to
+# avoid shadowing the module-level helper of the same name in
+# `tests/test_feature_flags.py`.
 @pytest.fixture(autouse=True)
-def _reset_task_sync_flag(app):
+def _isolate_task_sync_flag(app):
     import logging
 
     from sqlalchemy.exc import SQLAlchemyError
@@ -98,10 +105,14 @@ def _reset_task_sync_flag(app):
         if flag is not None and flag.enabled:
             flag.enabled = False
             db.commit()
+        # When the row is missing (earliest startup-smoke tests, or a test
+        # that hasn't yet triggered seed_features) there is nothing to
+        # reset — the default-OFF contract is already satisfied.
     except SQLAlchemyError:
-        # Surface real DB errors at WARNING so a genuine failure in the
-        # reset path is visible in CI, rather than manifesting later as a
-        # mysterious cross-test flake.
+        # Surface real DB errors (including missing-table OperationalError)
+        # at WARNING so a genuine failure in the reset path is visible in
+        # CI, rather than manifesting later as a mysterious cross-test
+        # flake.
         db.rollback()
         logging.getLogger(__name__).warning(
             "task_sync_enabled reset failed", exc_info=True
