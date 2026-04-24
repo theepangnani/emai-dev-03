@@ -17,7 +17,7 @@ import { FillBlankCard } from '../components/ile/FillBlankCard';
 import { ParentTeachingControls } from '../components/ile/ParentTeachingControls';
 import { CareerConnectCard } from '../components/ile/CareerConnectCard';
 import { AhaMomentCelebration } from '../components/ile/AhaMomentCelebration';
-import { TutorAvatar } from '../components/ile/TutorAvatar';
+import { ArcMascot } from '../components/arc';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -255,7 +255,7 @@ export function FlashTutorSessionPage() {
           )}
           <div className="fts-results">
             <div className="fts-results-header">
-              <TutorAvatar size={64} mood="celebrating" />
+              <ArcMascot size={64} mood="celebrating" decorative />
               <h1>Session Complete!</h1>
               <div className="fts-score-circle">
                 <span className="fts-score-pct">{results.percentage}%</span>
