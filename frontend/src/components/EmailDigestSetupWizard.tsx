@@ -183,6 +183,38 @@ export function EmailDigestSetupWizard({
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
+  // Focus trap — on open, focus the first interactive element inside the
+  // modal and cycle focus on Tab/Shift-Tab so it never leaves the dialog.
+  useEffect(() => {
+    if (!open) return;
+    if (!modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    focusable[0]?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const nodes = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(n => !n.hasAttribute('disabled'));
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
   // Keep ref in sync with state so the message handler always uses the latest value
   useEffect(() => {
     oauthStateRef.current = oauthState;
@@ -454,6 +486,12 @@ export function EmailDigestSetupWizard({
           const axiosErr = err as { response?: { status?: number } };
           if (axiosErr.response?.status === 409) {
             updates.push({ idx: origIdx, saveError: '' });
+          } else if (axiosErr.response?.status === 404) {
+            updates.push({
+              idx: origIdx,
+              saveError:
+                "We can't save this email yet — please try again from the main Email Digest page once your account is fully set up.",
+            });
           } else {
             const msg = err instanceof Error ? err.message : 'Could not save this email';
             updates.push({ idx: origIdx, saveError: msg });
@@ -710,6 +748,52 @@ export function EmailDigestSetupWizard({
             </>
           )}
 
+          {/* Step 4: Confirmation */}
+          {step === 4 && (
+            <>
+              <h3 className="edw-step-title">Review &amp; Complete</h3>
+              <p className="edw-step-desc">
+                Please review your settings before completing the setup.
+              </p>
+              <div className="edw-summary">
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Gmail Account</span>
+                  <span className="edw-summary-value">{connectedEmail}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Child&rsquo;s Name</span>
+                  <span className="edw-summary-value">{childFirstName}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Monitored Senders</span>
+                  <span className="edw-summary-value">
+                    {monitoredEmails.length} sender{monitoredEmails.length !== 1 ? 's' : ''}: {monitoredEmails.map(e => e.email || e.name).join(', ')}
+                  </span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Delivery Time</span>
+                  <span className="edw-summary-value">{deliveryTime}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Timezone</span>
+                  <span className="edw-summary-value">{timezone.replace(/_/g, ' ')}</span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Format</span>
+                  <span className="edw-summary-value">
+                    {DIGEST_FORMATS.find(f => f.value === digestFormat)?.label ?? digestFormat}
+                  </span>
+                </div>
+                <div className="edw-summary-row">
+                  <span className="edw-summary-label">Channels</span>
+                  <span className="edw-summary-value">
+                    {channels.map(ch => CHANNEL_OPTIONS.find(o => o.value === ch)?.label ?? ch).join(', ')}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Step 5: School Emails (flag-gated — only rendered when
               parent.unified_digest_v2 is ON). */}
           {step === 5 && unifiedDigestV2Enabled && (
@@ -771,52 +855,6 @@ export function EmailDigestSetupWizard({
                   </div>
                 );
               })}
-            </>
-          )}
-
-          {/* Step 4: Confirmation */}
-          {step === 4 && (
-            <>
-              <h3 className="edw-step-title">Review &amp; Complete</h3>
-              <p className="edw-step-desc">
-                Please review your settings before completing the setup.
-              </p>
-              <div className="edw-summary">
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Gmail Account</span>
-                  <span className="edw-summary-value">{connectedEmail}</span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Child&rsquo;s Name</span>
-                  <span className="edw-summary-value">{childFirstName}</span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Monitored Senders</span>
-                  <span className="edw-summary-value">
-                    {monitoredEmails.length} sender{monitoredEmails.length !== 1 ? 's' : ''}: {monitoredEmails.map(e => e.email || e.name).join(', ')}
-                  </span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Delivery Time</span>
-                  <span className="edw-summary-value">{deliveryTime}</span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Timezone</span>
-                  <span className="edw-summary-value">{timezone.replace(/_/g, ' ')}</span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Format</span>
-                  <span className="edw-summary-value">
-                    {DIGEST_FORMATS.find(f => f.value === digestFormat)?.label ?? digestFormat}
-                  </span>
-                </div>
-                <div className="edw-summary-row">
-                  <span className="edw-summary-label">Channels</span>
-                  <span className="edw-summary-value">
-                    {channels.map(ch => CHANNEL_OPTIONS.find(o => o.value === ch)?.label ?? ch).join(', ')}
-                  </span>
-                </div>
-              </div>
             </>
           )}
         </div>
