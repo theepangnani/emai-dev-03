@@ -296,12 +296,16 @@ def bulk_create(
     """
     created: list[BulkCreatedItem] = []
     failed: list[BulkFailedItem] = []
+    # Per-batch cache so N rows taught by the same teacher (common when a
+    # parent imports all their kid's classes) reuse ONE shadow Teacher.
+    # Keyed on (email_lower_or_none, name_lower).
+    shadow_cache: dict[tuple[str | None, str], int] = {}
 
     for idx, row in enumerate(body.rows):
         # SAVEPOINT per row so one failure rolls back only that row.
         nested = db.begin_nested()
         try:
-            course = import_one_row(db, row, current_user)
+            course = import_one_row(db, row, current_user, shadow_cache=shadow_cache)
             log_action(
                 db,
                 user_id=current_user.id,

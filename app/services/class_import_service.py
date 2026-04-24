@@ -42,12 +42,18 @@ def _ensure_or_invite_teacher(
     row: BulkCreateRow,
     current_user: User,
     course: Course,
+    shadow_cache: dict[tuple[str | None, str], int] | None = None,
 ) -> None:
     """Resolve (or invite) the teacher for a single import row.
 
     Mirrors create_course: prefer teacher_email -> user-based match, else
     shadow-teacher + invite. When no email, create a shadow teacher with just
     the name.
+
+    ``shadow_cache`` (optional, per-batch) memoizes shadow teacher IDs by
+    ``(email_lower_or_none, name_lower)`` so multiple rows in the same /bulk
+    request that share a teacher reuse the same Teacher row rather than
+    creating duplicates.
     """
     if row.teacher_email:
         teacher_id = _resolve_teacher_by_email(
@@ -56,28 +62,48 @@ def _ensure_or_invite_teacher(
         if teacher_id:
             course.teacher_id = teacher_id
             course.is_private = False
-        else:
-            # No platform user — fall back to shadow teacher so the course
-            # still has a visible name.
-            shadow = (
-                db.query(Teacher)
-                .filter(Teacher.google_email == row.teacher_email.strip().lower())
-                .first()
-            )
-            if not shadow:
-                shadow = Teacher(
-                    is_shadow=True,
-                    is_platform_user=False,
-                    full_name=row.teacher_name.strip(),
-                    google_email=row.teacher_email.strip().lower(),
-                )
-                db.add(shadow)
-                db.flush()
-            course.teacher_id = shadow.id
+            return
+
+        # No platform user — fall back to shadow teacher so the course
+        # still has a visible name.
+        email_lower = row.teacher_email.strip().lower()
+        name_lower = row.teacher_name.strip().lower()
+        cache_key = (email_lower, name_lower)
+        if shadow_cache is not None and cache_key in shadow_cache:
+            course.teacher_id = shadow_cache[cache_key]
             course.is_private = False
+            return
+
+        shadow = (
+            db.query(Teacher)
+            .filter(Teacher.google_email == email_lower)
+            .first()
+        )
+        if not shadow:
+            shadow = Teacher(
+                is_shadow=True,
+                is_platform_user=False,
+                full_name=row.teacher_name.strip(),
+                google_email=email_lower,
+            )
+            db.add(shadow)
+            db.flush()
+        if shadow_cache is not None:
+            shadow_cache[cache_key] = shadow.id
+        course.teacher_id = shadow.id
+        course.is_private = False
         return
 
-    # No email at all — shadow teacher keyed on name only (not unique).
+    # No email at all — dedupe within the batch by lowercased name so a
+    # single /bulk of five classes all taught by "Mme Carnevale" creates
+    # ONE Teacher, not five.
+    name_lower = row.teacher_name.strip().lower()
+    cache_key = (None, name_lower)
+    if shadow_cache is not None and cache_key in shadow_cache:
+        course.teacher_id = shadow_cache[cache_key]
+        course.is_private = False
+        return
+
     shadow = Teacher(
         is_shadow=True,
         is_platform_user=False,
@@ -85,6 +111,8 @@ def _ensure_or_invite_teacher(
     )
     db.add(shadow)
     db.flush()
+    if shadow_cache is not None:
+        shadow_cache[cache_key] = shadow.id
     course.teacher_id = shadow.id
     course.is_private = False
 
@@ -93,12 +121,18 @@ def import_one_row(
     db: Session,
     row: BulkCreateRow,
     current_user: User,
+    shadow_cache: dict[tuple[str | None, str], int] | None = None,
 ) -> Course:
     """Create a single Course from one bulk-import row.
 
     Raises ``AlreadyImportedError`` with existing_course_id when the row
     already exists (by google_classroom_id). Any other error is raised for
     the caller to capture into the failed list.
+
+    ``shadow_cache`` is forwarded to ``_ensure_or_invite_teacher`` so a single
+    bulk request that contains multiple rows taught by the same teacher
+    (common for a parent importing all their kid's classes) reuses one
+    shadow Teacher instead of creating one per row.
     """
     existing = _find_existing_by_gc_id(db, row.google_classroom_id)
     if existing:
@@ -122,7 +156,9 @@ def import_one_row(
     db.add(course)
     db.flush()
 
-    _ensure_or_invite_teacher(db, row, current_user, course)
+    _ensure_or_invite_teacher(
+        db, row, current_user, course, shadow_cache=shadow_cache
+    )
 
     return course
 

@@ -611,3 +611,55 @@ class TestBulkCreate:
         assert parsed.created[0].name == "Shape Good"
         assert len(parsed.failed) == 1
         assert parsed.failed[0].error == "already_imported"
+
+    def test_same_teacher_no_email_dedups_within_batch(
+        self, client, ci_user, db_session
+    ):
+        """Regression: #4008 — five rows taught by the same shadow teacher (no email)
+        must produce ONE Teacher row, not five."""
+        from app.models.course import Course
+        from app.models.teacher import Teacher
+
+        before = db_session.query(Teacher).filter(
+            Teacher.full_name == "Mme Carnevale"
+        ).count()
+
+        headers = _auth(client, ci_user.email)
+        resp = client.post(
+            "/api/courses/bulk",
+            headers=headers,
+            json={
+                "rows": [
+                    {
+                        "class_name": f"Class {i}",
+                        "section": None,
+                        "teacher_name": "Mme Carnevale",
+                        "teacher_email": None,
+                        "google_classroom_id": f"gc-dedup-{i}",
+                    }
+                    for i in range(5)
+                ]
+            },
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["created"]) == 5
+        assert data["failed"] == []
+
+        # Exactly one new Teacher row created for "Mme Carnevale" in this batch.
+        after = db_session.query(Teacher).filter(
+            Teacher.full_name == "Mme Carnevale"
+        ).count()
+        assert after - before == 1
+
+        # All five courses point at the same teacher_id.
+        courses = (
+            db_session.query(Course)
+            .filter(Course.google_classroom_id.like("gc-dedup-%"))
+            .all()
+        )
+        assert len(courses) == 5
+        teacher_ids = {c.teacher_id for c in courses}
+        assert len(teacher_ids) == 1, (
+            f"Expected 1 shared teacher, got {len(teacher_ids)}: {teacher_ids}"
+        )
