@@ -42,6 +42,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
 import { TutorChat } from '../components/tutor';
+import type { TutorMessageType } from '../components/tutor';
 import { api } from '../api/client';
 import { useChildOverdueCounts } from '../hooks/useChildOverdueCounts';
 import { useFeatureFlagEnabled } from '../hooks/useFeatureToggle';
@@ -72,6 +73,11 @@ export function TutorPage() {
   // Mode: 'explain' (chat → slides + quiz) | 'drill' (topic picker → ILE quiz)
   const initialMode = (searchParams.get('mode') === 'drill' ? 'drill' : 'explain') as TutorMode;
   const [mode, setMode] = useState<TutorMode>(initialMode);
+
+  // Hoisted chat state (#4095 Bug 2) — preserved across Explain⇄Drill mode
+  // toggles so flipping away and back doesn't wipe the conversation.
+  const [chatMessages, setChatMessages] = useState<TutorMessageType[]>([]);
+  const [chatConvId, setChatConvId] = useState<string | null>(null);
 
   // Stage state
   const [stage, setStage] = useState<ASGFStage>('input');
@@ -315,6 +321,37 @@ export function TutorPage() {
     drillChildId,
     navigate,
   ]);
+
+  // #4095 Bug 4: when flipping Explain → Drill with prior chat activity,
+  // pre-fill the drill custom-topic field with the last user message so the
+  // user doesn't have to retype. Truncated to 200 chars to fit the input.
+  const handleModeSwitch = useCallback(
+    (newMode: TutorMode) => {
+      if (newMode === 'drill' && mode === 'explain') {
+        const lastUserMsg = [...chatMessages].reverse().find((m) => m.role === 'user');
+        if (lastUserMsg) {
+          setDrillUseCustom(true);
+          setDrillCustom({
+            subject: '',
+            topic: lastUserMsg.content.slice(0, 200),
+          });
+        }
+      }
+      setMode(newMode);
+      setSearchParams(
+        (prev) => {
+          if (newMode === 'drill') {
+            prev.set('mode', 'drill');
+          } else {
+            prev.delete('mode');
+          }
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [mode, chatMessages, setSearchParams],
+  );
 
   const handleSurpriseMe = useCallback(async () => {
     setDrillError(null);
@@ -644,16 +681,7 @@ export function TutorPage() {
               <button
                 aria-pressed={mode === 'explain'}
                 className={`tutor-mode-tab ${mode === 'explain' ? 'tutor-mode-tab--active' : ''}`}
-                onClick={() => {
-                  setMode('explain');
-                  setSearchParams(
-                    (prev) => {
-                      prev.delete('mode');
-                      return prev;
-                    },
-                    { replace: true },
-                  );
-                }}
+                onClick={() => handleModeSwitch('explain')}
                 type="button"
               >
                 <span className="tutor-mode-tab__icon" aria-hidden="true">💬</span>
@@ -665,16 +693,7 @@ export function TutorPage() {
               <button
                 aria-pressed={mode === 'drill'}
                 className={`tutor-mode-tab ${mode === 'drill' ? 'tutor-mode-tab--active' : ''}`}
-                onClick={() => {
-                  setMode('drill');
-                  setSearchParams(
-                    (prev) => {
-                      prev.set('mode', 'drill');
-                      return prev;
-                    },
-                    { replace: true },
-                  );
-                }}
+                onClick={() => handleModeSwitch('drill')}
                 type="button"
               >
                 <span className="tutor-mode-tab__icon" aria-hidden="true">🎯</span>
@@ -689,10 +708,24 @@ export function TutorPage() {
           {/* ── STAGE: INPUT · EXPLAIN MODE · TUTOR CHAT (flag ON) ─
               CB-TUTOR-002 Phase 1 (#4065): when `tutor_chat_enabled` is
               on, swap the legacy ASGF form for a chat-first shell. Flag
-              OFF preserves the existing UX exactly. */}
-          {stage === 'input' && mode === 'explain' && tutorChatEnabled && (
-            <section className="ask-arc-convo" aria-label="Ask a question">
-              <TutorChat firstName={firstName} onFilesUploaded={handleFilesUploaded} />
+              OFF preserves the existing UX exactly.
+              #4095 Bug 2: kept mounted under display:none while in drill
+              mode so chat state (messages, conversation_id) survives the
+              mode toggle. Unmounting would reset useState. */}
+          {stage === 'input' && tutorChatEnabled && (
+            <section
+              className="ask-arc-convo"
+              aria-label="Ask a question"
+              style={{ display: mode === 'explain' ? undefined : 'none' }}
+            >
+              <TutorChat
+                firstName={firstName}
+                onFilesUploaded={handleFilesUploaded}
+                messages={chatMessages}
+                setMessages={setChatMessages}
+                conversationId={chatConvId}
+                setConversationId={setChatConvId}
+              />
             </section>
           )}
 

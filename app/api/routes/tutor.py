@@ -94,6 +94,17 @@ _CHIPS_BLOCK_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 _CHIP_ITEM_RE = re.compile(r'"([^"]*)"')
+# Matches the START of a CHIPS block (optionally padded with whitespace
+# between "[[" and "CHIPS"). Used during streaming to decide whether a
+# buffered "[[..." prefix is actually the start of a chips block (suppress
+# from token frames) or just a literal "[[" in the assistant's text
+# (flush it back to the token stream).
+_CHIPS_START_RE = re.compile(r"\[\[\s*CHIPS\b", re.IGNORECASE)
+# A "[[" could be the start of a CHIPS block as soon as we've collected
+# enough characters to disambiguate "[[ CHIPS" (with optional whitespace).
+# If the buffer grows past this length without matching, we can safely
+# flush it back to the token stream — the model emitted a literal "[[".
+_CHIPS_PROBE_MAX = len("[[    CHIPS")
 
 
 def _sse(payload: dict) -> str:
@@ -296,10 +307,75 @@ async def tutor_chat_stream(
             db.refresh(conversation)
         conversation_id = conversation.id
         collected: list[str] = []
+        # #4095 Bug 3 — buffer tokens once we spot "[[" so the trailing
+        # `[[CHIPS: "..."]]` block never leaks into the visible token
+        # stream. Full-response parsing (below) still extracts chips
+        # from `collected` for the chips frame + DB persist.
+        chip_buffer = ""  # pending token text (may or may not be CHIPS start)
+        in_chips = False  # true once we've confirmed the buffer is a CHIPS block
         try:
             async for delta in _stream_completion(system_prompt, user_prompt):
                 collected.append(delta)
+
+                # Case A — already inside a confirmed CHIPS block: keep
+                # swallowing tokens until we see the closing "]]". Anything
+                # after that is unexpected trailing text, which we also drop.
+                if in_chips:
+                    chip_buffer += delta
+                    if "]]" in chip_buffer:
+                        in_chips = False
+                        chip_buffer = ""
+                    continue
+
+                # Case B — we have a pending "[[..." buffer but haven't
+                # decided yet whether it's a CHIPS start or a literal "[[".
+                if chip_buffer:
+                    chip_buffer += delta
+                    if _CHIPS_START_RE.match(chip_buffer):
+                        in_chips = True
+                        if "]]" in chip_buffer:
+                            # Whole block arrived in one go — close it out.
+                            in_chips = False
+                            chip_buffer = ""
+                        continue
+                    # Still ambiguous — keep buffering until we have enough
+                    # characters to disambiguate, or the buffer can no longer
+                    # match the CHIPS prefix. We compare against the prefix
+                    # of _CHIPS_START_RE.pattern — easier to just re-check.
+                    if len(chip_buffer) >= _CHIPS_PROBE_MAX:
+                        # Couldn't be CHIPS — flush as a regular token.
+                        yield _sse({"type": "token", "text": chip_buffer})
+                        chip_buffer = ""
+                    continue
+
+                # Case C — no buffer yet; check if this delta contains "[[".
+                if "[[" in delta:
+                    prefix, _, rest = delta.partition("[[")
+                    if prefix:
+                        yield _sse({"type": "token", "text": prefix})
+                    chip_buffer = "[[" + rest
+                    if _CHIPS_START_RE.match(chip_buffer):
+                        in_chips = True
+                        if "]]" in chip_buffer:
+                            in_chips = False
+                            chip_buffer = ""
+                    elif len(chip_buffer) >= _CHIPS_PROBE_MAX:
+                        # Too long for a CHIPS start — flush it back.
+                        yield _sse({"type": "token", "text": chip_buffer})
+                        chip_buffer = ""
+                    continue
+
+                # Case D — plain token, emit directly.
                 yield _sse({"type": "token", "text": delta})
+
+            # Stream ended — flush any trailing ambiguous "[[..." buffer
+            # that never grew long enough to disambiguate. If it matches a
+            # CHIPS start (but never closed), drop it; otherwise it was a
+            # literal "[[" sequence and we should not lose it.
+            if chip_buffer and not in_chips:
+                if not _CHIPS_START_RE.match(chip_buffer):
+                    yield _sse({"type": "token", "text": chip_buffer})
+                chip_buffer = ""
         except asyncio.TimeoutError as exc:
             logger.warning("Tutor OpenAI inter-token stall: %s", exc)
             yield _sse(

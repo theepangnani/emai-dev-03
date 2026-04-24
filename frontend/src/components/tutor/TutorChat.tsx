@@ -15,6 +15,7 @@ import { TutorMessage } from './TutorMessage';
 import { TutorSuggestionChips } from './TutorSuggestionChips';
 import { TutorInputBar } from './TutorInputBar';
 import { useTutorChat } from './useTutorChat';
+import type { TutorMessage as TutorMessageType } from './useTutorChat';
 import type { FileUploadResponse } from '../../api/asgf';
 import './TutorChat.css';
 
@@ -23,16 +24,32 @@ export interface TutorChatProps {
   firstName?: string;
   /** Called every time files are uploaded through the attach drawer. */
   onFilesUploaded?: (files: FileUploadResponse[]) => void;
+  /** Optional externally-controlled messages state. When supplied together
+   *  with `setMessages`, the hook uses these instead of its internal state —
+   *  this lets the parent hoist chat state above a mode-toggle so it
+   *  survives Explain⇄Drill unmounts (#4095 Bug 2). */
+  messages?: TutorMessageType[];
+  setMessages?: React.Dispatch<React.SetStateAction<TutorMessageType[]>>;
+  /** Optional externally-controlled conversation_id state (paired with
+   *  `messages`/`setMessages` above). */
+  conversationId?: string | null;
+  setConversationId?: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-const DEFAULT_STARTERS = [
-  'Explain photosynthesis like I\'m in grade 7',
-  'Help me with a tricky fraction problem',
-  'Summarize my history notes on WWII',
-];
-
-export function TutorChat({ firstName, onFilesUploaded }: TutorChatProps) {
-  const { messages, sendMessage, isStreaming, cancel, error } = useTutorChat();
+export function TutorChat({
+  firstName,
+  onFilesUploaded,
+  messages: externalMessages,
+  setMessages: externalSetMessages,
+  conversationId: externalConversationId,
+  setConversationId: externalSetConversationId,
+}: TutorChatProps) {
+  const { messages, sendMessage, isStreaming, cancel, error } = useTutorChat({
+    externalMessages,
+    externalSetMessages,
+    externalConversationId,
+    externalSetConversationId,
+  });
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages[messages.length - 1]?.id;
@@ -71,13 +88,6 @@ export function TutorChat({ firstName, onFilesUploaded }: TutorChatProps) {
     [],
   );
 
-  const handleStarter = useCallback(
-    (text: string) => {
-      setDraft(text);
-    },
-    [],
-  );
-
   const greeting = useMemo(() => {
     const name = firstName?.trim() ? firstName.split(' ')[0] : 'friend';
     return name;
@@ -111,25 +121,6 @@ export function TutorChat({ firstName, onFilesUploaded }: TutorChatProps) {
             <h2 className="tutor-chat__empty-headline">
               What do you want to <em>actually</em> understand today?
             </h2>
-            <p className="tutor-chat__empty-sub">
-              Ask me anything, paste a worksheet, or pick a starter below. I'll keep
-              things concise — and we can go deeper if you want.
-            </p>
-            <div className="tutor-chat__starters" role="list" aria-label="Starter prompts">
-              {DEFAULT_STARTERS.map((s, i) => (
-                <button
-                  key={s}
-                  type="button"
-                  role="listitem"
-                  className="tutor-chat__starter"
-                  onClick={() => handleStarter(s)}
-                  style={{ animationDelay: `${120 + i * 80}ms` }}
-                >
-                  <span className="tutor-chat__starter-num">0{i + 1}</span>
-                  <span className="tutor-chat__starter-text">{s}</span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
 

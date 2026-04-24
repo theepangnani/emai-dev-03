@@ -38,6 +38,18 @@ export interface UseTutorChatResult {
   clear: () => void;
 }
 
+/** Optional external state injection — lets callers hoist chat state above
+ *  an unmount boundary (e.g. a mode toggle that would otherwise wipe the
+ *  conversation on toggle). When both `externalMessages` and
+ *  `externalSetMessages` are provided, the hook uses them directly; otherwise
+ *  it falls back to its own internal useState. Same for conversationId. */
+export interface UseTutorChatOptions {
+  externalMessages?: TutorMessage[];
+  externalSetMessages?: React.Dispatch<React.SetStateAction<TutorMessage[]>>;
+  externalConversationId?: string | null;
+  externalSetConversationId?: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
 /** Last 3 (user, assistant) pairs = 6 messages. */
 const HISTORY_TURNS = 3;
 
@@ -57,14 +69,28 @@ function lastTurns(messages: TutorMessage[], limit = HISTORY_TURNS) {
   return pairs.flat().map((m) => ({ role: m.role, content: m.content }));
 }
 
-export function useTutorChat(): UseTutorChatResult {
-  const [messages, setMessages] = useState<TutorMessage[]>([]);
+export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult {
+  const internal = useState<TutorMessage[]>([]);
+  const internalConvId = useState<string | null>(null);
+
+  const useExternalMessages =
+    options?.externalMessages !== undefined && options?.externalSetMessages !== undefined;
+  const messages = useExternalMessages ? options!.externalMessages! : internal[0];
+  const setMessages = useExternalMessages ? options!.externalSetMessages! : internal[1];
+
+  const useExternalConvId =
+    options?.externalConversationId !== undefined &&
+    options?.externalSetConversationId !== undefined;
+  const conversationId = useExternalConvId
+    ? options!.externalConversationId!
+    : internalConvId[0];
+  const setConversationId = useExternalConvId
+    ? options!.externalSetConversationId!
+    : internalConvId[1];
+
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Backend-issued conversation id; persisted in-memory and round-tripped
-  // on every subsequent turn so the server reuses the same conversation row.
-  const conversationIdRef = useRef<string | null>(null);
 
   // Snapshot-only refs so `sendMessage` can stay stable across re-renders.
   // Consumers can then safely depend on `sendMessage` in useEffect/useMemo
@@ -73,6 +99,21 @@ export function useTutorChat(): UseTutorChatResult {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  const conversationIdRef = useRef<string | null>(conversationId);
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+
+  const setConversationIdRef = useRef(setConversationId);
+  useEffect(() => {
+    setConversationIdRef.current = setConversationId;
+  }, [setConversationId]);
+
+  const setMessagesRef = useRef(setMessages);
+  useEffect(() => {
+    setMessagesRef.current = setMessages;
+  }, [setMessages]);
 
   useEffect(() => {
     return () => {
@@ -89,8 +130,8 @@ export function useTutorChat(): UseTutorChatResult {
   const clear = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
-    conversationIdRef.current = null;
-    setMessages([]);
+    setConversationIdRef.current(null);
+    setMessagesRef.current([]);
     setError(null);
     setIsStreaming(false);
   }, []);
@@ -125,7 +166,7 @@ export function useTutorChat(): UseTutorChatResult {
       // Read from the ref so sendMessage can remain a stable reference.
       const history = lastTurns(messagesRef.current);
 
-      setMessages((prev) => [...prev, userMessage, assistantStub]);
+      setMessagesRef.current((prev) => [...prev, userMessage, assistantStub]);
       setIsStreaming(true);
       setError(null);
 
@@ -180,7 +221,7 @@ export function useTutorChat(): UseTutorChatResult {
                   console.warn('[useTutorChat] Token received after done; ignoring.');
                   continue;
                 }
-                setMessages((prev) =>
+                setMessagesRef.current((prev) =>
                   prev.map((m) =>
                     m.id === assistantId ? { ...m, content: m.content + (data.text ?? '') } : m,
                   ),
@@ -193,7 +234,7 @@ export function useTutorChat(): UseTutorChatResult {
                 const suggestions: string[] = Array.isArray(data.suggestions)
                   ? data.suggestions.slice(0, 4)
                   : [];
-                setMessages((prev) =>
+                setMessagesRef.current((prev) =>
                   prev.map((m) => (m.id === assistantId ? { ...m, suggestions } : m)),
                 );
               } else if (data.type === 'safety') {
@@ -201,7 +242,7 @@ export function useTutorChat(): UseTutorChatResult {
                   console.warn('[useTutorChat] Safety received after done; ignoring.');
                   continue;
                 }
-                setMessages((prev) =>
+                setMessagesRef.current((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
                       ? { ...m, content: data.text ?? m.content, safety: true }
@@ -211,9 +252,9 @@ export function useTutorChat(): UseTutorChatResult {
               } else if (data.type === 'done') {
                 streamDone = true;
                 if (typeof data.conversation_id === 'string') {
-                  conversationIdRef.current = data.conversation_id;
+                  setConversationIdRef.current(data.conversation_id);
                 }
-                setMessages((prev) =>
+                setMessagesRef.current((prev) =>
                   prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
                 );
               } else if (data.type === 'error') {
@@ -222,7 +263,7 @@ export function useTutorChat(): UseTutorChatResult {
                     ? data.text
                     : 'Something went wrong while streaming.',
                 );
-                setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+                setMessagesRef.current((prev) => prev.filter((m) => m.id !== assistantId));
               }
             } catch {
               /* malformed SSE line — skip */
@@ -232,7 +273,7 @@ export function useTutorChat(): UseTutorChatResult {
       } catch (err) {
         // Aborts are user-initiated — don't surface them as errors.
         if ((err as Error)?.name === 'AbortError') {
-          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          setMessagesRef.current((prev) => prev.filter((m) => m.id !== assistantId));
         } else {
           const message = (err as Error)?.message ?? '';
           const httpStatus = message.startsWith('HTTP ')
@@ -245,7 +286,7 @@ export function useTutorChat(): UseTutorChatResult {
           } else {
             setError("Arc couldn't reach the tutor service. Try again in a moment.");
           }
-          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          setMessagesRef.current((prev) => prev.filter((m) => m.id !== assistantId));
         }
       } finally {
         // Only clear streaming flag if this controller is still the active one
@@ -253,7 +294,7 @@ export function useTutorChat(): UseTutorChatResult {
         if (abortRef.current === controller) {
           abortRef.current = null;
           setIsStreaming(false);
-          setMessages((prev) =>
+          setMessagesRef.current((prev) =>
             prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
           );
         }
