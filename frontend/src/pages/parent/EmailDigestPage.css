@@ -95,6 +95,57 @@
   background: var(--color-primary-hover, #3a7bc8);
 }
 
+/* Connect Gmail banner (#4048) — shown at top when parent has no integration
+   yet but can still pre-configure kids/senders below. */
+.ed-connect-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.ed-connect-banner__text {
+  flex: 1;
+}
+.ed-connect-banner__text h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+.ed-connect-banner__text p {
+  margin: 0;
+  font-size: 14px;
+  color: #1e40af;
+}
+
+/* Remove-sender error banner (#4053) */
+.ed-remove-sender-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #991b1b;
+}
+.ed-remove-sender-error__dismiss {
+  background: transparent;
+  border: none;
+  color: #991b1b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
 /* Reconnect banner */
 .ed-reconnect-banner {
   display: flex;
