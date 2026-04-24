@@ -82,4 +82,19 @@ describe('XpStreakBadge accessibility (#4027)', () => {
     const xpBlock = container.querySelector('.xp-streak-badge__xp');
     expect(xpBlock?.className).not.toContain('xp-streak-badge__xp--pulse');
   });
+
+  it('sr-only announcement text is stable across re-renders when xp/streak unchanged', () => {
+    mockReducedMotion(false);
+    // Re-render with identical xp/streak but a changed unrelated prop (className).
+    const { container, rerender } = render(
+      <XpStreakBadge xp={125} streak={3} className="a" />,
+    );
+    const before = container.querySelector('.sr-only')?.textContent;
+    expect(before).toBe('125 XP, 3 day streak');
+
+    rerender(<XpStreakBadge xp={125} streak={3} className="b" />);
+    const after = container.querySelector('.sr-only')?.textContent;
+    // Same committed announcement — aria-live must not re-fire.
+    expect(after).toBe(before);
+  });
 });
