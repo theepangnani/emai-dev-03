@@ -819,6 +819,9 @@ interface AddSenderModalProps {
   }) => void;
   pending: boolean;
   apiError: string | null;
+  // #4053: parent clears its addSenderApiError when the user edits any input
+  // so stale errors don't persist across re-submissions.
+  onResetError?: () => void;
 }
 
 function AddSenderModal({
@@ -827,6 +830,7 @@ function AddSenderModal({
   onSubmit,
   pending,
   apiError,
+  onResetError,
 }: AddSenderModalProps) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -835,7 +839,20 @@ function AddSenderModal({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // #4055: ESC-to-close for accessibility.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const toggleKid = (id: number) => {
+    onResetError?.();
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -890,7 +907,10 @@ function AddSenderModal({
             className="ed-input"
             placeholder="teacher@school.ca"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              onResetError?.();
+            }}
             autoFocus
           />
 
@@ -903,7 +923,10 @@ function AddSenderModal({
             className="ed-input"
             placeholder="Mrs. Smith"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              onResetError?.();
+            }}
           />
 
           <label className="ed-modal__label" htmlFor="sender-label">
@@ -915,7 +938,10 @@ function AddSenderModal({
             className="ed-input"
             placeholder="Homeroom, Principal, etc."
             value={label}
-            onChange={(e) => setLabel(e.target.value)}
+            onChange={(e) => {
+              setLabel(e.target.value);
+              onResetError?.();
+            }}
           />
 
           <div className="ed-modal__kid-section">
@@ -924,7 +950,10 @@ function AddSenderModal({
               <input
                 type="checkbox"
                 checked={allKids}
-                onChange={(e) => setAllKids(e.target.checked)}
+                onChange={(e) => {
+                  setAllKids(e.target.checked);
+                  onResetError?.();
+                }}
               />
               All kids (incl. future)
             </label>
@@ -994,6 +1023,14 @@ function EmailDigestPageUnified() {
   const [addSenderApiError, setAddSenderApiError] = useState<string | null>(null);
   const [addSchoolEmailFor, setAddSchoolEmailFor] = useState<number | null>(null);
   const [newSchoolEmail, setNewSchoolEmail] = useState('');
+  // #4053: per-profile inline error for addSchoolEmailMutation.
+  const [addEmailErrorByProfile, setAddEmailErrorByProfile] = useState<
+    Record<number, string>
+  >({});
+  // #4053: dismissable banner for removeSenderMutation failures.
+  const [removeSenderError, setRemoveSenderError] = useState<string | null>(null);
+  // #4055: restore focus to the "+ Add sender" trigger when modal closes.
+  const addSenderTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const { data: integrations = [], isLoading: intLoading, isError: intError } =
     useQuery<EmailDigestIntegration[]>({
@@ -1012,13 +1049,13 @@ function EmailDigestPageUnified() {
   const { data: childProfiles = [] } = useQuery<ChildProfile[]>({
     queryKey: ['parent', 'child-profiles'],
     queryFn: () => listChildProfiles().then((r) => r.data),
-    enabled: !!activeIntegration,
+    // Always fetch — these are parent-scoped, not integration-scoped (#4048).
   });
 
   const { data: senders = [] } = useQuery<MonitoredSender[]>({
     queryKey: ['parent', 'monitored-senders'],
     queryFn: () => listMonitoredSenders().then((r) => r.data),
-    enabled: !!activeIntegration,
+    // Always fetch — parent-scoped (#4048).
   });
 
   const settingsMutation = useMutation({
@@ -1032,10 +1069,23 @@ function EmailDigestPageUnified() {
   const addSchoolEmailMutation = useMutation({
     mutationFn: ({ profileId, email }: { profileId: number; email: string }) =>
       addChildSchoolEmail(profileId, email),
-    onSuccess: () => {
+    onSuccess: (_d, vars) => {
       queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
       setAddSchoolEmailFor(null);
       setNewSchoolEmail('');
+      setAddEmailErrorByProfile((prev) => {
+        const next = { ...prev };
+        delete next[vars.profileId];
+        return next;
+      });
+    },
+    // #4053: surface user-friendly error inline per-profile.
+    onError: (err: unknown, vars) => {
+      const msg = getApiErrorMessage(
+        err,
+        "Couldn't add school email. Please try again.",
+      );
+      setAddEmailErrorByProfile((prev) => ({ ...prev, [vars.profileId]: msg }));
     },
   });
 
@@ -1055,6 +1105,13 @@ function EmailDigestPageUnified() {
     mutationFn: (id: number) => removeMonitoredSender(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parent', 'monitored-senders'] });
+      setRemoveSenderError(null);
+    },
+    // #4053: surface remove failures as a dismissable banner above the list.
+    onError: (err: unknown) => {
+      setRemoveSenderError(
+        getApiErrorMessage(err, 'Could not remove sender. Please try again.'),
+      );
     },
   });
 
@@ -1196,9 +1253,13 @@ function EmailDigestPageUnified() {
   };
 
   const handleRemoveSender = async (sender: MonitoredSender) => {
+    // #4055: surface which kids the sender applies to so parents know the impact.
+    const kidContext = sender.applies_to_all
+      ? 'All kids (current and future)'
+      : sender.assignments.map((a) => a.first_name).join(', ') || 'no kids';
     const confirmed = await confirm({
-      title: 'Remove sender',
-      message: `Stop monitoring emails from ${sender.email_address}?`,
+      title: 'Remove monitored sender',
+      message: `Remove "${sender.email_address}"? Applies to: ${kidContext}. This stops it from appearing in future digests.`,
       confirmLabel: 'Remove',
       variant: 'danger',
     });
@@ -1209,6 +1270,11 @@ function EmailDigestPageUnified() {
   const handleAddSchoolEmail = (profileId: number) => {
     const trimmed = newSchoolEmail.trim().toLowerCase();
     if (!isValidEmail(trimmed)) return;
+    setAddEmailErrorByProfile((prev) => {
+      const next = { ...prev };
+      delete next[profileId];
+      return next;
+    });
     addSchoolEmailMutation.mutate({ profileId, email: trimmed });
   };
 
@@ -1238,37 +1304,6 @@ function EmailDigestPageUnified() {
     );
   }
 
-  if (!activeIntegration) {
-    return (
-      <DashboardLayout>
-        <div className="ed-page">
-          <div className="ed-header">
-            <button className="ed-back-btn" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-              Dashboard
-            </button>
-            <h1 className="ed-title">Email Digest</h1>
-          </div>
-          <div className="ed-empty-state">
-            <div className="ed-empty-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                <rect x="2" y="4" width="20" height="16" rx="2" />
-                <polyline points="2 4 12 13 22 4" />
-              </svg>
-            </div>
-            <h2>No Email Digest Set Up</h2>
-            <p>Connect your Gmail account from the My Kids page to start receiving email digests about your kids' school communications.</p>
-            <button className="ed-primary-btn" onClick={() => navigate('/my-kids')}>
-              Go to My Kids
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
     <DashboardLayout>
       <div className="ed-page">
@@ -1282,7 +1317,24 @@ function EmailDigestPageUnified() {
           <h1 className="ed-title">Email Digest</h1>
         </div>
 
-        {!activeIntegration.is_active && (
+        {/* #4048: when Gmail isn't connected yet, show a banner (not a full
+            empty state) so parents can still pre-configure kids + senders. */}
+        {!activeIntegration && (
+          <div className="ed-connect-banner">
+            <div className="ed-connect-banner__text">
+              <h2>Connect Gmail to receive your digest</h2>
+              <p>
+                You can pre-configure your kids' school emails and monitored
+                senders below. Connect Gmail from My Kids when you're ready.
+              </p>
+            </div>
+            <button className="ed-primary-btn" onClick={() => navigate('/my-kids')}>
+              Go to My Kids
+            </button>
+          </div>
+        )}
+
+        {activeIntegration && !activeIntegration.is_active && (
           <div className="ed-reconnect-banner">
             <div className="ed-reconnect-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1301,7 +1353,8 @@ function EmailDigestPageUnified() {
           </div>
         )}
 
-        {/* 1. Header band: Gmail + Delivery + WhatsApp */}
+        {/* 1. Header band: Gmail + Delivery + WhatsApp — integration-scoped (#4048). */}
+        {activeIntegration && (
         <div className="ed-settings-card">
           <h2 className="ed-section-title">Delivery</h2>
           <div className="ed-header-band">
@@ -1434,6 +1487,7 @@ function EmailDigestPageUnified() {
             <p className="ed-success-text ed-whatsapp-message">{whatsappSuccess}</p>
           )}
         </div>
+        )}
 
         {/* 2. Your kids */}
         <div className="ed-settings-card">
@@ -1472,36 +1526,48 @@ function EmailDigestPageUnified() {
                 })}
               </div>
               {addSchoolEmailFor === profile.id ? (
-                <div className="ed-add-email-row">
-                  <input
-                    type="email"
-                    className="ed-input"
-                    placeholder="kid@ocdsb.ca"
-                    value={newSchoolEmail}
-                    onChange={(e) => setNewSchoolEmail(e.target.value)}
-                    autoFocus
-                  />
-                  <button
-                    className="ed-primary-btn"
-                    onClick={() => handleAddSchoolEmail(profile.id)}
-                    disabled={
-                      addSchoolEmailMutation.isPending ||
-                      !isValidEmail(newSchoolEmail)
-                    }
-                  >
-                    {addSchoolEmailMutation.isPending ? 'Adding...' : 'Add'}
-                  </button>
-                  <button
-                    className="ed-sync-btn"
-                    onClick={() => {
-                      setAddSchoolEmailFor(null);
-                      setNewSchoolEmail('');
-                    }}
-                    disabled={addSchoolEmailMutation.isPending}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <>
+                  <div className="ed-add-email-row">
+                    <input
+                      type="email"
+                      className="ed-input"
+                      placeholder="kid@ocdsb.ca"
+                      value={newSchoolEmail}
+                      onChange={(e) => setNewSchoolEmail(e.target.value)}
+                      autoFocus
+                    />
+                    <button
+                      className="ed-primary-btn"
+                      onClick={() => handleAddSchoolEmail(profile.id)}
+                      disabled={
+                        addSchoolEmailMutation.isPending ||
+                        !isValidEmail(newSchoolEmail)
+                      }
+                    >
+                      {addSchoolEmailMutation.isPending ? 'Adding...' : 'Add'}
+                    </button>
+                    <button
+                      className="ed-sync-btn"
+                      onClick={() => {
+                        setAddSchoolEmailFor(null);
+                        setNewSchoolEmail('');
+                        setAddEmailErrorByProfile((prev) => {
+                          const next = { ...prev };
+                          delete next[profile.id];
+                          return next;
+                        });
+                      }}
+                      disabled={addSchoolEmailMutation.isPending}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {addEmailErrorByProfile[profile.id] && (
+                    <p className="ed-error-text" role="alert">
+                      {addEmailErrorByProfile[profile.id]}
+                    </p>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"
@@ -1523,6 +1589,7 @@ function EmailDigestPageUnified() {
           <div className="ed-section-title-row">
             <h2 className="ed-section-title">Monitored senders</h2>
             <button
+              ref={addSenderTriggerRef}
               type="button"
               className="ed-primary-btn"
               onClick={() => {
@@ -1533,6 +1600,19 @@ function EmailDigestPageUnified() {
               + Add sender
             </button>
           </div>
+          {removeSenderError && (
+            <div className="ed-remove-sender-error" role="alert">
+              <span>{removeSenderError}</span>
+              <button
+                type="button"
+                className="ed-remove-sender-error__dismiss"
+                onClick={() => setRemoveSenderError(null)}
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            </div>
+          )}
           {senders.length === 0 ? (
             <p className="ed-empty-history">No monitored senders yet.</p>
           ) : (
@@ -1579,13 +1659,18 @@ function EmailDigestPageUnified() {
         {addSenderOpen && (
           <AddSenderModal
             profiles={childProfiles}
-            onClose={() => setAddSenderOpen(false)}
+            onClose={() => {
+              setAddSenderOpen(false);
+              // #4055: restore focus to the opening trigger on close.
+              addSenderTriggerRef.current?.focus();
+            }}
             onSubmit={(payload) => {
               setAddSenderApiError(null);
               addSenderMutation.mutate(payload);
             }}
             pending={addSenderMutation.isPending}
             apiError={addSenderApiError}
+            onResetError={() => setAddSenderApiError(null)}
           />
         )}
       </div>
