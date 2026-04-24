@@ -694,6 +694,7 @@ class TestDigestJob:
             DigestDeliveryLog,
         )
         from app.models.user import User
+        from app.models.feature_flag import FeatureFlag
 
         db = MagicMock()
 
@@ -707,6 +708,11 @@ class TestDigestJob:
                 mock_query.filter.return_value.first.return_value = existing_log
             elif model is User:
                 mock_query.filter.return_value.first.return_value = parent
+            elif model is FeatureFlag:
+                # #4012: process_parent_email_digests now checks the
+                # parent.unified_digest_v2 flag at dispatch time. Return None so
+                # is_feature_enabled() defaults to False and the legacy path runs.
+                mock_query.filter.return_value.first.return_value = None
             return mock_query
 
         db.query.side_effect = query_side_effect
