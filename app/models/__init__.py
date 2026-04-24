@@ -63,6 +63,7 @@ from app.models.learning_cycle import (
     LearningCycleQuestion,
     LearningCycleAnswer,
 )
+from app.models.tutor import TutorConversation, TutorMessage
 
 
 __all__ = [
@@ -156,4 +157,6 @@ __all__ = [
     "LearningCycleChunk",
     "LearningCycleQuestion",
     "LearningCycleAnswer",
+    "TutorConversation",
+    "TutorMessage",
 ]

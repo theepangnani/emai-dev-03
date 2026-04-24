@@ -78,6 +78,13 @@ def seed_features(db: Session) -> int:
             "enabled": False,
             "variant": "off",
         },
+        {
+            "key": "tutor_chat_enabled",
+            "name": "Tutor Chat (SSE)",
+            "description": "CB-TUTOR-002 Phase 1: POST /api/tutor/chat/stream SSE tutor chat endpoint",
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:
