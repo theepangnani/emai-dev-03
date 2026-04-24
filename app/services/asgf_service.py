@@ -24,12 +24,20 @@ logger = get_logger(__name__)
 
 _SYSTEM_PROMPT = (
     "You are an educational intent classifier. Given a student or parent question, "
-    "identify the most likely subject, grade level, and specific topic. "
+    "make your best inference about the subject, grade level, and specific topic. "
+    "Answer-first policy: ALWAYS return a confident best-guess classification. "
+    "Never ask the user for more information — if the grade is unclear, default to "
+    "'Grade 7'; if the subject is unclear, infer it from keywords. Only use a lower "
+    "confidence score (<0.5) when the question is genuinely ambiguous (roughly <5% "
+    "of cases); downstream code handles low-confidence cases — do NOT emit refusals "
+    "or clarification requests in any field.\n\n"
     "Return JSON with keys: subject, grade_level, topic, confidence, bloom_tier. "
     "subject: the academic subject (e.g. Math, Science, English, History). "
-    "grade_level: estimated grade as a string (e.g. 'Grade 9', 'Grade 12'). "
+    "grade_level: best-guess grade as a string (e.g. 'Grade 9', 'Grade 12'); "
+    "default 'Grade 7' if unclear — never leave blank. "
     "topic: the specific sub-topic (e.g. 'Quadratic Equations', 'Photosynthesis'). "
-    "confidence: float 0.0-1.0 indicating how confident you are. "
+    "confidence: float 0.0-1.0 reflecting inference quality (prefer >=0.5 for any "
+    "reasonable question; reserve <0.5 strictly for truly ambiguous input). "
     "bloom_tier: one of 'remember', 'understand', 'apply', 'analyze', 'evaluate', 'create'. "
     "Return ONLY valid JSON, no markdown."
 )
@@ -84,8 +92,12 @@ async def classify_intent(question: str) -> IntentClassifyResponse:
 
 
 _ALTERNATIVES_SYSTEM_PROMPT = (
-    "You are an educational intent classifier. A student or parent question was ambiguous. "
-    "Suggest 2-4 possible subject/topic interpretations. "
+    "You are an educational intent classifier. Suggest 2-4 possible subject/topic "
+    "interpretations that could plausibly answer the question. Assume the primary "
+    "classifier has already returned a best-guess answer — these are supplementary "
+    "alternatives, not a prompt for the user to clarify. "
+    "Answer-first policy: never ask the user for anything; infer alternatives from "
+    "the question text alone. "
     "Return ONLY a JSON array of objects with keys: subject, topic, confidence (float 0-1). "
     "Order by descending confidence. No markdown."
 )
@@ -137,6 +149,10 @@ _PLAN_SYSTEM_PROMPT = (
     "Given a student's question, extracted document concepts, and context, "
     "generate a Short Learning Cycle Plan — a structured plan for a 10-15 minute "
     "interactive study session.\n\n"
+    "Answer-first policy: ALWAYS produce a complete plan. If subject/grade/topic "
+    "are missing or empty, infer them from the question (default to 'Grade 7' if "
+    "grade is unclear). Never refuse, never ask the student to provide more detail, "
+    "and never emit any content addressed to the user asking for clarification.\n\n"
     "Return ONLY valid JSON with these exact keys:\n"
     "- topic_classification: {subject, grade_level, bloom_entry_point}\n"
     "- core_concepts: list of 3-5 key concept strings\n"
