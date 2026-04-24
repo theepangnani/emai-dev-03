@@ -6,15 +6,14 @@
  * TutorPage drill mode) can display overdue badges on the child selector
  * without duplicating the overdue-computation logic.
  *
- * The computation mirrors `useParentDashboard`'s `childOverdueCounts` memo:
- * iterate `all_tasks`, filter by child user_id + not-completed + not-archived
- * + past due_date. We compute client-side (rather than reusing
- * `child_highlights[*].overdue_count`) so the tab badge agrees with the
- * dashboard's own badge pixel-for-pixel.
+ * The computation is delegated to the shared `computeChildOverdueCounts` util
+ * so the Tutor drill tab and the dashboard itself cannot silently drift when
+ * the archive/due-date rules change (#4036).
  */
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { parentApi } from '../api/parent';
+import { computeChildOverdueCounts, type OverdueTask } from '../utils/overdue';
 
 export interface UseChildOverdueCountsOptions {
   /** Gate the underlying dashboard fetch (e.g. only when drill mode is active). */
@@ -25,8 +24,11 @@ export function useChildOverdueCounts(
   { enabled = true }: UseChildOverdueCountsOptions = {},
 ): Map<number, number> {
   const { data } = useQuery({
-    // #4028: Shared with any future useParentDashboard React Query
-    // consumer so one HTTP call feeds both surfaces.
+    // #4036: queryKey is reserved for a future React Query migration of
+    // useParentDashboard so the two surfaces can dedupe their fetch. Today
+    // useParentDashboard uses useState/useEffect and does NOT share this
+    // cache entry — the util below is what keeps the two computations in
+    // lockstep.
     queryKey: ['parent-dashboard'],
     queryFn: () => parentApi.getDashboard(),
     enabled,
@@ -34,29 +36,18 @@ export function useChildOverdueCounts(
   });
 
   return useMemo(() => {
-    const map = new Map<number, number>();
-    if (!data) return map;
+    if (!data) return new Map<number, number>();
     const children = data.children ?? [];
-    const allTasks = data.all_tasks ?? [];
-    if (children.length === 0) return map;
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    for (const child of children) {
-      let overdue = 0;
-      for (const t of allTasks) {
-        // Match tasks by either assigned-to OR created-by (mirrors dashboard
-        // computation at components/parent/useParentDashboard.ts:419-434).
-        // Parents creating tasks for themselves + assigning to kids won't
-        // double-count because they're separate user_ids.
-        if (t.assigned_to_user_id !== child.user_id && t.created_by_user_id !== child.user_id) continue;
-        if (t.is_completed) continue;
-        if (t.archived_at) continue;
-        if (!t.due_date) continue;
-        const dateStr = t.due_date.length === 10 ? `${t.due_date}T00:00:00` : t.due_date;
-        if (new Date(dateStr) < todayStart) overdue += 1;
-      }
-      if (overdue > 0) map.set(child.student_id, overdue);
+    const allTasks = (data.all_tasks ?? []) as unknown as OverdueTask[];
+    if (children.length === 0) return new Map<number, number>();
+    const full = computeChildOverdueCounts(children, allTasks);
+    // Preserve historical consumer contract: only surface children with > 0
+    // overdue tasks so ChildSelectorTabs can rely on `.get(id) ?? 0` as a
+    // truthy badge test.
+    const trimmed = new Map<number, number>();
+    for (const [studentId, count] of full) {
+      if (count > 0) trimmed.set(studentId, count);
     }
-    return map;
+    return trimmed;
   }, [data]);
 }
