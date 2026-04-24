@@ -300,3 +300,81 @@ class TestDeleteSchoolEmail:
             headers=headers,
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# N+1 regression (#4049) — list_child_profiles eager-loads school_emails
+# ---------------------------------------------------------------------------
+
+
+class TestListProfilesQueryCount:
+    def test_list_profiles_is_constant_query_count(self, client, db_session, setup):
+        """Seed 5 profiles × 3 school emails (15 rows). The list endpoint
+        must issue a constant number of SELECTs regardless of the N× factor —
+        no N+1 on school_emails serialization."""
+        from sqlalchemy import event
+        from app.models.parent_gmail_integration import (
+            ParentChildProfile,
+            ParentChildSchoolEmail,
+        )
+
+        # Purge fixture profiles so we have an exactly-known 5×3 shape.
+        db_session.query(ParentChildSchoolEmail).filter(
+            ParentChildSchoolEmail.child_profile_id.in_(
+                db_session.query(ParentChildProfile.id).filter(
+                    ParentChildProfile.parent_id == setup["parent"].id,
+                )
+            )
+        ).delete(synchronize_session=False)
+        db_session.query(ParentChildProfile).filter(
+            ParentChildProfile.parent_id == setup["parent"].id,
+        ).delete()
+        db_session.commit()
+
+        profiles = []
+        for i in range(5):
+            p = ParentChildProfile(
+                parent_id=setup["parent"].id,
+                first_name=f"Kid{i}",
+            )
+            db_session.add(p)
+            profiles.append(p)
+        db_session.commit()
+        for p in profiles:
+            for j in range(3):
+                db_session.add(ParentChildSchoolEmail(
+                    child_profile_id=p.id,
+                    email_address=f"kid{p.id}_{j}@school.ca",
+                ))
+        db_session.commit()
+
+        # Count SELECTs on the shared engine during the request.
+        engine = db_session.bind
+        select_count = {"n": 0}
+
+        def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            if statement.strip().lower().startswith("select"):
+                select_count["n"] += 1
+
+        event.listen(engine, "before_cursor_execute", _before_cursor_execute)
+        try:
+            headers = _auth(client, PARENT_EMAIL)
+            resp = client.get(PREFIX, headers=headers)
+        finally:
+            event.remove(engine, "before_cursor_execute", _before_cursor_execute)
+
+        assert resp.status_code == 200
+        data = resp.json()
+        # 5 profiles, each with 3 school emails
+        assert len(data) == 5
+        total_emails = sum(len(p["school_emails"]) for p in data)
+        assert total_emails == 15
+
+        # With selectinload, school_emails should load in a single additional
+        # SELECT — not one per profile. Bound generously (≤ 10) to absorb
+        # auth + rate-limit + settings lookups, but catches true N+1 (would
+        # be ≥ 5 extra selects for 5 profiles, easily pushing past 15).
+        assert select_count["n"] <= 10, (
+            f"list_child_profiles issued {select_count['n']} SELECTs for "
+            f"5 profiles × 3 emails — likely N+1 on school_emails."
+        )
