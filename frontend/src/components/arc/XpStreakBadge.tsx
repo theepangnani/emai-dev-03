@@ -28,10 +28,15 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
     if (diff === 0) return;
     prevXpRef.current = xp;
 
-    if (Math.abs(diff) > 50 || diff < 0) {
-      // Big jump or rollback — just snap
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduce || Math.abs(diff) > 50 || diff < 0) {
+      // Reduced motion, big jump, or rollback — just snap.
       setDisplayXp(xp);
-      if (diff > 0) {
+      // Skip pulse animation for reduced-motion users too.
+      if (diff > 0 && !reduce) {
         setPulsing(true);
         const t = setTimeout(() => setPulsing(false), 900);
         return () => clearTimeout(t);
@@ -63,9 +68,15 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
     };
   }, [xp]);
 
+  // Accessible announcement — only the FINAL value, never per-tick.
+  const announcement = `${xp.toLocaleString()} XP${streak >= 2 ? `, ${streak} day streak` : ''}`;
+
   return (
-    <div className={`xp-streak-badge ${className}`.trim()} aria-live="polite">
-      <div className={`xp-streak-badge__xp ${pulsing ? 'xp-streak-badge__xp--pulse' : ''}`}>
+    <div className={`xp-streak-badge ${className}`.trim()}>
+      <div
+        className={`xp-streak-badge__xp ${pulsing ? 'xp-streak-badge__xp--pulse' : ''}`}
+        aria-hidden="true"
+      >
         <svg className="xp-streak-badge__star" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M12 2l2.6 6.9 7.4.6-5.6 4.8 1.8 7.2L12 17.8 5.8 21.5l1.8-7.2L2 9.5l7.4-.6z"
@@ -77,7 +88,10 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
       </div>
 
       {streak >= 2 && (
-        <div className="xp-streak-badge__streak" title={`${streak}-day streak`}>
+        <div
+          className="xp-streak-badge__streak"
+          aria-label={`${streak} day streak`}
+        >
           <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M12 2C10 6 6 8 6 13c0 3.9 3.1 7 6 7s6-3.1 6-7c0-3.2-1.6-5.8-3-8 .6 2.6-.6 5-2 5-1 0-1-1.5-1-3 0-2 1-4-0-5z"
@@ -89,6 +103,12 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
       )}
 
       {levelLabel && <span className="xp-streak-badge__level">{levelLabel}</span>}
+
+      {/* Hidden sr-only announcement — fires once per committed xp/streak value
+       *  instead of on every tick-up frame. */}
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </span>
     </div>
   );
 }

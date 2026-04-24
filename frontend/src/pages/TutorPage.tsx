@@ -169,6 +169,7 @@ export function TutorPage() {
       api
         .get<{ xp_total: number; streak_days: number }>('/api/xp/summary')
         .then((r) => r.data),
+    enabled: !!user,
     staleTime: 60_000,
   });
 
