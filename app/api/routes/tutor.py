@@ -30,6 +30,7 @@ from typing import AsyncIterator
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -86,20 +87,37 @@ def _parse_chips(full_response: str) -> tuple[str, list[str]]:
     return stripped, chips
 
 
-def _load_history(db: Session, conversation_id: str) -> list[dict]:
-    """Return the last MAX_HISTORY_PAIRS (user, assistant) pairs for a conversation.
+def _load_history(
+    db: Session, conversation_id: str, max_pairs: int = MAX_HISTORY_PAIRS
+) -> list[dict[str, str]]:
+    """Return the last `max_pairs` complete (user, assistant) pairs for a conversation.
 
-    Messages are returned oldest-first in role/content dict format.
+    Over-samples rows from the DB and walks them oldest-first so that retries
+    (which can leave multiple consecutive assistant rows) don't produce a
+    non-alternating history — OpenAI chat completion rejects that. Messages are
+    returned oldest-first in OpenAI chat-completion format.
     """
-    msgs = (
+    rows = (
         db.query(TutorMessage)
         .filter(TutorMessage.conversation_id == conversation_id)
-        .order_by(TutorMessage.created_at.desc())
-        .limit(MAX_HISTORY_PAIRS * 2)
+        .order_by(desc(TutorMessage.created_at))
+        .limit(max_pairs * 4)  # over-sample to survive retries
         .all()
     )
-    msgs.reverse()
-    return [{"role": m.role, "content": m.content} for m in msgs]
+    rows.reverse()  # oldest → newest
+
+    pairs: list[dict[str, str]] = []
+    pending_user: TutorMessage | None = None
+    for m in rows:
+        if m.role == "user":
+            pending_user = m
+        elif m.role == "assistant" and pending_user is not None:
+            pairs.append({"role": "user", "content": pending_user.content})
+            pairs.append({"role": "assistant", "content": m.content})
+            pending_user = None
+
+    # Keep only the last `max_pairs` pairs (each pair = 2 entries).
+    return pairs[-(max_pairs * 2):]
 
 
 def _context_dict(body: TutorChatRequest) -> dict:
@@ -157,8 +175,9 @@ async def tutor_chat_stream(
             detail="Tutor chat is currently disabled",
         )
 
-    # Resolve or create the conversation up-front so we can reference its ID
-    # in the done event even if streaming starts before we persist anything.
+    # Resolve (but DO NOT create) the conversation. Creation is deferred
+    # until moderation passes so that blocked requests don't leave orphan
+    # rows in `tutor_conversations`.
     conversation: TutorConversation | None = None
     if body.conversation_id:
         conversation = (
@@ -169,26 +188,22 @@ async def tutor_chat_stream(
             )
             .first()
         )
-    if conversation is None:
-        conversation = TutorConversation(
-            id=str(uuid.uuid4()), user_id=current_user.id
-        )
-        db.add(conversation)
-        db.commit()
-        db.refresh(conversation)
 
-    history = _load_history(db, conversation.id)
+    history = (
+        _load_history(db, conversation.id) if conversation is not None else []
+    )
     context = _context_dict(body)
     system_prompt = build_system_prompt(context.get("grade_level"))
     user_prompt = build_user_prompt(body.message, history, context)
 
     # Run moderation before opening the stream so we can emit the error
-    # as the first SSE frame with no partial output.
+    # as the first SSE frame with no partial output — and so we can avoid
+    # creating an empty conversation row when the message is blocked.
     mod_result = await moderate(body.message)
 
     async def event_stream() -> AsyncIterator[str]:
+        nonlocal conversation
         assistant_message_id = str(uuid.uuid4())
-        conversation_id = conversation.id
 
         if mod_result.flagged:
             yield _sse(
@@ -200,6 +215,17 @@ async def tutor_chat_stream(
             )
             return
 
+        # Moderation passed — create the conversation now if the caller
+        # didn't supply one. This is the first DB write for this request,
+        # so a blocked message never leaves an orphan row.
+        if conversation is None:
+            conversation = TutorConversation(
+                id=str(uuid.uuid4()), user_id=current_user.id
+            )
+            db.add(conversation)
+            db.commit()
+            db.refresh(conversation)
+        conversation_id = conversation.id
         collected: list[str] = []
         try:
             async for delta in _stream_completion(system_prompt, user_prompt):
