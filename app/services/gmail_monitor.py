@@ -59,10 +59,22 @@ def fetch_teacher_emails(
 
 def _parse_gmail_message(msg: dict) -> dict:
     """Parse a Gmail API message into a clean dict."""
-    headers = {h["name"].lower(): h["value"] for h in msg["payload"]["headers"]}
+    raw_headers = msg["payload"]["headers"]
+    # Last-wins map for single-value headers (From, To, Subject).
+    headers = {h["name"].lower(): h["value"] for h in raw_headers}
 
     body_text = _extract_body_text(msg["payload"])
     sender_email = _extract_sender_email(headers.get("from", ""))
+
+    # #4046 — expose recipient headers for the unified-digest worker's
+    # kid-attribution Stage 1 (ParentChildSchoolEmail match). ``To:`` may
+    # be comma-separated; ``Delivered-To:`` can appear multiple times when
+    # the message was forwarded through several addresses.
+    to_addresses = _split_addresses(headers.get("to", ""))
+    delivered_to_addresses: list[str] = []
+    for h in raw_headers:
+        if h["name"].lower() == "delivered-to":
+            delivered_to_addresses.extend(_split_addresses(h["value"]))
 
     return {
         "source_id": msg["id"],
@@ -73,7 +85,22 @@ def _parse_gmail_message(msg: dict) -> dict:
         "snippet": msg.get("snippet", ""),
         "received_at": datetime.fromtimestamp(int(msg["internalDate"]) / 1000),
         "is_automated": is_automated_sender(sender_email),
+        "to_addresses": to_addresses,
+        "delivered_to_addresses": delivered_to_addresses,
     }
+
+
+def _split_addresses(value: str) -> list[str]:
+    """Split a recipient header on commas, extract the address portion,
+    trim + lowercase. Returns [] if value is empty."""
+    if not value:
+        return []
+    out: list[str] = []
+    for chunk in value.split(","):
+        addr = _extract_sender_email(chunk).strip().lower()
+        if addr:
+            out.append(addr)
+    return out
 
 
 def _extract_body_text(payload: dict) -> str:
