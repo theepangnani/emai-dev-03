@@ -572,7 +572,10 @@ class TestWhatsAppDisconnect:
 
 
 class TestManualSync:
-    @patch("app.services.parent_gmail_service.fetch_child_emails", return_value=[])
+    @patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        return_value={"emails": [], "synced_at": None},
+    )
     def test_sync_returns_count_not_emails(self, mock_fetch, client, setup):
         headers = _auth(client, PARENT_EMAIL)
         iid = setup["integration"].id

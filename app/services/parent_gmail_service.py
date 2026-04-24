@@ -27,17 +27,22 @@ async def fetch_child_emails(
     integration: ParentGmailIntegration,
     since: datetime | None = None,
     max_results: int = 50,
-) -> list[dict]:
+) -> dict:
     """
     Poll parent's Gmail for emails from child's school email.
 
     - Builds Gmail API client using stored tokens (decrypt if needed)
     - Queries: from:{child_school_email} in:inbox after:{since_epoch}
     - Parses each message via _parse_gmail_message()
-    - Returns list of email dicts: {source_id, sender_name, sender_email,
-      subject, body, snippet, received_at}
-    - Updates integration.last_synced_at on success
-    - On token refresh failure: sets is_active=False
+    - Returns a dict: {"emails": [email dicts], "synced_at": datetime | None}
+      Each email dict has {source_id, sender_name, sender_email, subject,
+      body, snippet, received_at}. ``synced_at`` is the timestamp callers
+      should persist to ``integration.last_synced_at`` AFTER their final
+      delivery-log commit (#4058 — atomic with the log, not eager).
+      ``synced_at`` is ``None`` on any early-exit / error path so callers
+      do NOT advance the stamp over a partial run.
+    - On token refresh failure: sets is_active=False (committed here —
+      a revoked token is independent of digest delivery).
     - Deduplicates by gmail_message_id (source_id)
     """
     # Build Gmail query parts from both email_address and sender_name.
@@ -59,7 +64,7 @@ async def fetch_child_emails(
             "Integration %d has no monitored entries configured",
             integration.id,
         )
-        return []
+        return {"emails": [], "synced_at": None}
 
     # Determine 'since' timestamp
     if since is None:
@@ -81,7 +86,7 @@ async def fetch_child_emails(
 
     if not access_token:
         logger.error("Integration %d has no access token", integration.id)
-        return []
+        return {"emails": [], "synced_at": None}
 
     def _sync_fetch(at, rt, q_parts, since_dt, max_res):
         """Synchronous Gmail fetch — runs in thread pool."""
@@ -146,7 +151,7 @@ async def fetch_child_emails(
                 integration.id,
                 e,
             )
-        return []
+        return {"emails": [], "synced_at": None}
     except Exception as e:
         logger.error(
             "Failed to build Gmail service for integration %d: %s",
@@ -155,12 +160,18 @@ async def fetch_child_emails(
         )
         integration.is_active = False
         db.commit()
-        return []
+        return {"emails": [], "synced_at": None}
 
-    # Update last_synced_at (DB ops stay on main thread)
-    integration.last_synced_at = datetime.now(timezone.utc)
+    # #4058 — Do NOT mutate integration.last_synced_at here. Fetched-but-
+    # never-delivered mail gets silently dropped on retry if this stamp
+    # advances before the worker commits its delivery log. Callers now
+    # read ``synced_at`` from the returned dict and persist it atomically
+    # with their DigestDeliveryLog insert.
+    synced_at = datetime.now(timezone.utc)
 
-    # If credentials were refreshed, update stored tokens
+    # If credentials were refreshed, update stored tokens. Token refresh is
+    # independent of digest delivery — commit it eagerly so the next call
+    # doesn't try to reuse an expired token.
     if credentials.token != access_token:
         from app.core.encryption import encrypt_token
 
@@ -172,8 +183,7 @@ async def fetch_child_emails(
             integration.refresh_token = encrypt_token(
                 credentials.refresh_token
             )
-
-    db.commit()
+        db.commit()
 
     logger.info(
         "Fetched %d emails for integration %d (parent %d, query_parts: %s)",
@@ -182,7 +192,7 @@ async def fetch_child_emails(
         integration.parent_id,
         query_parts,
     )
-    return parsed
+    return {"emails": parsed, "synced_at": synced_at}
 
 
 async def verify_forwarding(

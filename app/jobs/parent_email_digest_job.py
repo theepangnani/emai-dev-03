@@ -249,7 +249,12 @@ async def send_digest_for_integration(
     try:
         from app.services.parent_gmail_service import fetch_child_emails
 
-        emails = await fetch_child_emails(db, integration, since=since)
+        fetch_result = await fetch_child_emails(db, integration, since=since)
+        emails = fetch_result.get("emails", [])
+        # #4058 — synced_at is applied to integration.last_synced_at only
+        # at the final delivery-log commit below so a crash between fetch
+        # and log does not silently swallow a parent-day of mail on retry.
+        fetched_synced_at = fetch_result.get("synced_at")
     except Exception as e:
         error_msg = str(e).lower()
         if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:
@@ -665,7 +670,12 @@ async def send_digest_for_integration(
     )
     db.add(log_entry)
 
-    integration.last_synced_at = now
+    # #4058 — advance last_synced_at atomically with the DigestDeliveryLog
+    # insert. Use the timestamp returned by fetch_child_emails (captured at
+    # the moment the fetch succeeded) so the window advances to exactly
+    # where we stopped reading. Fall back to ``now`` if the fetcher did
+    # not supply one (e.g. no-op fetch on a no-query integration).
+    integration.last_synced_at = fetched_synced_at or now
     db.commit()
 
     # failed_labels must only list channels with an actual failure (False),
@@ -728,15 +738,43 @@ async def send_digest_for_integration(
 
 
 async def process_parent_email_digests():
-    """Run every 4 hours. For each active integration, fetch emails, generate digest, deliver notification."""
+    """Run every 4 hours.
+
+    Dispatch: when the ``parent.unified_digest_v2`` feature flag is ON,
+    delegate to :func:`process_unified_parent_email_digests` which sends
+    ONE digest per parent (grouped across all their integrations +
+    attributed to kid profiles). When OFF, keep the legacy per-integration
+    loop unchanged.
+    """
+    from app.services.feature_flag_service import is_feature_enabled
+
     logger.info("Running parent email digest job...")
 
     db = SessionLocal()
+    try:
+        if is_feature_enabled("parent.unified_digest_v2", db=db):
+            logger.info(
+                "Parent email digest: unified_digest_v2 flag ON — running unified path"
+            )
+            await process_unified_parent_email_digests(db)
+        else:
+            await _process_legacy_parent_email_digests(db)
+    finally:
+        db.close()
+
+
+async def _process_legacy_parent_email_digests(db) -> None:
+    """Legacy path: one digest per integration (pre-#4012 behavior).
+
+    Extracted so :func:`process_parent_email_digests` can conditionally
+    delegate to :func:`process_unified_parent_email_digests` when the
+    ``parent.unified_digest_v2`` feature flag is ON without duplicating
+    the fetch-loop scaffold.
+    """
     sent = 0
     skipped = 0
     failed = 0
     try:
-        # Query active integrations with digest enabled and not paused
         now = datetime.now(timezone.utc)
         integrations = (
             db.query(ParentGmailIntegration)
@@ -786,5 +824,424 @@ async def process_parent_email_digests():
     except Exception:
         db.rollback()
         logger.exception("Parent email digest job failed")
-    finally:
-        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Unified digest v2 (#4012, #4015) — single-digest-per-parent path
+# ---------------------------------------------------------------------------
+
+def _parent_first_name(parent: "User | None") -> str:
+    """Derive a first-name greeting from ``User.full_name``.
+
+    Mirrors the #3845 safe-split logic used by the legacy worker so the
+    unified path greets parents identically.
+    """
+    if parent is None or not parent.full_name:
+        return "Parent"
+    parts = parent.full_name.split()
+    return parts[0] if parts else "Parent"
+
+
+def _render_unified_digest_sections(sections: dict) -> str:
+    """Render the unified digest as a minimal HTML body.
+
+    Kept deliberately simple — Stream 4 owns frontend polish; the worker
+    just needs something deliverable through the existing
+    ``send_multi_channel_notification`` path.
+
+    ``sections`` shape:
+        {
+            "for_all_kids": [email, ...],
+            "per_kid": { kid_id: [email, ...] },
+            "per_kid_names": { kid_id: "FirstName" },
+            "unattributed": [email, ...],
+        }
+    """
+    parts: list[str] = []
+
+    def _block(title: str, emails: list[dict]) -> str:
+        if not emails:
+            return ""
+        items = "".join(
+            "<li><strong>{subject}</strong> &mdash; {snippet}</li>".format(
+                subject=(e.get("subject") or "(no subject)"),
+                snippet=(e.get("snippet") or e.get("sender_email") or ""),
+            )
+            for e in emails
+        )
+        return f"<h3>{title}</h3><ul>{items}</ul>"
+
+    parts.append(_block("For all your kids", sections.get("for_all_kids") or []))
+
+    per_kid = sections.get("per_kid") or {}
+    names = sections.get("per_kid_names") or {}
+    for kid_id, emails in per_kid.items():
+        label = names.get(kid_id) or f"Kid #{kid_id}"
+        parts.append(_block(f"For {label}", emails))
+
+    parts.append(_block("Unattributed", sections.get("unattributed") or []))
+
+    body = "\n".join(p for p in parts if p)
+    return body or "No new school emails today."
+
+
+async def send_unified_digest_for_parent(
+    db: "Session",
+    parent_id: int,
+    *,
+    skip_dedup: bool = False,
+    since: datetime | None = None,
+) -> dict:
+    """Fetch all integrations for one parent, attribute each email, deliver ONE digest.
+
+    Returns a summary dict (same keys as
+    :func:`send_digest_for_integration` plus ``attribution_counts`` for
+    observability):
+
+        {
+            "status": "delivered" | "skipped" | "failed",
+            "email_count": int,
+            "attribution_counts": {
+                "school_email": int,
+                "sender_tag": int,
+                "applies_to_all": int,
+                "unattributed": int,
+            },
+            "message": str,
+        }
+    """
+    # Lazy imports for the same test-reload reasons as other helpers.
+    from app.models.user import User
+    from app.services.parent_gmail_service import fetch_child_emails
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_APPLIES_TO_ALL,
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        ATTR_SOURCE_SENDER_TAG,
+        ATTR_SOURCE_UNATTRIBUTED,
+        attribute_email,
+        build_sectioned_digest,
+    )
+
+    now = datetime.now(timezone.utc)
+
+    parent = db.query(User).filter(User.id == parent_id).first()
+    if parent is None:
+        return {
+            "status": "skipped",
+            "email_count": 0,
+            "attribution_counts": {},
+            "message": "Parent not found",
+            "reason": "parent_missing",
+        }
+
+    integrations = (
+        db.query(ParentGmailIntegration)
+        .join(ParentDigestSettings)
+        .options(joinedload(ParentGmailIntegration.digest_settings))
+        .options(joinedload(ParentGmailIntegration.parent))
+        .filter(ParentGmailIntegration.parent_id == parent_id)
+        .filter(ParentGmailIntegration.is_active == True)  # noqa: E712
+        .filter(ParentDigestSettings.digest_enabled == True)  # noqa: E712
+        .filter(
+            (ParentGmailIntegration.paused_until == None)  # noqa: E711
+            | (ParentGmailIntegration.paused_until < now)
+        )
+        .all()
+    )
+
+    if not integrations:
+        return {
+            "status": "skipped",
+            "email_count": 0,
+            "attribution_counts": {},
+            "message": "No active integrations for parent",
+            "reason": "no_integrations",
+        }
+
+    # Dedup: one delivered digest per parent per day. The legacy path
+    # dedups per integration; the unified path dedups per parent since
+    # we send ONE envelope regardless of integration count.
+    if not skip_dedup:
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        integration_ids = [i.id for i in integrations]
+        existing_log = (
+            db.query(DigestDeliveryLog)
+            .filter(
+                DigestDeliveryLog.parent_id == parent_id,
+                DigestDeliveryLog.integration_id.in_(integration_ids),
+                DigestDeliveryLog.delivered_at >= today_start,
+                DigestDeliveryLog.status == "delivered",
+            )
+            .first()
+        )
+        if existing_log:
+            # #4052 — advance last_synced_at so the next run doesn't fetch
+            # the same historical window indefinitely when dedup short-
+            # circuits delivery.
+            for integ in integrations:
+                integ.last_synced_at = now
+            db.commit()
+            return {
+                "status": "skipped",
+                "email_count": 0,
+                "attribution_counts": {},
+                "message": "Already delivered today",
+                "reason": "already_delivered",
+            }
+
+    # Fetch + attribute per integration, then merge. Emails that appear
+    # from multiple integrations are deduplicated by ``source_id`` to
+    # match the legacy behavior.
+    attributed_pairs: list[tuple[dict, dict]] = []
+    seen_ids: set[str] = set()
+    # #4058 — record each integration's fetch-synced_at so we can stamp
+    # last_synced_at atomically with the final delivery-log commit below
+    # (see legacy send_digest_for_integration for the same pattern). This
+    # prevents a crash between fetch and log from silently dropping a
+    # parent-day of mail on retry.
+    fetched_synced_at_by_id: dict[int, datetime] = {}
+    for integration in integrations:
+        try:
+            fetch_result = await fetch_child_emails(db, integration, since=since)
+        except Exception:
+            logger.exception(
+                "Unified digest: fetch failed | integration_id=%s parent_id=%s",
+                integration.id,
+                parent_id,
+            )
+            continue
+
+        emails = fetch_result.get("emails", [])
+        synced_at_value = fetch_result.get("synced_at")
+        if synced_at_value is not None:
+            fetched_synced_at_by_id[integration.id] = synced_at_value
+
+        for email in emails or []:
+            src = email.get("source_id")
+            if src and src in seen_ids:
+                continue
+            if src:
+                seen_ids.add(src)
+
+            headers = {
+                "to": email.get("to_addresses") or [],
+                "delivered-to": email.get("delivered_to_addresses") or [],
+                "from": email.get("sender_email") or "",
+            }
+            attribution = attribute_email(headers, parent_id, db)
+            attributed_pairs.append((email, attribution))
+
+    email_count = len(attributed_pairs)
+
+    # Build section structure + attribution summary for observability.
+    sections = build_sectioned_digest(attributed_pairs)
+    attribution_counts = {
+        ATTR_SOURCE_SCHOOL_EMAIL: 0,
+        ATTR_SOURCE_SENDER_TAG: 0,
+        ATTR_SOURCE_APPLIES_TO_ALL: 0,
+        ATTR_SOURCE_UNATTRIBUTED: 0,
+    }
+    for _, attribution in attributed_pairs:
+        key = attribution.get("source") or ATTR_SOURCE_UNATTRIBUTED
+        attribution_counts[key] = attribution_counts.get(key, 0) + 1
+
+    # Resolve kid-first-name labels for per-kid sections.
+    from app.models.parent_gmail_integration import ParentChildProfile
+
+    kid_id_set = set(sections.get("per_kid", {}).keys())
+    per_kid_names: dict[int, str] = {}
+    if kid_id_set:
+        rows = (
+            db.query(ParentChildProfile.id, ParentChildProfile.first_name)
+            .filter(ParentChildProfile.id.in_(kid_id_set))
+            .all()
+        )
+        per_kid_names = {pid: name for (pid, name) in rows}
+    sections["per_kid_names"] = per_kid_names
+
+    # No emails across all integrations → optionally skip (mirrors the
+    # per-integration ``notify_on_empty`` semantics using the first
+    # integration's settings as the parent-level default).
+    primary_settings = integrations[0].digest_settings
+    notify_on_empty = bool(primary_settings and primary_settings.notify_on_empty)
+    if email_count == 0 and not notify_on_empty:
+        # #4052 — advance last_synced_at so the next run's since-window
+        # starts from now even when we skip delivery.
+        for integ in integrations:
+            integ.last_synced_at = now
+        db.commit()
+        return {
+            "status": "skipped",
+            "email_count": 0,
+            "attribution_counts": attribution_counts,
+            "message": "No new emails",
+            "reason": "no_new_emails",
+        }
+
+    digest_html = _render_unified_digest_sections(sections)
+    parent_name = _parent_first_name(parent)
+
+    # Delivery: in_app + email only for the v2 MVP. WhatsApp is still
+    # scoped to the legacy per-integration templates (Stream 5 handles
+    # the v2 WhatsApp rollout). We reuse the primary integration's
+    # ``delivery_channels`` setting to respect parent preferences.
+    channels_setting = (
+        primary_settings.delivery_channels
+        if primary_settings and primary_settings.delivery_channels
+        else "in_app,email"
+    )
+    channels = [c.strip() for c in channels_setting.split(",") if c.strip()]
+    notification_channels: list[str] = []
+    if "in_app" in channels:
+        notification_channels.append("app_notification")
+    if "email" in channels:
+        notification_channels.append("email")
+
+    in_app_ok: bool | None = None if "in_app" not in channels else False
+    email_ok: bool | None = None if "email" not in channels else False
+
+    delivery_result: dict | None = None
+    if notification_channels:
+        from app.services.notification_service import (
+            send_multi_channel_notification,
+        )
+
+        delivery_result = send_multi_channel_notification(
+            db=db,
+            recipient=parent,
+            sender=None,
+            title="Email Digest for your kids",
+            content=digest_html,
+            notification_type=NotificationType.PARENT_EMAIL_DIGEST,
+            link="/email-digest",
+            channels=notification_channels,
+        )
+
+    if delivery_result:
+        if "in_app" in channels:
+            in_app_ok = delivery_result.get("in_app")
+        if "email" in channels:
+            email_ok = delivery_result.get("email")
+
+    outcomes = [
+        x
+        for x in (
+            in_app_ok if "in_app" in channels else None,
+            email_ok if "email" in channels else None,
+        )
+        if x is not None
+    ]
+    if not outcomes:
+        overall_status = "skipped"
+    elif all(outcomes):
+        overall_status = "delivered"
+    elif not any(outcomes):
+        overall_status = "failed"
+    else:
+        overall_status = "partial"
+
+    # #4052 — Persist a single synthetic DigestDeliveryLog per unified run
+    # (keyed to integrations[0]) so the existing per-integration /logs
+    # endpoint still surfaces it without duplicating history rows. The
+    # ``scope`` column is intentionally not introduced this round —
+    # keeping this change minimal per the fix scope.
+    email_delivery_status = (
+        None
+        if "email" not in channels or email_ok is None
+        else ("sent" if email_ok else "failed")
+    )
+    primary_integration = integrations[0]
+    log_entry = DigestDeliveryLog(
+        parent_id=parent_id,
+        integration_id=primary_integration.id,
+        email_count=email_count,
+        digest_content=digest_html,
+        digest_length_chars=len(digest_html),
+        channels_used=channels_setting,
+        status=overall_status,
+        email_delivery_status=email_delivery_status,
+    )
+    db.add(log_entry)
+    # #4058 — advance last_synced_at atomically with the delivery-log
+    # insert. Only stamp integrations whose fetch actually succeeded
+    # (present in the map). If the fetch errored for an integration, we
+    # intentionally leave its stamp pinned so the retry picks up the real
+    # unread window — advancing to ``now`` here would silently drop that
+    # integration's unread mail on the next run (mini-#4058 regression).
+    for integration in integrations:
+        if integration.id in fetched_synced_at_by_id:
+            integration.last_synced_at = fetched_synced_at_by_id[integration.id]
+    db.commit()
+
+    message = (
+        f"Unified digest delivered with {email_count} emails"
+        if overall_status == "delivered"
+        else f"Unified digest {overall_status} ({email_count} emails)"
+    )
+    return {
+        "status": overall_status,
+        "email_count": email_count,
+        "attribution_counts": attribution_counts,
+        "message": message,
+    }
+
+
+async def process_unified_parent_email_digests(db) -> None:
+    """Unified path: one digest per parent (flag ON).
+
+    Queries the distinct set of parents with at least one active
+    integration and digests enabled, then delegates to
+    :func:`send_unified_digest_for_parent` for each.
+    """
+    sent = 0
+    skipped = 0
+    failed = 0
+    try:
+        now = datetime.now(timezone.utc)
+        parent_id_rows = (
+            db.query(ParentGmailIntegration.parent_id)
+            .join(ParentDigestSettings)
+            .filter(
+                ParentGmailIntegration.is_active == True,  # noqa: E712
+                ParentDigestSettings.digest_enabled == True,  # noqa: E712
+            )
+            .filter(
+                (ParentGmailIntegration.paused_until == None)  # noqa: E711
+                | (ParentGmailIntegration.paused_until < now)
+            )
+            .distinct()
+            .all()
+        )
+        parent_ids = [row[0] for row in parent_id_rows]
+
+        logger.info(
+            "Unified parent email digest: found %d parents", len(parent_ids)
+        )
+
+        for parent_id in parent_ids:
+            try:
+                result = await send_unified_digest_for_parent(db, parent_id)
+                status = result.get("status")
+                if status == "delivered":
+                    sent += 1
+                elif status == "skipped":
+                    skipped += 1
+                else:
+                    failed += 1
+            except Exception:
+                logger.exception(
+                    "Unified parent email digest failed | parent_id=%s",
+                    parent_id,
+                )
+                db.rollback()
+                failed += 1
+
+        logger.info(
+            "Unified parent email digest job complete | sent=%d | skipped=%d | failed=%d",
+            sent,
+            skipped,
+            failed,
+        )
+    except Exception:
+        db.rollback()
+        logger.exception("Unified parent email digest job failed")

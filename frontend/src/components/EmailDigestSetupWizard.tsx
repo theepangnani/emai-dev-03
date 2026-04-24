@@ -1,5 +1,17 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { getGmailAuthUrl, connectGmail, updateIntegration, updateSettings, addMonitoredEmail, listIntegrations } from '../api/parentEmailDigest';
+import {
+  getGmailAuthUrl,
+  connectGmail,
+  updateIntegration,
+  updateSettings,
+  addMonitoredEmail,
+  listIntegrations,
+  listChildProfiles,
+  createChildProfile,
+  addChildSchoolEmail,
+} from '../api/parentEmailDigest';
+import { parentApi, type ChildSummary } from '../api/parent';
+import { useFeatureFlagEnabled } from '../hooks/useFeatureToggle';
 import './EmailDigestSetupWizard.css';
 
 const TIMEZONES = [
@@ -35,7 +47,32 @@ interface EmailDigestSetupWizardProps {
   onComplete?: (integrationId: number) => void;
 }
 
-type WizardStep = 1 | 2 | 3 | 4;
+type WizardStep = 1 | 2 | 3 | 4 | 5;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface KidEmailEntry {
+  student_id: number;
+  user_id: number;
+  full_name: string;
+  first_name: string;
+  grade_level: number | null;
+  email: string;
+  validationError: string;
+  saveError: string;
+}
+
+function deriveFirstName(full_name: string): string {
+  const trimmed = (full_name || '').trim();
+  if (!trimmed) return '';
+  return trimmed.split(/\s+/)[0];
+}
+
+function gradeLabel(grade_level: number | null): string {
+  if (grade_level === null || grade_level === undefined) return '';
+  if (grade_level === 0) return 'Kindergarten';
+  return `Grade ${grade_level}`;
+}
 
 export function EmailDigestSetupWizard({
   open,
@@ -69,6 +106,12 @@ export function EmailDigestSetupWizard({
   const [digestFormat, setDigestFormat] = useState('sectioned');
   const [channels, setChannels] = useState<string[]>(['in_app', 'email']);
 
+  // Step 5 (flag-gated): per-kid school email collection
+  const unifiedDigestV2Enabled = useFeatureFlagEnabled('parent.unified_digest_v2');
+  const [kidEntries, setKidEntries] = useState<KidEmailEntry[]>([]);
+  const [kidsLoading, setKidsLoading] = useState(false);
+  const [kidsLoadError, setKidsLoadError] = useState('');
+
   // Focus trap ref
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +134,8 @@ export function EmailDigestSetupWizard({
     setTimezone('America/Toronto');
     setDigestFormat('sectioned');
     setChannels(['in_app', 'email']);
+    setKidEntries([]);
+    setKidsLoadError('');
 
     // Check if the parent already has an integration
     setLoading(true);
@@ -137,6 +182,38 @@ export function EmailDigestSetupWizard({
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
+
+  // Focus trap — on open, focus the first interactive element inside the
+  // modal and cycle focus on Tab/Shift-Tab so it never leaves the dialog.
+  useEffect(() => {
+    if (!open) return;
+    if (!modalRef.current) return;
+    const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    focusable[0]?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const nodes = Array.from(
+        modalRef.current.querySelectorAll<HTMLElement>(
+          'button, input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter(n => !n.hasAttribute('disabled'));
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
 
   // Keep ref in sync with state so the message handler always uses the latest value
   useEffect(() => {
@@ -245,7 +322,9 @@ export function EmailDigestSetupWizard({
       }
       setStep(4);
     } else if (step === 4) {
-      // Complete setup — save settings
+      // Save settings. If the unified-digest v2 flag is ON, advance to the
+      // new school-emails step; otherwise this is the final step and we
+      // close the wizard.
       if (!integrationId) return;
       setLoading(true);
       try {
@@ -255,8 +334,12 @@ export function EmailDigestSetupWizard({
           digest_format: digestFormat,
           delivery_channels: channels.join(','),
         });
-        onComplete?.(integrationId);
-        onClose();
+        if (unifiedDigestV2Enabled) {
+          setStep(5);
+        } else {
+          onComplete?.(integrationId);
+          onClose();
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to save settings';
         setError(msg);
@@ -264,7 +347,7 @@ export function EmailDigestSetupWizard({
         setLoading(false);
       }
     }
-  }, [step, gmailConnected, monitoredEmails, childFirstName, channels, integrationId, deliveryTime, timezone, digestFormat, onComplete, onClose]);
+  }, [step, gmailConnected, monitoredEmails, childFirstName, channels, integrationId, deliveryTime, timezone, digestFormat, unifiedDigestV2Enabled, onComplete, onClose]);
 
   const handleBack = useCallback(() => {
     setError('');
@@ -277,9 +360,170 @@ export function EmailDigestSetupWizard({
     );
   }, []);
 
+  // Load kids when Step 5 becomes active (flag-gated)
+  useEffect(() => {
+    if (!open) return;
+    if (!unifiedDigestV2Enabled) return;
+    if (step !== 5) return;
+    if (kidEntries.length > 0) return;
+
+    let cancelled = false;
+    setKidsLoading(true);
+    setKidsLoadError('');
+    parentApi
+      .getChildren()
+      .then((kids: ChildSummary[]) => {
+        if (cancelled) return;
+        setKidEntries(
+          kids.map(k => ({
+            student_id: k.student_id,
+            user_id: k.user_id,
+            full_name: k.full_name,
+            first_name: deriveFirstName(k.full_name),
+            grade_level: k.grade_level,
+            email: '',
+            validationError: '',
+            saveError: '',
+          })),
+        );
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load kids';
+        setKidsLoadError(msg);
+      })
+      .finally(() => {
+        if (!cancelled) setKidsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [open, unifiedDigestV2Enabled, step, kidEntries.length]);
+
+  const updateKidEmail = useCallback((idx: number, value: string) => {
+    setKidEntries(prev =>
+      prev.map((entry, i) => {
+        if (i !== idx) return entry;
+        const trimmed = value.trim();
+        const validationError =
+          trimmed && !EMAIL_PATTERN.test(trimmed)
+            ? 'Please enter a valid email address.'
+            : '';
+        return { ...entry, email: value, validationError, saveError: '' };
+      }),
+    );
+  }, []);
+
+  const finishAndClose = useCallback(() => {
+    if (integrationId !== null) onComplete?.(integrationId);
+    onClose();
+  }, [integrationId, onComplete, onClose]);
+
+  const handleSkipSchoolEmails = useCallback(() => {
+    finishAndClose();
+  }, [finishAndClose]);
+
+  const handleSaveSchoolEmails = useCallback(async () => {
+    setError('');
+
+    // Client-side validation first — any invalid email blocks the submit.
+    const withValidation = kidEntries.map(entry => {
+      const trimmed = entry.email.trim();
+      if (trimmed && !EMAIL_PATTERN.test(trimmed)) {
+        return { ...entry, validationError: 'Please enter a valid email address.' };
+      }
+      return { ...entry, validationError: '' };
+    });
+    setKidEntries(withValidation);
+    if (withValidation.some(e => e.validationError)) {
+      return;
+    }
+
+    const toSave = withValidation.filter(e => e.email.trim());
+    if (toSave.length === 0) {
+      // Nothing to save — behave like Skip.
+      finishAndClose();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Resolve each kid's ParentChildProfile id — load once, then for any
+      // kid without a profile yet, create one. Stream 1 backfills existing
+      // kids; Stream 2's create endpoint covers kids added after backfill.
+      let profiles: Awaited<ReturnType<typeof listChildProfiles>>['data'] = [];
+      try {
+        const resp = await listChildProfiles();
+        profiles = resp.data ?? [];
+      } catch {
+        profiles = [];
+      }
+
+      const profileByStudent = new Map<number, number>();
+      for (const p of profiles) {
+        if (p.student_id !== null && p.student_id !== undefined) {
+          profileByStudent.set(p.student_id, p.id);
+        }
+      }
+
+      const updates: Array<{ idx: number; saveError: string }> = [];
+
+      for (const entry of toSave) {
+        const origIdx = withValidation.findIndex(e => e.student_id === entry.student_id);
+        let profileId = profileByStudent.get(entry.student_id);
+        try {
+          if (profileId === undefined) {
+            const created = await createChildProfile({
+              student_id: entry.student_id,
+              first_name: entry.first_name || deriveFirstName(entry.full_name) || 'Kid',
+            });
+            profileId = created.data.id;
+            profileByStudent.set(entry.student_id, profileId);
+          }
+          await addChildSchoolEmail(profileId, entry.email.trim().toLowerCase());
+          updates.push({ idx: origIdx, saveError: '' });
+        } catch (err: unknown) {
+          // 409 = already exists — treat as success, not a soft error.
+          const axiosErr = err as { response?: { status?: number } };
+          if (axiosErr.response?.status === 409) {
+            updates.push({ idx: origIdx, saveError: '' });
+          } else if (axiosErr.response?.status === 404) {
+            updates.push({
+              idx: origIdx,
+              saveError:
+                "We can't save this email yet — please try again from the main Email Digest page once your account is fully set up.",
+            });
+          } else {
+            const msg = err instanceof Error ? err.message : 'Could not save this email';
+            updates.push({ idx: origIdx, saveError: msg });
+          }
+        }
+      }
+
+      const next = withValidation.map((entry, i) => {
+        const u = updates.find(x => x.idx === i);
+        return u ? { ...entry, saveError: u.saveError } : entry;
+      });
+      setKidEntries(next);
+
+      if (next.some(e => e.saveError)) {
+        // Surface a top-level hint; per-kid errors are shown inline.
+        setError('Some emails could not be saved — see details below.');
+        return;
+      }
+
+      finishAndClose();
+    } finally {
+      setLoading(false);
+    }
+  }, [kidEntries, finishAndClose]);
+
   if (!open) return null;
 
-  const stepTitles = ['Connect Gmail', 'Child Info', 'Settings', 'Confirm'];
+  const stepTitles = unifiedDigestV2Enabled
+    ? ['Connect Gmail', 'Child Info', 'Settings', 'Confirm', 'School Emails']
+    : ['Connect Gmail', 'Child Info', 'Settings', 'Confirm'];
+  const totalSteps = stepTitles.length;
+  const stepNumbers = Array.from({ length: totalSteps }, (_, i) => i + 1);
 
   return (
     <div className="edw-overlay" onClick={onClose}>
@@ -298,8 +542,8 @@ export function EmailDigestSetupWizard({
         </div>
 
         {/* Step Indicator */}
-        <div className="edw-steps" aria-label={`Step ${step} of 4: ${stepTitles[step - 1]}`}>
-          {[1, 2, 3, 4].map((s, i) => (
+        <div className="edw-steps" aria-label={`Step ${step} of ${totalSteps}: ${stepTitles[step - 1]}`}>
+          {stepNumbers.map((s, i) => (
             <span key={s}>
               {i > 0 && (
                 <span className={`edw-step-line${s <= step ? ' edw-step-line--done' : ''}`} />
@@ -549,6 +793,70 @@ export function EmailDigestSetupWizard({
               </div>
             </>
           )}
+
+          {/* Step 5: School Emails (flag-gated — only rendered when
+              parent.unified_digest_v2 is ON). */}
+          {step === 5 && unifiedDigestV2Enabled && (
+            <>
+              <h3 className="edw-step-title">
+                What are your kids&rsquo; school email addresses?
+              </h3>
+              <p className="edw-step-desc">
+                We use these to route forwarded messages to the right kid.
+                External email to school inboxes is blocked by boards until
+                we get access, so please set up a Gmail forwarding rule in
+                each school inbox &rarr; your Gmail.
+              </p>
+              <p className="edw-step-desc">
+                <a
+                  href="/help/email-digest-forwarding"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  How to set up forwarding &rarr;
+                </a>
+              </p>
+              <p className="edw-field-hint">
+                (Optional &mdash; you can add these later.)
+              </p>
+              {kidsLoading && <div className="edw-step-desc">Loading your kids&hellip;</div>}
+              {kidsLoadError && <div className="edw-error">{kidsLoadError}</div>}
+              {!kidsLoading && !kidsLoadError && kidEntries.length === 0 && (
+                <div className="edw-step-desc">No kids on your account yet.</div>
+              )}
+              {kidEntries.map((entry, idx) => {
+                const inputId = `edw-kid-school-email-${entry.student_id}`;
+                return (
+                  <div key={entry.student_id} className="edw-field">
+                    <label htmlFor={inputId}>
+                      {entry.first_name || entry.full_name}
+                      {gradeLabel(entry.grade_level) && (
+                        <span> &middot; {gradeLabel(entry.grade_level)}</span>
+                      )}
+                    </label>
+                    <input
+                      id={inputId}
+                      type="email"
+                      placeholder="kid@school.ca"
+                      value={entry.email}
+                      onChange={e => updateKidEmail(idx, e.target.value)}
+                      className={entry.validationError ? 'edw-input-error' : ''}
+                    />
+                    {entry.validationError && (
+                      <div className="edw-field-hint edw-field-hint--error">
+                        {entry.validationError}
+                      </div>
+                    )}
+                    {entry.saveError && (
+                      <div className="edw-field-hint edw-field-hint--error">
+                        {entry.saveError}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* Footer */}
@@ -560,17 +868,36 @@ export function EmailDigestSetupWizard({
           ) : (
             <span />
           )}
-          <button
-            className="edw-btn-next"
-            onClick={handleNextStep}
-            disabled={loading || (step === 1 && !gmailConnected)}
-          >
-            {loading
-              ? 'Saving...'
-              : step === 4
-                ? 'Complete Setup'
-                : 'Next'}
-          </button>
+          {step === 5 && unifiedDigestV2Enabled ? (
+            <span className="edw-footer-actions">
+              <button
+                className="edw-btn-back"
+                onClick={handleSkipSchoolEmails}
+                disabled={loading}
+              >
+                Skip
+              </button>
+              <button
+                className="edw-btn-next"
+                onClick={handleSaveSchoolEmails}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Continue'}
+              </button>
+            </span>
+          ) : (
+            <button
+              className="edw-btn-next"
+              onClick={handleNextStep}
+              disabled={loading || (step === 1 && !gmailConnected)}
+            >
+              {loading
+                ? 'Saving...'
+                : step === 4
+                  ? (unifiedDigestV2Enabled ? 'Next' : 'Complete Setup')
+                  : 'Next'}
+            </button>
+          )}
         </div>
       </div>
     </div>

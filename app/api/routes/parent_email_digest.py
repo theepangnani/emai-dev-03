@@ -4,6 +4,7 @@ OAuth endpoints for connecting Gmail, plus CRUD for integrations,
 digest settings, and delivery logs.
 """
 
+import hashlib
 import logging
 import secrets
 import time
@@ -15,7 +16,7 @@ import requests as _requests
 from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_role
 from app.core.config import settings
@@ -26,6 +27,10 @@ from app.models.parent_gmail_integration import (
     ParentDigestSettings,
     DigestDeliveryLog,
     ParentDigestMonitoredEmail,
+    ParentChildProfile,
+    ParentChildSchoolEmail,
+    ParentDigestMonitoredSender,
+    SenderChildAssignment,
 )
 from app.models.user import User, UserRole
 from app.schemas.parent_email_digest import (
@@ -38,6 +43,12 @@ from app.schemas.parent_email_digest import (
     WhatsAppOTPRequest,
     MonitoredEmailCreate,
     MonitoredEmailResponse,
+    MonitoredSenderCreate,
+    MonitoredSenderAssignmentsUpdate,
+    MonitoredSenderResponse,
+    ChildSchoolEmailCreate,
+    ChildSchoolEmailResponse,
+    ChildProfileResponse,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -430,9 +441,119 @@ def add_monitored_email(
         label=body.label,
     )
     db.add(monitored)
+    db.flush()
+
+    # #4014 dual-write: mirror into unified v2 tables so new digest worker
+    # sees the sender even if the legacy endpoint is still the write path.
+    # Only dual-write when we have an email address (v2 keys on email).
+    if body.email_address:
+        _dual_write_sender_v2(
+            db,
+            parent_id=current_user.id,
+            integration=integration,
+            email_address=body.email_address,
+            sender_name=body.sender_name,
+            label=body.label,
+        )
+
     db.commit()
     db.refresh(monitored)
     return monitored
+
+
+def _dual_write_sender_v2(
+    db: Session,
+    *,
+    parent_id: int,
+    integration: ParentGmailIntegration,
+    email_address: str,
+    sender_name: Optional[str],
+    label: Optional[str],
+) -> None:
+    """Mirror a legacy monitored-email write into the unified v2 tables.
+
+    Find-or-create ParentDigestMonitoredSender on (parent_id, email_address),
+    find the matching ParentChildProfile for the integration's
+    child_first_name (case-insensitive), and create a SenderChildAssignment
+    if both exist and no duplicate already does. Uses a SAVEPOINT
+    (begin_nested) so a failure here rolls back only the v2 inserts — the
+    outer legacy transaction stays healthy.
+    """
+    normalized_email = (email_address or "").strip().lower()
+    if not normalized_email:
+        return
+
+    try:
+        with db.begin_nested():
+            sender = (
+                db.query(ParentDigestMonitoredSender)
+                .filter(
+                    ParentDigestMonitoredSender.parent_id == parent_id,
+                    ParentDigestMonitoredSender.email_address == normalized_email,
+                )
+                .first()
+            )
+            if sender is None:
+                sender = ParentDigestMonitoredSender(
+                    parent_id=parent_id,
+                    email_address=normalized_email,
+                    sender_name=sender_name,
+                    label=label,
+                    applies_to_all=False,
+                )
+                db.add(sender)
+                db.flush()
+            else:
+                # Update label/sender_name if the caller provided new values.
+                if sender_name and not sender.sender_name:
+                    sender.sender_name = sender_name
+                if label and not sender.label:
+                    sender.label = label
+
+            # Only link to a child profile if we have a first name on the
+            # integration and a matching profile exists for this parent.
+            first_name = (integration.child_first_name or "").strip()
+            if not first_name:
+                return
+
+            from sqlalchemy import func as sa_func
+            profile = (
+                db.query(ParentChildProfile)
+                .filter(
+                    ParentChildProfile.parent_id == parent_id,
+                    sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+                )
+                .first()
+            )
+            if profile is None:
+                return
+
+            existing = (
+                db.query(SenderChildAssignment)
+                .filter(
+                    SenderChildAssignment.sender_id == sender.id,
+                    SenderChildAssignment.child_profile_id == profile.id,
+                )
+                .first()
+            )
+            if existing is None:
+                db.add(SenderChildAssignment(
+                    sender_id=sender.id,
+                    child_profile_id=profile.id,
+                ))
+                db.flush()
+    except Exception as exc:
+        email_hash = hashlib.sha256(email_address.encode()).hexdigest()[:12]
+        # #4057 — use logger.error with exc_info=False so the traceback
+        # (which SQLAlchemy embeds bound params into, including the raw
+        # email) is NOT written to logs. Message is defensively scrubbed.
+        logger.error(
+            "dual_write.failed | parent_id=%s integration_id=%s email_hash=%s exc_type=%s",
+            parent_id,
+            integration.id,
+            email_hash,
+            type(exc).__name__,
+        )
 
 
 @router.delete("/integrations/{integration_id}/monitored-emails/{email_id}", status_code=204)
@@ -668,7 +789,15 @@ async def trigger_manual_sync(
 
     from app.services.parent_gmail_service import fetch_child_emails
 
-    emails = await fetch_child_emails(db, integration)
+    fetch_result = await fetch_child_emails(db, integration)
+    emails = fetch_result.get("emails", [])
+    # #4058 — fetch_child_emails no longer auto-commits last_synced_at.
+    # The manual-sync endpoint has no delivery-log step to bundle with, so
+    # persist the fetch timestamp here directly.
+    synced_at = fetch_result.get("synced_at")
+    if synced_at is not None:
+        integration.last_synced_at = synced_at
+        db.commit()
     return {"email_count": len(emails), "message": f"Synced {len(emails)} emails successfully"}
 
 
@@ -789,3 +918,293 @@ def disconnect_whatsapp(
 
     db.commit()
     return {"message": "WhatsApp disconnected"}
+
+
+# ---------------------------------------------------------------------------
+# Unified Digest v2 — parent-level monitored senders (#4012, #4014)
+# ---------------------------------------------------------------------------
+
+
+def _sender_to_response(sender: ParentDigestMonitoredSender) -> MonitoredSenderResponse:
+    """Shape a sender row + its assignments into the API response."""
+    child_ids = [a.child_profile_id for a in sender.child_assignments]
+    return MonitoredSenderResponse(
+        id=sender.id,
+        email_address=sender.email_address,
+        sender_name=sender.sender_name,
+        label=sender.label,
+        applies_to_all=bool(sender.applies_to_all),
+        child_profile_ids=child_ids,
+        created_at=sender.created_at,
+    )
+
+
+def _apply_assignments(
+    db: Session,
+    sender: ParentDigestMonitoredSender,
+    parent_id: int,
+    child_profile_ids,
+) -> None:
+    """Replace a sender's child assignments.
+
+    - If ``child_profile_ids == "all"``: mark applies_to_all=True and clear
+      per-kid assignments.
+    - Otherwise: validate each profile ID belongs to the parent, then
+      replace the assignment set.
+    """
+    if child_profile_ids == "all":
+        sender.applies_to_all = True
+        for a in list(sender.child_assignments):
+            db.delete(a)
+        db.flush()
+        return
+
+    # Explicit list — validate ownership
+    ids = list(dict.fromkeys(int(x) for x in (child_profile_ids or [])))  # dedupe, preserve order
+    if ids:
+        owned = (
+            db.query(ParentChildProfile.id)
+            .filter(
+                ParentChildProfile.parent_id == parent_id,
+                ParentChildProfile.id.in_(ids),
+            )
+            .all()
+        )
+        owned_ids = {row[0] for row in owned}
+        missing = [i for i in ids if i not in owned_ids]
+        if missing:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Child profile(s) not found: {missing}",
+            )
+
+    sender.applies_to_all = False
+    # Remove existing assignments not in the new set
+    existing_by_profile = {a.child_profile_id: a for a in list(sender.child_assignments)}
+    for pid, assignment in existing_by_profile.items():
+        if pid not in ids:
+            db.delete(assignment)
+    # Add missing
+    for pid in ids:
+        if pid not in existing_by_profile:
+            db.add(SenderChildAssignment(sender_id=sender.id, child_profile_id=pid))
+    db.flush()
+
+
+@router.get("/monitored-senders", response_model=list[MonitoredSenderResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_monitored_senders(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """List the current parent's monitored senders with their child assignments."""
+    senders = (
+        db.query(ParentDigestMonitoredSender)
+        .options(selectinload(ParentDigestMonitoredSender.child_assignments))
+        .filter(ParentDigestMonitoredSender.parent_id == current_user.id)
+        .order_by(ParentDigestMonitoredSender.created_at.asc())
+        .all()
+    )
+    return [_sender_to_response(s) for s in senders]
+
+
+@router.post("/monitored-senders", response_model=MonitoredSenderResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def create_or_update_monitored_sender(
+    request: Request,
+    body: MonitoredSenderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Create a new monitored sender for the parent, or update assignments if it exists.
+
+    Dedupes on (parent_id, email_address). If the sender already exists, the
+    child assignments are replaced with the provided set (same semantics as
+    PATCH /monitored-senders/{id}/assignments).
+    """
+    sender = (
+        db.query(ParentDigestMonitoredSender)
+        .filter(
+            ParentDigestMonitoredSender.parent_id == current_user.id,
+            ParentDigestMonitoredSender.email_address == body.email_address,
+        )
+        .first()
+    )
+    if sender is None:
+        sender = ParentDigestMonitoredSender(
+            parent_id=current_user.id,
+            email_address=body.email_address,
+            sender_name=body.sender_name,
+            label=body.label,
+            applies_to_all=(body.child_profile_ids == "all"),
+        )
+        db.add(sender)
+        db.flush()
+    else:
+        if body.sender_name is not None:
+            sender.sender_name = body.sender_name
+        if body.label is not None:
+            sender.label = body.label
+
+    _apply_assignments(db, sender, current_user.id, body.child_profile_ids)
+    db.commit()
+    db.refresh(sender)
+    return _sender_to_response(sender)
+
+
+@router.patch(
+    "/monitored-senders/{sender_id}/assignments",
+    response_model=MonitoredSenderResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def update_sender_assignments(
+    request: Request,
+    sender_id: int,
+    body: MonitoredSenderAssignmentsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Replace the child assignments for a monitored sender."""
+    sender = (
+        db.query(ParentDigestMonitoredSender)
+        .filter(
+            ParentDigestMonitoredSender.id == sender_id,
+            ParentDigestMonitoredSender.parent_id == current_user.id,
+        )
+        .first()
+    )
+    if not sender:
+        raise HTTPException(status_code=404, detail="Monitored sender not found")
+
+    _apply_assignments(db, sender, current_user.id, body.child_profile_ids)
+    db.commit()
+    db.refresh(sender)
+    return _sender_to_response(sender)
+
+
+@router.delete("/monitored-senders/{sender_id}", status_code=204)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_monitored_sender(
+    request: Request,
+    sender_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Delete a monitored sender (cascades to its child assignments)."""
+    sender = (
+        db.query(ParentDigestMonitoredSender)
+        .filter(
+            ParentDigestMonitoredSender.id == sender_id,
+            ParentDigestMonitoredSender.parent_id == current_user.id,
+        )
+        .first()
+    )
+    if not sender:
+        raise HTTPException(status_code=404, detail="Monitored sender not found")
+    db.delete(sender)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Unified Digest v2 — parent-level child profiles + school emails (#4014)
+# ---------------------------------------------------------------------------
+
+profiles_router = APIRouter(prefix="/parent/child-profiles", tags=["Parent Child Profiles"])
+
+
+def _get_owned_profile(db: Session, profile_id: int, parent_id: int) -> ParentChildProfile:
+    profile = (
+        db.query(ParentChildProfile)
+        .filter(
+            ParentChildProfile.id == profile_id,
+            ParentChildProfile.parent_id == parent_id,
+        )
+        .first()
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Child profile not found")
+    return profile
+
+
+@profiles_router.get("", response_model=list[ChildProfileResponse])
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_child_profiles(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """List the caller's child profiles with nested school emails."""
+    profiles = (
+        db.query(ParentChildProfile)
+        .options(selectinload(ParentChildProfile.school_emails))
+        .filter(ParentChildProfile.parent_id == current_user.id)
+        .order_by(ParentChildProfile.created_at.asc())
+        .all()
+    )
+    return profiles
+
+
+@profiles_router.post(
+    "/{profile_id}/school-emails",
+    response_model=ChildSchoolEmailResponse,
+    status_code=201,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def add_child_school_email(
+    request: Request,
+    profile_id: int,
+    body: ChildSchoolEmailCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Add a school email to a child profile owned by the caller."""
+    _get_owned_profile(db, profile_id, current_user.id)
+
+    existing = (
+        db.query(ParentChildSchoolEmail)
+        .filter(
+            ParentChildSchoolEmail.child_profile_id == profile_id,
+            ParentChildSchoolEmail.email_address == body.email_address,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="School email already exists for this child")
+
+    school_email = ParentChildSchoolEmail(
+        child_profile_id=profile_id,
+        email_address=body.email_address,
+    )
+    db.add(school_email)
+    db.commit()
+    db.refresh(school_email)
+    return school_email
+
+
+@profiles_router.delete(
+    "/{profile_id}/school-emails/{email_id}",
+    status_code=204,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def delete_child_school_email(
+    request: Request,
+    profile_id: int,
+    email_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Delete a school email from a child profile owned by the caller."""
+    _get_owned_profile(db, profile_id, current_user.id)
+    school_email = (
+        db.query(ParentChildSchoolEmail)
+        .filter(
+            ParentChildSchoolEmail.id == email_id,
+            ParentChildSchoolEmail.child_profile_id == profile_id,
+        )
+        .first()
+    )
+    if not school_email:
+        raise HTTPException(status_code=404, detail="School email not found")
+    db.delete(school_email)
+    db.commit()

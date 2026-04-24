@@ -1981,6 +1981,7 @@ All five §6.141.1 non-goals from the initial CB-TUTOR-001 ship have been delive
 
 ---
 
+
 ### 6.142 Rock-solid Tutor v2 — Chat-first Q&A + Short Learning Cycle (CB-TUTOR-002) — Phase 1 IN PROGRESS 2026-04-24
 
 **Purpose:** Rebuild `/tutor` into a rock-solid, pedagogically sound learning surface that fixes three concrete CB-TUTOR-001 regressions reported by the user: (1) "AI keeps asking for context" on simple questions, (2) "very slow" responses, (3) monolithic 7-slide-then-quiz flow ≠ the short learning cycle concept. Replaces the ASGF "teach-all-then-test-all" flow with:
@@ -2032,4 +2033,61 @@ Streams complete (all pushed, all build/lint/tests green in their isolated workt
 - **Phase 4 streaming expansion** — convert remaining LLM calls (slide generation, chunk prep) to SSE; add `BackgroundTasks` for file ingestion
 - **Phase 4 observability** — `ttfi` (Time To First Insight) + `cycle_completion_rate` analytics events
 - **Deployment ramp plan** — internal → paid beta → GA, gated on `tutor_chat_enabled` then `learning_cycle_enabled`
+
+
+### 6.142 Unified Multi-Kid Email Digest V2 (CB-PEDI-002, #4012) — INTEGRATION READY (2026-04-23)
+
+**Epic:** #4012 · **Design PR:** #4011 (`docs/design/email-digest-unified-v2.md`) · **Integration PR:** #4045 · **Feature flag:** `parent.unified_digest_v2` (off / on_5 / on_25 / on_50 / on_100; OFF by default)
+
+#### Why this exists
+The original Email Digest (CB-PEDI-001, §6.127) modeled one Gmail integration **per child**. A parent with two kids saw two separate management pages, two separate monitored-sender lists, and got two daily digests in their inbox. The defect surfaced at #4007 (clicking Email Digest from Haashini's card landed on Thanushan's page) was a routing bug fixed in PR #4010, but it exposed the deeper design gap: the data model could not express "this teacher emails both my kids."
+
+CB-PEDI-002 redesigns the feature around the parent (not the integration), introduces school-email-based attribution via Gmail forwarding headers, and ships **one daily digest per parent** with per-kid sections.
+
+#### Locked-in decisions (v1)
+1. **One daily digest per parent** — all kids combined into a single email. Per-kid sections inside.
+2. **"All kids" default** for newly added senders, with per-sender opt-out.
+3. **School email is a first-class attribution key** — stored separately from the student's ClassBridge login email (`users.email`), in a new `parent_child_school_emails` table. Attribution **never** reads `users.email`.
+4. **No email-based verification** for school emails — external email to school inboxes is blocked by board firewalls until DTAP approval lands. Replaced by:
+5. **"Forwarding detected" indicator** — derived from the `forwarding_seen_at` timestamp stamped each time the worker matches a `Delivered-To:` header to a stored school email. UI shows three states (active <14d, may-have-stopped >14d, no messages yet).
+
+#### Data model (4 new parent-level tables)
+- `parent_child_profiles(id, parent_id, student_id?, first_name)` — one row per kid.
+- `parent_child_school_emails(id, child_profile_id, email_address, forwarding_seen_at?)` — N per kid (parent can list multiple school addresses per child).
+- `parent_digest_monitored_senders(id, parent_id, email_address, sender_name?, label?, applies_to_all)` — deduped on `(parent_id, email_address)`.
+- `sender_child_assignments(id, sender_id, child_profile_id)` — many-to-many sender↔kid.
+
+Idempotent backfill in `app/db/migrations.py` seeds these from existing `parent_gmail_integrations` + `parent_digest_monitored_emails` rows on first deploy.
+
+#### Attribution algorithm (`app/services/unified_digest_attribution.py`)
+For each ingested email:
+1. Inspect `Delivered-To:` and `To:` headers (Gmail preserves the original recipient on forwarded mail).
+2. Match against the parent's `parent_child_school_emails`. Exactly-one → attribute to that kid + stamp `forwarding_seen_at`. Multiple → attribute to all matched. None → step 3.
+3. Fall back to `parent_digest_monitored_senders` lookup on the `From:` address. `applies_to_all=true` → "For both kids" section. Specific assignments → those kids' sections.
+4. No tag, no header match → "Unattributed senders" footer.
+
+#### New API endpoints (parent-scoped, all under `/api/parent/`)
+- `GET /email-digest/monitored-senders` · `POST` (with `child_profile_ids: number[] | "all"`) · `DELETE /{id}` · `PATCH /{id}/assignments`
+- `GET /child-profiles` · `POST /{id}/school-emails` · `DELETE /{id}/school-emails/{email_id}`
+- Legacy `POST /email-digest/integrations/{id}/monitored-emails` still works and dual-writes to the new tables (one-release transition).
+
+#### Frontend
+- `EmailDigestPage.tsx` splits into `EmailDigestPageLegacy` (byte-for-byte preservation) and `EmailDigestPageUnified` (new layout). Gating: `useFeatureFlagEnabled('parent.unified_digest_v2')` AND no `?legacy=1` query param.
+- Unified layout: header band (Gmail/delivery/WhatsApp) → "Your kids" rows with school-email management + forwarding badges → "Monitored senders" flat list with multi-kid chips + "Add sender" modal (multi-select with "All kids (incl. future)" default-checked).
+- `EmailDigestSetupWizard.tsx` adds a flag-gated Step 5 that asks the parent for each kid's school email during initial setup.
+
+#### Workflow & quality gates
+- 6 parallel isolated-worktree streams (data model / API / worker attribution / frontend page / setup wizard / feature flag) → merged into `integrate/4012-unified-email-digest`.
+- Conflict resolution in a dedicated worktree (`frontend/src/api/parentEmailDigest.ts` had overlapping additions from streams 4 and 5; resolved by unifying type names + correcting URL paths).
+- 2 rounds of `/pr-review`: pass 1 surfaced 10 findings (3 CRITICAL + 7 IMPORTANT); 4 fix streams shipped + merged with zero conflicts; pass 2 verdict APPROVE with no new criticals.
+- All 218+ tests pass on integration: 185 unified-digest backend tests + 33 legacy services tests + 34 frontend tests + `npm run build` clean + `npm run lint` 0 errors.
+
+#### Rollout
+- Flag stays OFF after merge. Internal testing first.
+- Ramp via variant: on_5 → on_25 → on_50 → on_100.
+- After one release with no regressions: drop legacy `ParentDigestMonitoredEmail` reads and retire dual-write.
+
+#### Known follow-ups (not blocking)
+- **#4044** — Add `POST /api/parent/child-profiles` so the wizard can create profiles for brand-new parents (no pre-existing Gmail integration). Currently the wizard catches the 404 with a friendly error message; profiles for existing integrations were seeded by the Stream 1 backfill.
+- **#4056** — Decide whether to preserve "Send Digest Now" / "Sync Now" / "Digest History" features in the unified page (legacy parity question). Currently dropped from the unified path; needs product input before `on_for_all` ramp.
 

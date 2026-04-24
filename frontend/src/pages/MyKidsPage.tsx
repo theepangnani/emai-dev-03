@@ -1006,7 +1006,15 @@ export function MyKidsPage() {
               <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
               <span>Report Cards</span>
             </button>
-            <button className="dash-quick-action" onClick={() => hasEmailDigestIntegration ? navigate('/email-digest') : setShowEmailDigestWizard(true)}>
+            <button className="dash-quick-action" onClick={() => {
+              if (!hasEmailDigestIntegration) {
+                setShowEmailDigestWizard(true);
+                return;
+              }
+              const activeChild = children.find(c => c.student_id === selectedChild);
+              const firstName = activeChild?.full_name?.trim().split(/\s+/)[0] ?? '';
+              navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
+            }}>
               <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4E7;</span>
               <span>Email Digest</span>
             </button>
