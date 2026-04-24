@@ -542,13 +542,17 @@ def _dual_write_sender_v2(
                     child_profile_id=profile.id,
                 ))
                 db.flush()
-    except Exception:
+    except Exception as exc:
         email_hash = hashlib.sha256(email_address.encode()).hexdigest()[:12]
-        logger.exception(
-            "dual_write.failed | parent_id=%s integration_id=%s email_hash=%s",
+        # #4057 — use logger.error with exc_info=False so the traceback
+        # (which SQLAlchemy embeds bound params into, including the raw
+        # email) is NOT written to logs. Message is defensively scrubbed.
+        logger.error(
+            "dual_write.failed | parent_id=%s integration_id=%s email_hash=%s exc_type=%s",
             parent_id,
             integration.id,
             email_hash,
+            type(exc).__name__,
         )
 
 

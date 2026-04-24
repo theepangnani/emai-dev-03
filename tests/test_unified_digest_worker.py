@@ -599,3 +599,78 @@ async def test_unified_crash_between_fetch_and_log_preserves_last_synced_at(
     )
     for integ in integs:
         assert integ.last_synced_at is not None
+
+
+@pytest.mark.asyncio
+async def test_unified_partial_fetch_failure_only_stamps_succeeded_integrations(
+    db_session,
+):
+    """If the fetch errored for one integration but succeeded for another,
+    only the succeeded one's ``last_synced_at`` should advance. Advancing
+    the failed integration's stamp silently drops its unread window on
+    the next run (mini-#4058 regression caught in pass-2 /pr-review).
+    """
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import ParentGmailIntegration
+
+    parent, int_ids, _ = _make_parent_with_integrations(
+        db_session,
+        "unified_partial_fetch_fail@test.com",
+        ["ok@ocdsb.ca", "fail@ocdsb.ca"],
+    )
+    ok_id, fail_id = int_ids[0], int_ids[1]
+
+    pre_stamps = {
+        integ.id: integ.last_synced_at
+        for integ in db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    }
+
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    async def partial_fail_fetch(db, integration, since=None):
+        # OK integration returns a message; failing integration raises.
+        if integration.id == fail_id:
+            raise RuntimeError("gmail transient error")
+        return {
+            "emails": [{
+                "source_id": f"m-{integration.id}",
+                "sender_name": "T",
+                "sender_email": "t@school.ca",
+                "subject": "S",
+                "snippet": "b",
+                "to_addresses": [integration.child_school_email],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=partial_fail_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    # Digest should still deliver (the OK integration produced content).
+    assert result["status"] == "delivered"
+
+    integs = {
+        i.id: i
+        for i in db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    }
+
+    # OK integration: stamp advanced past pre-run value.
+    assert integs[ok_id].last_synced_at is not None
+    assert integs[ok_id].last_synced_at != pre_stamps[ok_id]
+
+    # FAILED integration: stamp UNCHANGED — retry must cover its unread window.
+    assert integs[fail_id].last_synced_at == pre_stamps[fail_id]

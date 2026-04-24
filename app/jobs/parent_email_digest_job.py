@@ -1163,14 +1163,14 @@ async def send_unified_digest_for_parent(
     )
     db.add(log_entry)
     # #4058 — advance last_synced_at atomically with the delivery-log
-    # insert. Prefer the per-integration timestamp returned by
-    # fetch_child_emails (captured at the moment the fetch succeeded); if
-    # the fetch errored for an integration (no entry in the map) fall
-    # back to ``now`` so we don't leave the stamp pinned to a stale value.
+    # insert. Only stamp integrations whose fetch actually succeeded
+    # (present in the map). If the fetch errored for an integration, we
+    # intentionally leave its stamp pinned so the retry picks up the real
+    # unread window — advancing to ``now`` here would silently drop that
+    # integration's unread mail on the next run (mini-#4058 regression).
     for integration in integrations:
-        integration.last_synced_at = fetched_synced_at_by_id.get(
-            integration.id, now
-        )
+        if integration.id in fetched_synced_at_by_id:
+            integration.last_synced_at = fetched_synced_at_by_id[integration.id]
     db.commit()
 
     message = (
