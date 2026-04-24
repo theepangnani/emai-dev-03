@@ -25,7 +25,9 @@ export function useChildOverdueCounts(
   { enabled = true }: UseChildOverdueCountsOptions = {},
 ): Map<number, number> {
   const { data } = useQuery({
-    queryKey: ['parent-dashboard-overdue-counts'],
+    // #4028: Shared with any future useParentDashboard React Query
+    // consumer so one HTTP call feeds both surfaces.
+    queryKey: ['parent-dashboard'],
     queryFn: () => parentApi.getDashboard(),
     enabled,
     staleTime: 60_000,
@@ -42,14 +44,11 @@ export function useChildOverdueCounts(
     for (const child of children) {
       let overdue = 0;
       for (const t of allTasks) {
-        const assignedTo = (t as { assigned_to_user_id?: number | null }).assigned_to_user_id;
-        const createdBy = (t as { created_by_user_id?: number | null }).created_by_user_id;
-        if (assignedTo !== child.user_id && createdBy !== child.user_id) continue;
-        if ((t as { is_completed?: boolean }).is_completed) continue;
-        if ((t as { archived_at?: string | null }).archived_at) continue;
-        const dueDate = (t as { due_date?: string | null }).due_date;
-        if (!dueDate) continue;
-        const dateStr = dueDate.length === 10 ? `${dueDate}T00:00:00` : dueDate;
+        if (t.assigned_to_user_id !== child.user_id && t.created_by_user_id !== child.user_id) continue;
+        if (t.is_completed) continue;
+        if (t.archived_at) continue;
+        if (!t.due_date) continue;
+        const dateStr = t.due_date.length === 10 ? `${t.due_date}T00:00:00` : t.due_date;
         if (new Date(dateStr) < todayStart) overdue += 1;
       }
       if (overdue > 0) map.set(child.student_id, overdue);
