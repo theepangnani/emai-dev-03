@@ -28,6 +28,20 @@ function getXpForAttempt(attempt: number): number {
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
 
+/**
+ * Normalize fill_blank / short_answer typed input for comparison:
+ *  - lowercase
+ *  - strip punctuation
+ *  - collapse whitespace
+ * Articles (a/an/the) are intentionally NOT stripped — see #3265 for the
+ * edge case where stripping articles broke answers like "the" itself.
+ */
+const normalizeAnswer = (s: string) =>
+  s.trim()
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ');
+
 export interface ASGFQuizBridgeProps {
   questions: ASGFQuizQuestion[];
   sessionId: string;
@@ -118,7 +132,7 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
     if (!trimmed) return;
 
     const canonical = question.options[question.correct_index] ?? '';
-    const isCorrect = trimmed.toLowerCase() === canonical.trim().toLowerCase();
+    const isCorrect = normalizeAnswer(trimmed) === normalizeAnswer(canonical);
     const newAttempts = state.attempts + 1;
 
     setQuestionStates((prev) => {
@@ -282,7 +296,7 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
             disabled={state.isCorrect}
             autoComplete="off"
             spellCheck={false}
-            maxLength={500}
+            maxLength={format === 'fill_blank' ? 200 : 500}
             aria-describedby={`${inputId}-hint`}
           />
           <span id={`${inputId}-hint`} className="asgf-quiz-visually-hidden">
