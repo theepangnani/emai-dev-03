@@ -46,6 +46,35 @@
   color: var(--color-text-secondary, #6b7280);
 }
 
+.ed-kid-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.ed-kid-chip {
+  appearance: none;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text-primary, #111827);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ed-kid-chip:hover {
+  border-color: var(--color-primary, #2563eb);
+}
+
+.ed-kid-chip--active {
+  background: var(--color-primary, #2563eb);
+  border-color: var(--color-primary, #2563eb);
+  color: #ffffff;
+}
+
 .ed-loading {
   text-align: center;
   padding: 48px 0;
