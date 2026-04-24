@@ -479,6 +479,237 @@ def test_load_history_skips_unpaired_assistant_rows(db_session):
         assert history[i + 1]["role"] == "assistant"
 
 
+def test_stream_unknown_conversation_id_returns_404(client, db_session):
+    """An unknown conversation_id must NOT silently start a new conversation.
+
+    Previously the route would look up the row, fail to find it, leave
+    `conversation = None`, and then create a brand-new conversation in the
+    generator — masking client bugs and yielding a surprising mismatch
+    between the supplied id and the id echoed in the `done` frame.
+    """
+    from app.models.tutor import TutorConversation
+
+    _make_user(db_session, email="tutor_unknown_cid@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_unknown_cid@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={
+                    "message": "hi",
+                    "conversation_id": "does-not-exist-xyz",
+                },
+                headers=headers,
+            )
+
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "conversation_not_found"
+        # And no conversation row was created.
+        convs = (
+            db_session.query(TutorConversation)
+            .filter(TutorConversation.id == "does-not-exist-xyz")
+            .count()
+        )
+        assert convs == 0
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_cross_user_conversation_id_returns_404(client, db_session):
+    """A conversation_id owned by a DIFFERENT user must return 404 (not leak).
+
+    The row exists — but for someone else. The endpoint must treat it as
+    not-found from the caller's perspective rather than letting the second
+    user inject messages into another user's conversation.
+    """
+    from app.models.tutor import TutorConversation
+
+    owner = _make_user(db_session, email="tutor_cid_owner@test.com")
+    _make_user(db_session, email="tutor_cid_other@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    # Seed a conversation owned by `owner`.
+    owned = TutorConversation(id="owned-by-alice", user_id=owner.id)
+    db_session.add(owned)
+    db_session.commit()
+
+    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_cid_other@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={
+                    "message": "hi",
+                    "conversation_id": "owned-by-alice",
+                },
+                headers=headers,
+            )
+
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "conversation_not_found"
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_flag_off_returns_403_before_rate_limit(client, db_session, app):
+    """Flag-off must short-circuit with 403 BEFORE the rate limiter decrements.
+
+    The flag is enforced via a FastAPI `Depends()` that runs before the
+    `@limiter.limit` decorator; this test enables the limiter and then
+    asserts that repeated flag-off calls all return 403 (not 429), which
+    could only happen if the flag check ran first.
+    """
+    _make_user(db_session, email="tutor_flagoff_rl@test.com")
+    _set_tutor_flag(db_session, enabled=False)
+
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        headers = _auth(client, "tutor_flagoff_rl@test.com")
+        # Far more than 20 — the limit is 20/hour. If the decorator fired
+        # first we'd see 429 before this loop ended. All must be 403.
+        for _ in range(25):
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "blocked by flag"},
+                headers=headers,
+            )
+            assert resp.status_code == 403
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
+
+
+def test_stream_inter_token_stall_emits_error_frame(client, db_session):
+    """A mid-stream hang (no token within INTER_TOKEN_TIMEOUT) emits an
+    SSE `error` frame rather than blocking the connection forever."""
+    import asyncio as _asyncio
+
+    _make_user(db_session, email="tutor_stall@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    # An async stream whose `__anext__` never resolves — we patch
+    # asyncio.wait_for to raise TimeoutError immediately instead of
+    # actually waiting 15 seconds.
+    class _HangingStream:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            # Simulate a stall; wait_for will fire TimeoutError via the patch.
+            await _asyncio.sleep(60)
+
+    async def _create(*args, **kwargs):
+        return _HangingStream()
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(side_effect=_create)
+    mod_result = MagicMock()
+    mod_result.flagged = False
+    mod_result.categories.model_dump.return_value = {"hate": False}
+    mod_response = MagicMock()
+    mod_response.results = [mod_result]
+    mock_client.moderations.create = AsyncMock(return_value=mod_response)
+
+    # Patch asyncio.wait_for inside the tutor module so the stall trips
+    # immediately without making the test actually wait 15s.
+    async def _instant_timeout(awaitable, timeout):
+        # Cancel the pending awaitable and raise as real wait_for would.
+        try:
+            if hasattr(awaitable, "close"):
+                awaitable.close()
+        except Exception:
+            pass
+        raise _asyncio.TimeoutError()
+
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ), patch(
+            "app.api.routes.tutor.asyncio.wait_for", side_effect=_instant_timeout
+        ):
+            headers = _auth(client, "tutor_stall@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "please stall"},
+                headers=headers,
+            )
+
+        assert resp.status_code == 200
+        body = resp.text
+        assert '"type": "error"' in body
+        assert '"code": "timeout"' in body
+        # No tokens ever emitted.
+        assert '"type": "token"' not in body
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
+def test_load_history_stable_order_on_timestamp_tie(db_session):
+    """Two rows with identical created_at must pair deterministically.
+
+    Without a tiebreak on `id`, SQLite's natural order is implementation-
+    defined and the (user, assistant) pairing flips across calls. The
+    route adds `.order_by(desc(created_at), desc(id))` to guarantee
+    stable pairing.
+    """
+    from datetime import datetime, timezone
+
+    from app.api.routes.tutor import _load_history
+    from app.core.security import get_password_hash
+    from app.models.tutor import TutorConversation, TutorMessage
+    from app.models.user import User, UserRole
+
+    user = User(
+        email="tutor_tiebreak@test.com",
+        full_name="Tiebreak",
+        role=UserRole.STUDENT,
+        hashed_password=get_password_hash(PASSWORD),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    conv = TutorConversation(id="conv-tiebreak", user_id=user.id)
+    db_session.add(conv)
+    db_session.commit()
+
+    # Two rows with IDENTICAL created_at — realistic under bulk inserts.
+    same_ts = datetime(2026, 2, 2, 12, 0, 0, tzinfo=timezone.utc)
+    db_session.add(
+        TutorMessage(
+            id="msg-a-user",
+            conversation_id=conv.id,
+            role="user",
+            content="q_same_ts",
+            created_at=same_ts,
+        )
+    )
+    db_session.add(
+        TutorMessage(
+            id="msg-b-assistant",
+            conversation_id=conv.id,
+            role="assistant",
+            content="a_same_ts",
+            created_at=same_ts,
+        )
+    )
+    db_session.commit()
+
+    # Calling twice must return the SAME result (stable order).
+    h1 = _load_history(db_session, conv.id)
+    h2 = _load_history(db_session, conv.id)
+    assert h1 == h2
+
+
 def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
     """With the limiter enabled, the 21st request in an hour returns 429."""
     _make_user(db_session, email="tutor_rl@test.com")
