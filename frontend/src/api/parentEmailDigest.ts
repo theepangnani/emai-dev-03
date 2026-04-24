@@ -171,3 +171,84 @@ export async function verifyWhatsAppOTP(
 export async function disconnectWhatsApp(integrationId: number): Promise<void> {
   await api.delete(`/api/parent/email-digest/integrations/${integrationId}/whatsapp`);
 }
+
+// Unified multi-kid digest v2 (#4012)
+// -----------------------------------------------------------------------------
+// Parent-level (not integration-level) child profiles, school emails, and
+// monitored senders. Server endpoints from Stream 2 (#4014).
+
+export interface ChildSchoolEmail {
+  id: number;
+  child_profile_id: number;
+  email_address: string;
+  /** ISO timestamp of last matched forwarded message, null if never seen. */
+  forwarding_seen_at: string | null;
+  created_at: string;
+}
+
+export interface ChildProfile {
+  id: number;
+  parent_id: number;
+  student_id: number | null;
+  first_name: string;
+  school_emails: ChildSchoolEmail[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MonitoredSenderAssignment {
+  child_profile_id: number;
+  first_name: string;
+}
+
+export interface MonitoredSender {
+  id: number;
+  parent_id: number;
+  email_address: string;
+  sender_name: string | null;
+  label: string | null;
+  /** When true, sender applies to ALL current + future kids. */
+  applies_to_all: boolean;
+  /** Populated only when applies_to_all=false. */
+  assignments: MonitoredSenderAssignment[];
+  created_at: string;
+}
+
+/** Either "all" (applies_to_all=true) or an explicit list of child_profile ids. */
+export type SenderKidSelection = 'all' | number[];
+
+export interface AddMonitoredSenderPayload {
+  email_address: string;
+  sender_name?: string;
+  label?: string;
+  child_profile_ids: SenderKidSelection;
+}
+
+export const listChildProfiles = () =>
+  api.get<ChildProfile[]>('/api/parent/child-profiles');
+
+export const addChildSchoolEmail = (profileId: number, email_address: string) =>
+  api.post<ChildSchoolEmail>(
+    `/api/parent/child-profiles/${profileId}/school-emails`,
+    { email_address },
+  );
+
+export const removeChildSchoolEmail = (profileId: number, emailId: number) =>
+  api.delete(`/api/parent/child-profiles/${profileId}/school-emails/${emailId}`);
+
+export const listMonitoredSenders = () =>
+  api.get<MonitoredSender[]>('/api/parent/monitored-senders');
+
+export const addMonitoredSender = (data: AddMonitoredSenderPayload) =>
+  api.post<MonitoredSender>('/api/parent/monitored-senders', data);
+
+export const removeMonitoredSender = (id: number) =>
+  api.delete(`/api/parent/monitored-senders/${id}`);
+
+export const updateSenderAssignments = (
+  id: number,
+  child_profile_ids: SenderKidSelection,
+) =>
+  api.patch<MonitoredSender>(`/api/parent/monitored-senders/${id}`, {
+    child_profile_ids,
+  });
