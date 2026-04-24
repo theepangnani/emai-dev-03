@@ -1,11 +1,18 @@
 /**
- * useChildOverdueCounts — #4028 query-cache dedupe guard.
+ * useChildOverdueCounts (#4028 → revised under #4036).
  *
- * Verifies that the hook:
- *  1. Uses the shared ['parent-dashboard'] queryKey so React Query
- *     dedupes its fetch with any co-located parent-dashboard consumer.
- *  2. Computes the overdue map correctly from the dashboard payload
- *     (no fields are lost when the Task type is tightened upstream).
+ * Verifies that the hook computes the overdue map correctly from the
+ * dashboard payload (no fields are lost when the Task type is tightened
+ * upstream).
+ *
+ * NOTE: the original #4028 test asserted a shared `['parent-dashboard']`
+ * queryKey for React Query dedupe with `useParentDashboard`. That dedupe
+ * never actually fires today — `useParentDashboard` uses useState + a
+ * `loadDashboard()` imperative fetch, not React Query — so the assertion
+ * was false reassurance. Investigation under #4036 downgraded the key to
+ * "reserved for a future migration" and removed the cache-key-sharing
+ * assertion. The lockstep guarantee now comes from the shared
+ * `computeChildOverdueCounts` util (see `utils/overdue.ts`).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -26,35 +33,9 @@ function makeWrapper() {
   return { Wrapper, queryClient };
 }
 
-describe('useChildOverdueCounts (#4028)', () => {
+describe('useChildOverdueCounts (#4036)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it("uses the shared ['parent-dashboard'] queryKey for dedupe", async () => {
-    const spy = vi.spyOn(parentApi, 'getDashboard').mockResolvedValue({
-      children: [],
-      google_connected: false,
-      unread_messages: 0,
-      total_overdue: 0,
-      total_due_today: 0,
-      total_tasks: 0,
-      child_highlights: [],
-      all_assignments: [],
-      all_tasks: [],
-    } as never);
-
-    const { Wrapper, queryClient } = makeWrapper();
-    renderHook(() => useChildOverdueCounts(), { wrapper: Wrapper });
-
-    await waitFor(() => expect(spy).toHaveBeenCalled());
-    const cached = queryClient.getQueryCache().find({ queryKey: ['parent-dashboard'] });
-    expect(cached).toBeDefined();
-    // Guard against regression to the old per-hook key.
-    const stale = queryClient.getQueryCache().find({
-      queryKey: ['parent-dashboard-overdue-counts'],
-    });
-    expect(stale).toBeUndefined();
   });
 
   it('computes overdue counts per child from dashboard payload', async () => {
