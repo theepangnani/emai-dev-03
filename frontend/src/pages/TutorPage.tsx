@@ -329,7 +329,9 @@ export function TutorPage() {
     (newMode: TutorMode) => {
       if (newMode === 'drill' && mode === 'explain') {
         const lastUserMsg = [...chatMessages].reverse().find((m) => m.role === 'user');
-        if (lastUserMsg) {
+        // Guard: don't clobber a topic the user has already been editing in
+        // the custom field. First-flip behaviour (empty topic) unchanged.
+        if (lastUserMsg && !drillCustom.topic.trim()) {
           setDrillUseCustom(true);
           setDrillCustom({
             subject: '',
@@ -350,7 +352,7 @@ export function TutorPage() {
         { replace: true },
       );
     },
-    [mode, chatMessages, setSearchParams],
+    [mode, chatMessages, drillCustom.topic, setSearchParams],
   );
 
   const handleSurpriseMe = useCallback(async () => {

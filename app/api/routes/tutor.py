@@ -99,12 +99,14 @@ _CHIP_ITEM_RE = re.compile(r'"([^"]*)"')
 # buffered "[[..." prefix is actually the start of a chips block (suppress
 # from token frames) or just a literal "[[" in the assistant's text
 # (flush it back to the token stream).
-_CHIPS_START_RE = re.compile(r"\[\[\s*CHIPS\b", re.IGNORECASE)
+# Cap whitespace in the CHIPS-start probe so the probe length is provably
+# sufficient. Aligned with _CHIPS_PROBE_MAX below.
+_CHIPS_START_RE = re.compile(r"\[\[\s{0,10}CHIPS\b", re.IGNORECASE)
 # A "[[" could be the start of a CHIPS block as soon as we've collected
-# enough characters to disambiguate "[[ CHIPS" (with optional whitespace).
+# enough characters to disambiguate "[[ CHIPS" (with up to 10 whitespace chars).
 # If the buffer grows past this length without matching, we can safely
 # flush it back to the token stream — the model emitted a literal "[[".
-_CHIPS_PROBE_MAX = len("[[    CHIPS")
+_CHIPS_PROBE_MAX = len("[[") + 10 + len("CHIPS")
 
 
 def _sse(payload: dict) -> str:
@@ -376,6 +378,15 @@ async def tutor_chat_stream(
                 if not _CHIPS_START_RE.match(chip_buffer):
                     yield _sse({"type": "token", "text": chip_buffer})
                 chip_buffer = ""
+            # Observability: stream ended while still inside an unterminated
+            # CHIPS block (no closing `]]`). DB still has the full response
+            # so server-side chip extraction via _parse_chips still works,
+            # but the client gets no chips for this turn.
+            if in_chips and chip_buffer:
+                logger.warning(
+                    "Unterminated CHIPS buffer dropped from stream: %r",
+                    chip_buffer[:200],
+                )
         except asyncio.TimeoutError as exc:
             logger.warning("Tutor OpenAI inter-token stall: %s", exc)
             yield _sse(
