@@ -78,6 +78,20 @@ def seed_features(db: Session) -> int:
             "enabled": False,
             "variant": "off",
         },
+        {
+            "key": "tutor_chat_enabled",
+            "name": "Tutor Chat",
+            "description": "Gate for CB-TUTOR-002 Phase 1 chat-first Q&A. Paywall-relevant.",
+            "enabled": False,
+            "variant": "off",
+        },
+        {
+            "key": "learning_cycle_enabled",
+            "name": "Learning Cycle",
+            "description": "Gate for CB-TUTOR-002 Phase 2 learning-cycle flow.",
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:
