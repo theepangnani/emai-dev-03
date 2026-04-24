@@ -87,14 +87,22 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
   const [completed, setCompleted] = useState(false);
   const [fillBlankDraft, setFillBlankDraft] = useState('');
   const fillBlankInputRef = useRef<HTMLInputElement>(null);
+  const firstQuestionRef = useRef(true);
 
   const question = questions[currentIndex];
   const state = questionStates[currentIndex];
   const format = question?.format ?? 'multiple_choice';
 
-  // Reset typed-answer draft + focus fill-blank input on question change
+  // Reset typed-answer draft + focus fill-blank input on question change.
+  // Skip first render: the draft is already '' from useState initializer, so
+  // there's nothing to reset on mount — only reset when the user navigates
+  // to a different question (#4025 S-P2-5).
   useEffect(() => {
-    setFillBlankDraft(''); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on question change
+    if (firstQuestionRef.current) {
+      firstQuestionRef.current = false;
+    } else {
+      setFillBlankDraft(''); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on question change
+    }
     if (format === 'fill_blank' || format === 'short_answer') {
       fillBlankInputRef.current?.focus();
     }

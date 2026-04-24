@@ -22,6 +22,9 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
   const [pulsing, setPulsing] = useState(false);
   const prevXpRef = useRef(xp);
 
+  // Only `xp` triggers the tick animation. Streak updates are announced on the
+  // next render via the sr-only aria-atomic sibling (line ~109); no separate
+  // effect needed. Intentional.
   useEffect(() => {
     const prev = prevXpRef.current;
     const diff = xp - prev;

@@ -163,7 +163,7 @@ export function TutorPage() {
 
   // Hero XP/streak badge data (#4019). Fetched for every authenticated user;
   // the badge itself is hidden by default when xp_total=0 AND streak_days<2.
-  const { data: xpSummary } = useQuery({
+  const { data: xpSummary, error: xpSummaryError } = useQuery({
     queryKey: ['user-xp-summary'],
     queryFn: () =>
       api
@@ -172,6 +172,14 @@ export function TutorPage() {
     enabled: !!user,
     staleTime: 60_000,
   });
+
+  // Surface XP fetch failures so the silently-hidden badge doesn't hide
+  // real API regressions (#4025 S-P2-4).
+  useEffect(() => {
+    if (xpSummaryError) {
+      console.warn('[TutorPage] XP summary fetch failed:', xpSummaryError);
+    }
+  }, [xpSummaryError]);
 
   // Drill mode — parent child selector (#3970)
   const { data: parentChildren = [] } = useQuery({

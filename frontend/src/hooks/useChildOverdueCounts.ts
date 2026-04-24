@@ -44,6 +44,10 @@ export function useChildOverdueCounts(
     for (const child of children) {
       let overdue = 0;
       for (const t of allTasks) {
+        // Match tasks by either assigned-to OR created-by (mirrors dashboard
+        // computation at components/parent/useParentDashboard.ts:419-434).
+        // Parents creating tasks for themselves + assigning to kids won't
+        // double-count because they're separate user_ids.
         if (t.assigned_to_user_id !== child.user_id && t.created_by_user_id !== child.user_id) continue;
         if (t.is_completed) continue;
         if (t.archived_at) continue;
