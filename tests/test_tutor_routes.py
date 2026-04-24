@@ -223,6 +223,54 @@ def test_stream_moderation_blocked_emits_error_event(client, db_session):
         _set_tutor_flag(db_session, enabled=False)
 
 
+def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
+    """Persistence in the generator must use a fresh SessionLocal that is
+    opened and closed inside the generator — protects against silent write
+    loss if the request-scoped session closes before streaming completes
+    (#4079).
+    """
+    from app.db import database as _database_mod
+
+    _make_user(db_session, email="tutor_sl@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    real_sessionlocal = _database_mod.SessionLocal
+    created_sessions: list = []
+
+    def _tracking_factory(*args, **kwargs):
+        session = real_sessionlocal(*args, **kwargs)
+        created_sessions.append(session)
+        return session
+
+    mock_client = _mock_openai_client(stream_pieces=["Hello"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ), patch(
+            "app.api.routes.tutor.SessionLocal", side_effect=_tracking_factory
+        ) as session_local_spy:
+            headers = _auth(client, "tutor_sl@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "Hi"},
+                headers=headers,
+            )
+            assert resp.status_code == 200
+            # Consume the stream so the generator runs to completion.
+            _ = resp.text
+
+            # The generator opened its own SessionLocal at least once and
+            # the created session(s) are no longer active (closed in finally).
+            assert session_local_spy.call_count >= 1
+            assert created_sessions, "generator did not open a SessionLocal"
+            for s in created_sessions:
+                # A closed SQLAlchemy session's `is_active` becomes False
+                # after .close() in the common dev (SQLite) configuration.
+                assert not s.in_transaction()
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
 def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
     """With the limiter enabled, the 21st request in an hour returns 429."""
     _make_user(db_session, email="tutor_rl@test.com")

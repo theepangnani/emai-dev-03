@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.rate_limit import get_user_id_or_ip, limiter
-from app.db.database import get_db
+from app.db.database import SessionLocal, get_db
 from app.models.tutor import TutorConversation, TutorMessage
 from app.models.user import User
 from app.schemas.tutor import TutorChatRequest
@@ -219,8 +219,11 @@ async def tutor_chat_stream(
         assistant_content = "".join(collected).strip()
 
         # Persist the turn (user + assistant) once streaming completes.
+        # Use a fresh SessionLocal rather than the request-scoped `db`, which
+        # may already be closed by the time the generator's finally runs.
+        stream_db = SessionLocal()
         try:
-            db.add(
+            stream_db.add(
                 TutorMessage(
                     id=str(uuid.uuid4()),
                     conversation_id=conversation.id,
@@ -229,7 +232,7 @@ async def tutor_chat_stream(
                 )
             )
             if assistant_content:
-                db.add(
+                stream_db.add(
                     TutorMessage(
                         id=assistant_message_id,
                         conversation_id=conversation.id,
@@ -237,13 +240,15 @@ async def tutor_chat_stream(
                         content=assistant_content,
                     )
                 )
-            db.commit()
+            stream_db.commit()
         except Exception:
-            db.rollback()
+            stream_db.rollback()
             logger.exception(
                 "Tutor failed to persist conversation turn (conv=%s)",
                 conversation.id,
             )
+        finally:
+            stream_db.close()
 
         yield _sse("chips", {"chips": SUGGESTION_CHIPS})
         yield _sse(

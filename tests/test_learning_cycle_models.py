@@ -73,7 +73,7 @@ class TestLearningCycleSchema:
         assert cols >= {
             "id",
             "session_id",
-            "order",
+            "order_index",
             "teach_content_md",
             "mastery_status",
         }
@@ -86,7 +86,7 @@ class TestLearningCycleSchema:
         assert cols >= {
             "id",
             "chunk_id",
-            "order",
+            "order_index",
             "format",
             "prompt",
             "options",
@@ -141,7 +141,7 @@ class TestLearningCycleCrud:
 
         chunk = LearningCycleChunk(
             session_id=session.id,
-            order=0,
+            order_index=0,
             teach_content_md="# What is a fraction?\n\nA fraction is...",
         )
         db_session.add(chunk)
@@ -149,7 +149,7 @@ class TestLearningCycleCrud:
 
         q = LearningCycleQuestion(
             chunk_id=chunk.id,
-            order=0,
+            order_index=0,
             format="mcq",
             prompt="Which of these is a fraction?",
             options={"A": "1/2", "B": "5", "C": "cat", "D": "-"},
@@ -193,13 +193,13 @@ class TestLearningCycleCrud:
         user = _make_user(db_session, "lc_user3@test.com")
         session = _make_session(db_session, user.id)
         chunk = LearningCycleChunk(
-            session_id=session.id, order=0, teach_content_md="x"
+            session_id=session.id, order_index=0, teach_content_md="x"
         )
         db_session.add(chunk)
         db_session.flush()
         q = LearningCycleQuestion(
             chunk_id=chunk.id,
-            order=0,
+            order_index=0,
             format="true_false",
             prompt="The sky is blue.",
             correct_answer="true",
@@ -231,13 +231,13 @@ class TestLearningCycleCascades:
         user = _make_user(db_session, "lc_casc@test.com")
         session = _make_session(db_session, user.id)
         chunk = LearningCycleChunk(
-            session_id=session.id, order=0, teach_content_md="x"
+            session_id=session.id, order_index=0, teach_content_md="x"
         )
         db_session.add(chunk)
         db_session.flush()
         q = LearningCycleQuestion(
             chunk_id=chunk.id,
-            order=0,
+            order_index=0,
             format="fill_blank",
             prompt="2+2=___",
             correct_answer="4",
@@ -325,7 +325,7 @@ class TestLearningCycleEnumConstraints:
         session = _make_session(db_session, user.id)
         chunk = LearningCycleChunk(
             session_id=session.id,
-            order=0,
+            order_index=0,
             teach_content_md="x",
             mastery_status="bogus",
         )
@@ -343,13 +343,13 @@ class TestLearningCycleEnumConstraints:
         user = _make_user(db_session, "lc_badformat@test.com")
         session = _make_session(db_session, user.id)
         chunk = LearningCycleChunk(
-            session_id=session.id, order=0, teach_content_md="x"
+            session_id=session.id, order_index=0, teach_content_md="x"
         )
         db_session.add(chunk)
         db_session.flush()
         q = LearningCycleQuestion(
             chunk_id=chunk.id,
-            order=0,
+            order_index=0,
             format="essay",  # invalid
             prompt="p",
             correct_answer="a",
@@ -369,7 +369,7 @@ class TestLearningCycleEnumConstraints:
         user = _make_user(db_session, "lc_goodformat@test.com")
         session = _make_session(db_session, user.id)
         chunk = LearningCycleChunk(
-            session_id=session.id, order=0, teach_content_md="x"
+            session_id=session.id, order_index=0, teach_content_md="x"
         )
         db_session.add(chunk)
         db_session.flush()
@@ -377,7 +377,7 @@ class TestLearningCycleEnumConstraints:
         for i, fmt in enumerate(("mcq", "true_false", "fill_blank")):
             q = LearningCycleQuestion(
                 chunk_id=chunk.id,
-                order=i,
+                order_index=i,
                 format=fmt,
                 prompt="p",
                 correct_answer="a",
@@ -386,3 +386,20 @@ class TestLearningCycleEnumConstraints:
             db_session.add(q)
         db_session.commit()
         assert len(chunk.questions) == 3
+
+
+class TestLearningCycleReservedWordRegression:
+    """Regression guard — `order` is a SQL reserved word; columns must be
+    `order_index` on both LearningCycleChunk and LearningCycleQuestion."""
+
+    def test_chunk_has_order_index_not_order(self):
+        from app.models.learning_cycle import LearningCycleChunk
+
+        assert hasattr(LearningCycleChunk, "order_index")
+        assert not hasattr(LearningCycleChunk, "order")
+
+    def test_question_has_order_index_not_order(self):
+        from app.models.learning_cycle import LearningCycleQuestion
+
+        assert hasattr(LearningCycleQuestion, "order_index")
+        assert not hasattr(LearningCycleQuestion, "order")

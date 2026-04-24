@@ -35,6 +35,8 @@ from app.core.config import settings
 from app.db.database import Base
 
 
+# NOTE: _IS_PG is evaluated at module import; tests that need dialect-specific
+# behaviour should rely on a fresh interpreter rather than monkeypatching settings.
 _IS_PG = "sqlite" not in settings.database_url
 
 
@@ -118,7 +120,7 @@ class LearningCycleSession(Base):
         "LearningCycleChunk",
         back_populates="session",
         cascade="all, delete-orphan",
-        order_by="LearningCycleChunk.order",
+        order_by="LearningCycleChunk.order_index",
     )
 
     __table_args__ = (
@@ -140,7 +142,7 @@ class LearningCycleChunk(Base):
         "learning_cycle_sessions.id",
         ondelete="CASCADE",
     )
-    order = Column(Integer, nullable=False)
+    order_index = Column(Integer, nullable=False)
     teach_content_md = Column(Text, nullable=False)
     # mastery_status: 'pending' | 'passed' | 'moved_on'
     mastery_status = Column(
@@ -156,7 +158,7 @@ class LearningCycleChunk(Base):
         "LearningCycleQuestion",
         back_populates="chunk",
         cascade="all, delete-orphan",
-        order_by="LearningCycleQuestion.order",
+        order_by="LearningCycleQuestion.order_index",
     )
 
     __table_args__ = (
@@ -167,7 +169,7 @@ class LearningCycleChunk(Base):
         Index(
             "ix_learning_cycle_chunks_session_order",
             "session_id",
-            "order",
+            "order_index",
         ),
     )
 
@@ -182,7 +184,7 @@ class LearningCycleQuestion(Base):
         "learning_cycle_chunks.id",
         ondelete="CASCADE",
     )
-    order = Column(Integer, nullable=False)
+    order_index = Column(Integer, nullable=False)
     # format: 'mcq' | 'true_false' | 'fill_blank'
     format = Column(String(20), nullable=False)
     prompt = Column(Text, nullable=False)
@@ -207,7 +209,7 @@ class LearningCycleQuestion(Base):
         Index(
             "ix_learning_cycle_questions_chunk_order",
             "chunk_id",
-            "order",
+            "order_index",
         ),
     )
 
