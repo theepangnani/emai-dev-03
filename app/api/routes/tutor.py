@@ -21,10 +21,12 @@ Each frame is ``data: <json>\\n\\n`` where ``<json>`` is one of:
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
 import uuid
+from functools import lru_cache
 from typing import AsyncIterator
 
 import openai
@@ -53,6 +55,35 @@ MODEL = "gpt-4o-mini"
 MAX_HISTORY_PAIRS = 3  # last N (user, assistant) pairs to include as context
 MAX_RESPONSE_TOKENS = 800
 CREDITS_PER_MESSAGE = 0.25
+# Max seconds to wait between consecutive tokens from the OpenAI stream
+# before we abort — guards against the upstream hanging mid-response.
+INTER_TOKEN_TIMEOUT = 15.0
+
+
+@lru_cache(maxsize=32)
+def _cached_system_prompt(grade_level: int | None) -> str:
+    """Memoized wrapper around `build_system_prompt` (same prompt per grade)."""
+    return build_system_prompt(grade_level)
+
+
+def _check_tutor_flag(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Dependency that enforces the `tutor_chat_enabled` flag.
+
+    Depends on `get_current_user` first so that unauthenticated callers
+    get the expected 401 (from auth) before we ever read the flag.
+    Runs BEFORE the `@limiter.limit(...)` decorator on the route, so a
+    disabled flag returns 403 without consuming a rate-limit slot.
+    """
+    _ = current_user  # silence unused — presence of this dep forces auth first
+    if not is_feature_enabled(FEATURE_FLAG_KEY, db=db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tutor chat is currently disabled",
+        )
+
 
 # Matches the trailing suggestion-chip block emitted by the model, e.g.
 #   [[CHIPS: "chip1", "chip2", "chip3"]]
@@ -100,7 +131,9 @@ def _load_history(
     rows = (
         db.query(TutorMessage)
         .filter(TutorMessage.conversation_id == conversation_id)
-        .order_by(desc(TutorMessage.created_at))
+        # Stable tiebreak on id — when two rows share a created_at
+        # (same-second inserts) the pairing must be deterministic across calls.
+        .order_by(desc(TutorMessage.created_at), desc(TutorMessage.id))
         .limit(max_pairs * 4)  # over-sample to survive retries
         .all()
     )
@@ -140,7 +173,13 @@ def _context_dict(body: TutorChatRequest) -> dict:
 async def _stream_completion(
     system_prompt: str, user_prompt: str
 ) -> AsyncIterator[str]:
-    """Yield token deltas from the OpenAI chat completion stream."""
+    """Yield token deltas from the OpenAI chat completion stream.
+
+    Each `anext` on the underlying stream is wrapped in
+    ``asyncio.wait_for(..., INTER_TOKEN_TIMEOUT)`` so a stalled upstream
+    surfaces as ``openai.APITimeoutError`` rather than hanging the SSE
+    connection indefinitely.
+    """
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=30.0)
     stream = await client.chat.completions.create(
         model=MODEL,
@@ -152,7 +191,19 @@ async def _stream_completion(
         max_tokens=MAX_RESPONSE_TOKENS,
         stream=True,
     )
-    async for chunk in stream:
+    stream_iter = stream.__aiter__()
+    while True:
+        try:
+            chunk = await asyncio.wait_for(
+                stream_iter.__anext__(), timeout=INTER_TOKEN_TIMEOUT
+            )
+        except StopAsyncIteration:
+            return
+        except asyncio.TimeoutError as exc:
+            # `openai.APITimeoutError.__init__` takes an httpx.Request; we
+            # don't have one handy from the stream iterator, so surface a
+            # plain asyncio.TimeoutError and let event_stream catch it.
+            raise exc
         if not chunk.choices:
             continue
         delta = chunk.choices[0].delta
@@ -160,7 +211,7 @@ async def _stream_completion(
             yield delta.content
 
 
-@router.post("/chat/stream")
+@router.post("/chat/stream", dependencies=[Depends(_check_tutor_flag)])
 @limiter.limit("20/hour", key_func=get_user_id_or_ip)
 async def tutor_chat_stream(
     request: Request,
@@ -168,16 +219,17 @@ async def tutor_chat_stream(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Stream a tutor response as Server-Sent Events (see module docstring)."""
-    if not is_feature_enabled(FEATURE_FLAG_KEY, db=db):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tutor chat is currently disabled",
-        )
+    """Stream a tutor response as Server-Sent Events (see module docstring).
 
+    The `tutor_chat_enabled` flag is enforced by ``_check_tutor_flag`` in
+    ``dependencies=[...]`` so that a disabled flag short-circuits with 403
+    BEFORE the rate limiter decrements the caller's quota.
+    """
     # Resolve (but DO NOT create) the conversation. Creation is deferred
     # until moderation passes so that blocked requests don't leave orphan
-    # rows in `tutor_conversations`.
+    # rows in `tutor_conversations`. An unknown or cross-user
+    # conversation_id is an explicit error — we must NOT silently create
+    # a brand-new conversation for the caller.
     conversation: TutorConversation | None = None
     if body.conversation_id:
         conversation = (
@@ -188,12 +240,17 @@ async def tutor_chat_stream(
             )
             .first()
         )
+        if conversation is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="conversation_not_found",
+            )
 
     history = (
         _load_history(db, conversation.id) if conversation is not None else []
     )
     context = _context_dict(body)
-    system_prompt = build_system_prompt(context.get("grade_level"))
+    system_prompt = _cached_system_prompt(context.get("grade_level"))
     user_prompt = build_user_prompt(body.message, history, context)
 
     # Run moderation before opening the stream so we can emit the error
@@ -231,6 +288,16 @@ async def tutor_chat_stream(
             async for delta in _stream_completion(system_prompt, user_prompt):
                 collected.append(delta)
                 yield _sse({"type": "token", "text": delta})
+        except asyncio.TimeoutError as exc:
+            logger.warning("Tutor OpenAI inter-token stall: %s", exc)
+            yield _sse(
+                {
+                    "type": "error",
+                    "code": "timeout",
+                    "text": "The tutor stopped responding. Please try again.",
+                }
+            )
+            return
         except (openai.APIError, openai.APITimeoutError, openai.RateLimitError) as exc:
             logger.warning("Tutor OpenAI stream error: %s", exc)
             yield _sse(
