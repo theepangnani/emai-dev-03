@@ -1,169 +1,39 @@
-"""Tests for CB-TUTOR-002 Phase 1 — POST /api/tutor/chat/stream (#4063).
+"""Streaming happy-path tests for POST /api/tutor/chat/stream (#4063).
+
+Split from the original ``test_tutor_routes.py`` (#4087 S-7).
 
 Covers
 ------
-1. test_stream_requires_auth — missing token returns 401
-2. test_stream_feature_flag_off_returns_403 — flag default-off gates the endpoint
-3. test_stream_happy_path_emits_sse_events — tokens, chips, done events
-4. test_stream_moderation_blocked_emits_error_event — moderation fails closed
-5. test_stream_rate_limit_exceeded_returns_429 — slowapi 20/hour per user
-
-Notes
------
-- Unique email per test to avoid collisions with the session-scoped DB.
-- `tutor_chat_enabled` flag is toggled per-test and reset in teardown —
-  do NOT leave it on; other tests rely on the default-off state.
-- OpenAI is patched at the module level (`app.api.routes.tutor.openai`).
+- test_stream_happy_path_emits_sse_events — tokens, chips, done events
+- test_stream_conversation_id_round_trips — conversation_id reuse
+- test_stream_uses_fresh_sessionlocal_for_persistence — #4079 regression
+- test_load_history_skips_unpaired_assistant_rows — history walker pairing
 """
 from __future__ import annotations
 
-from typing import AsyncIterator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from conftest import PASSWORD, _auth
+from tutor_helpers import make_user, mock_openai_client, set_tutor_flag
 
 
 @pytest.fixture(autouse=True)
 def _force_openai_key():
-    """Tutor endpoint calls OpenAI moderation + streaming.
-
-    Both call sites short-circuit when `settings.openai_api_key` is empty
-    (the default in tests), so we patch the setting to a dummy value so
-    our `openai.AsyncOpenAI` mock actually gets invoked. Reset after each
-    test so other tests stay in their default state. The safety service
-    reads its own `settings` import, so patch it there too.
-    """
+    """See tests/test_tutor_routes_auth.py for rationale."""
     with patch("app.api.routes.tutor.settings.openai_api_key", "sk-test-dummy"), patch(
         "app.services.safety_service.settings.openai_api_key", "sk-test-dummy"
     ):
         yield
 
 
-# ──────────────────────────────────────────────────────────────────────────
-# Helpers
-# ──────────────────────────────────────────────────────────────────────────
-
-
-def _set_tutor_flag(db_session, enabled: bool) -> None:
-    """Force the `tutor_chat_enabled` flag to the requested state."""
-    from app.models.feature_flag import FeatureFlag
-    from app.services.feature_seed_service import seed_features
-
-    seed_features(db_session)
-    flag = (
-        db_session.query(FeatureFlag)
-        .filter(FeatureFlag.key == "tutor_chat_enabled")
-        .first()
-    )
-    assert flag is not None, "tutor_chat_enabled must be seeded"
-    flag.enabled = bool(enabled)
-    db_session.commit()
-
-
-def _make_user(db_session, *, email: str):
-    from app.core.security import get_password_hash
-    from app.models.user import User, UserRole
-
-    existing = db_session.query(User).filter(User.email == email).first()
-    if existing:
-        return existing
-
-    user = User(
-        email=email,
-        full_name="Tutor Test",
-        role=UserRole.STUDENT,
-        hashed_password=get_password_hash(PASSWORD),
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
-
-
-class _FakeChunk:
-    def __init__(self, text: str):
-        delta = MagicMock()
-        delta.content = text
-        choice = MagicMock()
-        choice.delta = delta
-        self.choices = [choice]
-
-
-class _FakeAsyncStream:
-    def __init__(self, pieces: list[str]):
-        self._pieces = pieces
-
-    def __aiter__(self) -> AsyncIterator[_FakeChunk]:
-        return self._gen()
-
-    async def _gen(self):
-        for p in self._pieces:
-            yield _FakeChunk(p)
-
-
-def _mock_openai_client(
-    *, stream_pieces: list[str], moderation_flagged: bool = False
-) -> MagicMock:
-    """Build a mock for `openai.AsyncOpenAI(...)` with streaming + moderation."""
-    client = MagicMock()
-
-    # chat.completions.create — async, returns an async-iterable stream
-    async def _create(*args, **kwargs):
-        return _FakeAsyncStream(stream_pieces)
-
-    client.chat.completions.create = AsyncMock(side_effect=_create)
-
-    # moderations.create — async, returns a result with `.flagged`
-    # The safety_service reads `results[0].categories.model_dump()` so we
-    # provide a mock whose categories.model_dump() returns a dict.
-    mod_result = MagicMock()
-    mod_result.flagged = moderation_flagged
-    mod_result.categories.model_dump.return_value = (
-        {"hate": True} if moderation_flagged else {"hate": False}
-    )
-    mod_response = MagicMock()
-    mod_response.results = [mod_result]
-    client.moderations.create = AsyncMock(return_value=mod_response)
-
-    return client
-
-
-# ──────────────────────────────────────────────────────────────────────────
-# Tests
-# ──────────────────────────────────────────────────────────────────────────
-
-
-def test_stream_requires_auth(client):
-    """POST without an Authorization header returns 401."""
-    resp = client.post(
-        "/api/tutor/chat/stream",
-        json={"message": "Explain photosynthesis"},
-    )
-    assert resp.status_code == 401
-
-
-def test_stream_feature_flag_off_returns_403(client, db_session):
-    """With `tutor_chat_enabled` off, the endpoint returns 403."""
-    _make_user(db_session, email="tutor_flagoff@test.com")
-    _set_tutor_flag(db_session, enabled=False)
-
-    headers = _auth(client, "tutor_flagoff@test.com")
-    resp = client.post(
-        "/api/tutor/chat/stream",
-        json={"message": "Explain photosynthesis"},
-        headers=headers,
-    )
-    assert resp.status_code == 403
-
-
 def test_stream_happy_path_emits_sse_events(client, db_session):
     """Flag-on + mocked OpenAI streams token/chips/done SSE frames."""
-    _make_user(db_session, email="tutor_happy@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    make_user(db_session, email="tutor_happy@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
-    mock_client = _mock_openai_client(
+    mock_client = mock_openai_client(
         stream_pieces=[
             "Photo",
             "synthesis ",
@@ -214,15 +84,15 @@ def test_stream_happy_path_emits_sse_events(client, db_session):
         assistant_msg = next(m for m in latest.messages if m.role == "assistant")
         assert "[[CHIPS" not in assistant_msg.content
     finally:
-        _set_tutor_flag(db_session, enabled=False)
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_stream_conversation_id_round_trips(client, db_session):
     """A request with conversation_id reuses the same conversation row."""
-    _make_user(db_session, email="tutor_cid@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    make_user(db_session, email="tutor_cid@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
-    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    mock_client = mock_openai_client(stream_pieces=["ok"])
     try:
         with patch(
             "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
@@ -273,140 +143,7 @@ def test_stream_conversation_id_round_trips(client, db_session):
             )
             assert len(convs) == 1
     finally:
-        _set_tutor_flag(db_session, enabled=False)
-
-
-def test_stream_moderation_blocked_emits_safety_event(client, db_session):
-    """Flagged content emits a `safety` JSON frame and no token frames."""
-    _make_user(db_session, email="tutor_mod@test.com")
-    _set_tutor_flag(db_session, enabled=True)
-
-    mock_client = _mock_openai_client(
-        stream_pieces=["ignored"], moderation_flagged=True
-    )
-    try:
-        with patch(
-            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
-        ):
-            headers = _auth(client, "tutor_mod@test.com")
-            resp = client.post(
-                "/api/tutor/chat/stream",
-                json={"message": "harmful message"},
-                headers=headers,
-            )
-
-        assert resp.status_code == 200
-        body = resp.text
-        assert '"type": "safety"' in body
-        assert "moderation_blocked" in body
-        # No tokens emitted on block.
-        assert '"type": "token"' not in body
-    finally:
-        _set_tutor_flag(db_session, enabled=False)
-
-
-def test_stream_moderation_unavailable_emits_distinct_frame(client, db_session):
-    """When the moderation API raises (outage), fail-closed mode emits a
-    `moderation_unavailable` SSE frame — distinct from `moderation_blocked`
-    so the UI can show a retry message instead of a content-block message.
-    (#4084)"""
-    import openai as _openai
-
-    _make_user(db_session, email="tutor_mod_unavail@test.com")
-    _set_tutor_flag(db_session, enabled=True)
-
-    # Build a client whose moderations.create raises, but whose chat stream
-    # would work if reached. The route must NOT reach the chat stream.
-    client_mock = MagicMock()
-
-    async def _raise_mod(*args, **kwargs):
-        raise _openai.APITimeoutError(request=None)
-
-    client_mock.moderations.create = AsyncMock(side_effect=_raise_mod)
-
-    async def _create_chat(*args, **kwargs):
-        return _FakeAsyncStream(["should-not-appear"])
-
-    client_mock.chat.completions.create = AsyncMock(side_effect=_create_chat)
-
-    try:
-        with patch(
-            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=client_mock
-        ), patch(
-            "app.services.safety_service.settings.moderation_fail_mode", "closed"
-        ):
-            headers = _auth(client, "tutor_mod_unavail@test.com")
-            resp = client.post(
-                "/api/tutor/chat/stream",
-                json={"message": "Explain photosynthesis"},
-                headers=headers,
-            )
-
-        assert resp.status_code == 200
-        body = resp.text
-        assert '"type": "safety"' in body
-        assert "moderation_unavailable" in body
-        # Distinct from the generic blocked frame.
-        assert "moderation_blocked" not in body
-        # No tokens streamed when moderation is unavailable.
-        assert '"type": "token"' not in body
-    finally:
-        _set_tutor_flag(db_session, enabled=False)
-
-
-def test_stream_moderation_blocked_does_not_create_orphan_conversation(
-    client, db_session
-):
-    """Moderation-blocked requests must NOT persist a `tutor_conversations` row.
-
-    Previously the route created + committed a conversation BEFORE calling
-    moderation, leaving orphaned rows whenever the message was flagged.
-    """
-    from app.models.tutor import TutorConversation
-
-    _make_user(db_session, email="tutor_mod_orphan@test.com")
-    _set_tutor_flag(db_session, enabled=True)
-
-    user = (
-        db_session.query(
-            __import__("app.models.user", fromlist=["User"]).User
-        )
-        .filter_by(email="tutor_mod_orphan@test.com")
-        .first()
-    )
-    before = (
-        db_session.query(TutorConversation)
-        .filter(TutorConversation.user_id == user.id)
-        .count()
-    )
-
-    mock_client = _mock_openai_client(
-        stream_pieces=["ignored"], moderation_flagged=True
-    )
-    try:
-        with patch(
-            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
-        ):
-            headers = _auth(client, "tutor_mod_orphan@test.com")
-            resp = client.post(
-                "/api/tutor/chat/stream",
-                json={"message": "harmful message"},
-                headers=headers,
-            )
-        assert resp.status_code == 200
-        assert "moderation_blocked" in resp.text
-
-        db_session.expire_all()
-        after = (
-            db_session.query(TutorConversation)
-            .filter(TutorConversation.user_id == user.id)
-            .count()
-        )
-        assert after == before, (
-            "Blocked request should not create any tutor_conversations rows"
-        )
-    finally:
-        pass
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
@@ -417,8 +154,8 @@ def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
     """
     from app.db import database as _database_mod
 
-    _make_user(db_session, email="tutor_sl@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    make_user(db_session, email="tutor_sl@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
     real_sessionlocal = _database_mod.SessionLocal
     created_sessions: list = []
@@ -428,7 +165,7 @@ def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
         created_sessions.append(session)
         return session
 
-    mock_client = _mock_openai_client(stream_pieces=["Hello"])
+    mock_client = mock_openai_client(stream_pieces=["Hello"])
     try:
         with patch(
             "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
@@ -454,7 +191,7 @@ def test_stream_uses_fresh_sessionlocal_for_persistence(client, db_session):
                 # after .close() in the common dev (SQLite) configuration.
                 assert not s.in_transaction()
     finally:
-        _set_tutor_flag(db_session, enabled=False)
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_load_history_skips_unpaired_assistant_rows(db_session):
@@ -527,7 +264,6 @@ def test_load_history_skips_unpaired_assistant_rows(db_session):
         assert history[i]["role"] == "user"
         assert history[i + 1]["role"] == "assistant"
 
-
 def test_stream_unknown_conversation_id_returns_404(client, db_session):
     """An unknown conversation_id must NOT silently start a new conversation.
 
@@ -538,10 +274,10 @@ def test_stream_unknown_conversation_id_returns_404(client, db_session):
     """
     from app.models.tutor import TutorConversation
 
-    _make_user(db_session, email="tutor_unknown_cid@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    make_user(db_session, email="tutor_unknown_cid@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
-    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    mock_client = mock_openai_client(stream_pieces=["ok"])
     try:
         with patch(
             "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
@@ -566,7 +302,7 @@ def test_stream_unknown_conversation_id_returns_404(client, db_session):
         )
         assert convs == 0
     finally:
-        _set_tutor_flag(db_session, enabled=False)
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_stream_cross_user_conversation_id_returns_404(client, db_session):
@@ -578,16 +314,16 @@ def test_stream_cross_user_conversation_id_returns_404(client, db_session):
     """
     from app.models.tutor import TutorConversation
 
-    owner = _make_user(db_session, email="tutor_cid_owner@test.com")
-    _make_user(db_session, email="tutor_cid_other@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    owner = make_user(db_session, email="tutor_cid_owner@test.com")
+    make_user(db_session, email="tutor_cid_other@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
     # Seed a conversation owned by `owner`.
     owned = TutorConversation(id="owned-by-alice", user_id=owner.id)
     db_session.add(owned)
     db_session.commit()
 
-    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    mock_client = mock_openai_client(stream_pieces=["ok"])
     try:
         with patch(
             "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
@@ -605,45 +341,18 @@ def test_stream_cross_user_conversation_id_returns_404(client, db_session):
         assert resp.status_code == 404
         assert resp.json()["detail"] == "conversation_not_found"
     finally:
-        _set_tutor_flag(db_session, enabled=False)
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_stream_flag_off_returns_403_before_rate_limit(client, db_session, app):
-    """Flag-off must short-circuit with 403 BEFORE the rate limiter decrements.
-
-    The flag is enforced via a FastAPI `Depends()` that runs before the
-    `@limiter.limit` decorator; this test enables the limiter and then
-    asserts that repeated flag-off calls all return 403 (not 429), which
-    could only happen if the flag check ran first.
-    """
-    _make_user(db_session, email="tutor_flagoff_rl@test.com")
-    _set_tutor_flag(db_session, enabled=False)
-
-    app.state.limiter.enabled = True
-    app.state.limiter.reset()
-    try:
-        headers = _auth(client, "tutor_flagoff_rl@test.com")
-        # Far more than 20 — the limit is 20/hour. If the decorator fired
-        # first we'd see 429 before this loop ended. All must be 403.
-        for _ in range(25):
-            resp = client.post(
-                "/api/tutor/chat/stream",
-                json={"message": "blocked by flag"},
-                headers=headers,
-            )
-            assert resp.status_code == 403
-    finally:
-        app.state.limiter.enabled = False
-        app.state.limiter.reset()
-
 
 def test_stream_inter_token_stall_emits_error_frame(client, db_session):
     """A mid-stream hang (no token within INTER_TOKEN_TIMEOUT) emits an
     SSE `error` frame rather than blocking the connection forever."""
     import asyncio as _asyncio
 
-    _make_user(db_session, email="tutor_stall@test.com")
-    _set_tutor_flag(db_session, enabled=True)
+    make_user(db_session, email="tutor_stall@test.com")
+    set_tutor_flag(db_session, enabled=True)
 
     # An async stream whose `__anext__` never resolves — we patch
     # asyncio.wait_for to raise TimeoutError immediately instead of
@@ -699,7 +408,7 @@ def test_stream_inter_token_stall_emits_error_frame(client, db_session):
         # No tokens ever emitted.
         assert '"type": "token"' not in body
     finally:
-        _set_tutor_flag(db_session, enabled=False)
+        set_tutor_flag(db_session, enabled=False)
 
 
 def test_load_history_stable_order_on_timestamp_tie(db_session):
@@ -760,36 +469,3 @@ def test_load_history_stable_order_on_timestamp_tie(db_session):
 
 
 def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
-    """With the limiter enabled, the 21st request in an hour returns 429."""
-    _make_user(db_session, email="tutor_rl@test.com")
-    _set_tutor_flag(db_session, enabled=True)
-
-    # Re-enable the limiter for this test only (conftest disables it globally).
-    app.state.limiter.enabled = True
-    app.state.limiter.reset()
-    try:
-        mock_client = _mock_openai_client(stream_pieces=["ok"])
-        with patch(
-            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
-        ):
-            headers = _auth(client, "tutor_rl@test.com")
-            # 20 successful calls
-            for _ in range(20):
-                resp = client.post(
-                    "/api/tutor/chat/stream",
-                    json={"message": "Q"},
-                    headers=headers,
-                )
-                assert resp.status_code == 200
-
-            # 21st call trips the limit
-            resp = client.post(
-                "/api/tutor/chat/stream",
-                json={"message": "Q"},
-                headers=headers,
-            )
-            assert resp.status_code == 429
-    finally:
-        app.state.limiter.enabled = False
-        app.state.limiter.reset()
-        _set_tutor_flag(db_session, enabled=False)

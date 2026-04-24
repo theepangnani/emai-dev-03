@@ -518,7 +518,7 @@ def award_cycle_question_xp(
     db: Session,
     student_id: int,
     question_id: str,
-    attempt_number: int,
+    attempt_number,
     user_role: str,
 ) -> int:
     """Award XP for a correct answer in the short learning cycle.
@@ -531,10 +531,21 @@ def award_cycle_question_xp(
     Uses context_id=cycle_question_{question_id} for lifetime dedup.
     Respects existing daily caps + streak multipliers.
     Returns XP awarded (0 if not a student, capped, duplicate, or past attempt 3).
+
+    ``attempt_number`` is coerced via ``int()`` so callers passing strings
+    (e.g. ``"1"``) or floats (e.g. ``1.0``) still get XP instead of a silent
+    0. Values that cannot be coerced log a warning and return 0.
     """
     if (user_role or "").lower() != "student":
         return 0
-    amount = CYCLE_QUESTION_XP_BY_ATTEMPT.get(attempt_number, 0)
+    try:
+        attempt_int = int(attempt_number)
+    except (TypeError, ValueError):
+        logger.warning(
+            "Invalid attempt_number %r for question %s", attempt_number, question_id,
+        )
+        return 0
+    amount = CYCLE_QUESTION_XP_BY_ATTEMPT.get(attempt_int, 0)
     if amount == 0:
         return 0
     context_id = f"cycle_question_{question_id}"
