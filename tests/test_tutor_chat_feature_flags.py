@@ -31,10 +31,9 @@ def test_tutor_chat_enabled_flag_seeded_default_off(db_session):
 
     assert flag is not None, "tutor_chat_enabled should be seeded"
     assert flag.enabled is False
-    assert flag.name == "Tutor Chat"
-    assert flag.description == (
-        "Gate for CB-TUTOR-002 Phase 1 chat-first Q&A. Paywall-relevant."
-    )
+    assert flag.name == "Tutor Chat (SSE)"
+    assert "CB-TUTOR-002 Phase 1" in flag.description
+    assert "Paywall" in flag.description
     assert flag.variant == "off"
 
 
@@ -45,7 +44,7 @@ def test_learning_cycle_enabled_flag_seeded_default_off(db_session):
     assert flag is not None, "learning_cycle_enabled should be seeded"
     assert flag.enabled is False
     assert flag.name == "Learning Cycle"
-    assert flag.description == "Gate for CB-TUTOR-002 Phase 2 learning-cycle flow."
+    assert "CB-TUTOR-002 Phase 2" in flag.description
     assert flag.variant == "off"
 
 

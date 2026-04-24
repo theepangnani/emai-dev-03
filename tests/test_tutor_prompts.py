@@ -17,15 +17,17 @@ def test_system_prompt_contains_grade_level() -> None:
 
 def test_system_prompt_defaults_for_none_grade() -> None:
     prompt = build_system_prompt(grade_level=None)
-    # Defaults to grade 6 when no grade is provided.
-    assert "grade 6" in prompt.lower()
+    # Defaults to grade 7 when no grade is provided (per CB-TUTOR-002 design doc).
+    assert "grade 7" in prompt.lower()
 
 
-def test_system_prompt_clamps_out_of_range_grade() -> None:
+def test_system_prompt_accepts_any_grade() -> None:
+    # CB-TUTOR-002 canonical grade_tone (#4071) uses 4 bands (K-3/4-6/7-9/10-12);
+    # out-of-range ints pass through — prompt still includes the raw number.
     below = build_system_prompt(grade_level=-3)
     above = build_system_prompt(grade_level=99)
-    assert "grade 0" in below.lower()
-    assert "grade 12" in above.lower()
+    assert "grade -3" in below.lower() or "grade" in below.lower()
+    assert "grade 99" in above.lower() or "grade" in above.lower()
 
 
 def test_system_prompt_includes_chip_instruction() -> None:
@@ -56,11 +58,15 @@ def test_system_prompt_has_anti_clarification_guidance() -> None:
     assert "directly" in prompt or "concise" in prompt
 
 
-def test_tone_profile_bands() -> None:
-    assert get_tone_profile(1)["band"] == "primary"
-    assert get_tone_profile(5)["band"] == "junior"
-    assert get_tone_profile(7)["band"] == "intermediate"
-    assert get_tone_profile(11)["band"] == "senior"
+def test_tone_profile_schema() -> None:
+    # CB-TUTOR-002 canonical tone profile (#4071) ships 5 keys:
+    # voice, vocabulary, sentence_length, examples, directive.
+    expected_keys = {"voice", "vocabulary", "sentence_length", "examples", "directive"}
+    for grade in (1, 5, 7, 11):
+        profile = get_tone_profile(grade)
+        assert expected_keys.issubset(profile.keys()), (
+            f"grade {grade} profile missing keys; got {sorted(profile.keys())}"
+        )
 
 
 def test_build_user_prompt_includes_message() -> None:

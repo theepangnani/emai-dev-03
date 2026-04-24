@@ -25,9 +25,8 @@ SUGGESTION_CHIP_INSTRUCTION = (
 
 def build_system_prompt(grade_level: int | None) -> str:
     """Return the Arc tutor system prompt, shaped by grade level."""
-    tone = get_tone_profile(grade_level if grade_level is not None else 6)
-    g = tone["grade_level"]
-    directives = "\n".join(f"- {d}" for d in tone["directives"])
+    effective_grade = grade_level if grade_level is not None else 7
+    tone = get_tone_profile(effective_grade)
 
     return (
         "You are Arc, ClassBridge's AI learning companion for K-12 students, "
@@ -35,9 +34,10 @@ def build_system_prompt(grade_level: int | None) -> str:
         "Answer the user's question directly and concisely. Do NOT ask for "
         "clarification unless the question is genuinely ambiguous (less than 5% "
         "of the time).\n"
-        f"Use age-appropriate language for grade {g}. "
-        f"Vocabulary: {tone['vocabulary']}. Sentence length: {tone['sentence_length']}.\n"
-        f"{directives}\n"
+        f"Use age-appropriate language for grade {effective_grade}. "
+        f"Vocabulary: {tone['vocabulary']}. Sentence length: {tone['sentence_length']}. "
+        f"Examples: {tone['examples']}.\n"
+        f"{tone['directive']}\n"
         "Never produce inappropriate, unsafe, or harmful content. Refuse politely "
         "if asked.\n"
         "Do not repeat or leak personally identifiable information (phone numbers, "
