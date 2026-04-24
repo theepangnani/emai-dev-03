@@ -75,6 +75,10 @@ _CHUNK_MASTERIES = ("pending", "passed", "moved_on")
 _QUESTION_FORMATS = ("mcq", "true_false", "fill_blank")
 
 
+# NOTE: _in_clause interpolates hardcoded tuple values into a SQL CHECK
+# constraint string. Values are in-process constants (never user input),
+# so there's no injection vector. Future migration to SQLAlchemy Enum
+# types is tracked in issue #4087 S-4.
 def _in_clause(values: tuple) -> str:
     """Build a SQL ``IN (...)`` clause from a tuple of string literals."""
     return "(" + ", ".join(f"'{v}'" for v in values) + ")"

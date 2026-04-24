@@ -507,6 +507,156 @@ finally:
                 pass
         _tutor_lock_conn.close()
 
+# CB-TUTOR-002 Phase 2 (#4067) — learning_cycle_* tables (sessions/chunks/questions/answers).
+# `create_all` already handles these, but an explicit CREATE TABLE with CHECK
+# constraints (mirroring the ORM) keeps the migration self-describing for
+# Cloud Run cold starts and gives us a single pg_try_advisory_lock boundary.
+# Wrapped in try/except so startup never blocks (#4085).
+_lc_lock_conn = None
+_lc_lock_acquired = False
+try:
+    if _is_pg:
+        _lc_lock_conn = engine.connect()
+        for _lc_attempt in range(1, 4):
+            _lc_result = _lc_lock_conn.execute(text("SELECT pg_try_advisory_lock(4067)"))
+            _lc_lock_acquired = _lc_result.scalar()
+            if _lc_lock_acquired:
+                logger.info("Acquired advisory lock 4067 for learning_cycle tables migration (attempt %d)", _lc_attempt)
+                break
+            logger.warning("Advisory lock 4067 held by another instance (attempt %d/3), retrying in 5s...", _lc_attempt)
+            time.sleep(5)
+        if not _lc_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4067 after 3 attempts — running learning_cycle migration without lock")
+
+    with engine.connect() as _conn:
+        if _is_pg:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_sessions (
+                    id VARCHAR(36) PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    topic VARCHAR(200) NOT NULL,
+                    subject VARCHAR(100) NOT NULL,
+                    grade_level INTEGER,
+                    status VARCHAR(20) NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active', 'completed', 'abandoned')),
+                    current_chunk_idx INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    completed_at TIMESTAMPTZ
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_chunks (
+                    id VARCHAR(36) PRIMARY KEY,
+                    session_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_sessions(id) ON DELETE CASCADE,
+                    order_index INTEGER NOT NULL,
+                    teach_content_md TEXT NOT NULL,
+                    mastery_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                        CHECK (mastery_status IN ('pending', 'passed', 'moved_on'))
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_questions (
+                    id VARCHAR(36) PRIMARY KEY,
+                    chunk_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_chunks(id) ON DELETE CASCADE,
+                    order_index INTEGER NOT NULL,
+                    format VARCHAR(20) NOT NULL
+                        CHECK (format IN ('mcq', 'true_false', 'fill_blank')),
+                    prompt TEXT NOT NULL,
+                    options JSONB,
+                    correct_answer TEXT NOT NULL,
+                    explanation TEXT NOT NULL
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_answers (
+                    id VARCHAR(36) PRIMARY KEY,
+                    question_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_questions(id) ON DELETE CASCADE,
+                    attempt_number INTEGER NOT NULL DEFAULT 1,
+                    answer_given TEXT NOT NULL,
+                    is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+                    xp_awarded INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+        else:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_sessions (
+                    id VARCHAR(36) PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    topic VARCHAR(200) NOT NULL,
+                    subject VARCHAR(100) NOT NULL,
+                    grade_level INTEGER,
+                    status VARCHAR(20) NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active', 'completed', 'abandoned')),
+                    current_chunk_idx INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    completed_at DATETIME
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_chunks (
+                    id VARCHAR(36) PRIMARY KEY,
+                    session_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_sessions(id) ON DELETE CASCADE,
+                    order_index INTEGER NOT NULL,
+                    teach_content_md TEXT NOT NULL,
+                    mastery_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                        CHECK (mastery_status IN ('pending', 'passed', 'moved_on'))
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_questions (
+                    id VARCHAR(36) PRIMARY KEY,
+                    chunk_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_chunks(id) ON DELETE CASCADE,
+                    order_index INTEGER NOT NULL,
+                    format VARCHAR(20) NOT NULL
+                        CHECK (format IN ('mcq', 'true_false', 'fill_blank')),
+                    prompt TEXT NOT NULL,
+                    options JSON,
+                    correct_answer TEXT NOT NULL,
+                    explanation TEXT NOT NULL
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS learning_cycle_answers (
+                    id VARCHAR(36) PRIMARY KEY,
+                    question_id VARCHAR(36) NOT NULL REFERENCES learning_cycle_questions(id) ON DELETE CASCADE,
+                    attempt_number INTEGER NOT NULL DEFAULT 1,
+                    answer_given TEXT NOT NULL,
+                    is_correct BOOLEAN NOT NULL DEFAULT FALSE,
+                    xp_awarded INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_learning_cycle_sessions_user_status "
+            "ON learning_cycle_sessions(user_id, status)"
+        ))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_learning_cycle_chunks_session_order "
+            "ON learning_cycle_chunks(session_id, order_index)"
+        ))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_learning_cycle_questions_chunk_order "
+            "ON learning_cycle_questions(chunk_id, order_index)"
+        ))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_learning_cycle_answers_question_attempt "
+            "ON learning_cycle_answers(question_id, attempt_number)"
+        ))
+        _conn.commit()
+        logger.info("learning_cycle_* tables migration completed (#4067)")
+except Exception as _lc_err:
+    logger.warning("learning_cycle migration note: %s", _lc_err)
+finally:
+    if _lc_lock_conn is not None:
+        if _lc_lock_acquired:
+            try:
+                _lc_lock_conn.execute(text("SELECT pg_advisory_unlock(4067)"))
+                _lc_lock_conn.commit()
+            except Exception:
+                pass
+        _lc_lock_conn.close()
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
