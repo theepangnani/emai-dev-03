@@ -22,11 +22,8 @@ const mockIleGetTopics = vi.fn();
 const mockIleGetSurpriseMe = vi.fn();
 const mockIleCreateSessionFromStudyGuide = vi.fn();
 const mockParentGetChildren = vi.fn();
-<<<<<<< HEAD
 const mockUseChildOverdueCounts = vi.fn();
-=======
 const mockApiGet = vi.fn();
->>>>>>> origin/fix/4019-xp-summary-endpoint
 const mockAuthUser = { current: { role: 'student', roles: ['student'] } as { role: string; roles: string[] } };
 
 vi.mock('../api/asgf', () => ({
@@ -174,7 +171,13 @@ describe('TutorPage — ASGF (explain mode) eager SSE streaming (#3735)', () => 
     mockParentGetChildren.mockResolvedValue([]);
     mockUseChildOverdueCounts.mockReturnValue(new Map());
     // Default: XP summary returns zero state so the hero badge is hidden.
-    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
+    // URL-gated so unexpected api.get calls surface as test failures.
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 0, streak_days: 0 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
   });
 
   it('opens SSE eagerly after createSession (before stage reaches 4)', async () => {
@@ -418,7 +421,12 @@ describe('TutorPage — drill mode round-1 fixes', () => {
     ]);
     mockIleCreateSession.mockResolvedValue({ id: 999 });
     mockUseChildOverdueCounts.mockReturnValue(new Map());
-    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 0, streak_days: 0 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
   });
 
   it('#3975: handleStartDrill uses drillChildId (state) not URL child_id', async () => {
@@ -541,7 +549,12 @@ describe('TutorPage — hero XpStreakBadge (#4019)', () => {
   });
 
   it('renders the XP badge when xp_total > 0', async () => {
-    mockApiGet.mockResolvedValue({ data: { xp_total: 125, streak_days: 3 } });
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 125, streak_days: 3 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
     renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
 
     await waitFor(() => {
@@ -554,7 +567,12 @@ describe('TutorPage — hero XpStreakBadge (#4019)', () => {
   });
 
   it('hides the XP badge for brand-new users (xp_total=0 AND streak_days<2)', async () => {
-    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 0, streak_days: 0 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
     renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
 
     await waitFor(() => {
@@ -566,7 +584,12 @@ describe('TutorPage — hero XpStreakBadge (#4019)', () => {
 
   it('renders the XP badge when streak_days >= 2 even if xp_total=0', async () => {
     // Defensive edge case: streak kept alive via non-XP actions.
-    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 2 } });
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/api/xp/summary') {
+        return Promise.resolve({ data: { xp_total: 0, streak_days: 2 } });
+      }
+      return Promise.reject(new Error(`Unexpected api.get: ${url}`));
+    });
     renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
 
     await waitFor(() => {
