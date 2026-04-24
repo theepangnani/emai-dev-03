@@ -86,6 +86,14 @@ export interface ASGFQuizQuestion {
   slide_reference: number;
   hint_text: string;
   explanation: string;
+  /**
+   * Question format. Optional — defaults to multiple-choice when absent.
+   * Known values: 'multiple_choice' | 'true_false' | 'fill_blank' | 'short_answer'.
+   * For true_false, `options` is expected to be ['True', 'False'] and
+   * correct_index the index of the correct value. For fill_blank/short_answer,
+   * the first entry of `options` is treated as the canonical correct answer.
+   */
+  format?: string;
 }
 
 export interface ASGFQuizResponse {

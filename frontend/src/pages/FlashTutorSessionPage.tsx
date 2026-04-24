@@ -361,8 +361,48 @@ export function FlashTutorSessionPage() {
             </div>
           )}
 
+          {/* True / False */}
+          {q.format === 'true_false' && (
+            <div
+              className="fts-options question-tf-buttons"
+              role="radiogroup"
+              aria-label="True or False"
+            >
+              {(['True', 'False'] as const).map((value) => {
+                const isSelected = selectedAnswer === value;
+                const isCorrectReveal =
+                  phase === 'feedback' && feedback?.correct_answer === value;
+                const isWrongReveal =
+                  phase === 'feedback' && feedback && !feedback.is_correct && isSelected;
+
+                let className = 'fts-option fts-option-tf';
+                if (isSelected && phase === 'question') className += ' selected';
+                if (isCorrectReveal && feedback?.question_complete) className += ' correct';
+                if (isWrongReveal) className += ' wrong';
+
+                return (
+                  <button
+                    key={value}
+                    className={className}
+                    onClick={() => handleSelectAnswer(value)}
+                    disabled={phase === 'feedback'}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={value}
+                    type="button"
+                  >
+                    <span className="fts-option-text">{value}</span>
+                    {isCorrectReveal && feedback?.question_complete && (
+                      <span className="fts-option-check">✓</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* MCQ Options */}
-          {q.format !== 'fill_blank' && q.options && (
+          {q.format !== 'fill_blank' && q.format !== 'true_false' && q.options && (
             <div className="fts-options">
               {(Object.entries(q.options) as [string, string][]).map(([key, text]) => {
                 const isDisabled = currentQ.disabled_options.includes(key);

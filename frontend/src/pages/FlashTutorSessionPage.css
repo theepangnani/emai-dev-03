@@ -256,6 +256,31 @@
 .fts-option-x { color: var(--color-danger); }
 .fts-option-check { color: var(--color-success); }
 
+/* True / False buttons (#4020) */
+.question-tf-buttons {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.question-tf-buttons .fts-option-tf {
+  flex: 1;
+  justify-content: center;
+  padding: 20px 16px;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.question-tf-buttons .fts-option-tf:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.question-tf-buttons .fts-option-tf .fts-option-text {
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 /* Typed answer display (fill_blank) */
 .fts-typed-answer {
   padding: 10px 14px;
