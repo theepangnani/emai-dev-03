@@ -40,7 +40,9 @@ import ASGFAssignment from '../components/asgf/ASGFAssignment';
 import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
-import { ArcMascot, type ArcMood } from '../components/arc';
+import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
+import { api } from '../api/client';
+import { useChildOverdueCounts } from '../hooks/useChildOverdueCounts';
 import './TutorPage.css';
 
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
@@ -159,10 +161,38 @@ export function TutorPage() {
     enabled: mode === 'drill',
   });
 
+  // Hero XP/streak badge data (#4019). Fetched for every authenticated user;
+  // the badge itself is hidden by default when xp_total=0 AND streak_days<2.
+  const { data: xpSummary, error: xpSummaryError } = useQuery({
+    queryKey: ['user-xp-summary'],
+    queryFn: () =>
+      api
+        .get<{ xp_total: number; streak_days: number }>('/api/xp/summary')
+        .then((r) => r.data),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  // Surface XP fetch failures so the silently-hidden badge doesn't hide
+  // real API regressions (#4025 S-P2-4).
+  useEffect(() => {
+    if (xpSummaryError) {
+      console.warn('[TutorPage] XP summary fetch failed:', xpSummaryError);
+    }
+  }, [xpSummaryError]);
+
   // Drill mode — parent child selector (#3970)
   const { data: parentChildren = [] } = useQuery({
     queryKey: ['tutor-parent-children'],
     queryFn: () => parentApi.getChildren(),
+    enabled: mode === 'drill' && user?.role === 'parent',
+  });
+
+  // Drill mode — per-child overdue counts for the selector badges (#4022).
+  // Gated to drill + parent so students/teachers never trigger the parent
+  // dashboard fetch. Reuses the shared hook to stay in sync with the
+  // Parent Dashboard's badge math.
+  const drillChildOverdueCounts = useChildOverdueCounts({
     enabled: mode === 'drill' && user?.role === 'parent',
   });
 
@@ -565,6 +595,16 @@ export function TutorPage() {
                 {stage === 'results' && 'nice work!'}
               </h1>
             </div>
+            {/* #4019: hide the badge for brand-new users (xp=0 AND streak<2)
+                so they don't see a "0 XP" stub on first visit. */}
+            <div className="ask-arc-hero__meta">
+              {xpSummary && (xpSummary.xp_total > 0 || xpSummary.streak_days >= 2) && (
+                <XpStreakBadge
+                  xp={xpSummary.xp_total}
+                  streak={xpSummary.streak_days}
+                />
+              )}
+            </div>
           </header>
 
           {/* ── ERROR BANNER ───────────────────────────────────── */}
@@ -826,16 +866,16 @@ export function TutorPage() {
                 </div>
               </div>
 
-              {/* Parent child selector (#3970). Overdue counts are
-                  intentionally omitted here — the drill flow doesn't surface
-                  task pressure and the prop is optional on ChildSelectorTabs
-                  (#3984). */}
+              {/* Parent child selector (#3970). Overdue counts are wired
+                  through `useChildOverdueCounts` so the tab badges match the
+                  Parent Dashboard (#4022). */}
               {user?.role === 'parent' && parentChildren.length >= 2 && (
                 <div className="tutor-drill__children">
                   <ChildSelectorTabs
                     children={parentChildren}
                     selectedChild={drillChildId}
                     onSelectChild={setDrillChildId}
+                    childOverdueCounts={drillChildOverdueCounts}
                   />
                 </div>
               )}

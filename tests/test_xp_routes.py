@@ -82,6 +82,92 @@ def test_get_xp_summary_unauthenticated(client):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/xp/summary — #4019 XpStreakBadge fields (xp_total, streak_days)
+# ---------------------------------------------------------------------------
+
+def test_xp_summary_zero_state(client, db_session, xp_users):
+    """Authenticated user with no ledger entries returns xp_total=0, streak_days=0."""
+    from app.models.xp import XpLedger, XpSummary
+
+    # Clean state for a brand-new summary user.
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    hashed = get_password_hash(PASSWORD)
+    fresh = db_session.query(User).filter(User.email == "xpfresh@test.com").first()
+    if not fresh:
+        fresh = User(
+            email="xpfresh@test.com",
+            full_name="Fresh Kid",
+            role=UserRole.STUDENT,
+            hashed_password=hashed,
+        )
+        db_session.add(fresh)
+        db_session.commit()
+
+    # Make absolutely sure there's no prior ledger/summary for this user.
+    db_session.query(XpLedger).filter(XpLedger.student_id == fresh.id).delete()
+    db_session.query(XpSummary).filter(XpSummary.student_id == fresh.id).delete()
+    db_session.commit()
+
+    headers = _auth(client, "xpfresh@test.com")
+    resp = client.get("/api/xp/summary", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["xp_total"] == 0
+    assert data["streak_days"] == 0
+
+
+def test_xp_summary_returns_xp_total_and_streak_days(
+    client, db_session, xp_users,
+):
+    """After an XP award + streak tick, xp_total mirrors total_xp and streak_days >= 1 mirrors current_streak."""
+    from app.services.xp_service import XpService
+    from app.services.streak_service import StreakService
+    from app.models.xp import XpLedger, XpSummary, StreakLog
+
+    child_id = xp_users["child_user"].id
+
+    # Clean slate, then award a single XP event + record a qualifying
+    # streak action so current_streak advances to 1 (#4038).
+    db_session.query(XpLedger).filter(XpLedger.student_id == child_id).delete()
+    db_session.query(StreakLog).filter(StreakLog.student_id == child_id).delete()
+    db_session.query(XpSummary).filter(XpSummary.student_id == child_id).delete()
+    db_session.commit()
+
+    entry = XpService.award_xp(db_session, child_id, "ile_session_complete")
+    assert entry is not None  # guard: the award shouldn't be suppressed
+    db_session.commit()
+
+    StreakService.record_qualifying_action(db_session, child_id, "ile_session_complete")
+
+    headers = _auth(client, "xpchild@test.com")
+    resp = client.get("/api/xp/summary", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # xp_total is an alias of total_xp (#4019, #4029 computed_field)
+    assert data["xp_total"] == data["total_xp"]
+    assert data["xp_total"] >= 1
+
+    # streak_days mirrors current_streak and is populated by the service
+    # after a qualifying action (#4019, #4038 regression).
+    assert data["streak_days"] == data["current_streak"]
+    assert data["streak_days"] >= 1
+
+    # #4029: The schema must not carry two duplicate Python fields for
+    # total_xp. Verify by introspecting model_fields (computed_field is
+    # excluded from this dict, duplicate-declared fields would not be).
+    # streak_days remains a regular service-populated field (Option A in
+    # #4038), so it is present in model_fields — that is expected.
+    from app.schemas.xp import XpSummaryResponse
+    assert "total_xp" in XpSummaryResponse.model_fields
+    assert "xp_total" not in XpSummaryResponse.model_fields
+    assert "streak_days" in XpSummaryResponse.model_fields
+    assert "current_streak" in XpSummaryResponse.model_fields
+
+
+# ---------------------------------------------------------------------------
 # GET /api/xp/history
 # ---------------------------------------------------------------------------
 

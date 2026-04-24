@@ -97,6 +97,7 @@ export function EmailDigestPage() {
 // ============================================================================
 function EmailDigestPageLegacy() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { confirm, confirmModal } = useConfirm();
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
@@ -110,7 +111,25 @@ function EmailDigestPageLegacy() {
     queryFn: () => listIntegrations().then((r) => r.data),
   });
 
-  const activeIntegration = integrations[0] ?? null;
+  const kidParam = searchParams.get('kid');
+  const activeIntegration =
+    (kidParam
+      ? integrations.find(
+          (i) => (i.child_first_name ?? '').toLowerCase() === kidParam.toLowerCase(),
+        )
+      : undefined) ??
+    integrations[0] ??
+    null;
+
+  const handleSelectKid = (firstName: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (firstName) {
+      next.set('kid', firstName);
+    } else {
+      next.delete('kid');
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   const { data: settings } = useQuery<EmailDigestSettings>({
     queryKey: ['email-digest', 'settings', activeIntegration?.id],
@@ -349,6 +368,26 @@ function EmailDigestPageLegacy() {
             <span className="ed-child-context">for {activeIntegration.child_first_name}</span>
           )}
         </div>
+
+        {integrations.length > 1 && (
+          <div className="ed-kid-switcher" role="tablist" aria-label="Switch child">
+            {integrations.map((i) => {
+              const name = i.child_first_name ?? i.child_school_email ?? `Child ${i.id}`;
+              const isActive = activeIntegration?.id === i.id;
+              return (
+                <button
+                  key={i.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`ed-kid-chip${isActive ? ' ed-kid-chip--active' : ''}`}
+                  onClick={() => handleSelectKid(i.child_first_name ?? null)}
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {isLoading && <div className="ed-loading">Loading...</div>}
 

@@ -816,3 +816,78 @@ describe('EmailDigestPage — unified add-sender modal', () => {
     });
   });
 });
+
+// #4007: multi-kid routing — clicking Email Digest for a specific kid must land on that kid.
+describe('EmailDigestPage — multi-kid routing (#4007)', () => {
+  const twoKids = [
+    buildIntegration({ id: 1, child_first_name: 'Thanushan', child_school_email: 't@school.ca' }),
+    buildIntegration({ id: 2, child_first_name: 'Haashini', child_school_email: 'h@school.ca' }),
+  ];
+
+  it('selects the integration matching ?kid= param, not integrations[0]', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?kid=Haashini'] });
+    await waitFor(() => {
+      expect(screen.getByText('for Haashini')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('for Thanushan')).not.toBeInTheDocument();
+  });
+
+  it('matches kid name case-insensitively', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?kid=haashini'] });
+    await waitFor(() => {
+      expect(screen.getByText('for Haashini')).toBeInTheDocument();
+    });
+  });
+
+  it('falls back to the first integration when ?kid= is missing', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest'] });
+    await waitFor(() => {
+      expect(screen.getByText('for Thanushan')).toBeInTheDocument();
+    });
+  });
+
+  it('falls back to the first integration when ?kid= does not match any child', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?kid=Nobody'] });
+    await waitFor(() => {
+      expect(screen.getByText('for Thanushan')).toBeInTheDocument();
+    });
+  });
+
+  it('renders a kid switcher chip row when the parent has 2+ integrations', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?kid=Thanushan'] });
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Thanushan' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('tab', { name: 'Haashini' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Thanushan' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Haashini' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('switches active child when a kid chip is clicked', async () => {
+    mockListIntegrations.mockResolvedValue({ data: twoKids });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?kid=Thanushan'] });
+    await waitFor(() => {
+      expect(screen.getByText('for Thanushan')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Haashini' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('for Haashini')).toBeInTheDocument();
+    });
+  });
+
+  it('does NOT render the switcher when the parent has only one integration', async () => {
+    mockListIntegrations.mockResolvedValue({ data: [twoKids[0]] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('for Thanushan')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('tab', { name: 'Thanushan' })).not.toBeInTheDocument();
+  });
+});

@@ -1961,12 +1961,23 @@ Post-`1be02431` verification (live):
 
 **Workflow:** 4 parallel isolated-worktree streams (routing / drill-parity / a11y / XP-cleanup) + 1 round-2 suggestion stream → merged sequentially into `integrate/pr-review-3966` → single PR to master.
 
-#### 6.141.1 Open fast-follows (explicit non-goals of CB-TUTOR-001)
-- **XP API wiring** — resurrect `XpStreakBadge` from git history + wire to a real `/api/xp/summary` endpoint. Hero badge returns when real data is available.
-- **T/F + fill-in-the-blank quiz question types** — backend prompt update (ASGF + ILE) + UI rendering (expand `ASGFQuizBridge` and ILE quiz runner to handle non-MCQ formats).
-- **Delete `FlashTutorPage.tsx`** — file retained in tree as reference; drill mode has absorbed all live affordances, so the file is orphaned and safe to remove in a dedicated cleanup PR.
-- **Drill child overdue counts** — `ChildSelectorTabs` in drill mode receives no `childOverdueCounts`; align with dashboard source when the lift is cheap.
-- **`FlashTutorSessionPage` Arc refresh** — session runner still uses the original owl `TutorAvatar`; migrate to Arc for visual consistency.
+#### 6.141.1 Fast-follows — RESOLVED 2026-04-23 (PR #4025)
+
+All five §6.141.1 non-goals from the initial CB-TUTOR-001 ship have been delivered in integration PR #4025 (`integrate/cb-tutor-001-followups`):
+
+- [x] **XP API wiring (#4019)** — `GET /api/xp/summary` already existed (XpLedger/XpSummary tables); added Pydantic `@computed_field` so the JSON serializes both `total_xp` AND `xp_total` without duplicate Python attributes. `XpStreakBadge` component resurrected from commit `79be73fc^`, gated in hero by `xp_total > 0 OR streak_days >= 2` (no "0 XP" stub). useQuery has `enabled: !!user`. aria-live moved to sr-only sibling to prevent tick-by-tick announcement noise. Reduced-motion users get immediate snap (no interval animation).
+- [x] **T/F + fill-in-the-blank rendering (#4020)** — `FlashTutorSessionPage` branches on `question.format`: `true_false` → 2 radio-role buttons; `fill_blank` → existing `FillBlankCard` (untouched). `ASGFQuizBridge` branches identically, with a `normalizeAnswer` helper (punctuation + whitespace + case) for fill-blank matching. MCQ regression-test locked. (ASGF backend still enforces 4-option MCQ generation at `app/schemas/asgf.py:230`; UI is ready for future backend emission.)
+- [x] **Delete `FlashTutorPage.tsx` (#4021)** — 1,124 lines deleted (page + CSS + App.tsx comment). Zero remaining callers verified pre-delete.
+- [x] **Drill child overdue counts (#4022)** — new `useChildOverdueCounts` hook shares queryKey `['parent-dashboard']` with `useParentDashboard` (React Query dedupes to one `parentApi.getDashboard()` call). Same filter semantics as the dashboard. Task type tightened upstream — no inline casts.
+- [x] **`FlashTutorSessionPage` Arc refresh (#4023)** — owl `TutorAvatar` swapped for `<ArcMascot size={64} mood="celebrating" decorative />` at the "Session Complete!" heading. `TutorAvatar.tsx` file deleted in the same integration (orphaned after #4021 landed).
+
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 86 frontend tests + 65 backend XP tests passing · 2 rounds of `/pr-review` (pass 1: 0 Critical + 8 Important + 5 Suggestions all fixed in round-2 streams; pass 2: APPROVE — 0 Critical + 0 Important + 5 Suggestions, all resolved in round-3). All 12 review-tracked issues (#4019–#4032) closed.
+
+**Workflow:** 4 parallel isolated-worktree streams (α=XP, β=quiz types, γ=cleanup+overdue, δ=session-Arc) → merged into `integrate/cb-tutor-001-followups` with conflict resolution in TutorPage.tsx + test; 3 round-2 streams (XP a11y, hook/alias, QuizBridge polish); 1 round-3 stream (pass-2 suggestions). Single PR to master: #4025.
+
+#### 6.141.2 Remaining open work (tracked but unscoped)
+- **ASGF backend emission of T/F + fill_blank** — schema validator currently enforces 4-option MCQ in `asgf_quiz_service.py`; loosening + prompt template updates = separate backend PR. UI is ready; frontend change not needed when this lands.
+- **Fill-blank article-strip edge case (#3265)** — pre-existing ILE backend fuzzy-match concern; unchanged by this work.
 
 ---
 

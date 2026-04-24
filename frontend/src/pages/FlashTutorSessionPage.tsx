@@ -17,7 +17,7 @@ import { FillBlankCard } from '../components/ile/FillBlankCard';
 import { ParentTeachingControls } from '../components/ile/ParentTeachingControls';
 import { CareerConnectCard } from '../components/ile/CareerConnectCard';
 import { AhaMomentCelebration } from '../components/ile/AhaMomentCelebration';
-import { TutorAvatar } from '../components/ile/TutorAvatar';
+import { ArcMascot } from '../components/arc';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -98,16 +98,10 @@ export function FlashTutorSessionPage() {
     loadQuestion();
   }, [sessionId, loadQuestion]);
 
-  const handleSelectAnswer = (answer: string) => {
-    if (submitting || phase !== 'question') return;
-    // In Learning Mode, don't allow re-selecting disabled options
-    if (currentQ?.disabled_options.includes(answer)) return;
-    setSelectedAnswer(answer);
-  };
-
   const handleSubmitAnswer = async (answerToSubmit: string) => {
-    if (!answerToSubmit || submitting || !currentQ) return;
+    if (!answerToSubmit || submitting || !currentQ || phase !== 'question') return;
     setSubmitting(true);
+    setSelectedAnswer(answerToSubmit);
 
     try {
       const timeTaken = Date.now() - startTime;
@@ -139,11 +133,6 @@ export function FlashTutorSessionPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedAnswer) return;
-    await handleSubmitAnswer(selectedAnswer);
   };
 
   const handleNext = async () => {
@@ -255,7 +244,7 @@ export function FlashTutorSessionPage() {
           )}
           <div className="fts-results">
             <div className="fts-results-header">
-              <TutorAvatar size={64} mood="celebrating" />
+              <ArcMascot size={64} mood="celebrating" decorative />
               <h1>Session Complete!</h1>
               <div className="fts-score-circle">
                 <span className="fts-score-pct">{results.percentage}%</span>
@@ -361,8 +350,48 @@ export function FlashTutorSessionPage() {
             </div>
           )}
 
+          {/* True / False */}
+          {q.format === 'true_false' && (
+            <div
+              className="fts-options question-tf-buttons"
+              role="radiogroup"
+              aria-label="True or False"
+            >
+              {(['True', 'False'] as const).map((value) => {
+                const isSelected = selectedAnswer === value;
+                const isCorrectReveal =
+                  phase === 'feedback' && feedback?.correct_answer === value;
+                const isWrongReveal =
+                  phase === 'feedback' && feedback && !feedback.is_correct && isSelected;
+
+                let className = 'fts-option fts-option-tf';
+                if (isSelected && phase === 'question') className += ' selected';
+                if (isCorrectReveal && feedback?.question_complete) className += ' correct';
+                if (isWrongReveal) className += ' wrong';
+
+                return (
+                  <button
+                    key={value}
+                    className={className}
+                    onClick={() => handleSubmitAnswer(value)}
+                    disabled={phase === 'feedback' || submitting}
+                    role="radio"
+                    aria-checked={isSelected}
+                    aria-label={value}
+                    type="button"
+                  >
+                    <span className="fts-option-text">{value}</span>
+                    {isCorrectReveal && feedback?.question_complete && (
+                      <span className="fts-option-check">✓</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* MCQ Options */}
-          {q.format !== 'fill_blank' && q.options && (
+          {q.format !== 'fill_blank' && q.format !== 'true_false' && q.options && (
             <div className="fts-options">
               {(Object.entries(q.options) as [string, string][]).map(([key, text]) => {
                 const isDisabled = currentQ.disabled_options.includes(key);
@@ -380,8 +409,11 @@ export function FlashTutorSessionPage() {
                   <button
                     key={key}
                     className={className}
-                    onClick={() => handleSelectAnswer(key)}
-                    disabled={isDisabled || phase === 'feedback'}
+                    onClick={() => {
+                      if (currentQ.disabled_options.includes(key)) return;
+                      handleSubmitAnswer(key);
+                    }}
+                    disabled={isDisabled || phase === 'feedback' || submitting}
                   >
                     <span className="fts-option-key">{key}</span>
                     <span className="fts-option-text">{text}</span>
@@ -397,10 +429,7 @@ export function FlashTutorSessionPage() {
           {q.format === 'fill_blank' && phase === 'question' && (
             <FillBlankCard
               question={q.question}
-              onSubmit={(answer) => {
-                setSelectedAnswer(answer);
-                handleSubmitAnswer(answer);
-              }}
+              onSubmit={(answer) => handleSubmitAnswer(answer)}
               disabled={submitting || phase !== 'question'}
             />
           )}
@@ -455,16 +484,6 @@ export function FlashTutorSessionPage() {
 
         {/* Action buttons */}
         <div className="fts-actions">
-          {phase === 'question' && q.format !== 'fill_blank' && (
-            <button
-              className="fts-btn fts-btn-primary"
-              onClick={handleSubmit}
-              disabled={!selectedAnswer || submitting}
-            >
-              {submitting ? 'Submitting...' : 'Submit Answer'}
-            </button>
-          )}
-
           {phase === 'feedback' && (
             <button className="fts-btn fts-btn-primary" onClick={handleNext}>
               {feedback?.session_complete
