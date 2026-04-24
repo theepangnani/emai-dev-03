@@ -22,6 +22,7 @@ const mockIleGetTopics = vi.fn();
 const mockIleGetSurpriseMe = vi.fn();
 const mockIleCreateSessionFromStudyGuide = vi.fn();
 const mockParentGetChildren = vi.fn();
+const mockApiGet = vi.fn();
 const mockAuthUser = { current: { role: 'student', roles: ['student'] } as { role: string; roles: string[] } };
 
 vi.mock('../api/asgf', () => ({
@@ -64,6 +65,13 @@ vi.mock('../api/parent', () => ({
   parentApi: {
     getChildren: (...args: unknown[]) => mockParentGetChildren(...args),
   },
+}));
+
+vi.mock('../api/client', () => ({
+  api: {
+    get: (...args: unknown[]) => mockApiGet(...args),
+  },
+  AI_TIMEOUT: { timeout: 120_000 },
 }));
 
 vi.mock('../components/DashboardLayout', () => ({
@@ -156,6 +164,8 @@ describe('TutorPage — ASGF (explain mode) eager SSE streaming (#3735)', () => 
     });
     mockIleGetTopics.mockResolvedValue([]);
     mockParentGetChildren.mockResolvedValue([]);
+    // Default: XP summary returns zero state so the hero badge is hidden.
+    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
   });
 
   it('opens SSE eagerly after createSession (before stage reaches 4)', async () => {
@@ -398,6 +408,7 @@ describe('TutorPage — drill mode round-1 fixes', () => {
       },
     ]);
     mockIleCreateSession.mockResolvedValue({ id: 999 });
+    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
   });
 
   it('#3975: handleStartDrill uses drillChildId (state) not URL child_id', async () => {
@@ -488,5 +499,51 @@ describe('TutorPage — drill mode round-1 fixes', () => {
     renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
     await screen.findByRole('group', { name: /Choose a tutor mode/i });
     expect(screen.queryByRole('tablist', { name: /Choose a tutor mode/i })).toBeNull();
+  });
+});
+
+// ── Hero XpStreakBadge wiring (#4019) ─────────────────────────
+describe('TutorPage — hero XpStreakBadge (#4019)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthUser.current = { role: 'student', roles: ['student'] };
+    mockGetActiveSessions.mockResolvedValue({ sessions: [] });
+    mockGetContextData.mockResolvedValue({ children: [], courses: [], upcoming_tasks: [] });
+    mockIleGetTopics.mockResolvedValue([]);
+    mockParentGetChildren.mockResolvedValue([]);
+  });
+
+  it('renders the XP badge when xp_total > 0', async () => {
+    mockApiGet.mockResolvedValue({ data: { xp_total: 125, streak_days: 3 } });
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/xp/summary');
+    });
+    await waitFor(() => {
+      expect(screen.getByText('125')).toBeInTheDocument();
+    });
+    expect(screen.getByText('XP')).toBeInTheDocument();
+  });
+
+  it('hides the XP badge for brand-new users (xp_total=0 AND streak_days<2)', async () => {
+    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 0 } });
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+
+    await waitFor(() => {
+      expect(mockApiGet).toHaveBeenCalledWith('/api/xp/summary');
+    });
+    // "XP" label must not render when the badge is hidden.
+    expect(screen.queryByText('XP')).not.toBeInTheDocument();
+  });
+
+  it('renders the XP badge when streak_days >= 2 even if xp_total=0', async () => {
+    // Defensive edge case: streak kept alive via non-XP actions.
+    mockApiGet.mockResolvedValue({ data: { xp_total: 0, streak_days: 2 } });
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
+
+    await waitFor(() => {
+      expect(screen.getByText('XP')).toBeInTheDocument();
+    });
   });
 });

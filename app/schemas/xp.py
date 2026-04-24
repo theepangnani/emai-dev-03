@@ -9,6 +9,8 @@ class XpSummaryResponse(BaseModel):
     """Current user's XP summary."""
     user_id: int = 0
     total_xp: int = 0
+    # Alias of total_xp for the frontend XpStreakBadge (#4019)
+    xp_total: int = 0
     level: int = 1
     current_level: int = 1
     level_title: str = "Curious Learner"

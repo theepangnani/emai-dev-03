@@ -40,7 +40,8 @@ import ASGFAssignment from '../components/asgf/ASGFAssignment';
 import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
-import { ArcMascot, type ArcMood } from '../components/arc';
+import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
+import { api } from '../api/client';
 import './TutorPage.css';
 
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
@@ -157,6 +158,17 @@ export function TutorPage() {
     queryKey: ['tutor-ile-topics', drillChildId],
     queryFn: () => ileApi.getTopics(drillChildId ?? undefined),
     enabled: mode === 'drill',
+  });
+
+  // Hero XP/streak badge data (#4019). Fetched for every authenticated user;
+  // the badge itself is hidden by default when xp_total=0 AND streak_days<2.
+  const { data: xpSummary } = useQuery({
+    queryKey: ['user-xp-summary'],
+    queryFn: () =>
+      api
+        .get<{ xp_total: number; streak_days: number }>('/api/xp/summary')
+        .then((r) => r.data),
+    staleTime: 60_000,
   });
 
   // Drill mode — parent child selector (#3970)
@@ -564,6 +576,16 @@ export function TutorPage() {
                 {stage === 'quiz' && 'quick quiz time.'}
                 {stage === 'results' && 'nice work!'}
               </h1>
+            </div>
+            {/* #4019: hide the badge for brand-new users (xp=0 AND streak<2)
+                so they don't see a "0 XP" stub on first visit. */}
+            <div className="ask-arc-hero__meta">
+              {xpSummary && (xpSummary.xp_total > 0 || xpSummary.streak_days >= 2) && (
+                <XpStreakBadge
+                  xp={xpSummary.xp_total}
+                  streak={xpSummary.streak_days}
+                />
+              )}
             </div>
           </header>
 
