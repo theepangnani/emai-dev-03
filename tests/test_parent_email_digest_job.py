@@ -1509,3 +1509,29 @@ def test_sectioned_digest_email_uses_settings_frontend_url(db_session):
     # Link must come from settings, NOT hardcoded prod
     assert 'href="https://staging.classbridge.ca/email-digest"' in html
     assert 'href="https://www.classbridge.ca/email-digest"' not in html
+
+
+def test_whatsapp_body_strips_malformed_html_tags():
+    """Regression test for #4006: tag fragments must not leak into WhatsApp body.
+
+    The original sanitisation stripped only well-formed ``<...>`` tags. Malformed
+    or unterminated tags (e.g. AI output that emits ``<li`` without a closing
+    ``>``, or a stray ``</li>`` after bullet flattening) survived the strip and
+    leaked into the template variable. This test ensures the defensive second
+    pass catches all such residue.
+    """
+    from app.jobs.parent_email_digest_job import _sanitise_whatsapp_var
+
+    dirty = (
+        "Item 1 item 2 <b>bold</b> unterminated <li tag and lone "
+        "</li>end and homework assignments</li>"
+    )
+    sanitised = _sanitise_whatsapp_var(dirty)
+
+    assert '<' not in sanitised
+    assert '>' not in sanitised
+    assert '</li>' not in sanitised
+    assert '<li' not in sanitised
+    # Ensure real content is preserved (bold text, "end", "homework assignments")
+    assert 'bold' in sanitised
+    assert 'homework assignments' in sanitised

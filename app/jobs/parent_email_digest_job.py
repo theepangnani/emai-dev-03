@@ -126,6 +126,12 @@ def _sanitise_whatsapp_var(text: str) -> str:
     s = re.sub(r'[\n\r\t]', ' ', s)
     s = re.sub(r'[\x00-\x1f]', ' ', s)
     s = re.sub(r'\s+', ' ', s).strip()
+    # #4006 defensive pass: catch any HTML tag fragments that survived the
+    # initial r'<[^>]+>' strip (malformed/unterminated tags in source AI output).
+    # Also strip lone angle brackets that indicate tag residue.
+    s = re.sub(r'<[^>]*>?', '', s)
+    s = re.sub(r'</[^\s]*', '', s)  # unterminated closing tags
+    s = s.replace('<', '').replace('>', '')
     if len(s) > 1024:
         s = s[:1021] + "..."
     return s
@@ -577,6 +583,12 @@ async def send_digest_for_integration(
                     sanitised_text = re.sub(r'[\x00-\x1f]', ' ', sanitised_text)
                     # Collapse whitespace runs
                     sanitised_text = re.sub(r'\s+', ' ', sanitised_text).strip()
+                    # #4006 defensive pass: catch any HTML tag fragments that survived the
+                    # initial r'<[^>]+>' strip (malformed/unterminated tags in source AI output).
+                    # Also strip lone angle brackets that indicate tag residue.
+                    sanitised_text = re.sub(r'<[^>]*>?', '', sanitised_text)
+                    sanitised_text = re.sub(r'</[^\s]*', '', sanitised_text)  # unterminated closing tags
+                    sanitised_text = sanitised_text.replace('<', '').replace('>', '')
                     # Per-variable 1024 cap
                     max_var_len = 1024
                     if len(sanitised_text) > max_var_len:
