@@ -305,8 +305,6 @@ class MonitoredSenderAssignmentResponse(BaseModel):
     child_profile_id: int
     first_name: str
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class MonitoredSenderResponse(BaseModel):
     id: int
