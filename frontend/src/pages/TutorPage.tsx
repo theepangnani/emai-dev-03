@@ -41,6 +41,7 @@ import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { ArcMascot, type ArcMood } from '../components/arc';
+import { useChildOverdueCounts } from '../hooks/useChildOverdueCounts';
 import './TutorPage.css';
 
 type ASGFStage = 'input' | 'processing' | 'slides' | 'quiz' | 'results';
@@ -163,6 +164,14 @@ export function TutorPage() {
   const { data: parentChildren = [] } = useQuery({
     queryKey: ['tutor-parent-children'],
     queryFn: () => parentApi.getChildren(),
+    enabled: mode === 'drill' && user?.role === 'parent',
+  });
+
+  // Drill mode — per-child overdue counts for the selector badges (#4022).
+  // Gated to drill + parent so students/teachers never trigger the parent
+  // dashboard fetch. Reuses the shared hook to stay in sync with the
+  // Parent Dashboard's badge math.
+  const drillChildOverdueCounts = useChildOverdueCounts({
     enabled: mode === 'drill' && user?.role === 'parent',
   });
 
@@ -826,16 +835,16 @@ export function TutorPage() {
                 </div>
               </div>
 
-              {/* Parent child selector (#3970). Overdue counts are
-                  intentionally omitted here — the drill flow doesn't surface
-                  task pressure and the prop is optional on ChildSelectorTabs
-                  (#3984). */}
+              {/* Parent child selector (#3970). Overdue counts are wired
+                  through `useChildOverdueCounts` so the tab badges match the
+                  Parent Dashboard (#4022). */}
               {user?.role === 'parent' && parentChildren.length >= 2 && (
                 <div className="tutor-drill__children">
                   <ChildSelectorTabs
                     children={parentChildren}
                     selectedChild={drillChildId}
                     onSelectChild={setDrillChildId}
+                    childOverdueCounts={drillChildOverdueCounts}
                   />
                 </div>
               )}

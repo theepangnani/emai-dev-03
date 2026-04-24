@@ -22,6 +22,7 @@ const mockIleGetTopics = vi.fn();
 const mockIleGetSurpriseMe = vi.fn();
 const mockIleCreateSessionFromStudyGuide = vi.fn();
 const mockParentGetChildren = vi.fn();
+const mockUseChildOverdueCounts = vi.fn();
 const mockAuthUser = { current: { role: 'student', roles: ['student'] } as { role: string; roles: string[] } };
 
 vi.mock('../api/asgf', () => ({
@@ -64,6 +65,10 @@ vi.mock('../api/parent', () => ({
   parentApi: {
     getChildren: (...args: unknown[]) => mockParentGetChildren(...args),
   },
+}));
+
+vi.mock('../hooks/useChildOverdueCounts', () => ({
+  useChildOverdueCounts: (...args: unknown[]) => mockUseChildOverdueCounts(...args),
 }));
 
 vi.mock('../components/DashboardLayout', () => ({
@@ -156,6 +161,7 @@ describe('TutorPage — ASGF (explain mode) eager SSE streaming (#3735)', () => 
     });
     mockIleGetTopics.mockResolvedValue([]);
     mockParentGetChildren.mockResolvedValue([]);
+    mockUseChildOverdueCounts.mockReturnValue(new Map());
   });
 
   it('opens SSE eagerly after createSession (before stage reaches 4)', async () => {
@@ -398,6 +404,7 @@ describe('TutorPage — drill mode round-1 fixes', () => {
       },
     ]);
     mockIleCreateSession.mockResolvedValue({ id: 999 });
+    mockUseChildOverdueCounts.mockReturnValue(new Map());
   });
 
   it('#3975: handleStartDrill uses drillChildId (state) not URL child_id', async () => {
@@ -488,5 +495,22 @@ describe('TutorPage — drill mode round-1 fixes', () => {
     renderWithProviders(<TutorPage />, { initialEntries: ['/tutor'] });
     await screen.findByRole('group', { name: /Choose a tutor mode/i });
     expect(screen.queryByRole('tablist', { name: /Choose a tutor mode/i })).toBeNull();
+  });
+
+  it('#4022: drill child selector renders overdue count badges from useChildOverdueCounts', async () => {
+    // Return an overdue count of 3 for Kid A (student_id 77).
+    mockUseChildOverdueCounts.mockReturnValue(new Map([[77, 3]]));
+
+    renderWithProviders(<TutorPage />, { initialEntries: ['/tutor?mode=drill'] });
+
+    // The hook is invoked with drill+parent gating enabled.
+    await waitFor(() => {
+      expect(mockUseChildOverdueCounts).toHaveBeenCalledWith({ enabled: true });
+    });
+
+    // Kid A's tab must expose an overdue badge labelled "3 overdue".
+    await screen.findByRole('tab', { name: /Kid A/i });
+    const overdueBadge = await screen.findByLabelText(/3 overdue/i);
+    expect(overdueBadge).toHaveTextContent('3');
   });
 });
