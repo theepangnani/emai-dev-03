@@ -171,3 +171,33 @@ export async function verifyWhatsAppOTP(
 export async function disconnectWhatsApp(integrationId: number): Promise<void> {
   await api.delete(`/api/parent/email-digest/integrations/${integrationId}/whatsapp`);
 }
+
+// Unified Digest v2 — parent-level child profiles (#4012, #4013, #4014)
+export interface ParentChildSchoolEmail {
+  id: number;
+  child_profile_id: number;
+  email_address: string;
+  forwarding_seen_at: string | null;
+  created_at: string;
+}
+
+export interface ParentChildProfile {
+  id: number;
+  parent_id: number;
+  student_id: number | null;
+  first_name: string;
+  created_at: string;
+  school_emails: ParentChildSchoolEmail[];
+}
+
+export const listChildProfiles = () =>
+  api.get<ParentChildProfile[]>('/api/parent/child-profiles');
+
+export const createChildProfile = (data: { student_id?: number | null; first_name: string }) =>
+  api.post<ParentChildProfile>('/api/parent/child-profiles', data);
+
+export const addChildSchoolEmail = (profileId: number, email_address: string) =>
+  api.post<ParentChildSchoolEmail>(
+    `/api/parent/child-profiles/${profileId}/school-emails`,
+    { email_address },
+  );
