@@ -20,11 +20,21 @@ export interface XpStreakBadgeProps {
 export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: XpStreakBadgeProps) {
   const [displayXp, setDisplayXp] = useState(xp);
   const [pulsing, setPulsing] = useState(false);
+  const [announcement, setAnnouncement] = useState<string>(
+    `${xp.toLocaleString()} XP${streak >= 2 ? `, ${streak} day streak` : ''}`,
+  );
   const prevXpRef = useRef(xp);
 
-  // Only `xp` triggers the tick animation. Streak updates are announced on the
-  // next render via the sr-only aria-atomic sibling (line ~109); no separate
-  // effect needed. Intentional.
+  // Commit the sr-only announcement only when xp or streak actually change, so
+  // unrelated parent re-renders don't re-fire the aria-live region.
+  useEffect(() => {
+    setAnnouncement(
+      `${xp.toLocaleString()} XP${streak >= 2 ? `, ${streak} day streak` : ''}`,
+    );
+  }, [xp, streak]);
+
+  // Only `xp` triggers the tick animation. Streak updates are announced via
+  // the effect above; no separate effect needed. Intentional.
   useEffect(() => {
     const prev = prevXpRef.current;
     const diff = xp - prev;
@@ -35,11 +45,16 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
       typeof window !== 'undefined' &&
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-    if (reduce || Math.abs(diff) > 50 || diff < 0) {
-      // Reduced motion, big jump, or rollback — just snap.
+    // Reduced motion — snap, skip pulse.
+    if (reduce) {
       setDisplayXp(xp);
-      // Skip pulse animation for reduced-motion users too.
-      if (diff > 0 && !reduce) {
+      return;
+    }
+
+    // Big jump or rollback — snap, pulse only on positive jumps.
+    if (Math.abs(diff) > 50 || diff < 0) {
+      setDisplayXp(xp);
+      if (diff > 0) {
         setPulsing(true);
         const t = setTimeout(() => setPulsing(false), 900);
         return () => clearTimeout(t);
@@ -47,7 +62,7 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
       return;
     }
 
-    // Tick up
+    // Normal tick-up animation.
     setPulsing(true);
     const steps = Math.min(20, Math.abs(diff));
     const stepMs = 30;
@@ -70,9 +85,6 @@ export function XpStreakBadge({ xp, streak = 0, levelLabel, className = '' }: Xp
       clearTimeout(pulseOff);
     };
   }, [xp]);
-
-  // Accessible announcement — only the FINAL value, never per-tick.
-  const announcement = `${xp.toLocaleString()} XP${streak >= 2 ? `, ${streak} day streak` : ''}`;
 
   return (
     <div className={`xp-streak-badge ${className}`.trim()}>
