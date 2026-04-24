@@ -160,6 +160,15 @@
   margin-top: 4px;
 }
 
+.edw-field-hint--error {
+  color: var(--color-danger, #ef4444);
+}
+
+.edw-footer-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
 /* ===== Checkboxes (channels) ===== */
 
 .edw-checkbox-group {

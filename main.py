@@ -650,6 +650,7 @@ app.include_router(csv_import.router, prefix="/api")
 app.include_router(weekly_report.router, prefix="/api")
 app.include_router(journey.router, prefix="/api")
 app.include_router(parent_email_digest.router, prefix="/api")
+app.include_router(parent_email_digest.profiles_router, prefix="/api")
 from app.api.routes import admin_outreach_templates
 app.include_router(admin_outreach_templates.router, prefix="/api")
 from app.api.routes import admin_outreach

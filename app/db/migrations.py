@@ -2541,3 +2541,197 @@ def _run_migrations_inner(engine, settings, logger):
                         )
     except Exception as e:
         logger.debug("email_delivery_status migration skipped (column likely exists): %s", e)
+
+    # --- Unified Digest v2 data model (#4012, #4013) ---
+    # Create 4 new parent-level tables decoupling sender identity from
+    # integration identity, plus a best-effort idempotent backfill from
+    # legacy parent_gmail_integrations + parent_digest_monitored_emails.
+    # Tables are gated on SQLAlchemy create_all() (via Base.metadata), so
+    # this block only performs the backfill + any ALTER TABLE adjustments
+    # needed later. create_all() runs in startup_event() after migrations,
+    # so we rely on that for schema creation. Backfill is idempotent.
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            _tables = set(_inspector.get_table_names())
+            _required = {
+                "parent_child_profiles",
+                "parent_child_school_emails",
+                "parent_digest_monitored_senders",
+                "sender_child_assignments",
+                "parent_gmail_integrations",
+                "parent_digest_monitored_emails",
+            }
+            if _required.issubset(_tables):
+                # Only backfill profiles that don't already exist for this parent.
+                # Idempotent: uses WHERE NOT EXISTS guards.
+                _is_pg = "sqlite" not in settings.database_url
+
+                # 1. Seed parent_child_profiles from parent_gmail_integrations.
+                #    One profile per (parent_id, child_first_name). Try to link
+                #    student_id by matching first_name to a linked student; leave
+                #    NULL when ambiguous or no match.
+                conn.execute(text(
+                    """
+                    INSERT INTO parent_child_profiles (parent_id, student_id, first_name, created_at)
+                    SELECT parent_id, student_id, MIN(first_name) AS first_name, MIN(created_at) AS created_at
+                    FROM (
+                        SELECT DISTINCT
+                            pgi.parent_id,
+                            (
+                                SELECT s.id
+                                FROM users s
+                                JOIN students st ON st.user_id = s.id
+                                JOIN parent_students ps ON ps.student_id = st.id
+                                WHERE ps.parent_id = pgi.parent_id
+                                  AND LOWER(SUBSTR(s.full_name, 1, INSTR(s.full_name || ' ', ' ') - 1)) = LOWER(pgi.child_first_name)
+                                LIMIT 1
+                            ) AS student_id,
+                            LOWER(pgi.child_first_name) AS first_name_lower,
+                            pgi.child_first_name AS first_name,
+                            pgi.created_at
+                        FROM parent_gmail_integrations pgi
+                        WHERE pgi.child_first_name IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM parent_child_profiles pcp
+                              WHERE pcp.parent_id = pgi.parent_id
+                                AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                          )
+                    ) dedup
+                    GROUP BY parent_id, student_id, first_name_lower
+                    """
+                    if not _is_pg else
+                    """
+                    INSERT INTO parent_child_profiles (parent_id, student_id, first_name, created_at)
+                    SELECT parent_id, student_id, MIN(first_name) AS first_name, MIN(created_at) AS created_at
+                    FROM (
+                        SELECT DISTINCT
+                            pgi.parent_id,
+                            (
+                                SELECT s.id
+                                FROM users s
+                                JOIN students st ON st.user_id = s.id
+                                JOIN parent_students ps ON ps.student_id = st.id
+                                WHERE ps.parent_id = pgi.parent_id
+                                  AND LOWER(SPLIT_PART(s.full_name, ' ', 1)) = LOWER(pgi.child_first_name)
+                                LIMIT 1
+                            ) AS student_id,
+                            LOWER(pgi.child_first_name) AS first_name_lower,
+                            pgi.child_first_name AS first_name,
+                            pgi.created_at
+                        FROM parent_gmail_integrations pgi
+                        WHERE pgi.child_first_name IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM parent_child_profiles pcp
+                              WHERE pcp.parent_id = pgi.parent_id
+                                AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                          )
+                    ) dedup
+                    GROUP BY parent_id, student_id, first_name_lower
+                    """
+                ))
+                conn.commit()
+                logger.info("Unified digest v2 backfill: seeded parent_child_profiles (#4013)")
+
+                # 2. Seed parent_child_school_emails from the legacy
+                #    child_school_email column, linked to the profile we just
+                #    created. forwarding_seen_at stays NULL (unconfirmed).
+                conn.execute(text(
+                    """
+                    INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
+                    SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
+                    FROM parent_gmail_integrations pgi
+                    JOIN parent_child_profiles pcp
+                      ON pcp.parent_id = pgi.parent_id
+                     AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                    WHERE pgi.child_school_email IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM parent_child_school_emails pcse
+                          WHERE pcse.child_profile_id = pcp.id
+                            AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
+                      )
+                    """
+                ))
+                conn.commit()
+                logger.info("Unified digest v2 backfill: seeded parent_child_school_emails (#4013)")
+
+                # 3. Seed parent_digest_monitored_senders from the legacy
+                #    parent_digest_monitored_emails table. Dedupe on
+                #    (parent_id, email_address).
+                conn.execute(text(
+                    """
+                    INSERT INTO parent_digest_monitored_senders (parent_id, email_address, sender_name, label, applies_to_all, created_at)
+                    SELECT DISTINCT
+                        pgi.parent_id,
+                        LOWER(pdme.email_address),
+                        pdme.sender_name,
+                        pdme.label,
+                        FALSE,
+                        pdme.created_at
+                    FROM parent_digest_monitored_emails pdme
+                    JOIN parent_gmail_integrations pgi
+                      ON pgi.id = pdme.integration_id
+                    WHERE pdme.email_address IS NOT NULL
+                      AND NOT EXISTS (
+                          SELECT 1 FROM parent_digest_monitored_senders pdms
+                          WHERE pdms.parent_id = pgi.parent_id
+                            AND LOWER(pdms.email_address) = LOWER(pdme.email_address)
+                      )
+                    """
+                ))
+                conn.commit()
+                logger.info("Unified digest v2 backfill: seeded parent_digest_monitored_senders (#4013)")
+
+                # 4. Seed sender_child_assignments by joining each legacy
+                #    monitored email's integration → child_first_name →
+                #    parent_child_profiles, and each legacy sender →
+                #    parent_digest_monitored_senders via (parent_id, email).
+                conn.execute(text(
+                    """
+                    INSERT INTO sender_child_assignments (sender_id, child_profile_id, created_at)
+                    SELECT DISTINCT pdms.id, pcp.id, pdme.created_at
+                    FROM parent_digest_monitored_emails pdme
+                    JOIN parent_gmail_integrations pgi ON pgi.id = pdme.integration_id
+                    JOIN parent_child_profiles pcp
+                      ON pcp.parent_id = pgi.parent_id
+                     AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                    JOIN parent_digest_monitored_senders pdms
+                      ON pdms.parent_id = pgi.parent_id
+                     AND LOWER(pdms.email_address) = LOWER(pdme.email_address)
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM sender_child_assignments sca
+                        WHERE sca.sender_id = pdms.id
+                          AND sca.child_profile_id = pcp.id
+                    )
+                    """
+                ))
+                conn.commit()
+                logger.info("Unified digest v2 backfill: seeded sender_child_assignments (#4013)")
+            else:
+                _missing = _required - _tables
+                logger.debug(
+                    "Unified digest v2 backfill skipped — tables missing: %s",
+                    _missing,
+                )
+    except Exception as e:
+        logger.warning("Unified digest v2 backfill (#4013) failed: %s", e)
+
+    # --- Defense-in-depth: unique per (parent_id, LOWER(first_name)) (#4047) ---
+    try:
+        with engine.connect() as conn:
+            _is_pg = "sqlite" not in settings.database_url
+            if _is_pg:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_parent_child_profile_lower_name "
+                    "ON parent_child_profiles (parent_id, LOWER(first_name))"
+                ))
+            else:
+                # SQLite supports functional indexes in 3.9+.
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_parent_child_profile_lower_name "
+                    "ON parent_child_profiles (parent_id, LOWER(first_name))"
+                ))
+            conn.commit()
+            logger.info("Unique functional index on parent_child_profiles (#4047)")
+    except Exception as e:
+        logger.debug("Functional unique index #4047 skipped: %s", e)

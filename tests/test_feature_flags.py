@@ -114,3 +114,41 @@ def test_seed_is_idempotent(db_session):
     assert second.id == first_id
     assert second.description == first_description
     assert second.enabled == first_enabled
+
+
+# #4012, #4018 — parent.unified_digest_v2 flag
+
+def _reset_unified_digest_flag(db_session):
+    """Ensure `parent.unified_digest_v2` exists and is enabled=False before a test."""
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "parent.unified_digest_v2")
+        .first()
+    )
+    if flag is not None and flag.enabled is True:
+        flag.enabled = False
+        db_session.commit()
+    return flag
+
+
+def test_unified_digest_v2_flag_seeded_default_off(db_session):
+    """`seed_features()` must add `parent.unified_digest_v2` with enabled=False."""
+    flag = _reset_unified_digest_flag(db_session)
+
+    assert flag is not None, "parent.unified_digest_v2 should be seeded"
+    assert flag.enabled is False
+    assert flag.name == "Unified Multi-Kid Email Digest V2"
+    assert flag.variant == "off"
+
+
+def test_is_feature_enabled_returns_false_for_unified_digest_v2_by_default(db_session):
+    """`is_feature_enabled('parent.unified_digest_v2')` must be False on a fresh seed."""
+    from app.services.feature_flag_service import is_feature_enabled
+
+    _reset_unified_digest_flag(db_session)
+
+    assert is_feature_enabled("parent.unified_digest_v2", db=db_session) is False

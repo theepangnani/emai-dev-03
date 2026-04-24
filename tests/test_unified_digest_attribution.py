@@ -1,0 +1,421 @@
+"""Unit tests for the unified digest v2 attribution algorithm (#4012, #4015).
+
+Covers:
+- Header normalization (display names, case, multiple Delivered-To).
+- Stage 1: school-email match (single kid, multi-kid, stamp
+  forwarding_seen_at, parent scoping).
+- Stage 2: monitored-sender fallback (specific assignments,
+  applies_to_all).
+- Stage 3: unattributed default.
+- Sectioning helper (for_all_kids vs per_kid vs unattributed).
+"""
+
+from datetime import datetime, timezone
+
+import pytest
+
+
+def _models():
+    """Lazy import — matches the conftest reload pattern."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.models.parent_gmail_integration import (
+        ParentChildProfile,
+        ParentChildSchoolEmail,
+        ParentDigestMonitoredSender,
+        SenderChildAssignment,
+    )
+    return {
+        "get_password_hash": get_password_hash,
+        "User": User,
+        "UserRole": UserRole,
+        "ParentChildProfile": ParentChildProfile,
+        "ParentChildSchoolEmail": ParentChildSchoolEmail,
+        "ParentDigestMonitoredSender": ParentDigestMonitoredSender,
+        "SenderChildAssignment": SenderChildAssignment,
+    }
+
+
+def _make_parent(db, email):
+    m = _models()
+    existing = db.query(m["User"]).filter(m["User"].email == email).first()
+    if existing:
+        return existing
+    p = m["User"](
+        email=email,
+        full_name="Attribution Parent",
+        role=m["UserRole"].PARENT,
+        hashed_password=m["get_password_hash"]("Password123!"),
+    )
+    db.add(p)
+    db.commit()
+    return p
+
+
+def _make_profile(db, parent_id, first_name):
+    m = _models()
+    profile = m["ParentChildProfile"](parent_id=parent_id, first_name=first_name)
+    db.add(profile)
+    db.commit()
+    return profile
+
+
+# ---------------------------------------------------------------------------
+# Header helpers
+# ---------------------------------------------------------------------------
+
+
+def test_extract_recipients_splits_commas_and_strips_display_names():
+    from app.services.unified_digest_attribution import extract_recipient_addresses
+
+    headers = {"To": '"Alex" <alex@school.ca>, BULK@school.ca'}
+    got = extract_recipient_addresses(headers)
+    assert got == ["alex@school.ca", "bulk@school.ca"]
+
+
+def test_extract_recipients_merges_to_and_delivered_to_dedup():
+    from app.services.unified_digest_attribution import extract_recipient_addresses
+
+    headers = {
+        "to": "alex@school.ca",
+        "Delivered-To": ["parent+alex@gmail.com", "ALEX@school.ca"],
+    }
+    got = extract_recipient_addresses(headers)
+    assert got == ["alex@school.ca", "parent+alex@gmail.com"]
+
+
+def test_extract_recipients_empty_when_missing():
+    from app.services.unified_digest_attribution import extract_recipient_addresses
+
+    assert extract_recipient_addresses({}) == []
+    assert extract_recipient_addresses({"To": ""}) == []
+
+
+def test_extract_from_handles_display_name_and_case():
+    from app.services.unified_digest_attribution import extract_from_address
+
+    assert extract_from_address({"From": '"Teacher" <T@School.CA>'}) == "t@school.ca"
+    assert extract_from_address({"from": "plain@x.com"}) == "plain@x.com"
+    assert extract_from_address({}) == ""
+
+
+# ---------------------------------------------------------------------------
+# Stage 1: school-email match
+# ---------------------------------------------------------------------------
+
+
+def test_school_email_single_kid_match_stamps_forwarding_seen_at(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "school1@test.com")
+    profile = _make_profile(db_session, parent.id, "Thanushan")
+    school_email = m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="thanushan@ocdsb.ca",
+    )
+    db_session.add(school_email)
+    db_session.commit()
+
+    assert school_email.forwarding_seen_at is None
+
+    fixed = datetime(2026, 4, 23, 12, 0, tzinfo=timezone.utc)
+    result = attribute_email(
+        {"To": "thanushan@ocdsb.ca", "From": "noreply@example.com"},
+        parent.id,
+        db_session,
+        now=fixed,
+    )
+
+    assert result == {"kid_ids": [profile.id], "source": ATTR_SOURCE_SCHOOL_EMAIL}
+
+    db_session.refresh(school_email)
+    # SQLite drops tzinfo on round-trip; compare naive wall-clock values.
+    assert school_email.forwarding_seen_at.replace(tzinfo=None) == fixed.replace(tzinfo=None)
+
+
+def test_school_email_multi_kid_match_returns_all_matched(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "school2@test.com")
+    p1 = _make_profile(db_session, parent.id, "A")
+    p2 = _make_profile(db_session, parent.id, "B")
+    db_session.add_all([
+        m["ParentChildSchoolEmail"](child_profile_id=p1.id, email_address="a@ocdsb.ca"),
+        m["ParentChildSchoolEmail"](child_profile_id=p2.id, email_address="b@ocdsb.ca"),
+    ])
+    db_session.commit()
+
+    result = attribute_email(
+        {"To": "A@ocdsb.ca, b@ocdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SCHOOL_EMAIL
+    assert sorted(result["kid_ids"]) == sorted([p1.id, p2.id])
+
+
+def test_school_email_does_not_leak_across_parents(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_UNATTRIBUTED,
+        attribute_email,
+    )
+    m = _models()
+
+    parent_a = _make_parent(db_session, "isolation_a@test.com")
+    parent_b = _make_parent(db_session, "isolation_b@test.com")
+    prof_a = _make_profile(db_session, parent_a.id, "Akid")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=prof_a.id,
+        email_address="kid@ocdsb.ca",
+    ))
+    db_session.commit()
+
+    # Parent B fetches an email addressed to Parent A's kid. Must not
+    # match anything under Parent B's scope.
+    result = attribute_email(
+        {"To": "kid@ocdsb.ca"},
+        parent_b.id,
+        db_session,
+    )
+    assert result == {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}
+
+
+# ---------------------------------------------------------------------------
+# Stage 2: monitored-sender fallback
+# ---------------------------------------------------------------------------
+
+
+def test_sender_with_specific_assignments(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SENDER_TAG,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "sender1@test.com")
+    p1 = _make_profile(db_session, parent.id, "One")
+    p2 = _make_profile(db_session, parent.id, "Two")
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="teacher@school.ca",
+        applies_to_all=False,
+    )
+    db_session.add(sender)
+    db_session.commit()
+    db_session.add_all([
+        m["SenderChildAssignment"](sender_id=sender.id, child_profile_id=p1.id),
+        m["SenderChildAssignment"](sender_id=sender.id, child_profile_id=p2.id),
+    ])
+    db_session.commit()
+
+    result = attribute_email(
+        {"From": "Teacher <TEACHER@school.ca>"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SENDER_TAG
+    assert sorted(result["kid_ids"]) == sorted([p1.id, p2.id])
+
+
+def test_sender_applies_to_all_returns_all_parent_profiles(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_APPLIES_TO_ALL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "sender_all@test.com")
+    p1 = _make_profile(db_session, parent.id, "Alpha")
+    p2 = _make_profile(db_session, parent.id, "Beta")
+    p3 = _make_profile(db_session, parent.id, "Gamma")
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="principal@school.ca",
+        applies_to_all=True,
+    )
+    db_session.add(sender)
+    db_session.commit()
+
+    result = attribute_email(
+        {"From": "principal@school.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_APPLIES_TO_ALL
+    assert sorted(result["kid_ids"]) == sorted([p1.id, p2.id, p3.id])
+
+
+def test_sender_lookup_scoped_to_parent(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_UNATTRIBUTED,
+        attribute_email,
+    )
+    m = _models()
+
+    parent_a = _make_parent(db_session, "scope_a@test.com")
+    parent_b = _make_parent(db_session, "scope_b@test.com")
+    prof_a = _make_profile(db_session, parent_a.id, "Kid")
+    sender_a = m["ParentDigestMonitoredSender"](
+        parent_id=parent_a.id,
+        email_address="coach@school.ca",
+    )
+    db_session.add(sender_a)
+    db_session.commit()
+    db_session.add(m["SenderChildAssignment"](
+        sender_id=sender_a.id,
+        child_profile_id=prof_a.id,
+    ))
+    db_session.commit()
+
+    # Parent B looking at the same From address should not attribute.
+    result = attribute_email(
+        {"From": "coach@school.ca"},
+        parent_b.id,
+        db_session,
+    )
+    assert result == {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}
+
+
+# ---------------------------------------------------------------------------
+# Stage 3: unattributed default
+# ---------------------------------------------------------------------------
+
+
+def test_no_recipient_no_sender_returns_unattributed(db_session):
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_UNATTRIBUTED,
+        attribute_email,
+    )
+    parent = _make_parent(db_session, "un1@test.com")
+    result = attribute_email({}, parent.id, db_session)
+    assert result == {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}
+
+
+def test_school_email_beats_sender_when_both_would_match(db_session):
+    """When a recipient matches a school email AND the From matches a
+    monitored sender, school-email wins (stage 1 short-circuits stage 2)."""
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "priority@test.com")
+    profile = _make_profile(db_session, parent.id, "Alpha")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="alpha@ocdsb.ca",
+    ))
+    # Also register the sender as applies_to_all — we still expect
+    # school_email attribution because stage 1 matched first.
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="teacher@school.ca",
+        applies_to_all=True,
+    )
+    db_session.add(sender)
+    db_session.commit()
+
+    result = attribute_email(
+        {"To": "alpha@ocdsb.ca", "From": "teacher@school.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SCHOOL_EMAIL
+    assert result["kid_ids"] == [profile.id]
+
+
+# ---------------------------------------------------------------------------
+# Sectioning helper
+# ---------------------------------------------------------------------------
+
+
+def test_attribute_email_does_not_commit_mid_request(db_session):
+    """#4051 — attribute_email must flush (not commit) the forwarding_seen_at
+    stamps so outer-transaction atomicity is preserved. We verify by adding
+    a marker row before calling attribute_email, then rolling back: if
+    attribute_email had committed mid-request, the marker row would survive
+    the rollback.
+    """
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "no_commit@test.com")
+    profile = _make_profile(db_session, parent.id, "Tester")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="t@ocdsb.ca",
+    ))
+    db_session.commit()
+
+    marker_email = "rollback_marker@test.com"
+
+    # Marker row added INSIDE the uncommitted transaction.
+    marker = m["User"](
+        email=marker_email,
+        full_name="Marker",
+        role=m["UserRole"].PARENT,
+        hashed_password=m["get_password_hash"]("Password123!"),
+    )
+    db_session.add(marker)
+    db_session.flush()  # assign id, stay uncommitted
+
+    # attribute_email stamps forwarding_seen_at on the matched school
+    # email row. It MUST NOT commit — if it did, the marker row above
+    # would become permanent.
+    result = attribute_email(
+        {"To": "t@ocdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SCHOOL_EMAIL
+
+    db_session.rollback()
+
+    # After rollback, the marker row must be gone. If attribute_email
+    # committed mid-request, it would have persisted.
+    still_there = (
+        db_session.query(m["User"])
+        .filter(m["User"].email == marker_email)
+        .first()
+    )
+    assert still_there is None, (
+        "attribute_email appears to have committed the session mid-request; "
+        "the marker row survived a rollback that should have wiped it."
+    )
+
+
+def test_sectioning_groups_emails_by_attribution_source():
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_APPLIES_TO_ALL,
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        ATTR_SOURCE_SENDER_TAG,
+        ATTR_SOURCE_UNATTRIBUTED,
+        build_sectioned_digest,
+    )
+
+    pairs = [
+        ({"id": 1}, {"kid_ids": [10], "source": ATTR_SOURCE_SCHOOL_EMAIL}),
+        ({"id": 2}, {"kid_ids": [10, 11], "source": ATTR_SOURCE_SCHOOL_EMAIL}),
+        ({"id": 3}, {"kid_ids": [11], "source": ATTR_SOURCE_SENDER_TAG}),
+        ({"id": 4}, {"kid_ids": [10, 11], "source": ATTR_SOURCE_APPLIES_TO_ALL}),
+        ({"id": 5}, {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}),
+    ]
+    result = build_sectioned_digest(pairs)
+    # multi-kid school_email AND applies_to_all both land in for_all_kids
+    ids_all = [e["id"] for e in result["for_all_kids"]]
+    assert ids_all == [2, 4]
+    assert [e["id"] for e in result["per_kid"][10]] == [1]
+    assert [e["id"] for e in result["per_kid"][11]] == [3]
+    assert [e["id"] for e in result["unattributed"]] == [5]

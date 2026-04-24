@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { renderWithProviders } from '../../test/helpers';
 import { EmailDigestPage } from './EmailDigestPage';
-import type { EmailDigestIntegration } from '../../api/parentEmailDigest';
+import type {
+  EmailDigestIntegration,
+  ChildProfile,
+  MonitoredSender,
+} from '../../api/parentEmailDigest';
 
 const mockListIntegrations = vi.fn();
 const mockGetSettings = vi.fn();
@@ -12,6 +16,11 @@ const mockSendWhatsAppOTP = vi.fn();
 const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
+const mockListChildProfiles = vi.fn();
+const mockAddChildSchoolEmail = vi.fn();
+const mockListMonitoredSenders = vi.fn();
+const mockAddMonitoredSender = vi.fn();
+const mockRemoveMonitoredSender = vi.fn();
 
 vi.mock('../../api/parentEmailDigest', async () => {
   const actual = await vi.importActual<typeof import('../../api/parentEmailDigest')>(
@@ -27,6 +36,11 @@ vi.mock('../../api/parentEmailDigest', async () => {
     verifyWhatsAppOTP: (...args: unknown[]) => mockVerifyWhatsAppOTP(...args),
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
+    listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
+    addChildSchoolEmail: (...args: unknown[]) => mockAddChildSchoolEmail(...args),
+    listMonitoredSenders: (...args: unknown[]) => mockListMonitoredSenders(...args),
+    addMonitoredSender: (...args: unknown[]) => mockAddMonitoredSender(...args),
+    removeMonitoredSender: (...args: unknown[]) => mockRemoveMonitoredSender(...args),
   };
 });
 
@@ -44,6 +58,19 @@ vi.mock('../../components/ConfirmModal', () => ({
     getLastPromptValue: () => '',
   }),
 }));
+
+// Feature-flag mock — default OFF (legacy UI). Individual tests override via
+// `flagEnabledMock.mockReturnValue(true)` to exercise the unified branch.
+const flagEnabledMock = vi.fn<(key: string) => boolean>(() => false);
+vi.mock('../../hooks/useFeatureToggle', async () => {
+  const actual = await vi.importActual<typeof import('../../hooks/useFeatureToggle')>(
+    '../../hooks/useFeatureToggle',
+  );
+  return {
+    ...actual,
+    useFeatureFlagEnabled: (key: string) => flagEnabledMock(key),
+  };
+});
 
 function buildIntegration(overrides: Partial<EmailDigestIntegration> = {}): EmailDigestIntegration {
   return {
@@ -66,9 +93,37 @@ function buildIntegration(overrides: Partial<EmailDigestIntegration> = {}): Emai
   };
 }
 
+function buildChildProfile(overrides: Partial<ChildProfile> = {}): ChildProfile {
+  return {
+    id: 11,
+    parent_id: 100,
+    student_id: 500,
+    first_name: 'Thanushan',
+    school_emails: [],
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-04-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
+function buildSender(overrides: Partial<MonitoredSender> = {}): MonitoredSender {
+  return {
+    id: 201,
+    parent_id: 100,
+    email_address: 'teacher@school.ca',
+    sender_name: null,
+    label: null,
+    applies_to_all: true,
+    assignments: [],
+    created_at: '2026-04-01T00:00:00Z',
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   confirmResolveValue = true;
+  flagEnabledMock.mockReturnValue(false);
   mockGetSettings.mockResolvedValue({
     data: {
       id: 1,
@@ -84,6 +139,8 @@ beforeEach(() => {
   });
   mockGetLogs.mockResolvedValue({ data: [] });
   mockListMonitoredEmails.mockResolvedValue({ data: [] });
+  mockListChildProfiles.mockResolvedValue({ data: [] });
+  mockListMonitoredSenders.mockResolvedValue({ data: [] });
 });
 
 describe('EmailDigestPage — WhatsApp section', () => {
@@ -452,6 +509,311 @@ describe('EmailDigestPage — skipped digest status (#3887, #3894)', () => {
     // were ineligible — not when there was nothing to deliver.
     expect(screen.queryByRole('link', { name: 'Open preferences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// Unified multi-kid Email Digest v2 (#4016)
+// ============================================================================
+describe('EmailDigestPage — flag gate (unified v2, #4016)', () => {
+  it('renders legacy UI when parent.unified_digest_v2 is OFF', async () => {
+    flagEnabledMock.mockReturnValue(false);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      // "Quick Settings" card header is unique to legacy layout.
+      expect(screen.getByText('Quick Settings')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Your kids')).not.toBeInTheDocument();
+    expect(screen.queryByText('Monitored senders')).not.toBeInTheDocument();
+  });
+
+  it('renders unified UI when parent.unified_digest_v2 is ON', async () => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({ data: [buildChildProfile()] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your kids')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Monitored senders')).toBeInTheDocument();
+    // Legacy-only heading absent in unified.
+    expect(screen.queryByText('Quick Settings')).not.toBeInTheDocument();
+  });
+
+  it('?legacy=1 forces legacy UI even when flag is ON', async () => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?legacy=1'] });
+
+    await waitFor(() => {
+      expect(screen.getByText('Quick Settings')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Your kids')).not.toBeInTheDocument();
+  });
+});
+
+describe('EmailDigestPage — unified forwarding-detected badges', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+  });
+
+  it('shows "Forwarding active" when forwarding_seen_at is within 14 days', async () => {
+    const recent = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          school_emails: [
+            {
+              id: 1,
+              child_profile_id: 11,
+              email_address: 'kid@ocdsb.ca',
+              forwarding_seen_at: recent,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Forwarding active/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Forwarding may have stopped" when forwarding_seen_at is older than 14 days', async () => {
+    const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          school_emails: [
+            {
+              id: 1,
+              child_profile_id: 11,
+              email_address: 'kid@ocdsb.ca',
+              forwarding_seen_at: old,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Forwarding may have stopped/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "No forwarded messages yet" when forwarding_seen_at is null', async () => {
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          school_emails: [
+            {
+              id: 1,
+              child_profile_id: 11,
+              email_address: 'kid@ocdsb.ca',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/No forwarded messages yet/)).toBeInTheDocument();
+    });
+  });
+});
+
+describe('EmailDigestPage — unified sender chips', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Thanushan' }),
+        buildChildProfile({ id: 12, first_name: 'Haashini' }),
+      ],
+    });
+  });
+
+  it('renders one chip per assigned kid for a multi-kid sender', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 201,
+          email_address: 'principal@school.ca',
+          applies_to_all: false,
+          assignments: [
+            { child_profile_id: 11, first_name: 'Thanushan' },
+            { child_profile_id: 12, first_name: 'Haashini' },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('principal@school.ca')).toBeInTheDocument();
+    });
+    const row = screen.getByText('principal@school.ca').closest('.ed-sender-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    const chips = within(row).getAllByText(/Thanushan|Haashini/);
+    // One chip per assignment (may include in-modal render if open — but modal
+    // is not open here, so exactly 2).
+    expect(chips).toHaveLength(2);
+    expect(within(row).queryByText('All kids')).not.toBeInTheDocument();
+  });
+
+  it('renders a single "All kids" chip when applies_to_all=true', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 202,
+          email_address: 'board@district.ca',
+          applies_to_all: true,
+          assignments: [],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('board@district.ca')).toBeInTheDocument();
+    });
+    const row = screen.getByText('board@district.ca').closest('.ed-sender-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(within(row).getByText('All kids')).toBeInTheDocument();
+  });
+});
+
+describe('EmailDigestPage — unified add-sender modal', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Thanushan' }),
+        buildChildProfile({ id: 12, first_name: 'Haashini' }),
+      ],
+    });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  });
+
+  it('opens modal with "All kids" checkbox default-checked', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /\+ Add sender/ })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add sender/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+    const checkbox = screen.getByRole('checkbox', { name: /All kids/ }) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('blocks submit with validation error when all-kids unchecked AND no kids selected', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /\+ Add sender/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add sender/ }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // Valid email but no kid selected.
+    const emailInput = screen.getByPlaceholderText('teacher@school.ca') as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'teacher@school.ca' } });
+
+    // Uncheck "All kids".
+    fireEvent.click(screen.getByRole('checkbox', { name: /All kids/ }));
+
+    // Submit without selecting any kid chip.
+    fireEvent.click(screen.getByRole('button', { name: 'Add sender' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Select at least one kid/)).toBeInTheDocument();
+    });
+    expect(mockAddMonitoredSender).not.toHaveBeenCalled();
+  });
+
+  it('submits with child_profile_ids when a kid chip is selected', async () => {
+    mockAddMonitoredSender.mockResolvedValue({
+      data: buildSender({ id: 300, email_address: 'teacher@school.ca' }),
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /\+ Add sender/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add sender/ }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('teacher@school.ca'), {
+      target: { value: 'teacher@school.ca' },
+    });
+    fireEvent.click(screen.getByRole('checkbox', { name: /All kids/ }));
+    // Chip toggle (pressed state via aria-pressed).
+    fireEvent.click(screen.getByRole('button', { name: 'Thanushan', pressed: false }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add sender' }));
+
+    await waitFor(() => {
+      expect(mockAddMonitoredSender).toHaveBeenCalled();
+    });
+    const [[payload]] = mockAddMonitoredSender.mock.calls;
+    expect(payload).toMatchObject({
+      email_address: 'teacher@school.ca',
+      child_profile_ids: [11],
+    });
+  });
+
+  it('submits with child_profile_ids="all" when All kids remains checked', async () => {
+    mockAddMonitoredSender.mockResolvedValue({
+      data: buildSender({ id: 301, email_address: 'board@school.ca' }),
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /\+ Add sender/ })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /\+ Add sender/ }));
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('teacher@school.ca'), {
+      target: { value: 'board@school.ca' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add sender' }));
+
+    await waitFor(() => {
+      expect(mockAddMonitoredSender).toHaveBeenCalled();
+    });
+    const [[payload]] = mockAddMonitoredSender.mock.calls;
+    expect(payload).toMatchObject({
+      email_address: 'board@school.ca',
+      child_profile_ids: 'all',
+    });
   });
 });
 

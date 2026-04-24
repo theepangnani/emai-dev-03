@@ -78,6 +78,18 @@ def seed_features(db: Session) -> int:
             "enabled": False,
             "variant": "off",
         },
+        {
+            "key": "parent.unified_digest_v2",
+            "name": "Unified Multi-Kid Email Digest V2",
+            "description": (
+                "#4012: Unified multi-kid Email Digest page + single digest per parent "
+                "with school-email attribution. OFF renders legacy per-kid UI. When ON, "
+                "renders the unified page and the digest worker produces one digest per "
+                "parent. Ramp via variant: off / on_5 / on_25 / on_50 / on_100."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:

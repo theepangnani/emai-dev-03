@@ -86,3 +86,75 @@ class DigestDeliveryLog(Base):
 
     parent = relationship("User")
     integration = relationship("ParentGmailIntegration", back_populates="delivery_logs")
+
+
+# ---------------------------------------------------------------------------
+# Unified Digest v2 — parent-level tables (#4012, #4013)
+# Decouples sender identity from integration identity, enables one sender to
+# apply to multiple kids, and adds school-email attribution via `To:` headers.
+# ---------------------------------------------------------------------------
+
+class ParentChildProfile(Base):
+    __tablename__ = "parent_child_profiles"
+    __table_args__ = (
+        UniqueConstraint("parent_id", "student_id", name="uq_parent_child_profile_student"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    first_name = Column(String(100), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    parent = relationship("User", foreign_keys=[parent_id])
+    student = relationship("User", foreign_keys=[student_id])
+    school_emails = relationship("ParentChildSchoolEmail", back_populates="child_profile", cascade="all, delete-orphan")
+    sender_assignments = relationship("SenderChildAssignment", back_populates="child_profile", cascade="all, delete-orphan")
+
+
+class ParentChildSchoolEmail(Base):
+    __tablename__ = "parent_child_school_emails"
+    __table_args__ = (
+        UniqueConstraint("child_profile_id", "email_address", name="uq_child_school_email"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    child_profile_id = Column(Integer, ForeignKey("parent_child_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    email_address = Column(String(255), nullable=False, index=True)
+    forwarding_seen_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    child_profile = relationship("ParentChildProfile", back_populates="school_emails")
+
+
+class ParentDigestMonitoredSender(Base):
+    __tablename__ = "parent_digest_monitored_senders"
+    __table_args__ = (
+        UniqueConstraint("parent_id", "email_address", name="uq_parent_monitored_sender_email"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    email_address = Column(String(255), nullable=True)
+    sender_name = Column(String(100), nullable=True)
+    label = Column(String(100), nullable=True)
+    applies_to_all = Column(Boolean, server_default=text("false"), default=False, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    parent = relationship("User")
+    child_assignments = relationship("SenderChildAssignment", back_populates="sender", cascade="all, delete-orphan")
+
+
+class SenderChildAssignment(Base):
+    __tablename__ = "sender_child_assignments"
+    __table_args__ = (
+        UniqueConstraint("sender_id", "child_profile_id", name="uq_sender_child_assignment"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("parent_digest_monitored_senders.id", ondelete="CASCADE"), nullable=False, index=True)
+    child_profile_id = Column(Integer, ForeignKey("parent_child_profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    sender = relationship("ParentDigestMonitoredSender", back_populates="child_assignments")
+    child_profile = relationship("ParentChildProfile", back_populates="sender_assignments")

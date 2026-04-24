@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
@@ -249,5 +249,95 @@ class MonitoredEmailResponse(BaseModel):
     sender_name: Optional[str] = None
     label: Optional[str] = None
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Unified Digest v2 — parent-level senders + child profiles (#4012, #4014)
+# ---------------------------------------------------------------------------
+
+
+def _normalize_email(v: Optional[str]) -> Optional[str]:
+    if v is None or v.strip() == "":
+        return None
+    v = v.strip().lower()
+    if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", v):
+        raise ValueError("Invalid email address")
+    return v
+
+
+class MonitoredSenderCreate(BaseModel):
+    email_address: str
+    sender_name: Optional[str] = None
+    label: Optional[str] = None
+    # "all" → applies to every child; list[int] → explicit child profile IDs.
+    child_profile_ids: Union[list[int], Literal["all"]]
+
+    @field_validator("email_address")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        norm = _normalize_email(v)
+        if norm is None:
+            raise ValueError("email_address is required")
+        return norm
+
+    @field_validator("sender_name")
+    @classmethod
+    def validate_sender_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v.strip() == "":
+            return None
+        return v.strip()
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or v.strip() == "":
+            return None
+        return v.strip()
+
+
+class MonitoredSenderAssignmentsUpdate(BaseModel):
+    child_profile_ids: Union[list[int], Literal["all"]]
+
+
+class MonitoredSenderResponse(BaseModel):
+    id: int
+    email_address: Optional[str] = None
+    sender_name: Optional[str] = None
+    label: Optional[str] = None
+    applies_to_all: bool
+    child_profile_ids: list[int] = []
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChildSchoolEmailCreate(BaseModel):
+    email_address: str
+
+    @field_validator("email_address")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        norm = _normalize_email(v)
+        if norm is None:
+            raise ValueError("email_address is required")
+        return norm
+
+
+class ChildSchoolEmailResponse(BaseModel):
+    id: int
+    email_address: str
+    forwarding_seen_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChildProfileResponse(BaseModel):
+    id: int
+    first_name: str
+    student_id: Optional[int] = None
+    school_emails: list[ChildSchoolEmailResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
