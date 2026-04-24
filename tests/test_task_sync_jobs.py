@@ -171,26 +171,35 @@ async def test_sync_assignments_to_tasks_full_job(db_session, tasksync_env):
     await sync_assignments_to_tasks()
 
     # In-window → one Task per (assignment, student) pair = 3 × 3 = 9.
+    # Scope count by course_id because SQLite recycles auto-increment ids when
+    # an Assignment is deleted earlier in the session-scoped test DB — a stale
+    # ``Task(source='assignment', source_ref='N')`` from an unrelated test
+    # can then alias onto this test's ``Assignment(id=N)`` and inflate the
+    # count. Filtering on course_id removes the cross-test collision (#4059).
+    course_id = env["course"].id
     for assignment in in_window:
         count = (
             db_session.query(Task)
             .filter(Task.source == "assignment", Task.source_ref == str(assignment.id))
+            .filter(Task.course_id == course_id)
             .count()
         )
         assert count == 3, f"expected 3 Tasks for {assignment.title}, got {count}"
 
-    # Out-of-window → 0 Tasks.
+    # Out-of-window → 0 Tasks (scoped to this course for the same reason).
     oow_count = (
         db_session.query(Task)
         .filter(Task.source == "assignment", Task.source_ref == str(out_of_window.id))
+        .filter(Task.course_id == course_id)
         .count()
     )
     assert oow_count == 0
 
-    # NULL-due → 0 Tasks.
+    # NULL-due → 0 Tasks (scoped to this course for the same reason).
     null_count = (
         db_session.query(Task)
         .filter(Task.source == "assignment", Task.source_ref == str(null_due.id))
+        .filter(Task.course_id == course_id)
         .count()
     )
     assert null_count == 0

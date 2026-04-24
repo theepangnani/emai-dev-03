@@ -65,6 +65,63 @@ def client(app):
         yield test_client
 
 
+# ── CB-TASKSYNC-001 feature-flag isolation (#4059) ──
+#
+# The session-scoped DB fixture lets the ``task_sync_enabled`` feature flag
+# leak across tests: once a test flips it ON, every subsequent test sees it
+# ON unless that test explicitly resets it. Tests in
+# ``test_assignments_routes.py`` and ``test_task_sync_jobs.py`` each rely on
+# the default-OFF state for their flag-off assertions — they race and flake
+# in CI depending on pytest's collection order.
+#
+# This autouse fixture forces the flag back to OFF before every test. Tests
+# that need it ON flip it inside the test body.
+#
+# Scope: intentionally applied to every test in the suite. The per-test cost
+# is a single indexed `SELECT ... WHERE key = 'task_sync_enabled'` — a few
+# microseconds — and narrowing to just the two failing files risks re-
+# introducing the flake for future tests that rely on flag defaults.
+#
+# Naming note: `_isolate_task_sync_flag` (not `_reset_task_sync_flag`) to
+# avoid shadowing the module-level helper of the same name in
+# `tests/test_feature_flags.py`.
+@pytest.fixture(autouse=True)
+def _isolate_task_sync_flag(app):
+    import logging
+
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from app.db.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        from app.models.feature_flag import FeatureFlag
+
+        flag = (
+            db.query(FeatureFlag)
+            .filter(FeatureFlag.key == "task_sync_enabled")
+            .first()
+        )
+        if flag is not None and flag.enabled:
+            flag.enabled = False
+            db.commit()
+        # When the row is missing (earliest startup-smoke tests, or a test
+        # that hasn't yet triggered seed_features) there is nothing to
+        # reset — the default-OFF contract is already satisfied.
+    except SQLAlchemyError:
+        # Surface real DB errors (including missing-table OperationalError)
+        # at WARNING so a genuine failure in the reset path is visible in
+        # CI, rather than manifesting later as a mysterious cross-test
+        # flake.
+        db.rollback()
+        logging.getLogger(__name__).warning(
+            "task_sync_enabled reset failed", exc_info=True
+        )
+    finally:
+        db.close()
+    yield
+
+
 # ── Shared auth helpers (used by all test files) ──
 
 PASSWORD = "Password123!"
