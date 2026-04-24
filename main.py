@@ -38,6 +38,7 @@ from app.api.routes import demo_verify  # CB-DEMO-001 B2 (#3604)
 from app.api.routes import public as public_routes  # CB-DEMO-001 B2 (#3604)
 from app.api.routes import demo  # CB-DEMO-001 B1 (#3603)
 from app.api.routes import class_import  # CB-ONBOARD-001 (#3985)
+from app.api.routes import tutor  # CB-TUTOR-002 Phase 1 (#4063)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -71,6 +72,7 @@ from app.models.teacher_thanks import TeacherThanks  # noqa: F401
 from app.models.parent_contact import ParentContact, ParentContactNote, OutreachTemplate, OutreachLog  # noqa: F401 — ensure CRM tables are created
 from app.models.learning_history import LearningHistory  # noqa: F401 — ASGF learning history (#3391)
 from app.models.demo_session import DemoSession  # noqa: F401 — CB-DEMO-001 demo sessions (#3600)
+from app.models.tutor import TutorConversation, TutorMessage  # noqa: F401 — CB-TUTOR-002 Phase 1 (#4063)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -421,6 +423,84 @@ finally:
                 pass
         _tasksync_lock_conn.close()
 
+# CB-TUTOR-002 Phase 1 (#4063) — tutor_conversations & tutor_messages tables.
+# `create_all` already handles these, but an explicit CREATE TABLE keeps the
+# migration self-describing for Cloud Run cold starts and gives us a single
+# pg_try_advisory_lock boundary. Wrapped in try/except so startup never blocks.
+_tutor_lock_conn = None
+_tutor_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _tutor_time
+        _tutor_lock_conn = engine.connect()
+        for _tutor_attempt in range(1, 4):
+            _tutor_result = _tutor_lock_conn.execute(text("SELECT pg_try_advisory_lock(4063)"))
+            _tutor_lock_acquired = _tutor_result.scalar()
+            if _tutor_lock_acquired:
+                logger.info("Acquired advisory lock 4063 for tutor tables migration (attempt %d)", _tutor_attempt)
+                break
+            logger.warning("Advisory lock 4063 held by another instance (attempt %d/3), retrying in 5s...", _tutor_attempt)
+            _tutor_time.sleep(5)
+        if not _tutor_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4063 after 3 attempts — running tutor tables migration without lock")
+
+    with engine.connect() as _conn:
+        if _is_pg:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS tutor_conversations (
+                    id VARCHAR(36) PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS tutor_messages (
+                    id VARCHAR(36) PRIMARY KEY,
+                    conversation_id VARCHAR(36) NOT NULL REFERENCES tutor_conversations(id) ON DELETE CASCADE,
+                    role VARCHAR(10) NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+        else:
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS tutor_conversations (
+                    id VARCHAR(36) PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            _conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS tutor_messages (
+                    id VARCHAR(36) PRIMARY KEY,
+                    conversation_id VARCHAR(36) NOT NULL REFERENCES tutor_conversations(id) ON DELETE CASCADE,
+                    role VARCHAR(10) NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_tutor_conversations_user_created "
+            "ON tutor_conversations(user_id, created_at)"
+        ))
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_tutor_messages_conv_created "
+            "ON tutor_messages(conversation_id, created_at)"
+        ))
+        _conn.commit()
+        logger.info("tutor_conversations/tutor_messages migration completed (#4063)")
+except Exception as _tutor_err:
+    logger.warning("tutor tables migration note: %s", _tutor_err)
+finally:
+    if _tutor_lock_conn is not None:
+        if _tutor_lock_acquired:
+            try:
+                _tutor_lock_conn.execute(text("SELECT pg_advisory_unlock(4063)"))
+                _tutor_lock_conn.commit()
+            except Exception:
+                pass
+        _tutor_lock_conn.close()
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
@@ -660,6 +740,7 @@ app.include_router(asgf.router, prefix="/api")
 app.include_router(demo_verify.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
 app.include_router(public_routes.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
 app.include_router(demo.router, prefix="/api/v1")  # CB-DEMO-001 B1 (#3603)
+app.include_router(tutor.router, prefix="/api")  # CB-TUTOR-002 Phase 1 (#4063)
 
 logger.info("API routes registered at /api")
 
