@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
 import { DashboardLayout } from '../../components/DashboardLayout';
@@ -18,12 +18,21 @@ import {
   sendWhatsAppOTP,
   verifyWhatsAppOTP,
   disconnectWhatsApp,
+  listChildProfiles,
+  addChildSchoolEmail,
+  listMonitoredSenders,
+  addMonitoredSender,
+  removeMonitoredSender,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
   type MonitoredEmail,
+  type ChildProfile,
+  type MonitoredSender,
+  type SenderKidSelection,
 } from '../../api/parentEmailDigest';
 import { useConfirm } from '../../components/ConfirmModal';
+import { useFeatureFlagEnabled } from '../../hooks/useFeatureToggle';
 import './EmailDigestPage.css';
 
 interface ApiErrorResponse {
@@ -46,6 +55,10 @@ function isValidPhone(phone: string): boolean {
   return /^\+[1-9]\d{9,14}$/.test(trimmed);
 }
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, {
@@ -62,7 +75,27 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`ed-status ${cls}`}>{status}</span>;
 }
 
+/**
+ * Top-level Email Digest page. Feature-flag gated:
+ *  - `parent.unified_digest_v2` OFF → legacy UI (preserved during ramp).
+ *  - `parent.unified_digest_v2` ON  → unified multi-kid UI.
+ *  - `?legacy=1` query param forces legacy regardless of flag (fallback ramp).
+ */
 export function EmailDigestPage() {
+  const [searchParams] = useSearchParams();
+  const unifiedEnabled = useFeatureFlagEnabled('parent.unified_digest_v2');
+  const legacyForced = searchParams.get('legacy') === '1';
+  const renderUnified = unifiedEnabled && !legacyForced;
+  return renderUnified ? <EmailDigestPageUnified /> : <EmailDigestPageLegacy />;
+}
+
+// ============================================================================
+// LEGACY PAGE — preserved as-is during the ramp. Reachable:
+//   - when flag is off for a parent
+//   - always via `/email-digest?legacy=1`
+// Keep behavior unchanged from pre-#4016.
+// ============================================================================
+function EmailDigestPageLegacy() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { confirm, confirmModal } = useConfirm();
@@ -426,7 +459,7 @@ export function EmailDigestPage() {
                 )}
                 {sendDigestMutation.isError && (
                   <span className="ed-error-text">
-                    {(sendDigestMutation.error as any)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
+                    {(sendDigestMutation.error as ApiErrorResponse)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
                   </span>
                 )}
                 {sendDigestMutation.isSuccess && (() => {
@@ -447,14 +480,14 @@ export function EmailDigestPage() {
                       : 'ed-digest-status--delivered';
                   const icon =
                     status === 'delivered'
-                      ? '\u2713'
+                      ? '✓'
                       : status === 'partial'
-                      ? '\u26A0'
+                      ? '⚠'
                       : status === 'failed'
-                      ? '\u2715'
+                      ? '✕'
                       : status === 'skipped'
-                      ? '\u2139'
-                      : '\u2713';
+                      ? 'ℹ'
+                      : '✓';
                   return (
                     <div
                       className={`ed-digest-status ${variant}`}
@@ -549,7 +582,7 @@ export function EmailDigestPage() {
                     disabled={
                       addMonitoredMutation.isPending ||
                       (!newMonEmail.trim() && !newMonName.trim()) ||
-                      (!!newMonEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newMonEmail.trim()))
+                      (!!newMonEmail.trim() && !isValidEmail(newMonEmail))
                     }
                     onClick={() =>
                       addMonitoredMutation.mutate({
@@ -735,6 +768,825 @@ export function EmailDigestPage() {
               )}
             </div>
           </>
+        )}
+      </div>
+      {confirmModal}
+    </DashboardLayout>
+  );
+}
+
+// ============================================================================
+// UNIFIED PAGE — new multi-kid layout (#4012). One daily digest per parent,
+// school-email attribution, senders assignable across kids.
+// ============================================================================
+
+/**
+ * Forwarding-detected badge state derived from `forwarding_seen_at`.
+ * Within 14 days → active. Older → stopped. Null → never seen.
+ */
+function forwardingState(seenAt: string | null): {
+  label: string;
+  className: string;
+} {
+  if (!seenAt) {
+    return {
+      label: '⚠ No forwarded messages yet',
+      className: 'ed-fwd-badge ed-fwd-badge--none',
+    };
+  }
+  const seen = new Date(seenAt).getTime();
+  const ageDays = (Date.now() - seen) / (1000 * 60 * 60 * 24);
+  if (ageDays <= 14) {
+    return {
+      label: '✓ Forwarding active',
+      className: 'ed-fwd-badge ed-fwd-badge--active',
+    };
+  }
+  return {
+    label: '⚠ Forwarding may have stopped',
+    className: 'ed-fwd-badge ed-fwd-badge--stopped',
+  };
+}
+
+interface AddSenderModalProps {
+  profiles: ChildProfile[];
+  onClose: () => void;
+  onSubmit: (payload: {
+    email_address: string;
+    sender_name?: string;
+    label?: string;
+    child_profile_ids: SenderKidSelection;
+  }) => void;
+  pending: boolean;
+  apiError: string | null;
+}
+
+function AddSenderModal({
+  profiles,
+  onClose,
+  onSubmit,
+  pending,
+  apiError,
+}: AddSenderModalProps) {
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [label, setLabel] = useState('');
+  const [allKids, setAllKids] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const toggleKid = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSubmit = () => {
+    setValidationError(null);
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!isValidEmail(trimmedEmail)) {
+      setValidationError('Enter a valid email address.');
+      return;
+    }
+    if (!allKids && selectedIds.size === 0) {
+      setValidationError('Select at least one kid, or check "All kids".');
+      return;
+    }
+    onSubmit({
+      email_address: trimmedEmail,
+      sender_name: name.trim() || undefined,
+      label: label.trim() || undefined,
+      child_profile_ids: allKids ? 'all' : Array.from(selectedIds),
+    });
+  };
+
+  return (
+    <div className="ed-modal-backdrop" role="dialog" aria-modal="true" aria-label="Add monitored sender">
+      <div className="ed-modal">
+        <div className="ed-modal__header">
+          <h3>Add monitored sender</h3>
+          <button
+            type="button"
+            className="ed-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="ed-modal__body">
+          <label className="ed-modal__label" htmlFor="sender-email">
+            Email<span aria-hidden="true"> *</span>
+          </label>
+          <input
+            id="sender-email"
+            type="email"
+            className="ed-input"
+            placeholder="teacher@school.ca"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoFocus
+          />
+
+          <label className="ed-modal__label" htmlFor="sender-name">
+            Name (optional)
+          </label>
+          <input
+            id="sender-name"
+            type="text"
+            className="ed-input"
+            placeholder="Mrs. Smith"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+
+          <label className="ed-modal__label" htmlFor="sender-label">
+            Label (optional)
+          </label>
+          <input
+            id="sender-label"
+            type="text"
+            className="ed-input"
+            placeholder="Homeroom, Principal, etc."
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+
+          <div className="ed-modal__kid-section">
+            <p className="ed-modal__label">Applies to</p>
+            <label className="ed-modal__checkbox">
+              <input
+                type="checkbox"
+                checked={allKids}
+                onChange={(e) => setAllKids(e.target.checked)}
+              />
+              All kids (incl. future)
+            </label>
+            {!allKids && (
+              <div className="ed-kid-chip-row" role="group" aria-label="Select kids">
+                {profiles.map((p) => {
+                  const active = selectedIds.has(p.id);
+                  return (
+                    <button
+                      type="button"
+                      key={p.id}
+                      className={`ed-kid-chip ${active ? 'ed-kid-chip--active' : ''}`}
+                      onClick={() => toggleKid(p.id)}
+                      aria-pressed={active}
+                    >
+                      {p.first_name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {validationError && (
+            <p className="ed-error-text" role="alert">
+              {validationError}
+            </p>
+          )}
+          {apiError && !validationError && (
+            <p className="ed-error-text" role="alert">
+              {apiError}
+            </p>
+          )}
+        </div>
+        <div className="ed-modal__footer">
+          <button
+            type="button"
+            className="ed-sync-btn"
+            onClick={onClose}
+            disabled={pending}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ed-primary-btn"
+            onClick={handleSubmit}
+            disabled={pending}
+          >
+            {pending ? 'Adding...' : 'Add sender'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailDigestPageUnified() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { confirm, confirmModal } = useConfirm();
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappOtp, setWhatsappOtp] = useState('');
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
+  const [whatsappSuccess, setWhatsappSuccess] = useState<string | null>(null);
+  const [addSenderOpen, setAddSenderOpen] = useState(false);
+  const [addSenderApiError, setAddSenderApiError] = useState<string | null>(null);
+  const [addSchoolEmailFor, setAddSchoolEmailFor] = useState<number | null>(null);
+  const [newSchoolEmail, setNewSchoolEmail] = useState('');
+
+  const { data: integrations = [], isLoading: intLoading, isError: intError } =
+    useQuery<EmailDigestIntegration[]>({
+      queryKey: ['email-digest', 'integrations'],
+      queryFn: () => listIntegrations().then((r) => r.data),
+    });
+
+  const activeIntegration = integrations[0] ?? null;
+
+  const { data: settings } = useQuery<EmailDigestSettings>({
+    queryKey: ['email-digest', 'settings', activeIntegration?.id],
+    queryFn: () => getSettings(activeIntegration!.id).then((r) => r.data),
+    enabled: !!activeIntegration,
+  });
+
+  const { data: childProfiles = [] } = useQuery<ChildProfile[]>({
+    queryKey: ['parent', 'child-profiles'],
+    queryFn: () => listChildProfiles().then((r) => r.data),
+    enabled: !!activeIntegration,
+  });
+
+  const { data: senders = [] } = useQuery<MonitoredSender[]>({
+    queryKey: ['parent', 'monitored-senders'],
+    queryFn: () => listMonitoredSenders().then((r) => r.data),
+    enabled: !!activeIntegration,
+  });
+
+  const settingsMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<EmailDigestSettings> }) =>
+      updateSettings(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'settings'] });
+    },
+  });
+
+  const addSchoolEmailMutation = useMutation({
+    mutationFn: ({ profileId, email }: { profileId: number; email: string }) =>
+      addChildSchoolEmail(profileId, email),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
+      setAddSchoolEmailFor(null);
+      setNewSchoolEmail('');
+    },
+  });
+
+  const addSenderMutation = useMutation({
+    mutationFn: addMonitoredSender,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'monitored-senders'] });
+      setAddSenderOpen(false);
+      setAddSenderApiError(null);
+    },
+    onError: (err: unknown) => {
+      setAddSenderApiError(getApiErrorMessage(err, 'Failed to add sender.'));
+    },
+  });
+
+  const removeSenderMutation = useMutation({
+    mutationFn: (id: number) => removeMonitoredSender(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'monitored-senders'] });
+    },
+  });
+
+  const sendOtpMutation = useMutation({
+    mutationFn: ({ id, phone }: { id: number; phone: string }) => sendWhatsAppOTP(id, phone),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess('OTP sent! Check your WhatsApp.');
+      setWhatsappOtp('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+    },
+    onError: (err: unknown) => {
+      setWhatsappSuccess(null);
+      setWhatsappError(getApiErrorMessage(err, 'Failed to send OTP. Please try again.'));
+    },
+  });
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: ({ id, otpCode }: { id: number; otpCode: string }) => verifyWhatsAppOTP(id, otpCode),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess('WhatsApp verified! Your digest will be delivered here.');
+      setWhatsappOtp('');
+      setWhatsappPhone('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+    },
+    onError: (err: unknown) => {
+      setWhatsappSuccess(null);
+      setWhatsappError(getApiErrorMessage(err, 'Failed to verify OTP. Please try again.'));
+    },
+  });
+
+  const disconnectWhatsappMutation = useMutation({
+    mutationFn: (id: number) => disconnectWhatsApp(id),
+    onSuccess: () => {
+      setWhatsappError(null);
+      setWhatsappSuccess(null);
+      setWhatsappOtp('');
+      setWhatsappPhone('');
+      queryClient.invalidateQueries({ queryKey: ['email-digest', 'integrations'] });
+    },
+  });
+
+  // Gmail reconnect popup — same pattern as legacy.
+  const oauthStateRef = useRef('');
+  useEffect(() => {
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.data?.type === 'gmail-oauth-callback' && event.data?.code) {
+        try {
+          const redirectUri = window.location.origin + '/oauth/gmail/callback';
+          await connectGmail(event.data.code, oauthStateRef.current, redirectUri);
+          queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+        } catch {
+          // retry available
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [queryClient]);
+
+  const handleReconnect = async () => {
+    try {
+      const redirectUri = window.location.origin + '/oauth/gmail/callback';
+      const res = await getGmailAuthUrl(redirectUri);
+      oauthStateRef.current = res.data.state;
+      const w = 500;
+      const h = 600;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      window.open(res.data.authorization_url, 'gmail-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    } catch {
+      navigate('/my-kids');
+    }
+  };
+
+  const handleSendOtp = () => {
+    if (!activeIntegration) return;
+    const phone = whatsappPhone.trim();
+    if (!isValidPhone(phone)) {
+      setWhatsappError('Phone must be in E.164 format (e.g. +14165551234).');
+      return;
+    }
+    setWhatsappError(null);
+    sendOtpMutation.mutate({ id: activeIntegration.id, phone });
+  };
+
+  const handleVerifyOtp = () => {
+    if (!activeIntegration) return;
+    const otp = whatsappOtp.trim();
+    if (!/^\d{6}$/.test(otp)) {
+      setWhatsappError('Enter the 6-digit code from WhatsApp.');
+      return;
+    }
+    setWhatsappError(null);
+    verifyOtpMutation.mutate({ id: activeIntegration.id, otpCode: otp });
+  };
+
+  const handleResendOtp = () => {
+    if (!activeIntegration?.whatsapp_phone) return;
+    setWhatsappError(null);
+    setWhatsappSuccess(null);
+    setWhatsappOtp('');
+    sendOtpMutation.mutate({
+      id: activeIntegration.id,
+      phone: activeIntegration.whatsapp_phone,
+    });
+  };
+
+  const handleCancelOtp = async () => {
+    if (!activeIntegration) return;
+    const confirmed = await confirm({
+      title: 'Cancel verification',
+      message: 'This will clear your phone number. You can start over with the same or a different number.',
+      confirmLabel: 'Yes, cancel',
+    });
+    if (!confirmed) return;
+    disconnectWhatsappMutation.mutate(activeIntegration.id);
+  };
+
+  const handleDisconnectWhatsapp = async () => {
+    if (!activeIntegration) return;
+    const confirmed = await confirm({
+      title: 'Disconnect WhatsApp',
+      message: 'Stop receiving your daily digest on WhatsApp? You can reconnect anytime.',
+      confirmLabel: 'Disconnect',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    disconnectWhatsappMutation.mutate(activeIntegration.id);
+  };
+
+  const handleDeliveryTimeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!activeIntegration) return;
+    settingsMutation.mutate({
+      id: activeIntegration.id,
+      data: { delivery_time: e.target.value },
+    });
+  };
+
+  const handleRemoveSender = async (sender: MonitoredSender) => {
+    const confirmed = await confirm({
+      title: 'Remove sender',
+      message: `Stop monitoring emails from ${sender.email_address}?`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    removeSenderMutation.mutate(sender.id);
+  };
+
+  const handleAddSchoolEmail = (profileId: number) => {
+    const trimmed = newSchoolEmail.trim().toLowerCase();
+    if (!isValidEmail(trimmed)) return;
+    addSchoolEmailMutation.mutate({ profileId, email: trimmed });
+  };
+
+  if (intLoading) {
+    return (
+      <DashboardLayout>
+        <div className="ed-page">
+          <div className="ed-loading">Loading...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (intError) {
+    return (
+      <DashboardLayout>
+        <div className="ed-page">
+          <div className="ed-empty-state">
+            <h2>Something went wrong</h2>
+            <p>Failed to load email digest data. Please try again later.</p>
+            <button className="ed-primary-btn" onClick={() => window.location.reload()}>
+              Try Again
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!activeIntegration) {
+    return (
+      <DashboardLayout>
+        <div className="ed-page">
+          <div className="ed-header">
+            <button className="ed-back-btn" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Dashboard
+            </button>
+            <h1 className="ed-title">Email Digest</h1>
+          </div>
+          <div className="ed-empty-state">
+            <div className="ed-empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <polyline points="2 4 12 13 22 4" />
+              </svg>
+            </div>
+            <h2>No Email Digest Set Up</h2>
+            <p>Connect your Gmail account from the My Kids page to start receiving email digests about your kids' school communications.</p>
+            <button className="ed-primary-btn" onClick={() => navigate('/my-kids')}>
+              Go to My Kids
+            </button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="ed-page">
+        <div className="ed-header">
+          <button className="ed-back-btn" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Dashboard
+          </button>
+          <h1 className="ed-title">Email Digest</h1>
+        </div>
+
+        {!activeIntegration.is_active && (
+          <div className="ed-reconnect-banner">
+            <div className="ed-reconnect-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </div>
+            <div className="ed-reconnect-text">
+              <h3>Gmail Connection Expired</h3>
+              <p>Your Gmail access has expired. Reconnect to continue receiving email digests.</p>
+            </div>
+            <button className="ed-primary-btn" onClick={handleReconnect}>
+              Reconnect Gmail
+            </button>
+          </div>
+        )}
+
+        {/* 1. Header band: Gmail + Delivery + WhatsApp */}
+        <div className="ed-settings-card">
+          <h2 className="ed-section-title">Delivery</h2>
+          <div className="ed-header-band">
+            <div className="ed-header-band__item">
+              <span className="ed-setting-label">Gmail</span>
+              <span className="ed-header-band__value">
+                {activeIntegration.gmail_address}
+              </span>
+            </div>
+            <div className="ed-header-band__item">
+              <label className="ed-setting-label" htmlFor="unified-delivery-time">
+                Delivery time
+              </label>
+              <select
+                id="unified-delivery-time"
+                className="ed-select"
+                value={settings?.delivery_time ?? '07:00'}
+                onChange={handleDeliveryTimeChange}
+                disabled={settingsMutation.isPending}
+              >
+                <option value="06:00">6:00 AM</option>
+                <option value="07:00">7:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="09:00">9:00 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="17:00">5:00 PM</option>
+                <option value="20:00">8:00 PM</option>
+              </select>
+            </div>
+            <div className="ed-header-band__item">
+              <span className="ed-setting-label">WhatsApp</span>
+              {activeIntegration.whatsapp_phone && activeIntegration.whatsapp_verified ? (
+                <span className="ed-header-band__value">
+                  <span className="ed-whatsapp-check" aria-hidden="true">&#10003;</span>{' '}
+                  {activeIntegration.whatsapp_phone}
+                </span>
+              ) : activeIntegration.whatsapp_phone ? (
+                <span className="ed-header-band__value">
+                  Pending: {activeIntegration.whatsapp_phone}
+                </span>
+              ) : (
+                <span className="ed-header-band__value ed-header-band__value--muted">
+                  Not connected
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* WhatsApp inline states */}
+          {!activeIntegration.whatsapp_phone && (
+            <div className="ed-whatsapp-section">
+              <div className="ed-whatsapp-row">
+                <input
+                  type="tel"
+                  className="ed-input"
+                  placeholder="+14165551234"
+                  maxLength={16}
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value)}
+                  aria-label="WhatsApp phone number"
+                  disabled={sendOtpMutation.isPending}
+                />
+                <button
+                  className="ed-primary-btn"
+                  onClick={handleSendOtp}
+                  disabled={sendOtpMutation.isPending || !whatsappPhone.trim()}
+                >
+                  {sendOtpMutation.isPending ? 'Sending...' : 'Send OTP'}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeIntegration.whatsapp_phone && !activeIntegration.whatsapp_verified && (
+            <div className="ed-whatsapp-section">
+              <p className="ed-whatsapp-description">
+                Code sent to <strong>{activeIntegration.whatsapp_phone}</strong>
+              </p>
+              <div className="ed-whatsapp-row">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="ed-input"
+                  placeholder="6-digit code"
+                  maxLength={6}
+                  value={whatsappOtp}
+                  onChange={(e) => setWhatsappOtp(e.target.value.replace(/\D/g, ''))}
+                  aria-label="Verification code"
+                  disabled={verifyOtpMutation.isPending}
+                />
+                <button
+                  className="ed-primary-btn"
+                  onClick={handleVerifyOtp}
+                  disabled={verifyOtpMutation.isPending || whatsappOtp.length !== 6}
+                >
+                  {verifyOtpMutation.isPending ? 'Verifying...' : 'Verify'}
+                </button>
+              </div>
+              <div className="ed-whatsapp-actions">
+                <button
+                  className="ed-whatsapp-link"
+                  onClick={handleResendOtp}
+                  disabled={sendOtpMutation.isPending}
+                  type="button"
+                >
+                  {sendOtpMutation.isPending ? 'Resending...' : 'Resend code'}
+                </button>
+                <button
+                  className="ed-whatsapp-link ed-whatsapp-link--cancel"
+                  onClick={handleCancelOtp}
+                  disabled={disconnectWhatsappMutation.isPending}
+                  type="button"
+                >
+                  {disconnectWhatsappMutation.isPending ? 'Cancelling...' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
+          {activeIntegration.whatsapp_phone && activeIntegration.whatsapp_verified && (
+            <button
+              className="ed-sync-btn"
+              onClick={handleDisconnectWhatsapp}
+              disabled={disconnectWhatsappMutation.isPending}
+            >
+              {disconnectWhatsappMutation.isPending ? 'Disconnecting...' : 'Disconnect WhatsApp'}
+            </button>
+          )}
+
+          {whatsappError && <p className="ed-error-text ed-whatsapp-message">{whatsappError}</p>}
+          {whatsappSuccess && (
+            <p className="ed-success-text ed-whatsapp-message">{whatsappSuccess}</p>
+          )}
+        </div>
+
+        {/* 2. Your kids */}
+        <div className="ed-settings-card">
+          <h2 className="ed-section-title">Your kids</h2>
+          <p className="ed-help-text">
+            School email is the board-issued address where teachers email your kid
+            (e.g., @ocdsb.ca). Different from the ClassBridge login email.
+          </p>
+          {childProfiles.length === 0 && (
+            <p className="ed-empty-history">No kids on your account yet.</p>
+          )}
+          {childProfiles.map((profile) => (
+            <div key={profile.id} className="ed-kid-row">
+              <div className="ed-kid-row__header">
+                <span className="ed-kid-row__name">{profile.first_name}</span>
+                {profile.student_id != null && (
+                  <span className="ed-kid-row__student-id">
+                    student #{profile.student_id}
+                  </span>
+                )}
+              </div>
+              <div className="ed-school-email-list">
+                {profile.school_emails.length === 0 && (
+                  <p className="ed-empty-history ed-empty-history--inline">
+                    No school email configured yet.
+                  </p>
+                )}
+                {profile.school_emails.map((se) => {
+                  const badge = forwardingState(se.forwarding_seen_at);
+                  return (
+                    <div key={se.id} className="ed-school-email-item">
+                      <span className="ed-school-email-addr">{se.email_address}</span>
+                      <span className={badge.className}>{badge.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {addSchoolEmailFor === profile.id ? (
+                <div className="ed-add-email-row">
+                  <input
+                    type="email"
+                    className="ed-input"
+                    placeholder="kid@ocdsb.ca"
+                    value={newSchoolEmail}
+                    onChange={(e) => setNewSchoolEmail(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="ed-primary-btn"
+                    onClick={() => handleAddSchoolEmail(profile.id)}
+                    disabled={
+                      addSchoolEmailMutation.isPending ||
+                      !isValidEmail(newSchoolEmail)
+                    }
+                  >
+                    {addSchoolEmailMutation.isPending ? 'Adding...' : 'Add'}
+                  </button>
+                  <button
+                    className="ed-sync-btn"
+                    onClick={() => {
+                      setAddSchoolEmailFor(null);
+                      setNewSchoolEmail('');
+                    }}
+                    disabled={addSchoolEmailMutation.isPending}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="ed-link-btn"
+                  onClick={() => {
+                    setAddSchoolEmailFor(profile.id);
+                    setNewSchoolEmail('');
+                  }}
+                >
+                  + Add another school email
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* 3. Monitored senders */}
+        <div className="ed-settings-card">
+          <div className="ed-section-title-row">
+            <h2 className="ed-section-title">Monitored senders</h2>
+            <button
+              type="button"
+              className="ed-primary-btn"
+              onClick={() => {
+                setAddSenderApiError(null);
+                setAddSenderOpen(true);
+              }}
+            >
+              + Add sender
+            </button>
+          </div>
+          {senders.length === 0 ? (
+            <p className="ed-empty-history">No monitored senders yet.</p>
+          ) : (
+            <div className="ed-monitored-list">
+              {senders.map((s) => (
+                <div key={s.id} className="ed-sender-row">
+                  <div className="ed-sender-row__primary">
+                    <span className="ed-monitored-email">{s.email_address}</span>
+                    {s.sender_name && (
+                      <span className="ed-monitored-name">{s.sender_name}</span>
+                    )}
+                    {s.label && <span className="ed-monitored-label">{s.label}</span>}
+                  </div>
+                  <div className="ed-sender-row__chips">
+                    {s.applies_to_all ? (
+                      <span className="ed-kid-chip ed-kid-chip--all" aria-label="Applies to all kids">
+                        All kids
+                      </span>
+                    ) : (
+                      s.assignments.map((a) => (
+                        <span
+                          key={a.child_profile_id}
+                          className="ed-kid-chip ed-kid-chip--assigned"
+                        >
+                          {a.first_name}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                  <button
+                    className="ed-monitored-remove"
+                    onClick={() => handleRemoveSender(s)}
+                    disabled={removeSenderMutation.isPending}
+                    aria-label={`Remove ${s.email_address}`}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {addSenderOpen && (
+          <AddSenderModal
+            profiles={childProfiles}
+            onClose={() => setAddSenderOpen(false)}
+            onSubmit={(payload) => {
+              setAddSenderApiError(null);
+              addSenderMutation.mutate(payload);
+            }}
+            pending={addSenderMutation.isPending}
+            apiError={addSenderApiError}
+          />
         )}
       </div>
       {confirmModal}
