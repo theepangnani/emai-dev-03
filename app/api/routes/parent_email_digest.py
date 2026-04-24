@@ -783,7 +783,15 @@ async def trigger_manual_sync(
 
     from app.services.parent_gmail_service import fetch_child_emails
 
-    emails = await fetch_child_emails(db, integration)
+    fetch_result = await fetch_child_emails(db, integration)
+    emails = fetch_result.get("emails", [])
+    # #4058 — fetch_child_emails no longer auto-commits last_synced_at.
+    # The manual-sync endpoint has no delivery-log step to bundle with, so
+    # persist the fetch timestamp here directly.
+    synced_at = fetch_result.get("synced_at")
+    if synced_at is not None:
+        integration.last_synced_at = synced_at
+        db.commit()
     return {"email_count": len(emails), "message": f"Synced {len(emails)} emails successfully"}
 
 
