@@ -32,6 +32,10 @@ class XpSummaryResponse(BaseModel):
     # (#4019) can read `xp_total` without the schema carrying two
     # duplicate Python fields. Kept as a computed_field so there is a
     # single source of truth at the model level.
+    #
+    # `# type: ignore[prop-decorator]` is required on Pydantic v2 @computed_field
+    # with @property because mypy flags the decorator order. This is a known
+    # pattern documented in Pydantic docs; remove once mypy/Pydantic fix upstream.
     @computed_field  # type: ignore[prop-decorator]
     @property
     def xp_total(self) -> int:
