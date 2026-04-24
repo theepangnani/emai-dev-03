@@ -2091,3 +2091,29 @@ For each ingested email:
 - **#4044** — Add `POST /api/parent/child-profiles` so the wizard can create profiles for brand-new parents (no pre-existing Gmail integration). Currently the wizard catches the 404 with a friendly error message; profiles for existing integrations were seeded by the Stream 1 backfill.
 - **#4056** — Decide whether to preserve "Send Digest Now" / "Sync Now" / "Digest History" features in the unified page (legacy parity question). Currently dropped from the unified path; needs product input before `on_for_all` ramp.
 
+
+#### 6.142.3 Phase 1 round-3 + pass-4 review (2026-04-24 evening)
+
+Follow-on to §6.142.1. After 10 feature streams merged, `/pr-review` was run against integration PR #4077:
+
+| Pass | Result |
+|---|---|
+| Pass 1 (pre-conflict-resolution) | 0 Critical + 8 Important + 5 Suggestion |
+| Pass 2 (after 4 round-1 fix streams) | APPROVE — 0 C / 0 I + 5 cosmetic |
+| **Pass 3 (fresh independent review)** | 0 Critical + **7 Important** + 7 Suggestion |
+| **Pass 4 (after 5 round-3 fix streams)** | **APPROVE — 0 C / 0 I + 4 cosmetic** |
+
+**Pass-3 findings fixed in round-3** (#4083-#4087):
+- #4083 **Route hardening** (tutor.py — I-1 unknown conv_id→404 · I-2 flag-before-limit · I-4 15s inter-token stall timeout · I-5 stable history order · S-1 lru_cache)
+- #4084 **Moderation fail-CLOSED** (safety_service — new `moderation_fail_mode` setting, distinct `moderation_unavailable` SSE frame code; critical for K-12 when OpenAI moderation is down)
+- #4085 **Explicit learning_cycle CREATE TABLE migration** (main.py — pg_try_advisory_lock(4067) pattern parallel to the existing tutor-table block)
+- #4086 **TutorChat a11y** (aria-live on message bubble not container; streaming uses instant-scroll behavior; `streamDone` flag guards against token-after-done races in useTutorChat)
+- #4087 **Suggestions cleanup** (XP `int(attempt_number)` coercion; LearningCyclePage MOCK_SESSION wrapped in `import.meta.env.DEV`; `test_tutor_routes.py` 515-line file split into `_auth` / `_streaming` / `_moderation` + shared `tutor_helpers.py`)
+
+**Total Phase 1 workflow footprint:**
+- **19 issues closed** across 4 review rounds (10 feature: #4063-#4072, 4 round-1: #4078-#4081, 5 round-3: #4083-#4087)
+- **14 parallel isolated-worktree streams**
+- **170 backend + 59 frontend tests** passing
+- **4 `/pr-review` passes** · **2 APPROVE verdicts** (pass 2 and pass 4)
+- Integration branch: `integrate/cb-tutor-002-phase-1` (final HEAD `35d2eae3`)
+- Single PR to master: #4077
