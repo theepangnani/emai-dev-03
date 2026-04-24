@@ -10,7 +10,7 @@ Covers
 """
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -158,5 +158,3 @@ def test_stream_moderation_unavailable_emits_distinct_frame(client, db_session):
     finally:
         set_tutor_flag(db_session, enabled=False)
 
-
-def test_stream_moderation_blocked_does_not_create_orphan_conversation(

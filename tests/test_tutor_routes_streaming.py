@@ -11,7 +11,7 @@ Covers
 """
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -344,8 +344,6 @@ def test_stream_cross_user_conversation_id_returns_404(client, db_session):
         set_tutor_flag(db_session, enabled=False)
 
 
-def test_stream_flag_off_returns_403_before_rate_limit(client, db_session, app):
-
 def test_stream_inter_token_stall_emits_error_frame(client, db_session):
     """A mid-stream hang (no token within INTER_TOKEN_TIMEOUT) emits an
     SSE `error` frame rather than blocking the connection forever."""
@@ -466,6 +464,3 @@ def test_load_history_stable_order_on_timestamp_tie(db_session):
     h1 = _load_history(db_session, conv.id)
     h2 = _load_history(db_session, conv.id)
     assert h1 == h2
-
-
-def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):

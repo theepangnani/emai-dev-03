@@ -119,6 +119,3 @@ def test_stream_flag_off_returns_403_before_rate_limit(client, db_session, app):
     finally:
         app.state.limiter.enabled = False
         app.state.limiter.reset()
-
-
-def test_stream_inter_token_stall_emits_error_frame(client, db_session):
