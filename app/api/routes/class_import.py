@@ -159,7 +159,7 @@ def preview_google_classroom(
                     profile.get("emailAddress") or None,
                 )
         except Exception as e:
-            logger.debug(
+            logger.warning(
                 "Google Classroom preview: list_course_teachers failed for %s: %s",
                 gc_id,
                 e,

@@ -440,7 +440,7 @@ export default function ImportClassesModal({ open, onClose, onCreated }: Props) 
               </div>
 
               <p className="import-privacy-note">
-                Your screenshot is processed by Anthropic Claude to extract class and teacher names. It is not stored after parsing.
+                Your screenshot is processed by Anthropic Claude to extract class and teacher names. We do not store it after parsing.
               </p>
 
               {parseError && <div className="import-error">{parseError}</div>}
