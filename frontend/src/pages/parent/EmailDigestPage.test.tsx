@@ -712,6 +712,39 @@ describe('EmailDigestPage — unified sender chips', () => {
     expect(within(row).getByText('Haashini')).toBeInTheDocument();
   });
 
+  // #4093: empty assignments is a valid "0 kids" response — do NOT fall
+  // through to child_profile_ids. Only undefined triggers the fallback.
+  it('does not fall through to child_profile_ids when assignments=[] (valid empty)', async () => {
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Thanushan' }),
+        buildChildProfile({ id: 12, first_name: 'Haashini' }),
+      ],
+    });
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 204,
+          email_address: 'orphan@school.ca',
+          applies_to_all: false,
+          // Drift between child_profile_ids and assignments would normally
+          // never happen — but if it did, we trust assignments when present.
+          child_profile_ids: [11, 12],
+          assignments: [],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('orphan@school.ca')).toBeInTheDocument();
+    });
+    const row = screen.getByText('orphan@school.ca').closest('.ed-sender-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(within(row).queryByText('Thanushan')).not.toBeInTheDocument();
+    expect(within(row).queryByText('Haashini')).not.toBeInTheDocument();
+  });
+
   it('renders a single "All kids" chip when applies_to_all=true', async () => {
     mockListMonitoredSenders.mockResolvedValue({
       data: [

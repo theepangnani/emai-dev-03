@@ -87,7 +87,9 @@ function senderChipAssignments(
   sender: MonitoredSender,
   childProfiles: ChildProfile[],
 ): MonitoredSenderAssignment[] {
-  if (sender.assignments && sender.assignments.length > 0) {
+  // #4093: check `!== undefined` specifically — an empty `assignments: []`
+  // is a valid "no kids assigned" response, not a stale cache case.
+  if (sender.assignments !== undefined) {
     return sender.assignments;
   }
   const ids = sender.child_profile_ids ?? [];
