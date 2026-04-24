@@ -303,6 +303,44 @@ describe('EmailDigestSetupWizard — Step 5 school emails (flag-gated, #4017)', 
     expect(mockCreateChildProfile).not.toHaveBeenCalled();
   });
 
+  it('surfaces a friendly message (not the raw axios string) when createChildProfile returns 404', async () => {
+    mockUseFeatureFlagEnabled.mockReturnValue(true);
+    seedExistingIntegration();
+    mockGetChildren.mockResolvedValue([buildKid()]);
+    // No pre-existing profiles — the wizard will try to create one.
+    mockListChildProfiles.mockResolvedValue({ data: [] });
+    const axios404 = Object.assign(
+      new Error('Request failed with status code 404'),
+      { response: { status: 404 } },
+    );
+    mockCreateChildProfile.mockRejectedValue(axios404);
+
+    renderWithProviders(
+      <EmailDigestSetupWizard open onClose={() => {}} childName="Sam" />,
+    );
+    await advanceToStep4();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    });
+    const input = (await screen.findByLabelText(/Aarav/)) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'aarav@school.ca' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/please try again from the main Email Digest page/i),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText(/Request failed with status code 404/i),
+    ).not.toBeInTheDocument();
+    // The email-save endpoint should never be reached when the profile
+    // create fails outright.
+    expect(mockAddChildSchoolEmail).not.toHaveBeenCalled();
+  });
+
   it('invalid email shows inline validation and does not submit', async () => {
     mockUseFeatureFlagEnabled.mockReturnValue(true);
     seedExistingIntegration();
