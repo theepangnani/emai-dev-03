@@ -571,3 +571,181 @@ class TestDualWrite:
             .count()
         )
         assert after == before
+
+
+# ---------------------------------------------------------------------------
+# N+1 regression (#4049) — list_monitored_senders eager-loads child_assignments
+# ---------------------------------------------------------------------------
+
+
+class TestListSendersQueryCount:
+    def test_list_senders_is_constant_query_count(self, client, db_session, setup):
+        """Seed 5 senders × 2 assignments per sender. The list endpoint must
+        issue a constant number of SELECTs regardless of the N× factor."""
+        from sqlalchemy import event
+        from app.models.parent_gmail_integration import (
+            ParentDigestMonitoredSender,
+            SenderChildAssignment,
+        )
+
+        # Purge existing fixture senders for this parent.
+        db_session.query(SenderChildAssignment).filter(
+            SenderChildAssignment.sender_id.in_(
+                db_session.query(ParentDigestMonitoredSender.id).filter(
+                    ParentDigestMonitoredSender.parent_id == setup["parent"].id,
+                )
+            )
+        ).delete(synchronize_session=False)
+        db_session.query(ParentDigestMonitoredSender).filter(
+            ParentDigestMonitoredSender.parent_id == setup["parent"].id,
+        ).delete()
+        db_session.commit()
+
+        senders = []
+        for i in range(5):
+            s = ParentDigestMonitoredSender(
+                parent_id=setup["parent"].id,
+                email_address=f"teacher{i}@school.ca",
+                sender_name=f"Teacher {i}",
+            )
+            db_session.add(s)
+            senders.append(s)
+        db_session.commit()
+        for s in senders:
+            for pid in (setup["profile_a"].id, setup["profile_b"].id):
+                db_session.add(SenderChildAssignment(
+                    sender_id=s.id,
+                    child_profile_id=pid,
+                ))
+        db_session.commit()
+
+        engine = db_session.bind
+        select_count = {"n": 0}
+
+        def _before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+            if statement.strip().lower().startswith("select"):
+                select_count["n"] += 1
+
+        event.listen(engine, "before_cursor_execute", _before_cursor_execute)
+        try:
+            headers = _auth(client, PARENT_EMAIL)
+            resp = client.get(f"{PREFIX}/monitored-senders", headers=headers)
+        finally:
+            event.remove(engine, "before_cursor_execute", _before_cursor_execute)
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 5
+        # Each sender should show both profile ids in its assignments
+        for s in data:
+            assert len(s["child_profile_ids"]) == 2
+
+        assert select_count["n"] <= 10, (
+            f"list_monitored_senders issued {select_count['n']} SELECTs for "
+            f"5 senders × 2 assignments — likely N+1 on child_assignments."
+        )
+
+
+# ---------------------------------------------------------------------------
+# SAVEPOINT resilience (#4050) — dual-write failure must NOT poison session
+# ---------------------------------------------------------------------------
+
+
+class TestDualWriteSavepointResilience:
+    def test_dual_write_failure_does_not_poison_session(self, db_session):
+        """If _dual_write_sender_v2 raises midway, the outer session must
+        still be usable — the SAVEPOINT rolls back only the v2 inserts."""
+        from app.api.routes.parent_email_digest import _dual_write_sender_v2
+        from app.models.parent_gmail_integration import (
+            ParentGmailIntegration,
+            ParentDigestMonitoredSender,
+        )
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+
+        parent = (
+            db_session.query(User)
+            .filter(User.email == "savepoint_parent@test.com")
+            .first()
+        )
+        if not parent:
+            parent = User(
+                email="savepoint_parent@test.com",
+                full_name="Savepoint Parent",
+                role=UserRole.PARENT,
+                hashed_password=get_password_hash(PASSWORD),
+            )
+            db_session.add(parent)
+            db_session.commit()
+
+        integration = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="sp_parent@gmail.com",
+            google_id="google_sp",
+            access_token="tok",
+            refresh_token="tok",
+            child_school_email="kid@school.ca",
+            child_first_name="Kid",
+        )
+        db_session.add(integration)
+        db_session.commit()
+
+        # Force a duplicate sender → second call inside SAVEPOINT will raise
+        # IntegrityError on flush (unique parent_id+email constraint).
+        existing = ParentDigestMonitoredSender(
+            parent_id=parent.id,
+            email_address="boom@school.ca",
+            applies_to_all=False,
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Monkey-patch the sender query to return None so the dual-write
+        # helper tries to INSERT a duplicate row — triggering the flush
+        # inside the SAVEPOINT to fail.
+        from unittest.mock import patch
+
+        # Simpler: just invoke with an email that already exists but bypass
+        # the existence check by mocking the first query to return None.
+        orig_query = db_session.query
+
+        call_state = {"first_sender_query": True}
+
+        def fake_query(*args, **kwargs):
+            q = orig_query(*args, **kwargs)
+            if (
+                call_state["first_sender_query"]
+                and len(args) == 1
+                and args[0] is ParentDigestMonitoredSender
+            ):
+                call_state["first_sender_query"] = False
+                class _Wrapper:
+                    def filter(self, *a, **kw):
+                        class _Q:
+                            def first(_self):
+                                return None
+                        return _Q()
+                return _Wrapper()
+            return q
+
+        with patch.object(db_session, "query", side_effect=fake_query):
+            # Should NOT raise — savepoint swallows the IntegrityError.
+            _dual_write_sender_v2(
+                db_session,
+                parent_id=parent.id,
+                integration=integration,
+                email_address="boom@school.ca",
+                sender_name="Boom",
+                label=None,
+            )
+
+        # Session must still be usable — subsequent writes succeed.
+        probe = ParentDigestMonitoredSender(
+            parent_id=parent.id,
+            email_address="post_failure@school.ca",
+            applies_to_all=False,
+        )
+        db_session.add(probe)
+        db_session.commit()  # Would fail with "transaction has been rolled back" if poisoned
+
+        assert probe.id is not None

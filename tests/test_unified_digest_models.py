@@ -353,26 +353,31 @@ def _run_backfill(db):
         conn.execute(text(
             """
             INSERT INTO parent_child_profiles (parent_id, student_id, first_name, created_at)
-            SELECT DISTINCT
-                pgi.parent_id,
-                (
-                    SELECT s.id
-                    FROM users s
-                    JOIN students st ON st.user_id = s.id
-                    JOIN parent_students ps ON ps.student_id = st.id
-                    WHERE ps.parent_id = pgi.parent_id
-                      AND LOWER(SUBSTR(s.full_name, 1, INSTR(s.full_name || ' ', ' ') - 1)) = LOWER(pgi.child_first_name)
-                    LIMIT 1
-                ) AS student_id,
-                pgi.child_first_name,
-                pgi.created_at
-            FROM parent_gmail_integrations pgi
-            WHERE pgi.child_first_name IS NOT NULL
-              AND NOT EXISTS (
-                  SELECT 1 FROM parent_child_profiles pcp
-                  WHERE pcp.parent_id = pgi.parent_id
-                    AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-              )
+            SELECT parent_id, student_id, MIN(first_name) AS first_name, MIN(created_at) AS created_at
+            FROM (
+                SELECT DISTINCT
+                    pgi.parent_id,
+                    (
+                        SELECT s.id
+                        FROM users s
+                        JOIN students st ON st.user_id = s.id
+                        JOIN parent_students ps ON ps.student_id = st.id
+                        WHERE ps.parent_id = pgi.parent_id
+                          AND LOWER(SUBSTR(s.full_name, 1, INSTR(s.full_name || ' ', ' ') - 1)) = LOWER(pgi.child_first_name)
+                        LIMIT 1
+                    ) AS student_id,
+                    LOWER(pgi.child_first_name) AS first_name_lower,
+                    pgi.child_first_name AS first_name,
+                    pgi.created_at
+                FROM parent_gmail_integrations pgi
+                WHERE pgi.child_first_name IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM parent_child_profiles pcp
+                      WHERE pcp.parent_id = pgi.parent_id
+                        AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                  )
+            ) dedup
+            GROUP BY parent_id, student_id, first_name_lower
             """
         ))
         conn.execute(text(
@@ -524,3 +529,46 @@ def test_backfill_is_idempotent(db_session):
         db_session.query(m["SenderChildAssignment"]).count(),
     )
     assert before == after, f"backfill not idempotent: {before} != {after}"
+
+
+def test_backfill_case_differing_first_names_dedupe_to_single_profile(db_session):
+    """Regression for #4047: two integrations with "Emma" and "emma" must
+    produce exactly ONE parent_child_profiles row (pre-normalization GROUP
+    BY on LOWER(first_name))."""
+    m = _models()
+    parent = _make_parent(db_session, "case_dedupe_parent@test.com")
+
+    # Clean slate for this parent's v2 profiles
+    db_session.query(m["ParentChildProfile"]).filter(
+        m["ParentChildProfile"].parent_id == parent.id,
+    ).delete()
+    db_session.commit()
+
+    # Two legacy integrations — same kid's name but different casings.
+    ig1 = m["ParentGmailIntegration"](
+        parent_id=parent.id,
+        gmail_address="case_parent_a@gmail.com",
+        child_school_email="emma_a@school.ca",
+        child_first_name="Emma",
+    )
+    ig2 = m["ParentGmailIntegration"](
+        parent_id=parent.id,
+        gmail_address="case_parent_b@gmail.com",
+        child_school_email="emma_b@school.ca",
+        child_first_name="emma",
+    )
+    db_session.add_all([ig1, ig2])
+    db_session.commit()
+
+    _run_backfill(db_session)
+
+    profiles = (
+        db_session.query(m["ParentChildProfile"])
+        .filter(m["ParentChildProfile"].parent_id == parent.id)
+        .all()
+    )
+    assert len(profiles) == 1, (
+        f"expected 1 profile after case-differing dedupe, got {len(profiles)}: "
+        f"{[p.first_name for p in profiles]}"
+    )
+    assert profiles[0].first_name in {"Emma", "emma"}

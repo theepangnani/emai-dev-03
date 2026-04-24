@@ -15,7 +15,7 @@ import requests as _requests
 from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_role
 from app.core.config import settings
@@ -474,71 +474,73 @@ def _dual_write_sender_v2(
     Find-or-create ParentDigestMonitoredSender on (parent_id, email_address),
     find the matching ParentChildProfile for the integration's
     child_first_name (case-insensitive), and create a SenderChildAssignment
-    if both exist and no duplicate already does. Best-effort: failures are
-    swallowed so the legacy write path keeps working.
+    if both exist and no duplicate already does. Uses a SAVEPOINT
+    (begin_nested) so a failure here rolls back only the v2 inserts — the
+    outer legacy transaction stays healthy.
     """
+    normalized_email = (email_address or "").strip().lower()
+    if not normalized_email:
+        return
+
     try:
-        normalized_email = (email_address or "").strip().lower()
-        if not normalized_email:
-            return
-
-        sender = (
-            db.query(ParentDigestMonitoredSender)
-            .filter(
-                ParentDigestMonitoredSender.parent_id == parent_id,
-                ParentDigestMonitoredSender.email_address == normalized_email,
+        with db.begin_nested():
+            sender = (
+                db.query(ParentDigestMonitoredSender)
+                .filter(
+                    ParentDigestMonitoredSender.parent_id == parent_id,
+                    ParentDigestMonitoredSender.email_address == normalized_email,
+                )
+                .first()
             )
-            .first()
-        )
-        if sender is None:
-            sender = ParentDigestMonitoredSender(
-                parent_id=parent_id,
-                email_address=normalized_email,
-                sender_name=sender_name,
-                label=label,
-                applies_to_all=False,
-            )
-            db.add(sender)
-            db.flush()
-        else:
-            # Update label/sender_name if the caller provided new values.
-            if sender_name and not sender.sender_name:
-                sender.sender_name = sender_name
-            if label and not sender.label:
-                sender.label = label
+            if sender is None:
+                sender = ParentDigestMonitoredSender(
+                    parent_id=parent_id,
+                    email_address=normalized_email,
+                    sender_name=sender_name,
+                    label=label,
+                    applies_to_all=False,
+                )
+                db.add(sender)
+                db.flush()
+            else:
+                # Update label/sender_name if the caller provided new values.
+                if sender_name and not sender.sender_name:
+                    sender.sender_name = sender_name
+                if label and not sender.label:
+                    sender.label = label
 
-        # Only link to a child profile if we have a first name on the
-        # integration and a matching profile exists for this parent.
-        first_name = (integration.child_first_name or "").strip()
-        if not first_name:
-            return
+            # Only link to a child profile if we have a first name on the
+            # integration and a matching profile exists for this parent.
+            first_name = (integration.child_first_name or "").strip()
+            if not first_name:
+                return
 
-        from sqlalchemy import func as sa_func
-        profile = (
-            db.query(ParentChildProfile)
-            .filter(
-                ParentChildProfile.parent_id == parent_id,
-                sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+            from sqlalchemy import func as sa_func
+            profile = (
+                db.query(ParentChildProfile)
+                .filter(
+                    ParentChildProfile.parent_id == parent_id,
+                    sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+                )
+                .first()
             )
-            .first()
-        )
-        if profile is None:
-            return
+            if profile is None:
+                return
 
-        existing = (
-            db.query(SenderChildAssignment)
-            .filter(
-                SenderChildAssignment.sender_id == sender.id,
-                SenderChildAssignment.child_profile_id == profile.id,
+            existing = (
+                db.query(SenderChildAssignment)
+                .filter(
+                    SenderChildAssignment.sender_id == sender.id,
+                    SenderChildAssignment.child_profile_id == profile.id,
+                )
+                .first()
             )
-            .first()
-        )
-        if existing is None:
-            db.add(SenderChildAssignment(
-                sender_id=sender.id,
-                child_profile_id=profile.id,
-            ))
-            db.flush()
+            if existing is None:
+                db.add(SenderChildAssignment(
+                    sender_id=sender.id,
+                    child_profile_id=profile.id,
+                ))
+                db.flush()
     except Exception:
         logger.exception(
             "dual_write.failed | parent_id=%s integration_id=%s email=%s",
@@ -985,6 +987,7 @@ def list_monitored_senders(
     """List the current parent's monitored senders with their child assignments."""
     senders = (
         db.query(ParentDigestMonitoredSender)
+        .options(selectinload(ParentDigestMonitoredSender.child_assignments))
         .filter(ParentDigestMonitoredSender.parent_id == current_user.id)
         .order_by(ParentDigestMonitoredSender.created_at.asc())
         .all()
@@ -1120,6 +1123,7 @@ def list_child_profiles(
     """List the caller's child profiles with nested school emails."""
     profiles = (
         db.query(ParentChildProfile)
+        .options(selectinload(ParentChildProfile.school_emails))
         .filter(ParentChildProfile.parent_id == current_user.id)
         .order_by(ParentChildProfile.created_at.asc())
         .all()

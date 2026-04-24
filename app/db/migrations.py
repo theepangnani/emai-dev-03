@@ -2574,50 +2574,60 @@ def _run_migrations_inner(engine, settings, logger):
                 conn.execute(text(
                     """
                     INSERT INTO parent_child_profiles (parent_id, student_id, first_name, created_at)
-                    SELECT DISTINCT
-                        pgi.parent_id,
-                        (
-                            SELECT s.id
-                            FROM users s
-                            JOIN students st ON st.user_id = s.id
-                            JOIN parent_students ps ON ps.student_id = st.id
-                            WHERE ps.parent_id = pgi.parent_id
-                              AND LOWER(SUBSTR(s.full_name, 1, INSTR(s.full_name || ' ', ' ') - 1)) = LOWER(pgi.child_first_name)
-                            LIMIT 1
-                        ) AS student_id,
-                        pgi.child_first_name,
-                        pgi.created_at
-                    FROM parent_gmail_integrations pgi
-                    WHERE pgi.child_first_name IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM parent_child_profiles pcp
-                          WHERE pcp.parent_id = pgi.parent_id
-                            AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-                      )
+                    SELECT parent_id, student_id, MIN(first_name) AS first_name, MIN(created_at) AS created_at
+                    FROM (
+                        SELECT DISTINCT
+                            pgi.parent_id,
+                            (
+                                SELECT s.id
+                                FROM users s
+                                JOIN students st ON st.user_id = s.id
+                                JOIN parent_students ps ON ps.student_id = st.id
+                                WHERE ps.parent_id = pgi.parent_id
+                                  AND LOWER(SUBSTR(s.full_name, 1, INSTR(s.full_name || ' ', ' ') - 1)) = LOWER(pgi.child_first_name)
+                                LIMIT 1
+                            ) AS student_id,
+                            LOWER(pgi.child_first_name) AS first_name_lower,
+                            pgi.child_first_name AS first_name,
+                            pgi.created_at
+                        FROM parent_gmail_integrations pgi
+                        WHERE pgi.child_first_name IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM parent_child_profiles pcp
+                              WHERE pcp.parent_id = pgi.parent_id
+                                AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                          )
+                    ) dedup
+                    GROUP BY parent_id, student_id, first_name_lower
                     """
                     if not _is_pg else
                     """
                     INSERT INTO parent_child_profiles (parent_id, student_id, first_name, created_at)
-                    SELECT DISTINCT
-                        pgi.parent_id,
-                        (
-                            SELECT s.id
-                            FROM users s
-                            JOIN students st ON st.user_id = s.id
-                            JOIN parent_students ps ON ps.student_id = st.id
-                            WHERE ps.parent_id = pgi.parent_id
-                              AND LOWER(SPLIT_PART(s.full_name, ' ', 1)) = LOWER(pgi.child_first_name)
-                            LIMIT 1
-                        ) AS student_id,
-                        pgi.child_first_name,
-                        pgi.created_at
-                    FROM parent_gmail_integrations pgi
-                    WHERE pgi.child_first_name IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM parent_child_profiles pcp
-                          WHERE pcp.parent_id = pgi.parent_id
-                            AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-                      )
+                    SELECT parent_id, student_id, MIN(first_name) AS first_name, MIN(created_at) AS created_at
+                    FROM (
+                        SELECT DISTINCT
+                            pgi.parent_id,
+                            (
+                                SELECT s.id
+                                FROM users s
+                                JOIN students st ON st.user_id = s.id
+                                JOIN parent_students ps ON ps.student_id = st.id
+                                WHERE ps.parent_id = pgi.parent_id
+                                  AND LOWER(SPLIT_PART(s.full_name, ' ', 1)) = LOWER(pgi.child_first_name)
+                                LIMIT 1
+                            ) AS student_id,
+                            LOWER(pgi.child_first_name) AS first_name_lower,
+                            pgi.child_first_name AS first_name,
+                            pgi.created_at
+                        FROM parent_gmail_integrations pgi
+                        WHERE pgi.child_first_name IS NOT NULL
+                          AND NOT EXISTS (
+                              SELECT 1 FROM parent_child_profiles pcp
+                              WHERE pcp.parent_id = pgi.parent_id
+                                AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                          )
+                    ) dedup
+                    GROUP BY parent_id, student_id, first_name_lower
                     """
                 ))
                 conn.commit()
@@ -2705,3 +2715,23 @@ def _run_migrations_inner(engine, settings, logger):
                 )
     except Exception as e:
         logger.warning("Unified digest v2 backfill (#4013) failed: %s", e)
+
+    # --- Defense-in-depth: unique per (parent_id, LOWER(first_name)) (#4047) ---
+    try:
+        with engine.connect() as conn:
+            _is_pg = "sqlite" not in settings.database_url
+            if _is_pg:
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_parent_child_profile_lower_name "
+                    "ON parent_child_profiles (parent_id, LOWER(first_name))"
+                ))
+            else:
+                # SQLite supports functional indexes in 3.9+.
+                conn.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_parent_child_profile_lower_name "
+                    "ON parent_child_profiles (parent_id, LOWER(first_name))"
+                ))
+            conn.commit()
+            logger.info("Unique functional index on parent_child_profiles (#4047)")
+    except Exception as e:
+        logger.debug("Functional unique index #4047 skipped: %s", e)
