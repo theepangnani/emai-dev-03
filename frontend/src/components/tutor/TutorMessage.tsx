@@ -31,7 +31,15 @@ export function TutorMessage({ message, isLatest = false }: TutorMessageProps) {
     .join(' ');
 
   return (
-    <article className={classes} aria-live={!isUser && streaming ? 'polite' : undefined}>
+    <article
+      className={classes}
+      // aria-live lives on the individual assistant bubble (not the outer
+      // scroll container) so screen readers announce only the freshly
+      // streamed text, not the entire conversation history on every update.
+      // aria-atomic=false ensures only the new/changed subtree is announced.
+      aria-live={isUser ? undefined : 'polite'}
+      aria-atomic={isUser ? undefined : false}
+    >
       {!isUser && safety && (
         <span className="tutor-msg__tag" aria-label="Safety notice">
           Heads up

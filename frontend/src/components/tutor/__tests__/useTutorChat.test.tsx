@@ -54,6 +54,41 @@ describe('useTutorChat', () => {
     expect(third).toBe(fourth);
   });
 
+  it('ignores token (and chips/safety) frames that arrive after done', async () => {
+    // A misbehaving backend / network-buffered flush can deliver a token
+    // AFTER the terminal `done` frame. The hook must drop those frames
+    // instead of re-appending text or flipping `streaming` back to true.
+    mockFetchOk([
+      'data: {"type":"token","text":"real "}\n\n',
+      'data: {"type":"token","text":"content"}\n\n',
+      'data: {"type":"done"}\n\n',
+      // Stragglers after the terminal frame — must all be ignored.
+      'data: {"type":"token","text":" LATE"}\n\n',
+      'data: {"type":"chips","suggestions":["late chip"]}\n\n',
+    ]);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { result } = renderHook(() => useTutorChat());
+
+    await act(async () => {
+      await result.current.sendMessage('test');
+    });
+
+    const assistant = result.current.messages.find((m) => m.role === 'assistant');
+    expect(assistant).toBeDefined();
+    // Late token must NOT have been appended.
+    expect(assistant?.content).toBe('real content');
+    // Late chips must NOT have overwritten the bubble's suggestions.
+    expect(assistant?.suggestions ?? []).toEqual([]);
+    // Stream should be settled — late tokens must not re-flip streaming.
+    expect(assistant?.streaming).toBe(false);
+    expect(result.current.isStreaming).toBe(false);
+
+    // At least one warn was logged for the dropped late frames.
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
   it('still sees the latest messages snapshot even though sendMessage is stable', async () => {
     mockFetchOk([
       'data: {"type":"token","text":"hi"}\n\n',

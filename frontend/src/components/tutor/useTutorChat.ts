@@ -155,6 +155,11 @@ export function useTutorChat(): UseTutorChatResult {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        // Race guard: once we've seen `done` for this stream, subsequent
+        // frames (a late token straggler or a second chips payload) must
+        // NOT mutate the bubble — otherwise we'd re-flash `streaming: true`
+        // on the UI or append orphan text after the turn has settled.
+        let streamDone = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -171,12 +176,20 @@ export function useTutorChat(): UseTutorChatResult {
               const data = JSON.parse(line.slice(6));
 
               if (data.type === 'token') {
+                if (streamDone) {
+                  console.warn('[useTutorChat] Token received after done; ignoring.');
+                  continue;
+                }
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId ? { ...m, content: m.content + (data.text ?? '') } : m,
                   ),
                 );
               } else if (data.type === 'chips') {
+                if (streamDone) {
+                  console.warn('[useTutorChat] Chips received after done; ignoring.');
+                  continue;
+                }
                 const suggestions: string[] = Array.isArray(data.suggestions)
                   ? data.suggestions.slice(0, 4)
                   : [];
@@ -184,6 +197,10 @@ export function useTutorChat(): UseTutorChatResult {
                   prev.map((m) => (m.id === assistantId ? { ...m, suggestions } : m)),
                 );
               } else if (data.type === 'safety') {
+                if (streamDone) {
+                  console.warn('[useTutorChat] Safety received after done; ignoring.');
+                  continue;
+                }
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantId
@@ -192,6 +209,7 @@ export function useTutorChat(): UseTutorChatResult {
                   ),
                 );
               } else if (data.type === 'done') {
+                streamDone = true;
                 if (typeof data.conversation_id === 'string') {
                   conversationIdRef.current = data.conversation_id;
                 }

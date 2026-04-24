@@ -172,6 +172,40 @@ describe('TutorChat', () => {
     expect(firstBody.conversation_id).toBeUndefined();
   });
 
+  it('puts aria-live on the assistant bubble, not the outer scroll container', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"Hello."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    const { container } = render(<TutorChat firstName="Maya" />);
+
+    // Outer scroll container must NOT carry aria-live — otherwise every
+    // token update re-announces the entire conversation.
+    const stream = container.querySelector('.tutor-chat__stream');
+    expect(stream).not.toBeNull();
+    expect(stream?.getAttribute('aria-live')).toBeNull();
+
+    const input = screen.getByRole('textbox', { name: /message arc/i });
+    await user.type(input, 'hi{Enter}');
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hello\./i)).toBeInTheDocument();
+    });
+
+    // Assistant bubble carries aria-live=polite + aria-atomic=false.
+    const assistantBubble = container.querySelector('.tutor-msg--arc');
+    expect(assistantBubble).not.toBeNull();
+    expect(assistantBubble?.getAttribute('aria-live')).toBe('polite');
+    expect(assistantBubble?.getAttribute('aria-atomic')).toBe('false');
+
+    // User bubble must NOT carry aria-live — announcing user echoes is redundant.
+    const userBubble = container.querySelector('.tutor-msg--user');
+    expect(userBubble).not.toBeNull();
+    expect(userBubble?.getAttribute('aria-live')).toBeNull();
+  });
+
   it('renders a readable error banner (not a raw error code) on failure', async () => {
     mockFetchFail(500);
 
