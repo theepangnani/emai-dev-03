@@ -1978,3 +1978,58 @@ All five §6.141.1 non-goals from the initial CB-TUTOR-001 ship have been delive
 #### 6.141.2 Remaining open work (tracked but unscoped)
 - **ASGF backend emission of T/F + fill_blank** — schema validator currently enforces 4-option MCQ in `asgf_quiz_service.py`; loosening + prompt template updates = separate backend PR. UI is ready; frontend change not needed when this lands.
 - **Fill-blank article-strip edge case (#3265)** — pre-existing ILE backend fuzzy-match concern; unchanged by this work.
+
+---
+
+### 6.142 Rock-solid Tutor v2 — Chat-first Q&A + Short Learning Cycle (CB-TUTOR-002) — Phase 1 IN PROGRESS 2026-04-24
+
+**Purpose:** Rebuild `/tutor` into a rock-solid, pedagogically sound learning surface that fixes three concrete CB-TUTOR-001 regressions reported by the user: (1) "AI keeps asking for context" on simple questions, (2) "very slow" responses, (3) monolithic 7-slide-then-quiz flow ≠ the short learning cycle concept. Replaces the ASGF "teach-all-then-test-all" flow with:
+1. **Chat-first Q&A** — answer the first question directly; context applies on follow-ups (last 3 turns)
+2. **Short learning cycle loop** — teach subset → test subset → coach on failure (3 tries) → teach next subset → loop, with diminishing-returns XP for students
+3. **Streaming + background tasks** — < 500ms to first token; heavy work off the request path
+4. **Child safety** — OpenAI moderation + PII scrubber + grade-level tone adapters
+5. **Paywall gate** — `tutor_chat_enabled` + `learning_cycle_enabled` admin feature flags, default off
+
+**Design doc:** [docs/design/CB-TUTOR-002-short-learning-cycle.md](../docs/design/CB-TUTOR-002-short-learning-cycle.md)
+**Epic:** [#4062](https://github.com/theepangnani/emai-dev-03/issues/4062)
+**Master snapshot tag:** `snapshot/2026-04-24-pre-cb-tutor-002` (at `3b8eab19`)
+
+#### 6.142.0 Locked decisions (2026-04-24)
+
+| # | Decision |
+|---|---|
+| 1 | Chat memory scope = last 3 turns inherited for follow-up context |
+| 2 | Chunk shape = 1 short teach block + 3 mixed questions (MCQ + T/F + fill-blank) per chunk · 4-6 chunks per topic · complexity progresses easier→harder |
+| 3 | 3-try flow = force move-on after 3rd wrong; reveal answer + explanation; no per-try "show me" escape |
+| 4 | Teacher / Parent-Teaching modes = kept, but **no XP** (student-only reward) |
+| 5 | Legacy `/ask` and `/flash-tutor` redirects = keep indefinitely (no sunset) |
+| 6 | Rate limits = Tutor chat behind admin feature flag `tutor_chat_enabled` (paywall); flag default = `off` until launched |
+
+#### 6.142.1 Phase 1 — Chat-first Q&A (10 parallel streams landed on `integrate/cb-tutor-002-phase-1`)
+
+Streams complete (all pushed, all build/lint/tests green in their isolated worktrees):
+
+| Stream | Branch | Issue | Key deliverables |
+|---|---|---|---|
+| P1-Backend | `fix/4063-tutor-chat-sse` | [#4063](https://github.com/theepangnani/emai-dev-03/issues/4063) | `POST /api/tutor/chat/stream` SSE endpoint (token/chips/done/error events) · feature-flag gate (`tutor_chat_enabled`) · 20/hr rate limit · `TutorConversation` + `TutorMessage` DB models · moderation pass before streaming · last-3-turn memory loader |
+| P1-Prompts-Safety | `fix/4064-tutor-prompts-safety` | [#4064](https://github.com/theepangnani/emai-dev-03/issues/4064) | `app/prompts/tutor_chat.py` (system+user prompt builders, `[[CHIPS: …]]` directive) · `app/services/safety_service.py` (OpenAI `omni-moderation-latest` + PII scrubber for phone/email/SIN) · `app/prompts/grade_tone.py` · 30 tests |
+| P1-Frontend | `fix/4065-tutor-chat-component` | [#4065](https://github.com/theepangnani/emai-dev-03/issues/4065) | `components/tutor/` — `TutorChat`, `TutorMessage`, `TutorSuggestionChips`, `TutorInputBar`, `useTutorChat` SSE hook · gated in `TutorPage` behind `tutor_chat_enabled` feature flag · asymmetric chat design (warm-orange accent, Space Grotesk display font, spring-easing motion) · 5 tests |
+| P1-Admin | `fix/4066-tutor-chat-feature-flag` | [#4066](https://github.com/theepangnani/emai-dev-03/issues/4066) | Seeded `tutor_chat_enabled` + `learning_cycle_enabled` flags (both default off) · `useTutorChatEnabled` hook wrapper · 9 tests |
+| P2-Backend-Model | `fix/4067-learning-cycle-model` | [#4067](https://github.com/theepangnani/emai-dev-03/issues/4067) | `LearningCycleSession` + `Chunk` + `Question` + `Answer` ORM models with UUID PKs, CHECK-constraint enum columns, cascade deletes, TIMESTAMPTZ/DATETIME gating, JSONB/JSON gating · 14 tests |
+| P2-Backend-Prompts | `fix/4068-cycle-prompts` | [#4068](https://github.com/theepangnani/emai-dev-03/issues/4068) | `app/prompts/learning_cycle.py` — 5 builders: topic_outline, chunk_teach, chunk_questions (enforces mcq+true_false+fill_blank trio), retry_hint (no answer leakage), answer_reveal · 12 tests |
+| P2-Frontend-Shell | `fix/4069-cycle-shell` | [#4069](https://github.com/theepangnani/emai-dev-03/issues/4069) | `/tutor/cycle/:id` route + page · `components/cycle/` — `CycleTeachBlock`, `CycleQuestion` (3-format renderer), `CycleFeedback` (correct/retry/reveal), `CycleProgress`, `CycleResults` · `FlashCycleCard` + `MasteryRing` + `GradeButtons` lifted from demo · per-chunk warm-accent rotation · 4 tests |
+| P3-Prompt-Refactor | `fix/4070-answer-first-prompts` | [#4070](https://github.com/theepangnani/emai-dev-03/issues/4070) | Rewrote ASGF (`_SYSTEM_PROMPT`, `_ALTERNATIVES_SYSTEM_PROMPT`, `_PLAN_SYSTEM_PROMPT`) + ILE (`_MCQ_SYSTEM`, `_FILL_BLANK_SYSTEM`, `_HINT_SYSTEM`, `_EXPLANATION_SYSTEM`) prompt strings to answer-first (default Grade 7, never ask, never refuse) · `test_prompt_quality.py` regression guard · 202 existing tests still green |
+| P3-Grade-Tone | `fix/4071-grade-tone` | [#4071](https://github.com/theepangnani/emai-dev-03/issues/4071) | `app/prompts/grade_tone.py` — `get_tone_profile(grade_level)` 4 bands (K-3 / 4-6 / 7-9 / 10-12); `None` → 7-9 default · 5-key shape (voice, vocabulary, sentence_length, examples, directive) · 21 tests |
+| P4-XP | `fix/4072-xp-per-question` | [#4072](https://github.com/theepangnani/emai-dev-03/issues/4072) | `XpService.award_cycle_question_xp` (100/70/40/0 per try) + `award_cycle_chunk_bonus` (50) · lifetime context-id dedup · registered `cycle_question_correct` + `cycle_chunk_bonus` action types with daily caps · streak multipliers apply · 17 tests |
+
+**Next:** merge all 10 streams into `integrate/cb-tutor-002-phase-1` → integration /pr-review (2 passes per protocol) → single PR to master.
+
+#### 6.142.2 Remaining work (queued, not yet started)
+
+- **Phase 2 backend routes** — `POST /api/tutor/cycle/start`, `GET /api/tutor/cycle/:id`, `POST /api/tutor/cycle/:id/answer`, `POST /api/tutor/cycle/:id/complete` · state machine glue connecting Phase 2 model (#4067) + prompts (#4068) + XP (#4072)
+- **Phase 2 frontend interaction layer** — wire the cycle shell (#4069) to the Phase 2 backend routes (replace mock data)
+- **Phase 3 LLM regression harness extension** — beyond the 5 canonical prompts in #4064, expand to 20 per design doc
+- **Phase 4 streaming expansion** — convert remaining LLM calls (slide generation, chunk prep) to SSE; add `BackgroundTasks` for file ingestion
+- **Phase 4 observability** — `ttfi` (Time To First Insight) + `cycle_completion_rate` analytics events
+- **Deployment ramp plan** — internal → paid beta → GA, gated on `tutor_chat_enabled` then `learning_cycle_enabled`
+
