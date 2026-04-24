@@ -114,6 +114,7 @@ function buildSender(overrides: Partial<MonitoredSender> = {}): MonitoredSender 
     sender_name: null,
     label: null,
     applies_to_all: true,
+    child_profile_ids: [],
     assignments: [],
     created_at: '2026-04-01T00:00:00Z',
     ...overrides,
@@ -675,6 +676,40 @@ describe('EmailDigestPage — unified sender chips', () => {
     // is not open here, so exactly 2).
     expect(chips).toHaveLength(2);
     expect(within(row).queryByText('All kids')).not.toBeInTheDocument();
+  });
+
+  // #4082: pre-#4082 backends returned only child_profile_ids; guard against
+  // a stale cached response crashing with `undefined.map`.
+  it('renders chips from child_profile_ids when assignments is missing', async () => {
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Thanushan' }),
+        buildChildProfile({ id: 12, first_name: 'Haashini' }),
+      ],
+    });
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        {
+          ...buildSender({
+            id: 203,
+            email_address: 'legacy@school.ca',
+            applies_to_all: false,
+            child_profile_ids: [11, 12],
+          }),
+          // Simulate pre-#4082 response shape: no `assignments` field.
+          assignments: undefined,
+        } as unknown as MonitoredSender,
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('legacy@school.ca')).toBeInTheDocument();
+    });
+    const row = screen.getByText('legacy@school.ca').closest('.ed-sender-row') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(within(row).getByText('Thanushan')).toBeInTheDocument();
+    expect(within(row).getByText('Haashini')).toBeInTheDocument();
   });
 
   it('renders a single "All kids" chip when applies_to_all=true', async () => {

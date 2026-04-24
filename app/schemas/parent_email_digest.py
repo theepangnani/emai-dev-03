@@ -301,6 +301,13 @@ class MonitoredSenderAssignmentsUpdate(BaseModel):
     child_profile_ids: Union[list[int], Literal["all"]]
 
 
+class MonitoredSenderAssignmentResponse(BaseModel):
+    child_profile_id: int
+    first_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class MonitoredSenderResponse(BaseModel):
     id: int
     email_address: Optional[str] = None
@@ -308,6 +315,9 @@ class MonitoredSenderResponse(BaseModel):
     label: Optional[str] = None
     applies_to_all: bool
     child_profile_ids: list[int] = []
+    # Paired with child_profile_ids: same assignments with names attached so
+    # clients can render per-kid chips without a second lookup (#4082).
+    assignments: list[MonitoredSenderAssignmentResponse] = []
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

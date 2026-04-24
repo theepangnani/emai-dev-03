@@ -213,8 +213,17 @@ export interface MonitoredSender {
   label: string | null;
   /** When true, sender applies to ALL current + future kids. */
   applies_to_all: boolean;
-  /** Populated only when applies_to_all=false. */
-  assignments: MonitoredSenderAssignment[];
+  /**
+   * Plain list of assigned profile IDs. Always present (defaults to []).
+   * Backend returns this alongside `assignments` for backward compat.
+   */
+  child_profile_ids: number[];
+  /**
+   * Populated only when applies_to_all=false. Optional because pre-#4082
+   * backends returned only child_profile_ids — callers must handle it
+   * being missing when rendering chips with first_name.
+   */
+  assignments?: MonitoredSenderAssignment[];
   created_at: string;
 }
 

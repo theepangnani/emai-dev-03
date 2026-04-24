@@ -29,6 +29,7 @@ import {
   type MonitoredEmail,
   type ChildProfile,
   type MonitoredSender,
+  type MonitoredSenderAssignment,
   type SenderKidSelection,
 } from '../../api/parentEmailDigest';
 import { useConfirm } from '../../components/ConfirmModal';
@@ -73,6 +74,35 @@ function formatDate(iso: string): string {
 function StatusBadge({ status }: { status: string }) {
   const cls = status === 'delivered' ? 'ed-status--delivered' : 'ed-status--failed';
   return <span className={`ed-status ${cls}`}>{status}</span>;
+}
+
+/**
+ * Resolve sender→assigned-kid chips robustly across API shapes (#4082).
+ * Pre-#4082 backends returned only `child_profile_ids`; post-#4082 also
+ * returns `assignments` with first_name. Prefer `assignments` when present,
+ * otherwise derive from `child_profile_ids` via the already-loaded
+ * childProfiles list.
+ */
+function senderChipAssignments(
+  sender: MonitoredSender,
+  childProfiles: ChildProfile[],
+): MonitoredSenderAssignment[] {
+  if (sender.assignments && sender.assignments.length > 0) {
+    return sender.assignments;
+  }
+  const ids = sender.child_profile_ids ?? [];
+  const byId = new Map(childProfiles.map((p) => [p.id, p.first_name]));
+  return ids.map((id) => ({
+    child_profile_id: id,
+    first_name: byId.get(id) ?? 'Unknown',
+  }));
+}
+
+function senderKidNames(
+  sender: MonitoredSender,
+  childProfiles: ChildProfile[],
+): string[] {
+  return senderChipAssignments(sender, childProfiles).map((a) => a.first_name);
 }
 
 /**
@@ -1293,9 +1323,12 @@ function EmailDigestPageUnified() {
 
   const handleRemoveSender = async (sender: MonitoredSender) => {
     // #4055: surface which kids the sender applies to so parents know the impact.
+    // #4082: fall back through assignments → child_profile_ids lookup when the
+    // response lacks the richer shape (pre-#4082 backend or stale cache).
+    const kidNames = senderKidNames(sender, childProfiles);
     const kidContext = sender.applies_to_all
       ? 'All kids (current and future)'
-      : sender.assignments.map((a) => a.first_name).join(', ') || 'no kids';
+      : kidNames.join(', ') || 'no kids';
     const confirmed = await confirm({
       title: 'Remove monitored sender',
       message: `Remove "${sender.email_address}"? Applies to: ${kidContext}. This stops it from appearing in future digests.`,
@@ -1671,7 +1704,10 @@ function EmailDigestPageUnified() {
                         All kids
                       </span>
                     ) : (
-                      s.assignments.map((a) => (
+                      // #4082: fall back to child_profile_ids + childProfiles
+                      // lookup so a missing `assignments` field does not crash
+                      // the page with `undefined.map`.
+                      senderChipAssignments(s, childProfiles).map((a) => (
                         <span
                           key={a.child_profile_id}
                           className="ed-kid-chip ed-kid-chip--assigned"

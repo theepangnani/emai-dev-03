@@ -269,6 +269,25 @@ class TestListSenders:
         for s in data:
             assert "child_profile_ids" in s
             assert "applies_to_all" in s
+            # #4082: frontend chips render first_name from the response,
+            # so `assignments[].first_name` must be populated for
+            # non-applies_to_all senders. Without this, EmailDigestPage
+            # crashes with "Cannot read properties of undefined (reading 'map')".
+            assert "assignments" in s
+            assert isinstance(s["assignments"], list)
+            if not s["applies_to_all"]:
+                assert len(s["assignments"]) == len(s["child_profile_ids"])
+                for a in s["assignments"]:
+                    assert "child_profile_id" in a
+                    assert "first_name" in a and a["first_name"]
+                # Alex profile_id was used for a@s.ca
+                if s["email_address"] == "a@s.ca":
+                    assert s["assignments"] == [
+                        {
+                            "child_profile_id": setup["profile_a"].id,
+                            "first_name": "Alex",
+                        }
+                    ]
 
     def test_list_does_not_leak_other_parents(self, client, db_session, setup):
         # Seed a sender for the other parent
