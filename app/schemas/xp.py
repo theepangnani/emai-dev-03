@@ -2,15 +2,13 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class XpSummaryResponse(BaseModel):
     """Current user's XP summary."""
     user_id: int = 0
     total_xp: int = 0
-    # Alias of total_xp for the frontend XpStreakBadge (#4019)
-    xp_total: int = 0
     level: int = 1
     current_level: int = 1
     level_title: str = "Curious Learner"
@@ -29,6 +27,15 @@ class XpSummaryResponse(BaseModel):
     recent_badges: list[dict[str, Any]] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+    # #4029: Serialized alias of total_xp so the frontend XpStreakBadge
+    # (#4019) can read `xp_total` without the schema carrying two
+    # duplicate Python fields. Kept as a computed_field so there is a
+    # single source of truth at the model level.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def xp_total(self) -> int:
+        return self.total_xp
 
 
 class XpLedgerEntry(BaseModel):

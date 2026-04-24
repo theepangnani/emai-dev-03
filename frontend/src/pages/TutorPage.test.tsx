@@ -22,11 +22,8 @@ const mockIleGetTopics = vi.fn();
 const mockIleGetSurpriseMe = vi.fn();
 const mockIleCreateSessionFromStudyGuide = vi.fn();
 const mockParentGetChildren = vi.fn();
-<<<<<<< HEAD
 const mockUseChildOverdueCounts = vi.fn();
-=======
 const mockApiGet = vi.fn();
->>>>>>> origin/fix/4019-xp-summary-endpoint
 const mockAuthUser = { current: { role: 'student', roles: ['student'] } as { role: string; roles: string[] } };
 
 vi.mock('../api/asgf', () => ({

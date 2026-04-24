@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { TaskItem } from './tasks';
 
 // Parent Types
 export interface ChildHighlight {
@@ -24,7 +25,11 @@ export interface ParentDashboardData {
   total_tasks: number;
   child_highlights: ChildHighlight[];
   all_assignments: Array<{ id: number; title: string; description: string | null; course_id: number; google_classroom_id: string | null; due_date: string | null; max_points: number | null; created_at: string }>;
-  all_tasks: Array<Record<string, any>>;
+  // #4028: Backend emits a subset of TaskItem fields (see /api/parent/dashboard
+  // `task_dicts`). Typed as Partial<TaskItem> so consumers can access the
+  // overdue-computation fields (assigned_to_user_id, created_by_user_id,
+  // is_completed, archived_at, due_date) without inline casts.
+  all_tasks: Array<Partial<TaskItem> & Pick<TaskItem, 'id' | 'title' | 'is_completed' | 'assigned_to_user_id' | 'created_by_user_id' | 'due_date' | 'archived_at'>>;
 }
 
 export interface ChildSummary {

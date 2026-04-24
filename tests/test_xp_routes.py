@@ -141,12 +141,19 @@ def test_xp_summary_returns_xp_total_and_streak_days(
     assert resp.status_code == 200
     data = resp.json()
 
-    # xp_total is an alias of total_xp (#4019)
+    # xp_total is an alias of total_xp (#4019, #4029 computed_field)
     assert data["xp_total"] == data["total_xp"]
     assert data["xp_total"] >= 1
 
     # streak_days mirrors current_streak (#4019)
     assert data["streak_days"] == data["current_streak"]
+
+    # #4029: The schema must not carry two duplicate Python fields for
+    # total_xp. Verify by introspecting model_fields (computed_field is
+    # excluded from this dict, duplicate-declared fields would not be).
+    from app.schemas.xp import XpSummaryResponse
+    assert "total_xp" in XpSummaryResponse.model_fields
+    assert "xp_total" not in XpSummaryResponse.model_fields
 
 
 # ---------------------------------------------------------------------------
