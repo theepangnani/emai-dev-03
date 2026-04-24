@@ -2,13 +2,18 @@
  * ASGFQuizBridge — Slide-anchored quiz after ASGF mini-lesson.
  * CB-ASGF-001 M5c (#3400)
  *
- * Renders 3-5 MCQ questions with:
+ * Renders quiz questions with:
  *  - Hint bubble on wrong answer (referencing specific slide)
  *  - Explanation bubble on correct answer
  *  - XP display tiered by attempt: 30/15/8/3/0
  *  - Results summary at the end
+ *
+ * Supports three question formats (#4020):
+ *  - multiple_choice (default): A/B/C/D buttons
+ *  - true_false: two large True / False buttons
+ *  - fill_blank / short_answer: text input + submit
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ASGFQuizQuestion } from '../../api/asgf';
 import './ASGFQuizBridge.css';
 
@@ -22,6 +27,21 @@ function getXpForAttempt(attempt: number): number {
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+
+/**
+ * Normalize fill_blank / short_answer typed input for comparison:
+ *  - lowercase
+ *  - strip punctuation
+ *  - collapse whitespace
+ * Articles (a/an/the) are intentionally NOT stripped — see #3265 for the
+ * edge case where stripping articles broke answers like "the" itself.
+ */
+const normalizeAnswer = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')    // punctuation → space (preserves word boundaries)
+    .replace(/\s+/g, ' ')        // collapse multi-space
+    .trim();
 
 export interface ASGFQuizBridgeProps {
   questions: ASGFQuizQuestion[];
@@ -49,6 +69,8 @@ interface QuestionState {
   isCorrect: boolean;
   showHint: boolean;
   wrongIndices: Set<number>;
+  /** Last typed fill_blank answer (for display + matching). */
+  typedAnswer: string;
 }
 
 export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBridgeProps) {
@@ -60,12 +82,32 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
       isCorrect: false,
       showHint: false,
       wrongIndices: new Set(),
+      typedAnswer: '',
     })),
   );
   const [completed, setCompleted] = useState(false);
+  const [fillBlankDraft, setFillBlankDraft] = useState('');
+  const fillBlankInputRef = useRef<HTMLInputElement>(null);
+  const firstQuestionRef = useRef(true);
 
   const question = questions[currentIndex];
   const state = questionStates[currentIndex];
+  const format = question?.format ?? 'multiple_choice';
+
+  // Reset typed-answer draft + focus fill-blank input on question change.
+  // Skip first render: the draft is already '' from useState initializer, so
+  // there's nothing to reset on mount — only reset when the user navigates
+  // to a different question (#4025 S-P2-5).
+  useEffect(() => {
+    if (firstQuestionRef.current) {
+      firstQuestionRef.current = false;
+    } else {
+      setFillBlankDraft(''); // eslint-disable-line react-hooks/set-state-in-effect -- intentional reset on question change
+    }
+    if (format === 'fill_blank' || format === 'short_answer') {
+      fillBlankInputRef.current?.focus();
+    }
+  }, [currentIndex, format]);
 
   const handleOptionClick = useCallback((optionIndex: number) => {
     if (!question || state.isCorrect) return;
@@ -92,6 +134,29 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
       return updated;
     });
   }, [question, state, currentIndex]);
+
+  const handleFillBlankSubmit = useCallback(() => {
+    if (!question || state.isCorrect) return;
+    const trimmed = fillBlankDraft.trim();
+    if (!trimmed) return;
+
+    const canonical = question.options[question.correct_index] ?? '';
+    const isCorrect = normalizeAnswer(trimmed) === normalizeAnswer(canonical);
+    const newAttempts = state.attempts + 1;
+
+    setQuestionStates((prev) => {
+      const updated = [...prev];
+      updated[currentIndex] = {
+        ...updated[currentIndex],
+        attempts: newAttempts,
+        selectedIndex: isCorrect ? question.correct_index : null,
+        isCorrect,
+        showHint: !isCorrect,
+        typedAnswer: trimmed,
+      };
+      return updated;
+    });
+  }, [question, state, fillBlankDraft, currentIndex]);
 
   const handleNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
@@ -157,7 +222,7 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
                   }`}
                   aria-hidden="true"
                 >
-                  {item.correct ? '\u2713' : '\u2717'}
+                  {item.correct ? '✓' : '✗'}
                 </span>
                 <span>
                   Q{i + 1}: {item.attempts} attempt{item.attempts !== 1 ? 's' : ''} &mdash; +{item.xp} XP
@@ -174,6 +239,132 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
 
   const xp = state.isCorrect ? getXpForAttempt(state.attempts) : null;
 
+  const renderOptions = () => {
+    if (format === 'true_false') {
+      // Expect options to be ['True', 'False']. Fall back to first two entries.
+      const tfOptions = question.options.length >= 2
+        ? question.options.slice(0, 2)
+        : ['True', 'False'];
+
+      return (
+        <div
+          className="asgf-quiz-options question-tf-buttons"
+          role="radiogroup"
+          aria-label="True or False"
+        >
+          {tfOptions.map((option, i) => {
+            let variant = '';
+            if (state.isCorrect && i === question.correct_index) {
+              variant = ' asgf-quiz-option--correct';
+            } else if (state.wrongIndices.has(i)) {
+              variant = ' asgf-quiz-option--wrong';
+            } else if (!state.isCorrect && state.selectedIndex === i) {
+              variant = ' asgf-quiz-option--selected';
+            }
+
+            return (
+              <button
+                key={i}
+                className={`asgf-quiz-option asgf-quiz-option-tf${variant}`}
+                onClick={() => handleOptionClick(i)}
+                disabled={state.isCorrect || state.wrongIndices.has(i)}
+                role="radio"
+                aria-checked={state.selectedIndex === i}
+                aria-label={option}
+                type="button"
+              >
+                <span>{option}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (format === 'fill_blank' || format === 'short_answer') {
+      const inputId = `asgf-quiz-fill-blank-${currentIndex}`;
+      return (
+        <div className="asgf-quiz-options question-fill-blank">
+          <label htmlFor={inputId} className="asgf-quiz-fill-blank-label">
+            Your answer
+          </label>
+          <input
+            id={inputId}
+            ref={fillBlankInputRef}
+            type="text"
+            className="asgf-quiz-fill-blank-input"
+            placeholder="Type your answer..."
+            value={fillBlankDraft}
+            onChange={(e) => setFillBlankDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleFillBlankSubmit();
+              }
+            }}
+            disabled={state.isCorrect}
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={format === 'fill_blank' ? 200 : 500}
+            aria-describedby={`${inputId}-hint`}
+          />
+          <span id={`${inputId}-hint`} className="asgf-quiz-visually-hidden">
+            Type your answer and press Enter or click Submit
+          </span>
+          <button
+            type="button"
+            className="asgf-quiz-fill-blank-submit"
+            onClick={handleFillBlankSubmit}
+            disabled={state.isCorrect || !fillBlankDraft.trim()}
+          >
+            Submit Answer
+          </button>
+          {state.typedAnswer && (
+            <div
+              className={`asgf-quiz-typed-answer ${state.isCorrect ? 'correct' : 'wrong'}`}
+              role="status"
+            >
+              Your answer: <strong>{state.typedAnswer}</strong>
+              {state.isCorrect ? ' ✓' : ' ✗'}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Default: multiple_choice
+    return (
+      <div className="asgf-quiz-options" role="radiogroup" aria-label="Answer options">
+        {question.options.map((option, i) => {
+          let variant = '';
+          if (state.isCorrect && i === question.correct_index) {
+            variant = ' asgf-quiz-option--correct';
+          } else if (state.wrongIndices.has(i)) {
+            variant = ' asgf-quiz-option--wrong';
+          } else if (!state.isCorrect && state.selectedIndex === i) {
+            variant = ' asgf-quiz-option--selected';
+          }
+
+          return (
+            <button
+              key={i}
+              className={`asgf-quiz-option${variant}`}
+              onClick={() => handleOptionClick(i)}
+              disabled={state.isCorrect || state.wrongIndices.has(i)}
+              role="radio"
+              aria-checked={state.selectedIndex === i}
+              aria-label={`Option ${OPTION_LETTERS[i]}: ${option}`}
+              type="button"
+            >
+              <span className="asgf-quiz-option-letter">{OPTION_LETTERS[i]}</span>
+              <span>{option}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="asgf-quiz" data-session={sessionId}>
       <div className="asgf-quiz-card">
@@ -188,35 +379,8 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
         {/* Question text */}
         <p className="asgf-quiz-question">{question.question_text}</p>
 
-        {/* Options */}
-        <div className="asgf-quiz-options" role="radiogroup" aria-label="Answer options">
-          {question.options.map((option, i) => {
-            let variant = '';
-            if (state.isCorrect && i === question.correct_index) {
-              variant = ' asgf-quiz-option--correct';
-            } else if (state.wrongIndices.has(i)) {
-              variant = ' asgf-quiz-option--wrong';
-            } else if (!state.isCorrect && state.selectedIndex === i) {
-              variant = ' asgf-quiz-option--selected';
-            }
-
-            return (
-              <button
-                key={i}
-                className={`asgf-quiz-option${variant}`}
-                onClick={() => handleOptionClick(i)}
-                disabled={state.isCorrect || state.wrongIndices.has(i)}
-                role="radio"
-                aria-checked={state.selectedIndex === i}
-                aria-label={`Option ${OPTION_LETTERS[i]}: ${option}`}
-                type="button"
-              >
-                <span className="asgf-quiz-option-letter">{OPTION_LETTERS[i]}</span>
-                <span>{option}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Options — MCQ, T/F, or fill_blank */}
+        {renderOptions()}
 
         {/* Hint bubble (shown on wrong answer) */}
         {state.showHint && !state.isCorrect && (
@@ -230,7 +394,7 @@ export function ASGFQuizBridge({ questions, sessionId, onComplete }: ASGFQuizBri
         {state.isCorrect && xp !== null && (
           <>
             <div className="asgf-quiz-xp" role="status" aria-live="polite">
-              +{xp} XP{state.attempts === 1 ? ' \u2014 First try!' : ''}
+              +{xp} XP{state.attempts === 1 ? ' — First try!' : ''}
             </div>
             <div className="asgf-quiz-explanation" role="status">
               <span className="asgf-quiz-explanation-label">Why correct</span>

@@ -50,8 +50,6 @@ const Dashboard = lazyRetry(() => import('./pages/Dashboard').then((m) => ({ def
 const StudyGuidePage = lazyRetry(() => import('./pages/StudyGuidePage').then((m) => ({ default: m.StudyGuidePage })));
 const QuizPage = lazyRetry(() => import('./pages/QuizPage').then((m) => ({ default: m.QuizPage })));
 const FlashcardsPage = lazyRetry(() => import('./pages/FlashcardsPage').then((m) => ({ default: m.FlashcardsPage })));
-// FlashTutorPage removed — merged into TutorPage (drill mode). Session runner
-// still uses FlashTutorSessionPage below.
 const FlashTutorSessionPage = lazyRetry(() => import('./pages/FlashTutorSessionPage').then((m) => ({ default: m.FlashTutorSessionPage })));
 const MessagesPage = lazyRetry(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const TeacherCommsPage = lazyRetry(() => import('./pages/TeacherCommsPage').then((m) => ({ default: m.TeacherCommsPage })));

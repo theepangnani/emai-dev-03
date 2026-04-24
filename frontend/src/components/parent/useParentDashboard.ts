@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, invitesApi } from '../../api/client';
 import { courseContentsApi } from '../../api/courses';
 import type { ChildSummary, ChildOverview, ParentDashboardData, TaskItem, InviteResponse } from '../../api/client';
+import { computeChildOverdueCounts } from '../../utils/overdue';
 
 import type { CalendarAssignment } from '../calendar/types';
 import { getCourseColor, TASK_PRIORITY_COLORS } from '../calendar/types';
@@ -415,22 +416,18 @@ export function useParentDashboard() {
     }).filter(c => c.overdue > 0);
   }, [selectedChild, children, allTasks]);
 
-  // Per-child overdue counts for pill badges (always available)
+  // Per-child overdue counts for pill badges (always available).
+  // Delegates to shared util (#4036) so Tutor drill tab + dashboard stay in
+  // lockstep when the archive/due-date rules change. Trim to > 0 entries so
+  // consumers can use `.get(id) ?? 0` as a truthy badge test.
   const childOverdueCounts = useMemo(() => {
-    const map = new Map<number, number>();
-    if (children.length === 0) return map;
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    for (const child of children) {
-      let overdue = 0;
-      for (const t of allTasks) {
-        if (t.assigned_to_user_id !== child.user_id && t.created_by_user_id !== child.user_id) continue;
-        if (t.is_completed || t.archived_at || !t.due_date) continue;
-        if (new Date(t.due_date) < todayStart) overdue++;
-      }
-      if (overdue > 0) map.set(child.student_id, overdue);
+    if (children.length === 0) return new Map<number, number>();
+    const full = computeChildOverdueCounts(children, allTasks);
+    const trimmed = new Map<number, number>();
+    for (const [studentId, count] of full) {
+      if (count > 0) trimmed.set(studentId, count);
     }
-    return map;
+    return trimmed;
   }, [children, allTasks]);
 
   // ============================================
