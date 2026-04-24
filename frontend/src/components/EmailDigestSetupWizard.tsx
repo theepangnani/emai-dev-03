@@ -17,9 +17,10 @@ const TIMEZONES = [
 ];
 
 const DIGEST_FORMATS = [
-  { value: 'full', label: 'Full' },
-  { value: 'brief', label: 'Brief' },
-  { value: 'actions_only', label: 'Actions Only' },
+  { value: 'sectioned', label: 'Sectioned — 3 grouped sections (default)' },
+  { value: 'full', label: 'Full — detailed paragraphs' },
+  { value: 'brief', label: 'Brief — short bullets' },
+  { value: 'actions_only', label: 'Actions Only — required-action items' },
 ];
 
 const CHANNEL_OPTIONS = [
@@ -65,7 +66,7 @@ export function EmailDigestSetupWizard({
   // Step 3: Settings
   const [deliveryTime, setDeliveryTime] = useState('07:00');
   const [timezone, setTimezone] = useState('America/Toronto');
-  const [digestFormat, setDigestFormat] = useState('full');
+  const [digestFormat, setDigestFormat] = useState('sectioned');
   const [channels, setChannels] = useState<string[]>(['in_app', 'email']);
 
   // Focus trap ref
@@ -88,7 +89,7 @@ export function EmailDigestSetupWizard({
     setChildFirstName(childName ?? '');
     setDeliveryTime('07:00');
     setTimezone('America/Toronto');
-    setDigestFormat('full');
+    setDigestFormat('sectioned');
     setChannels(['in_app', 'email']);
 
     // Check if the parent already has an integration
