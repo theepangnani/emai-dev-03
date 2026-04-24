@@ -430,6 +430,7 @@ def get_summary(db: Session, student_id: int):
     return XpSummaryResponse(
         user_id=student_id,
         total_xp=total_xp,
+        xp_total=total_xp,
         level=level_info["level"],
         current_level=level_info["level"],
         level_title=level_info["title"],

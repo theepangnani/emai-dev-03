@@ -82,6 +82,74 @@ def test_get_xp_summary_unauthenticated(client):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/xp/summary — #4019 XpStreakBadge fields (xp_total, streak_days)
+# ---------------------------------------------------------------------------
+
+def test_xp_summary_zero_state(client, db_session, xp_users):
+    """Authenticated user with no ledger entries returns xp_total=0, streak_days=0."""
+    from app.models.xp import XpLedger, XpSummary
+
+    # Clean state for a brand-new summary user.
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    hashed = get_password_hash(PASSWORD)
+    fresh = db_session.query(User).filter(User.email == "xpfresh@test.com").first()
+    if not fresh:
+        fresh = User(
+            email="xpfresh@test.com",
+            full_name="Fresh Kid",
+            role=UserRole.STUDENT,
+            hashed_password=hashed,
+        )
+        db_session.add(fresh)
+        db_session.commit()
+
+    # Make absolutely sure there's no prior ledger/summary for this user.
+    db_session.query(XpLedger).filter(XpLedger.student_id == fresh.id).delete()
+    db_session.query(XpSummary).filter(XpSummary.student_id == fresh.id).delete()
+    db_session.commit()
+
+    headers = _auth(client, "xpfresh@test.com")
+    resp = client.get("/api/xp/summary", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["xp_total"] == 0
+    assert data["streak_days"] == 0
+
+
+def test_xp_summary_returns_xp_total_and_streak_days(
+    client, db_session, xp_users,
+):
+    """After an XP award, xp_total mirrors total_xp and streak_days mirrors current_streak."""
+    from app.services.xp_service import XpService
+    from app.models.xp import XpLedger, XpSummary
+
+    child_id = xp_users["child_user"].id
+
+    # Clean slate, then award a single XP event.
+    db_session.query(XpLedger).filter(XpLedger.student_id == child_id).delete()
+    db_session.query(XpSummary).filter(XpSummary.student_id == child_id).delete()
+    db_session.commit()
+
+    entry = XpService.award_xp(db_session, child_id, "ile_session_complete")
+    assert entry is not None  # guard: the award shouldn't be suppressed
+    db_session.commit()
+
+    headers = _auth(client, "xpchild@test.com")
+    resp = client.get("/api/xp/summary", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+
+    # xp_total is an alias of total_xp (#4019)
+    assert data["xp_total"] == data["total_xp"]
+    assert data["xp_total"] >= 1
+
+    # streak_days mirrors current_streak (#4019)
+    assert data["streak_days"] == data["current_streak"]
+
+
+# ---------------------------------------------------------------------------
 # GET /api/xp/history
 # ---------------------------------------------------------------------------
 
