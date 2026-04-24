@@ -931,14 +931,22 @@ def _sender_to_response(sender: ParentDigestMonitoredSender) -> MonitoredSenderR
     child_ids = [a.child_profile_id for a in sender.child_assignments]
     # #4082: include first_name alongside each ID so clients can render chips
     # without a second lookup. Requires child_profile to be eager-loaded.
-    assignments = [
-        MonitoredSenderAssignmentResponse(
-            child_profile_id=a.child_profile_id,
-            first_name=a.child_profile.first_name,
+    assignments = []
+    for a in sender.child_assignments:
+        if a.child_profile is None:
+            # #4090: FK + cascade make this unreachable in healthy data.
+            # Log instead of silently dropping so orphaned rows surface.
+            logger.warning(
+                "orphaned SenderChildAssignment id=%s sender_id=%s child_profile_id=%s",
+                a.id, sender.id, a.child_profile_id,
+            )
+            continue
+        assignments.append(
+            MonitoredSenderAssignmentResponse(
+                child_profile_id=a.child_profile_id,
+                first_name=a.child_profile.first_name,
+            )
         )
-        for a in sender.child_assignments
-        if a.child_profile is not None
-    ]
     return MonitoredSenderResponse(
         id=sender.id,
         email_address=sender.email_address,
