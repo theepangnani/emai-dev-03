@@ -749,3 +749,93 @@ class TestDualWriteSavepointResilience:
         db_session.commit()  # Would fail with "transaction has been rolled back" if poisoned
 
         assert probe.id is not None
+
+
+# ---------------------------------------------------------------------------
+# MFIPPA (#4057) — dual-write exception log must not leak student addresses
+# ---------------------------------------------------------------------------
+
+
+class TestDualWritePIIScrub:
+    def test_dual_write_failure_log_scrubs_raw_email(self, db_session, caplog, monkeypatch):
+        """When _dual_write_sender_v2 raises inside the SAVEPOINT, the
+        explicit exception log MESSAGE must NOT contain the raw email
+        address. It must contain parent_id, integration_id, and a
+        12-char SHA-256 hash prefix (for traceability).
+
+        We force a generic RuntimeError on the inner query so the
+        traceback itself does not carry SQL params that would leak
+        the address; this test verifies the explicit log message, which
+        is what the MFIPPA fix controls.
+        """
+        import hashlib
+        import logging as _logging
+
+        from app.api.routes import parent_email_digest as ped_module
+        from app.api.routes.parent_email_digest import _dual_write_sender_v2
+        from app.models.parent_gmail_integration import (
+            ParentGmailIntegration,
+        )
+        from app.models.user import User, UserRole
+        from app.core.security import get_password_hash
+
+        parent = (
+            db_session.query(User)
+            .filter(User.email == "mfippa_dw_parent@test.com")
+            .first()
+        )
+        if not parent:
+            parent = User(
+                email="mfippa_dw_parent@test.com",
+                full_name="MFIPPA Parent",
+                role=UserRole.PARENT,
+                hashed_password=get_password_hash(PASSWORD),
+            )
+            db_session.add(parent)
+            db_session.commit()
+
+        integration = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="mfippa_dw@gmail.com",
+            google_id="google_mfippa_dw",
+            access_token="tok",
+            refresh_token="tok",
+            child_school_email="kid@school.ca",
+            child_first_name="Kid",
+        )
+        db_session.add(integration)
+        db_session.commit()
+
+        target_email = "thanushan.g@ocdsb.ca"
+
+        # Force a generic RuntimeError inside the SAVEPOINT so the
+        # traceback does not independently leak the email via SQL params.
+        def _boom(*args, **kwargs):
+            raise RuntimeError("forced dual-write failure")
+
+        monkeypatch.setattr(db_session, "query", _boom)
+
+        caplog.set_level(_logging.ERROR, logger=ped_module.logger.name)
+        _dual_write_sender_v2(
+            db_session,
+            parent_id=parent.id,
+            integration=integration,
+            email_address=target_email,
+            sender_name="Scrub Me",
+            label=None,
+        )
+
+        # Inspect just the explicit log message (what the fix controls),
+        # not the auto-appended traceback.
+        messages = [rec.getMessage() for rec in caplog.records]
+        assert messages, "expected at least one ERROR log record"
+        msg = "\n".join(messages)
+
+        expected_hash = hashlib.sha256(target_email.encode()).hexdigest()[:12]
+
+        assert target_email not in msg, (
+            f"Raw email leaked into exception log message: {msg!r}"
+        )
+        assert f"parent_id={parent.id}" in msg
+        assert f"integration_id={integration.id}" in msg
+        assert f"email_hash={expected_hash}" in msg

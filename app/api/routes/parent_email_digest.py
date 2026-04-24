@@ -4,6 +4,7 @@ OAuth endpoints for connecting Gmail, plus CRUD for integrations,
 digest settings, and delivery logs.
 """
 
+import hashlib
 import logging
 import secrets
 import time
@@ -541,12 +542,17 @@ def _dual_write_sender_v2(
                     child_profile_id=profile.id,
                 ))
                 db.flush()
-    except Exception:
-        logger.exception(
-            "dual_write.failed | parent_id=%s integration_id=%s email=%s",
+    except Exception as exc:
+        email_hash = hashlib.sha256(email_address.encode()).hexdigest()[:12]
+        # #4057 — use logger.error with exc_info=False so the traceback
+        # (which SQLAlchemy embeds bound params into, including the raw
+        # email) is NOT written to logs. Message is defensively scrubbed.
+        logger.error(
+            "dual_write.failed | parent_id=%s integration_id=%s email_hash=%s exc_type=%s",
             parent_id,
             integration.id,
-            email_address,
+            email_hash,
+            type(exc).__name__,
         )
 
 
@@ -783,7 +789,15 @@ async def trigger_manual_sync(
 
     from app.services.parent_gmail_service import fetch_child_emails
 
-    emails = await fetch_child_emails(db, integration)
+    fetch_result = await fetch_child_emails(db, integration)
+    emails = fetch_result.get("emails", [])
+    # #4058 — fetch_child_emails no longer auto-commits last_synced_at.
+    # The manual-sync endpoint has no delivery-log step to bundle with, so
+    # persist the fetch timestamp here directly.
+    synced_at = fetch_result.get("synced_at")
+    if synced_at is not None:
+        integration.last_synced_at = synced_at
+        db.commit()
     return {"email_count": len(emails), "message": f"Synced {len(emails)} emails successfully"}
 
 

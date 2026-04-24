@@ -187,9 +187,9 @@ def attribute_email(
             except Exception:
                 logger.exception(
                     "attribute_email: failed to flush forwarding_seen_at "
-                    "| parent_id=%s recipients=%s",
+                    "| parent_id=%s recipient_count=%d",
                     parent_id,
-                    recipients,
+                    len(recipients),
                 )
             return {
                 "kid_ids": kid_ids,

@@ -249,7 +249,12 @@ async def send_digest_for_integration(
     try:
         from app.services.parent_gmail_service import fetch_child_emails
 
-        emails = await fetch_child_emails(db, integration, since=since)
+        fetch_result = await fetch_child_emails(db, integration, since=since)
+        emails = fetch_result.get("emails", [])
+        # #4058 — synced_at is applied to integration.last_synced_at only
+        # at the final delivery-log commit below so a crash between fetch
+        # and log does not silently swallow a parent-day of mail on retry.
+        fetched_synced_at = fetch_result.get("synced_at")
     except Exception as e:
         error_msg = str(e).lower()
         if "token" in error_msg or "auth" in error_msg or "credentials" in error_msg:
@@ -665,7 +670,12 @@ async def send_digest_for_integration(
     )
     db.add(log_entry)
 
-    integration.last_synced_at = now
+    # #4058 — advance last_synced_at atomically with the DigestDeliveryLog
+    # insert. Use the timestamp returned by fetch_child_emails (captured at
+    # the moment the fetch succeeded) so the window advances to exactly
+    # where we stopped reading. Fall back to ``now`` if the fetcher did
+    # not supply one (e.g. no-op fetch on a no-query integration).
+    integration.last_synced_at = fetched_synced_at or now
     db.commit()
 
     # failed_labels must only list channels with an actual failure (False),
@@ -984,9 +994,15 @@ async def send_unified_digest_for_parent(
     # match the legacy behavior.
     attributed_pairs: list[tuple[dict, dict]] = []
     seen_ids: set[str] = set()
+    # #4058 — record each integration's fetch-synced_at so we can stamp
+    # last_synced_at atomically with the final delivery-log commit below
+    # (see legacy send_digest_for_integration for the same pattern). This
+    # prevents a crash between fetch and log from silently dropping a
+    # parent-day of mail on retry.
+    fetched_synced_at_by_id: dict[int, datetime] = {}
     for integration in integrations:
         try:
-            emails = await fetch_child_emails(db, integration, since=since)
+            fetch_result = await fetch_child_emails(db, integration, since=since)
         except Exception:
             logger.exception(
                 "Unified digest: fetch failed | integration_id=%s parent_id=%s",
@@ -994,6 +1010,11 @@ async def send_unified_digest_for_parent(
                 parent_id,
             )
             continue
+
+        emails = fetch_result.get("emails", [])
+        synced_at_value = fetch_result.get("synced_at")
+        if synced_at_value is not None:
+            fetched_synced_at_by_id[integration.id] = synced_at_value
 
         for email in emails or []:
             src = email.get("source_id")
@@ -1141,8 +1162,15 @@ async def send_unified_digest_for_parent(
         email_delivery_status=email_delivery_status,
     )
     db.add(log_entry)
+    # #4058 — advance last_synced_at atomically with the delivery-log
+    # insert. Only stamp integrations whose fetch actually succeeded
+    # (present in the map). If the fetch errored for an integration, we
+    # intentionally leave its stamp pinned so the retry picks up the real
+    # unread window — advancing to ``now`` here would silently drop that
+    # integration's unread mail on the next run (mini-#4058 regression).
     for integration in integrations:
-        integration.last_synced_at = now
+        if integration.id in fetched_synced_at_by_id:
+            integration.last_synced_at = fetched_synced_at_by_id[integration.id]
     db.commit()
 
     message = (

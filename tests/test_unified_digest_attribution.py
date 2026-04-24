@@ -396,6 +396,58 @@ def test_attribute_email_does_not_commit_mid_request(db_session):
     )
 
 
+# ---------------------------------------------------------------------------
+# MFIPPA (#4057) — exception-path log must not leak student school addresses
+# ---------------------------------------------------------------------------
+
+
+def test_attribute_email_flush_failure_does_not_log_raw_recipients(
+    db_session, caplog, monkeypatch
+):
+    """When db.flush() fails in stage 1, the exception log must NOT contain
+    the raw school email addresses (MFIPPA). It must contain parent_id and
+    a recipient_count only.
+    """
+    import logging as _logging
+
+    from app.services import unified_digest_attribution as uda
+    from app.services.unified_digest_attribution import attribute_email
+    m = _models()
+
+    parent = _make_parent(db_session, "mfippa_attr@test.com")
+    profile = _make_profile(db_session, parent.id, "Scrub")
+    school_address = "scrub.student@ocdsb.ca"
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address=school_address,
+    ))
+    db_session.commit()
+
+    # Force the flush to blow up so we exercise the exception log path.
+    def _boom():
+        raise RuntimeError("forced flush failure")
+
+    monkeypatch.setattr(db_session, "flush", _boom)
+
+    caplog.set_level(_logging.ERROR, logger=uda.logger.name)
+    attribute_email(
+        {"To": school_address},
+        parent.id,
+        db_session,
+    )
+
+    # Combine all captured log text (message + formatted record).
+    combined = "\n".join(
+        rec.getMessage() for rec in caplog.records
+    ) + "\n" + caplog.text
+
+    assert school_address not in combined, (
+        f"Raw recipient email leaked into exception log: {combined!r}"
+    )
+    assert f"parent_id={parent.id}" in combined
+    assert "recipient_count=1" in combined
+
+
 def test_sectioning_groups_emails_by_attribution_source():
     from app.services.unified_digest_attribution import (
         ATTR_SOURCE_APPLIES_TO_ALL,
