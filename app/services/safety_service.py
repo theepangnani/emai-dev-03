@@ -115,8 +115,9 @@ def scrub_pii(text: str) -> tuple[str, list[str]]:
     """Redact phone, email, and SIN from text.
 
     Returns the scrubbed text and a list of redaction tags, e.g.
-    ["phone", "email"]. SIN is matched before the looser phone pattern so a
-    9-digit SIN isn't misread as a phone number.
+    ["phone", "email"]. Scrub order is PHONE → SIN → EMAIL: the phone pattern
+    runs first so the looser SIN 9-digit run-on regex cannot eat 9 digits of
+    a phone number before the phone matcher gets a chance to redact them.
     """
     if not text:
         return text, []
@@ -131,8 +132,8 @@ def scrub_pii(text: str) -> tuple[str, list[str]]:
         return pattern.sub(_replace, s)
 
     scrubbed = text
-    scrubbed = _sub(_EMAIL_RE, "email", "[REDACTED_EMAIL]", scrubbed)
-    scrubbed = _sub(_SIN_RE, "sin", "[REDACTED_SIN]", scrubbed)
     scrubbed = _sub(_PHONE_RE, "phone", "[REDACTED_PHONE]", scrubbed)
+    scrubbed = _sub(_SIN_RE, "sin", "[REDACTED_SIN]", scrubbed)
+    scrubbed = _sub(_EMAIL_RE, "email", "[REDACTED_EMAIL]", scrubbed)
 
     return scrubbed, redactions

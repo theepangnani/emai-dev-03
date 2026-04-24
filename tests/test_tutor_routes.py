@@ -32,9 +32,12 @@ def _force_openai_key():
     Both call sites short-circuit when `settings.openai_api_key` is empty
     (the default in tests), so we patch the setting to a dummy value so
     our `openai.AsyncOpenAI` mock actually gets invoked. Reset after each
-    test so other tests stay in their default state.
+    test so other tests stay in their default state. The safety service
+    reads its own `settings` import, so patch it there too.
     """
-    with patch("app.api.routes.tutor.settings.openai_api_key", "sk-test-dummy"):
+    with patch("app.api.routes.tutor.settings.openai_api_key", "sk-test-dummy"), patch(
+        "app.services.safety_service.settings.openai_api_key", "sk-test-dummy"
+    ):
         yield
 
 
@@ -113,8 +116,13 @@ def _mock_openai_client(
     client.chat.completions.create = AsyncMock(side_effect=_create)
 
     # moderations.create — async, returns a result with `.flagged`
+    # The safety_service reads `results[0].categories.model_dump()` so we
+    # provide a mock whose categories.model_dump() returns a dict.
     mod_result = MagicMock()
     mod_result.flagged = moderation_flagged
+    mod_result.categories.model_dump.return_value = (
+        {"hate": True} if moderation_flagged else {"hate": False}
+    )
     mod_response = MagicMock()
     mod_response.results = [mod_result]
     client.moderations.create = AsyncMock(return_value=mod_response)
@@ -156,7 +164,12 @@ def test_stream_happy_path_emits_sse_events(client, db_session):
     _set_tutor_flag(db_session, enabled=True)
 
     mock_client = _mock_openai_client(
-        stream_pieces=["Photo", "synthesis ", "is..."],
+        stream_pieces=[
+            "Photo",
+            "synthesis ",
+            "is...",
+            '\n[[CHIPS: "Go deeper", "Quiz me", "Another example"]]',
+        ],
     )
     try:
         with patch(
@@ -172,13 +185,21 @@ def test_stream_happy_path_emits_sse_events(client, db_session):
         assert resp.status_code == 200
         assert "text/event-stream" in resp.headers.get("content-type", "")
         body = resp.text
-        assert "event: token" in body
-        assert '"delta": "Photo"' in body
-        assert "event: chips" in body
-        assert "event: done" in body
+        # JSON-envelope SSE: every frame is `data: {...}`
+        assert '"type": "token"' in body
+        assert '"text": "Photo"' in body
+        assert '"type": "chips"' in body
+        assert '"suggestions":' in body
+        assert "Go deeper" in body
+        assert '"type": "done"' in body
         assert '"credits_used": 0.25' in body
+        assert '"conversation_id":' in body
+        assert '"message_id":' in body
+        # No stray event: lines (we're JSON-envelope only now).
+        assert "event: token" not in body
 
-        # Assistant turn was persisted.
+        # Assistant turn was persisted — and the [[CHIPS:...]] block was
+        # stripped from the stored content.
         from app.models.tutor import TutorConversation
 
         convs = (
@@ -190,12 +211,73 @@ def test_stream_happy_path_emits_sse_events(client, db_session):
         latest = convs[0]
         roles = [m.role for m in latest.messages]
         assert "user" in roles and "assistant" in roles
+        assistant_msg = next(m for m in latest.messages if m.role == "assistant")
+        assert "[[CHIPS" not in assistant_msg.content
     finally:
         _set_tutor_flag(db_session, enabled=False)
 
 
-def test_stream_moderation_blocked_emits_error_event(client, db_session):
-    """Flagged content emits `event: error` with code `moderation_blocked`."""
+def test_stream_conversation_id_round_trips(client, db_session):
+    """A request with conversation_id reuses the same conversation row."""
+    _make_user(db_session, email="tutor_cid@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    mock_client = _mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_cid@test.com")
+            resp1 = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "first"},
+                headers=headers,
+            )
+            assert resp1.status_code == 200
+            # Parse conversation_id out of the `done` frame.
+            import json as _json
+
+            cid = None
+            for line in resp1.text.splitlines():
+                if line.startswith("data: "):
+                    payload = _json.loads(line[6:])
+                    if payload.get("type") == "done":
+                        cid = payload.get("conversation_id")
+                        break
+            assert cid, "expected conversation_id in done frame"
+
+            resp2 = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "second", "conversation_id": cid},
+                headers=headers,
+            )
+            assert resp2.status_code == 200
+            cid2 = None
+            for line in resp2.text.splitlines():
+                if line.startswith("data: "):
+                    payload = _json.loads(line[6:])
+                    if payload.get("type") == "done":
+                        cid2 = payload.get("conversation_id")
+                        break
+            assert cid2 == cid, "second turn must reuse the same conversation"
+
+            # Only one conversation row for this user.
+            from app.models.tutor import TutorConversation
+            from app.models.user import User as _U
+
+            user = db_session.query(_U).filter(_U.email == "tutor_cid@test.com").first()
+            convs = (
+                db_session.query(TutorConversation)
+                .filter(TutorConversation.user_id == user.id)
+                .all()
+            )
+            assert len(convs) == 1
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_moderation_blocked_emits_safety_event(client, db_session):
+    """Flagged content emits a `safety` JSON frame and no token frames."""
     _make_user(db_session, email="tutor_mod@test.com")
     _set_tutor_flag(db_session, enabled=True)
 
@@ -215,10 +297,10 @@ def test_stream_moderation_blocked_emits_error_event(client, db_session):
 
         assert resp.status_code == 200
         body = resp.text
-        assert "event: error" in body
+        assert '"type": "safety"' in body
         assert "moderation_blocked" in body
         # No tokens emitted on block.
-        assert "event: token" not in body
+        assert '"type": "token"' not in body
     finally:
         _set_tutor_flag(db_session, enabled=False)
 

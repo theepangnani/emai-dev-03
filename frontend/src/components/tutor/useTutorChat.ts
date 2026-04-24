@@ -62,6 +62,9 @@ export function useTutorChat(): UseTutorChatResult {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Backend-issued conversation id; persisted in-memory and round-tripped
+  // on every subsequent turn so the server reuses the same conversation row.
+  const conversationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -78,6 +81,7 @@ export function useTutorChat(): UseTutorChatResult {
   const clear = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    conversationIdRef.current = null;
     setMessages([]);
     setError(null);
     setIsStreaming(false);
@@ -129,6 +133,9 @@ export function useTutorChat(): UseTutorChatResult {
           body: JSON.stringify({
             message: trimmed,
             history,
+            ...(conversationIdRef.current
+              ? { conversation_id: conversationIdRef.current }
+              : {}),
           }),
         });
 
@@ -176,6 +183,9 @@ export function useTutorChat(): UseTutorChatResult {
                   ),
                 );
               } else if (data.type === 'done') {
+                if (typeof data.conversation_id === 'string') {
+                  conversationIdRef.current = data.conversation_id;
+                }
                 setMessages((prev) =>
                   prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
                 );

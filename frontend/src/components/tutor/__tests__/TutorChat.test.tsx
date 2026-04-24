@@ -134,6 +134,44 @@ describe('TutorChat', () => {
     });
   });
 
+  it('round-trips conversation_id from done frame on the next request', async () => {
+    // First turn — backend issues conversation_id in done frame.
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"one"}\n\n',
+        'data: {"type":"done","conversation_id":"conv-abc"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"two"}\n\n',
+        'data: {"type":"done","conversation_id":"conv-abc"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="River" />);
+
+    const input = screen.getByRole('textbox', { name: /message arc/i });
+    await user.type(input, 'first{Enter}');
+    await waitFor(() => expect(screen.getByText(/^one$/i)).toBeInTheDocument());
+
+    await user.type(input, 'second{Enter}');
+    await waitFor(() => expect(screen.getByText(/^two$/i)).toBeInTheDocument());
+
+    // Second call body must carry conversation_id from the first done frame.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondBody.conversation_id).toBe('conv-abc');
+    // First call must NOT have conversation_id (new conversation).
+    const firstBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(firstBody.conversation_id).toBeUndefined();
+  });
+
   it('renders a readable error banner (not a raw error code) on failure', async () => {
     mockFetchFail(500);
 
