@@ -4,6 +4,7 @@ OAuth endpoints for connecting Gmail, plus CRUD for integrations,
 digest settings, and delivery logs.
 """
 
+import hashlib
 import logging
 import secrets
 import time
@@ -542,11 +543,12 @@ def _dual_write_sender_v2(
                 ))
                 db.flush()
     except Exception:
+        email_hash = hashlib.sha256(email_address.encode()).hexdigest()[:12]
         logger.exception(
-            "dual_write.failed | parent_id=%s integration_id=%s email=%s",
+            "dual_write.failed | parent_id=%s integration_id=%s email_hash=%s",
             parent_id,
             integration.id,
-            email_address,
+            email_hash,
         )
 
 
