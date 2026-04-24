@@ -6,8 +6,9 @@ Covers:
 - Feature flag ON → unified per-parent path is called, legacy path is
   NOT.
 - ``send_unified_digest_for_parent`` groups integrations, attributes
-  emails, and emits exactly one DigestDeliveryLog per integration
-  (parent-level digest surfaced through the existing history table).
+  emails, and emits exactly one DigestDeliveryLog per parent run
+  (keyed to integrations[0]) — #4052 removed the per-integration
+  duplicate-history rows.
 - Empty-inbox short-circuit skips delivery.
 - Attribution counts land in the result dict.
 """
@@ -188,16 +189,18 @@ async def test_unified_digest_groups_integrations_and_attributes(db_session):
     assert result["attribution_counts"]["school_email"] == 2
     assert result["attribution_counts"]["unattributed"] == 0
 
-    # One DigestDeliveryLog per integration (dual-maintain window).
+    # #4052 — exactly ONE DigestDeliveryLog per unified run (was N-per-
+    # integration under the legacy path). The row is keyed to the first
+    # integration so the existing /logs endpoint still surfaces it.
     logs = (
         db_session.query(DigestDeliveryLog)
         .filter(DigestDeliveryLog.parent_id == parent.id)
         .all()
     )
-    assert len(logs) == len(int_ids)
-    for log in logs:
-        assert log.status == "delivered"
-        assert log.email_count == 2
+    assert len(logs) == 1
+    assert logs[0].integration_id == int_ids[0]
+    assert logs[0].status == "delivered"
+    assert logs[0].email_count == 2
 
 
 @pytest.mark.asyncio
@@ -345,3 +348,125 @@ async def test_unified_digest_dedup_prevents_second_run_same_day(db_session):
     assert result["reason"] == "already_delivered"
     # fetch should NOT have been invoked (dedup short-circuits).
     mock_fetch.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# #4052 — single DigestDeliveryLog per parent + last_synced_at hygiene
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_writes_one_log_and_stamps_forwarding(db_session):
+    """Two integrations + one email via real-shape dict → exactly one
+    DigestDeliveryLog keyed to integrations[0]; forwarding_seen_at stamped
+    on the matched school-email row (#4046 + #4052)."""
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import (
+        DigestDeliveryLog,
+        ParentChildSchoolEmail,
+    )
+
+    parent, int_ids, prof_ids = _make_parent_with_integrations(
+        db_session,
+        "one_log_per_parent@test.com",
+        ["kid_a@ocdsb.ca", "kid_b@ocdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    # Only integrations[0]'s fetch returns a match; integrations[1] empty.
+    async def fake_fetch(db, integration, since=None):
+        if integration.id == int_ids[0]:
+            return [{
+                "source_id": "msg-1",
+                "sender_name": "Teacher",
+                "sender_email": "teacher@school.ca",
+                "subject": "Test",
+                "snippet": "body",
+                "to_addresses": ["kid_a@ocdsb.ca"],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }]
+        return []
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=fake_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["status"] == "delivered"
+    assert result["email_count"] == 1
+
+    # Exactly ONE log row, keyed to integrations[0].
+    logs = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .all()
+    )
+    assert len(logs) == 1
+    assert logs[0].integration_id == int_ids[0]
+
+    # forwarding_seen_at stamped on the matching school-email row.
+    stamped = (
+        db_session.query(ParentChildSchoolEmail)
+        .filter(ParentChildSchoolEmail.email_address == "kid_a@ocdsb.ca")
+        .first()
+    )
+    assert stamped is not None
+    assert stamped.forwarding_seen_at is not None
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_skip_path_updates_last_synced_at(db_session):
+    """When fetch_child_emails returns empty, the worker skips delivery but
+    must still advance last_synced_at on all integrations so the next run
+    doesn't re-query the same historical window (#4052)."""
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import (
+        DigestDeliveryLog,
+        ParentGmailIntegration,
+    )
+
+    parent, int_ids, _ = _make_parent_with_integrations(
+        db_session,
+        "skip_updates_synced@test.com",
+        ["sa@ocdsb.ca", "sb@ocdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=[]),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["status"] == "skipped"
+    assert result["reason"] == "no_new_emails"
+
+    # All integrations had last_synced_at bumped (was None before the run).
+    integs = (
+        db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    )
+    assert len(integs) == len(int_ids)
+    for integ in integs:
+        assert integ.last_synced_at is not None
+
+    # No DigestDeliveryLog written on the skip path.
+    logs = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .all()
+    )
+    assert len(logs) == 0

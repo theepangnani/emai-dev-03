@@ -965,6 +965,12 @@ async def send_unified_digest_for_parent(
             .first()
         )
         if existing_log:
+            # #4052 — advance last_synced_at so the next run doesn't fetch
+            # the same historical window indefinitely when dedup short-
+            # circuits delivery.
+            for integ in integrations:
+                integ.last_synced_at = now
+            db.commit()
             return {
                 "status": "skipped",
                 "email_count": 0,
@@ -1038,6 +1044,11 @@ async def send_unified_digest_for_parent(
     primary_settings = integrations[0].digest_settings
     notify_on_empty = bool(primary_settings and primary_settings.notify_on_empty)
     if email_count == 0 and not notify_on_empty:
+        # #4052 — advance last_synced_at so the next run's since-window
+        # starts from now even when we skip delivery.
+        for integ in integrations:
+            integ.last_synced_at = now
+        db.commit()
         return {
             "status": "skipped",
             "email_count": 0,
@@ -1108,27 +1119,29 @@ async def send_unified_digest_for_parent(
     else:
         overall_status = "partial"
 
-    # Persist one DigestDeliveryLog per integration so the existing
-    # per-integration reporting UI still works during the dual-maintain
-    # window. All rows share ``digest_content`` so the parent's /email-digest
-    # page renders a single history entry regardless of which row it loads.
+    # #4052 — Persist a single synthetic DigestDeliveryLog per unified run
+    # (keyed to integrations[0]) so the existing per-integration /logs
+    # endpoint still surfaces it without duplicating history rows. The
+    # ``scope`` column is intentionally not introduced this round —
+    # keeping this change minimal per the fix scope.
     email_delivery_status = (
         None
         if "email" not in channels or email_ok is None
         else ("sent" if email_ok else "failed")
     )
+    primary_integration = integrations[0]
+    log_entry = DigestDeliveryLog(
+        parent_id=parent_id,
+        integration_id=primary_integration.id,
+        email_count=email_count,
+        digest_content=digest_html,
+        digest_length_chars=len(digest_html),
+        channels_used=channels_setting,
+        status=overall_status,
+        email_delivery_status=email_delivery_status,
+    )
+    db.add(log_entry)
     for integration in integrations:
-        log_entry = DigestDeliveryLog(
-            parent_id=parent_id,
-            integration_id=integration.id,
-            email_count=email_count,
-            digest_content=digest_html,
-            digest_length_chars=len(digest_html),
-            channels_used=channels_setting,
-            status=overall_status,
-            email_delivery_status=email_delivery_status,
-        )
-        db.add(log_entry)
         integration.last_synced_at = now
     db.commit()
 

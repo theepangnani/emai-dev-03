@@ -134,8 +134,9 @@ def attribute_email(
         parent — a sender that matches a different parent's row does
         NOT leak across accounts.
     db:
-        Open SQLAlchemy session; the function commits ``forwarding_seen_at``
-        stamps when school-email matches are found.
+        Open SQLAlchemy session; the function flushes ``forwarding_seen_at``
+        stamps when school-email matches are found. The outer caller is
+        responsible for committing the session (see #4051).
     now:
         Optional clock override for deterministic tests.
 
@@ -178,12 +179,14 @@ def attribute_email(
                 if row.child_profile_id not in kid_ids:
                     kid_ids.append(row.child_profile_id)
                 row.forwarding_seen_at = stamp_time
+            # #4051 — flush stamps into the session without committing so
+            # the outer worker transaction stays atomic. The worker commits
+            # once all emails for the parent are attributed.
             try:
-                db.commit()
+                db.flush()
             except Exception:
-                db.rollback()
                 logger.exception(
-                    "attribute_email: failed to stamp forwarding_seen_at "
+                    "attribute_email: failed to flush forwarding_seen_at "
                     "| parent_id=%s recipients=%s",
                     parent_id,
                     recipients,

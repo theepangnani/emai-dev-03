@@ -338,6 +338,64 @@ def test_school_email_beats_sender_when_both_would_match(db_session):
 # ---------------------------------------------------------------------------
 
 
+def test_attribute_email_does_not_commit_mid_request(db_session):
+    """#4051 — attribute_email must flush (not commit) the forwarding_seen_at
+    stamps so outer-transaction atomicity is preserved. We verify by adding
+    a marker row before calling attribute_email, then rolling back: if
+    attribute_email had committed mid-request, the marker row would survive
+    the rollback.
+    """
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "no_commit@test.com")
+    profile = _make_profile(db_session, parent.id, "Tester")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="t@ocdsb.ca",
+    ))
+    db_session.commit()
+
+    marker_email = "rollback_marker@test.com"
+
+    # Marker row added INSIDE the uncommitted transaction.
+    marker = m["User"](
+        email=marker_email,
+        full_name="Marker",
+        role=m["UserRole"].PARENT,
+        hashed_password=m["get_password_hash"]("Password123!"),
+    )
+    db_session.add(marker)
+    db_session.flush()  # assign id, stay uncommitted
+
+    # attribute_email stamps forwarding_seen_at on the matched school
+    # email row. It MUST NOT commit — if it did, the marker row above
+    # would become permanent.
+    result = attribute_email(
+        {"To": "t@ocdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SCHOOL_EMAIL
+
+    db_session.rollback()
+
+    # After rollback, the marker row must be gone. If attribute_email
+    # committed mid-request, it would have persisted.
+    still_there = (
+        db_session.query(m["User"])
+        .filter(m["User"].email == marker_email)
+        .first()
+    )
+    assert still_there is None, (
+        "attribute_email appears to have committed the session mid-request; "
+        "the marker row survived a rollback that should have wiped it."
+    )
+
+
 def test_sectioning_groups_emails_by_attribution_source():
     from app.services.unified_digest_attribution import (
         ATTR_SOURCE_APPLIES_TO_ALL,
