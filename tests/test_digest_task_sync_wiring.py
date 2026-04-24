@@ -131,27 +131,31 @@ def digest_env(db_session):
 
 
 def _fetched_emails():
+    # #4058 — fetch_child_emails now returns {"emails": [...], "synced_at": dt}
     received_at = datetime.now(timezone.utc) - timedelta(hours=1)
-    return [
-        {
-            "source_id": "<msg-1@school.ca>",
-            "sender_name": "Ms. Smith",
-            "sender_email": "smith@school.ca",
-            "subject": "Permission slip due",
-            "body": "Please sign the permission slip by May 10.",
-            "snippet": "Permission slip",
-            "received_at": received_at,
-        },
-        {
-            "source_id": "<msg-2@school.ca>",
-            "sender_name": "Mr. Jones",
-            "sender_email": "jones@school.ca",
-            "subject": "Math quiz",
-            "body": "Math quiz scheduled for May 12.",
-            "snippet": "Math quiz",
-            "received_at": received_at,
-        },
-    ]
+    return {
+        "emails": [
+            {
+                "source_id": "<msg-1@school.ca>",
+                "sender_name": "Ms. Smith",
+                "sender_email": "smith@school.ca",
+                "subject": "Permission slip due",
+                "body": "Please sign the permission slip by May 10.",
+                "snippet": "Permission slip",
+                "received_at": received_at,
+            },
+            {
+                "source_id": "<msg-2@school.ca>",
+                "sender_name": "Mr. Jones",
+                "sender_email": "jones@school.ca",
+                "subject": "Math quiz",
+                "body": "Math quiz scheduled for May 12.",
+                "snippet": "Math quiz",
+                "received_at": received_at,
+            },
+        ],
+        "synced_at": datetime.now(timezone.utc),
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -65,7 +65,7 @@ async def test_send_digest_for_integration_uses_full_name_not_first_name(db_sess
     mock_generate = AsyncMock(return_value="digest body")
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=mock_generate,
@@ -142,7 +142,7 @@ async def test_send_digest_for_integration_whitespace_only_full_name(db_session)
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=AsyncMock(return_value="digest body"),
@@ -245,7 +245,7 @@ async def test_whatsapp_template_variables_sanitised(db_session):
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=AsyncMock(return_value=ai_digest),
@@ -358,7 +358,7 @@ async def test_whatsapp_template_substitutes_newlines_with_bullet_markers_strips
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=AsyncMock(return_value=ai_digest),
@@ -463,7 +463,7 @@ async def test_whatsapp_template_three_paragraphs_produces_two_bullet_markers(db
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=AsyncMock(return_value=ai_digest),
@@ -574,7 +574,7 @@ async def test_whatsapp_template_crlf_line_endings_produce_bullet_markers(db_ses
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=fetched_emails),
+        new=AsyncMock(return_value={"emails": fetched_emails, "synced_at": datetime.now(timezone.utc)}),
     ), patch(
         "app.services.parent_digest_ai_service.generate_parent_digest",
         new=AsyncMock(return_value=ai_digest),
@@ -652,18 +652,24 @@ def _seed_integration(db_session, email_suffix: str, delivery_channels: str = "i
 
 
 def _fetched_emails():
+    # #4058 — fetch_child_emails now returns {"emails": [...], "synced_at": dt}
+    # so callers can commit last_synced_at atomically with their delivery log
+    # instead of the service advancing it eagerly mid-run.
     received_at = datetime.now(timezone.utc) - timedelta(hours=1)
-    return [
-        {
-            "source_id": "x",
-            "sender_name": "School",
-            "sender_email": "s@s.ca",
-            "subject": "Hi",
-            "body": "Body",
-            "snippet": "Body",
-            "received_at": received_at,
-        }
-    ]
+    return {
+        "emails": [
+            {
+                "source_id": "x",
+                "sender_name": "School",
+                "sender_email": "s@s.ca",
+                "subject": "Hi",
+                "body": "Body",
+                "snippet": "Body",
+                "received_at": received_at,
+            }
+        ],
+        "synced_at": datetime.now(timezone.utc),
+    }
 
 
 @pytest.mark.asyncio
@@ -976,7 +982,7 @@ async def test_digest_reason_no_new_emails(db_session):
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=[]),
+        new=AsyncMock(return_value={"emails": [], "synced_at": None}),
     ):
         result = await send_digest_for_integration(
             db_session,
@@ -1145,17 +1151,21 @@ def _mk_parent_and_integration(
 
 
 def _fetched_email():
-    return [
-        {
-            "source_id": "x",
-            "sender_name": "School",
-            "sender_email": "s@s.ca",
-            "subject": "Hi",
-            "body": "B",
-            "snippet": "B",
-            "received_at": datetime.now(timezone.utc) - timedelta(hours=1),
-        }
-    ]
+    # #4058 — same dict wrapper as _fetched_emails; see note there.
+    return {
+        "emails": [
+            {
+                "source_id": "x",
+                "sender_name": "School",
+                "sender_email": "s@s.ca",
+                "subject": "Hi",
+                "body": "B",
+                "snippet": "B",
+                "received_at": datetime.now(timezone.utc) - timedelta(hours=1),
+            }
+        ],
+        "synced_at": datetime.now(timezone.utc),
+    }
 
 
 @pytest.mark.asyncio
@@ -1535,3 +1545,169 @@ def test_whatsapp_body_strips_malformed_html_tags():
     # Ensure real content is preserved (bold text, "end", "homework assignments")
     assert 'bold' in sanitised
     assert 'homework assignments' in sanitised
+
+
+# ---------------------------------------------------------------------------
+# #4058 — retry-after-partial-failure: last_synced_at must NOT advance if the
+# worker crashes between fetch-commit and delivery-log-commit.
+# ---------------------------------------------------------------------------
+
+
+def _mk_parent_and_integration_plain(db_session, *, email_suffix: str):
+    """Minimal integration factory for #4058 crash-path tests.
+
+    Returns a freshly persisted ParentGmailIntegration with an in_app-only
+    delivery channel so we don't have to mock WhatsApp/email plumbing.
+    """
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+    from app.models.user import User, UserRole
+
+    parent = User(
+        email=f"{email_suffix}_parent@test.com",
+        full_name="Crash Test Parent",
+        role=UserRole.PARENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(parent)
+    db_session.flush()
+
+    integration = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address=f"{email_suffix}@gmail.com",
+        google_id=f"google_{email_suffix}",
+        access_token="enc_access",
+        refresh_token="enc_refresh",
+        child_school_email="child@school.ca",
+        child_first_name="Alex",
+    )
+    db_session.add(integration)
+    db_session.flush()
+
+    settings = ParentDigestSettings(
+        integration_id=integration.id,
+        delivery_channels="in_app",
+    )
+    db_session.add(settings)
+    db_session.commit()
+    db_session.refresh(integration)
+    return integration
+
+
+@pytest.mark.asyncio
+async def test_crash_between_fetch_and_log_does_not_advance_last_synced_at(
+    db_session,
+):
+    """#4058 — legacy path: if the notification step crashes AFTER
+    fetch_child_emails returned but BEFORE the DigestDeliveryLog commit,
+    integration.last_synced_at must remain pinned to its pre-run value so a
+    retry re-fetches the same window and does not drop the parent-day of mail.
+    """
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration_plain(
+        db_session, email_suffix="crash_retry_legacy"
+    )
+    pre_last_synced_at = integration.last_synced_at  # None on a fresh row
+
+    captured_since: list = []
+
+    async def capturing_fetch(db, integration, since=None):
+        captured_since.append(since)
+        return _fetched_emails()
+
+    # Fix ``since`` so the retry assertion can compare it byte-for-byte; if
+    # either run re-derived ``since`` from datetime.now(), the test would
+    # pass by accident for the wrong reason.
+    fixed_since = datetime(2026, 4, 22, 12, 0, tzinfo=timezone.utc)
+
+    # First run: AI generation succeeds, but the delivery step raises — the
+    # worker's exception handler commits a status="failed" log (without
+    # bumping last_synced_at). Mirror that by forcing generate_parent_digest
+    # to raise: that path writes the failed log and returns early before the
+    # final last_synced_at stamp.
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=capturing_fetch),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(side_effect=RuntimeError("AI crashed mid-run")),
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=fixed_since,
+        )
+
+    assert result["status"] == "failed"
+    db_session.refresh(integration)
+    # Crash path must NOT have advanced last_synced_at.
+    assert integration.last_synced_at == pre_last_synced_at
+
+    # Retry with the same mocks but a successful digest generation this time.
+    first_since = captured_since[0]
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=capturing_fetch),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="<p>digest body</p>"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
+    ):
+        retry_result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=fixed_since,
+        )
+
+    assert retry_result["status"] in ("delivered", "partial")
+    # Retry saw the same ``since`` window as the first call — no mail dropped.
+    assert captured_since[1] == first_since
+
+    # After a successful retry, last_synced_at MUST have advanced.
+    db_session.refresh(integration)
+    assert integration.last_synced_at is not None
+    if pre_last_synced_at is not None:
+        assert integration.last_synced_at > pre_last_synced_at
+
+
+@pytest.mark.asyncio
+async def test_happy_path_advances_last_synced_at_from_fetch_result(db_session):
+    """#4058 — legacy path: on a successful run, last_synced_at must be
+    advanced (to the fetch-returned timestamp) atomically with the
+    DigestDeliveryLog commit.
+    """
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    integration = _mk_parent_and_integration_plain(
+        db_session, email_suffix="happy_legacy_synced"
+    )
+    assert integration.last_synced_at is None
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(return_value=_fetched_emails()),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_parent_digest",
+        new=AsyncMock(return_value="<p>ok</p>"),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"notification": None, "in_app": True, "email": None, "classbridge_message": None}),
+    ):
+        result = await send_digest_for_integration(
+            db_session,
+            integration,
+            skip_dedup=True,
+            since=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+
+    assert result["status"] in ("delivered", "partial")
+    db_session.refresh(integration)
+    assert integration.last_synced_at is not None

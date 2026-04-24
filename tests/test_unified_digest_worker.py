@@ -149,27 +149,34 @@ async def test_unified_digest_groups_integrations_and_attributes(db_session):
 
     async def fake_fetch(db, integration, since=None):
         call_count["n"] += 1
+        # #4058 — fetch_child_emails now returns {"emails": [...], "synced_at": dt}
         if integration.child_school_email == "kida@ocdsb.ca":
-            return [{
-                "source_id": "m1",
-                "sender_name": "Teacher A",
-                "sender_email": "ta@school.ca",
-                "subject": "Hello A",
-                "snippet": "body a",
-                "to_addresses": ["kida@ocdsb.ca"],
+            return {
+                "emails": [{
+                    "source_id": "m1",
+                    "sender_name": "Teacher A",
+                    "sender_email": "ta@school.ca",
+                    "subject": "Hello A",
+                    "snippet": "body a",
+                    "to_addresses": ["kida@ocdsb.ca"],
+                    "delivered_to_addresses": [],
+                    "received_at": since,
+                }],
+                "synced_at": datetime.now(timezone.utc),
+            }
+        return {
+            "emails": [{
+                "source_id": "m2",
+                "sender_name": "Teacher B",
+                "sender_email": "tb@school.ca",
+                "subject": "Hello B",
+                "snippet": "body b",
+                "to_addresses": ["kidb@ocdsb.ca"],
                 "delivered_to_addresses": [],
                 "received_at": since,
-            }]
-        return [{
-            "source_id": "m2",
-            "sender_name": "Teacher B",
-            "sender_email": "tb@school.ca",
-            "subject": "Hello B",
-            "snippet": "body b",
-            "to_addresses": ["kidb@ocdsb.ca"],
-            "delivered_to_addresses": [],
-            "received_at": since,
-        }]
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
@@ -217,15 +224,18 @@ async def test_unified_digest_sends_one_notification_per_parent(db_session):
     since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
 
     async def fake_fetch(db, integration, since=None):
-        return [{
-            "source_id": f"m-{integration.id}",
-            "sender_email": "t@school.ca",
-            "subject": "s",
-            "snippet": "b",
-            "to_addresses": [integration.child_school_email],
-            "delivered_to_addresses": [],
-            "received_at": since,
-        }]
+        return {
+            "emails": [{
+                "source_id": f"m-{integration.id}",
+                "sender_email": "t@school.ca",
+                "subject": "s",
+                "snippet": "b",
+                "to_addresses": [integration.child_school_email],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
 
     mock_notify = MagicMock(return_value={"in_app": True, "email": True})
     with patch(
@@ -259,7 +269,7 @@ async def test_unified_digest_skips_when_no_emails_and_notify_on_empty_false(db_
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=[]),
+        new=AsyncMock(return_value={"emails": [], "synced_at": None}),
     ), patch(
         "app.services.notification_service.send_multi_channel_notification",
         new=MagicMock(),
@@ -288,15 +298,18 @@ async def test_unified_digest_counts_unattributed(db_session):
     async def fake_fetch(db, integration, since=None):
         # No recipient match, no monitored sender registered for this
         # parent -> unattributed.
-        return [{
-            "source_id": "mx",
-            "sender_email": "mystery@nowhere.ca",
-            "subject": "?",
-            "snippet": "?",
-            "to_addresses": ["someone_else@ocdsb.ca"],
-            "delivered_to_addresses": [],
-            "received_at": since,
-        }]
+        return {
+            "emails": [{
+                "source_id": "mx",
+                "sender_email": "mystery@nowhere.ca",
+                "subject": "?",
+                "snippet": "?",
+                "to_addresses": ["someone_else@ocdsb.ca"],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
@@ -338,7 +351,7 @@ async def test_unified_digest_dedup_prevents_second_run_same_day(db_session):
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=[]),
+        new=AsyncMock(return_value={"emails": [], "synced_at": None}),
     ) as mock_fetch:
         result = await send_unified_digest_for_parent(
             db_session, parent.id, since=datetime.now(timezone.utc)
@@ -376,17 +389,20 @@ async def test_unified_digest_writes_one_log_and_stamps_forwarding(db_session):
     # Only integrations[0]'s fetch returns a match; integrations[1] empty.
     async def fake_fetch(db, integration, since=None):
         if integration.id == int_ids[0]:
-            return [{
-                "source_id": "msg-1",
-                "sender_name": "Teacher",
-                "sender_email": "teacher@school.ca",
-                "subject": "Test",
-                "snippet": "body",
-                "to_addresses": ["kid_a@ocdsb.ca"],
-                "delivered_to_addresses": [],
-                "received_at": since,
-            }]
-        return []
+            return {
+                "emails": [{
+                    "source_id": "msg-1",
+                    "sender_name": "Teacher",
+                    "sender_email": "teacher@school.ca",
+                    "subject": "Test",
+                    "snippet": "body",
+                    "to_addresses": ["kid_a@ocdsb.ca"],
+                    "delivered_to_addresses": [],
+                    "received_at": since,
+                }],
+                "synced_at": datetime.now(timezone.utc),
+            }
+        return {"emails": [], "synced_at": datetime.now(timezone.utc)}
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
@@ -441,7 +457,7 @@ async def test_unified_digest_skip_path_updates_last_synced_at(db_session):
 
     with patch(
         "app.services.parent_gmail_service.fetch_child_emails",
-        new=AsyncMock(return_value=[]),
+        new=AsyncMock(return_value={"emails": [], "synced_at": None}),
     ), patch(
         "app.services.notification_service.send_multi_channel_notification",
         new=MagicMock(),
@@ -470,3 +486,116 @@ async def test_unified_digest_skip_path_updates_last_synced_at(db_session):
         .all()
     )
     assert len(logs) == 0
+
+
+# ---------------------------------------------------------------------------
+# #4058 — unified path: crash between fetch and delivery-log commit must NOT
+# advance last_synced_at for any of the parent's integrations, so a retry
+# re-fetches the same window.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unified_crash_between_fetch_and_log_preserves_last_synced_at(
+    db_session,
+):
+    """Before this fix, fetch_child_emails committed last_synced_at eagerly,
+    so if the worker died after fetch but before the delivery-log commit,
+    retries saw advanced stamps and produced an empty digest — the unified
+    path amplified this across ALL of a parent's integrations.
+
+    The fix moves the stamp into the worker's final commit. This test
+    verifies: crash → stamps stay at pre-run values → retry with identical
+    ``since`` argument reprocesses the same email window.
+    """
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import ParentGmailIntegration
+
+    parent, int_ids, _ = _make_parent_with_integrations(
+        db_session,
+        "unified_crash_retry@test.com",
+        ["kidx@ocdsb.ca", "kidy@ocdsb.ca"],
+    )
+    # Capture baseline (None on fresh rows).
+    pre_stamps = {
+        integ.id: integ.last_synced_at
+        for integ in db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    }
+
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+    captured_since: list = []
+
+    async def capturing_fetch(db, integration, since=None):
+        captured_since.append(since)
+        return {
+            "emails": [{
+                "source_id": f"m-{integration.id}",
+                "sender_name": "T",
+                "sender_email": "t@school.ca",
+                "subject": "S",
+                "snippet": "b",
+                "to_addresses": [integration.child_school_email],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
+
+    # First run: the delivery step raises mid-flight. The unified worker
+    # propagates uncaught exceptions (the outer loop's rollback handler in
+    # process_unified_parent_email_digests catches them), so here we let
+    # pytest.raises capture it — the important assertion is that no
+    # last_synced_at stamp has been advanced.
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=capturing_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(side_effect=RuntimeError("notification crashed")),
+    ):
+        with pytest.raises(RuntimeError, match="notification crashed"):
+            await send_unified_digest_for_parent(
+                db_session, parent.id, skip_dedup=True, since=since
+            )
+
+    db_session.rollback()
+    integs = (
+        db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    )
+    # Crash → no stamp advanced.
+    for integ in integs:
+        assert integ.last_synced_at == pre_stamps[integ.id]
+
+    # Retry with identical ``since`` — success this time. Must see the SAME
+    # ``since`` arg reach fetch_child_emails.
+    first_since = captured_since[0]
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=capturing_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        retry_result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert retry_result["status"] == "delivered"
+    # Both integrations were fetched on the retry with the same ``since``.
+    retry_sinces = captured_since[len(int_ids):]
+    assert len(retry_sinces) == len(int_ids)
+    for s in retry_sinces:
+        assert s == first_since
+
+    # Success path MUST have advanced all stamps.
+    integs = (
+        db_session.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.id.in_(int_ids))
+        .all()
+    )
+    for integ in integs:
+        assert integ.last_synced_at is not None

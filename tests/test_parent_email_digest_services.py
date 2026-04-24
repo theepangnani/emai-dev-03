@@ -37,18 +37,20 @@ class TestParentGmailService:
 
     @pytest.mark.asyncio
     async def test_fetch_child_emails_no_school_email(self):
-        """Integration with no child_school_email returns []."""
+        """Integration with no child_school_email returns empty result dict."""
         from app.services.parent_gmail_service import fetch_child_emails
 
         db = MagicMock()
         integration = self._make_integration(child_school_email=None)
 
         result = await fetch_child_emails(db, integration)
-        assert result == []
+        # #4058 — fetch_child_emails now returns a dict; no-query early
+        # exit emits synced_at=None so callers don't advance the stamp.
+        assert result == {"emails": [], "synced_at": None}
 
     @pytest.mark.asyncio
     async def test_fetch_child_emails_no_access_token(self):
-        """Integration with no access_token returns []."""
+        """Integration with no access_token returns empty result dict."""
         from app.services.parent_gmail_service import fetch_child_emails
 
         db = MagicMock()
@@ -56,7 +58,7 @@ class TestParentGmailService:
 
         with patch("app.services.parent_gmail_service.decrypt_token", return_value=None):
             result = await fetch_child_emails(db, integration)
-        assert result == []
+        assert result == {"emails": [], "synced_at": None}
 
     @pytest.mark.asyncio
     @patch("app.services.parent_gmail_service.get_gmail_service")
@@ -83,7 +85,9 @@ class TestParentGmailService:
         integration = self._make_integration()
 
         result = await fetch_child_emails(db, integration)
-        assert result == []
+        # Auth failure still deactivates and commits, but returns the
+        # empty-result dict so callers don't advance last_synced_at.
+        assert result == {"emails": [], "synced_at": None}
         assert integration.is_active is False
         db.commit.assert_called()
 
@@ -118,9 +122,15 @@ class TestParentGmailService:
         integration = self._make_integration()
 
         result = await fetch_child_emails(db, integration)
-        assert len(result) == 2
+        assert len(result["emails"]) == 2
         assert mock_parse.call_count == 2
-        db.commit.assert_called()
+        # #4058 — synced_at is returned for the caller to persist atomically
+        # with its delivery log; the service itself no longer commits
+        # last_synced_at eagerly. A db.commit() is only expected when tokens
+        # get refreshed — this test's mock_creds.token == access_token so
+        # no commit should happen.
+        assert result["synced_at"] is not None
+        db.commit.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("app.services.parent_gmail_service._parse_gmail_message")
@@ -197,7 +207,7 @@ class TestParentGmailService:
 
         result = await fetch_child_emails(db, integration)
         # Only 2 unique IDs should be fetched
-        assert len(result) == 2
+        assert len(result["emails"]) == 2
 
     @pytest.mark.asyncio
     async def test_verify_forwarding_no_school_email(self):
@@ -673,7 +683,10 @@ class TestDigestJob:
         db.close.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.parent_gmail_service.fetch_child_emails", return_value=[])
+    @patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        return_value={"emails": [], "synced_at": None},
+    )
     @patch("app.jobs.parent_email_digest_job.SessionLocal")
     async def test_process_skips_no_emails_when_notify_off(self, mock_session_cls, mock_fetch):
         """Skip when no emails fetched and notify_on_empty=False."""
@@ -732,7 +745,10 @@ class TestDigestJob:
         db = self._setup_db_mock([integration], existing_log=None, parent=parent)
         mock_session_cls.return_value = db
 
-        mock_fetch.return_value = [{"from": "teacher@school.ca", "subject": "Homework", "body": "Due Friday"}]
+        mock_fetch.return_value = {
+            "emails": [{"from": "teacher@school.ca", "subject": "Homework", "body": "Due Friday"}],
+            "synced_at": datetime.now(timezone.utc),
+        }
         mock_gen.return_value = "<h3>Your digest</h3>"
 
         await process_parent_email_digests()
@@ -754,7 +770,10 @@ class TestDigestJob:
         db = self._setup_db_mock([integration], existing_log=None, parent=parent)
         mock_session_cls.return_value = db
 
-        mock_fetch.return_value = [{"from": "t@school.ca", "subject": "X", "body": "Y"}]
+        mock_fetch.return_value = {
+            "emails": [{"from": "t@school.ca", "subject": "X", "body": "Y"}],
+            "synced_at": datetime.now(timezone.utc),
+        }
 
         await process_parent_email_digests()
 
