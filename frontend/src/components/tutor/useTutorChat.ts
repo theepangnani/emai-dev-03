@@ -63,6 +63,14 @@ export function useTutorChat(): UseTutorChatResult {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Snapshot-only refs so `sendMessage` can stay stable across re-renders.
+  // Consumers can then safely depend on `sendMessage` in useEffect/useMemo
+  // without triggering churn on every `messages` update.
+  const messagesRef = useRef<TutorMessage[]>(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -110,7 +118,8 @@ export function useTutorChat(): UseTutorChatResult {
 
       // Snapshot history BEFORE appending the new user turn so the server
       // receives the prior conversation + the current message separately.
-      const history = lastTurns(messages);
+      // Read from the ref so sendMessage can remain a stable reference.
+      const history = lastTurns(messagesRef.current);
 
       setMessages((prev) => [...prev, userMessage, assistantStub]);
       setIsStreaming(true);
@@ -222,7 +231,7 @@ export function useTutorChat(): UseTutorChatResult {
         }
       }
     },
-    [messages],
+    [],
   );
 
   return { messages, sendMessage, isStreaming, cancel, error, clear };

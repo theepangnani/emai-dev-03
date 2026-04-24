@@ -223,6 +223,132 @@ def test_stream_moderation_blocked_emits_error_event(client, db_session):
         _set_tutor_flag(db_session, enabled=False)
 
 
+def test_stream_moderation_blocked_does_not_create_orphan_conversation(
+    client, db_session
+):
+    """Moderation-blocked requests must NOT persist a `tutor_conversations` row.
+
+    Previously the route created + committed a conversation BEFORE calling
+    moderation, leaving orphaned rows whenever the message was flagged.
+    """
+    from app.models.tutor import TutorConversation
+
+    _make_user(db_session, email="tutor_mod_orphan@test.com")
+    _set_tutor_flag(db_session, enabled=True)
+
+    user = (
+        db_session.query(
+            __import__("app.models.user", fromlist=["User"]).User
+        )
+        .filter_by(email="tutor_mod_orphan@test.com")
+        .first()
+    )
+    before = (
+        db_session.query(TutorConversation)
+        .filter(TutorConversation.user_id == user.id)
+        .count()
+    )
+
+    mock_client = _mock_openai_client(
+        stream_pieces=["ignored"], moderation_flagged=True
+    )
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mod_orphan@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "harmful message"},
+                headers=headers,
+            )
+        assert resp.status_code == 200
+        assert "moderation_blocked" in resp.text
+
+        db_session.expire_all()
+        after = (
+            db_session.query(TutorConversation)
+            .filter(TutorConversation.user_id == user.id)
+            .count()
+        )
+        assert after == before, (
+            "Blocked request should not create any tutor_conversations rows"
+        )
+    finally:
+        _set_tutor_flag(db_session, enabled=False)
+
+
+def test_load_history_skips_unpaired_assistant_rows(db_session):
+    """`_load_history` must return only complete user→assistant pairs.
+
+    Retries can leave multiple consecutive assistant rows in the DB. Feeding
+    that into the OpenAI chat completion API produces a 400 (non-alternating
+    roles). The walker over-samples + drops orphan assistant rows.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from app.api.routes.tutor import _load_history
+    from app.models.tutor import TutorConversation, TutorMessage
+    from app.models.user import User, UserRole
+    from app.core.security import get_password_hash
+
+    # Fresh user + conversation so row counts are deterministic.
+    user = User(
+        email="tutor_history@test.com",
+        full_name="History Walker",
+        role=UserRole.STUDENT,
+        hashed_password=get_password_hash(PASSWORD),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    conv = TutorConversation(id="conv-history-walker", user_id=user.id)
+    db_session.add(conv)
+    db_session.commit()
+
+    # Seed 6 rows at monotonic timestamps: orphan assistants + a pair + a
+    # pair's assistant, in mixed order relative to insertion. Ordering on
+    # disk is controlled by created_at, not insert order.
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        ("assistant", "orphan-1", base + timedelta(seconds=1)),
+        ("assistant", "orphan-2", base + timedelta(seconds=2)),
+        ("user", "q1", base + timedelta(seconds=3)),
+        ("assistant", "retry-1", base + timedelta(seconds=4)),
+        ("assistant", "a1", base + timedelta(seconds=5)),
+        ("user", "q2", base + timedelta(seconds=6)),
+        ("assistant", "a2", base + timedelta(seconds=7)),
+    ]
+    for role, content, ts in rows:
+        db_session.add(
+            TutorMessage(
+                conversation_id=conv.id,
+                role=role,
+                content=content,
+                created_at=ts,
+            )
+        )
+    db_session.commit()
+
+    history = _load_history(db_session, conv.id)
+
+    # Expect only the valid pairs: (q1 → a1) and (q2 → a2). The orphan
+    # assistants and the retry-1 assistant are dropped because the walker
+    # pairs the first user with the NEXT assistant and then resets.
+    assert history == [
+        {"role": "user", "content": "q1"},
+        {"role": "assistant", "content": "retry-1"},
+        {"role": "user", "content": "q2"},
+        {"role": "assistant", "content": "a2"},
+    ]
+
+    # Every pair alternates user→assistant — OpenAI will accept it.
+    for i in range(0, len(history), 2):
+        assert history[i]["role"] == "user"
+        assert history[i + 1]["role"] == "assistant"
+
+
 def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
     """With the limiter enabled, the 21st request in an hour returns 429."""
     _make_user(db_session, email="tutor_rl@test.com")
