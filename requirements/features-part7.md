@@ -2102,6 +2102,21 @@ Two production defects reported the same day the epic shipped. Both fixed via in
 
 **Follow-up #4099** filed (deferred per Option A) for one-time data scrub of misclassified school-email rows; users can self-clean now that the × button ships.
 
+#### Stream 5 — Unified WhatsApp delivery + flag promoted ON (PR for #4103, 2026-04-24)
+
+The original v2 MVP (PR #4045) shipped with WhatsApp deferred to "Stream 5" — `send_unified_digest_for_parent()` only delivered in_app + email and the `whatsapp` channel was silently dropped. With the flag still OFF by default, multi-kid parents kept hitting the legacy per-integration path, which leaked the wrong child's name into subject + greeting (e.g. Rohini's Haashini digest titled "Email Digest for Thanushan").
+
+**#4103 closes the gap with three coordinated changes:**
+
+1. **`parent.unified_digest_v2` default → ON (`enabled=True, variant="on_100"`)**. `seed_features()` also auto-promotes any existing row still pinned to the original `enabled=False / variant="off"` default; admin overrides (variant other than `"off"`) are preserved untouched.
+2. **WhatsApp wired into the unified path** with V2-then-V1-then-freeform fallback. Picks the first integration on the parent with `whatsapp_verified=True` and a phone number (parents share one number across all their integrations), generates a sectioned 3×3 digest across the merged emails (`generate_sectioned_digest(... "your kids" ...)`), then:
+   - If `TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2` is set → 4-variable V2 sectioned template (one message per parent).
+   - Else if `TWILIO_WHATSAPP_DIGEST_CONTENT_SID` is set → V1 single-variable template with `_sanitise_whatsapp_var` (`\n\n`→`•`, control-char strip, 1024 cap).
+   - Else → freeform `send_whatsapp_message()` body with header/footer (sandbox / session-window only).
+3. **WhatsApp added to the unified `outcomes` calculation + `whatsapp_delivery_status` persisted on the synthetic `DigestDeliveryLog`** keyed to `integrations[0]`. Three-valued per-channel convention (#3887) preserved: `True` / `False` / `None` where `None` (whatsapp selected but no integration verified) is excluded from overall-status.
+
+**Effect:** Multi-kid parents now receive exactly ONE digest envelope across in_app + email + WhatsApp, with correct kid attribution everywhere (subject "Email Digest for your kids", per-kid sections inline). When Meta approves the V2 Twilio template (#3987), flipping the env var swaps the V1 `•`-flat formatting for properly sectioned multi-variable rendering — zero further code changes.
+
 
 #### 6.142.3 Phase 1 round-3 + pass-4 review (2026-04-24 evening)
 

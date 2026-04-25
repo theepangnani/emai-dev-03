@@ -96,13 +96,13 @@ def seed_features(db: Session) -> int:
             "key": "parent.unified_digest_v2",
             "name": "Unified Multi-Kid Email Digest V2",
             "description": (
-                "#4012: Unified multi-kid Email Digest page + single digest per parent "
-                "with school-email attribution. OFF renders legacy per-kid UI. When ON, "
-                "renders the unified page and the digest worker produces one digest per "
-                "parent. Ramp via variant: off / on_5 / on_25 / on_50 / on_100."
+                "#4012/#4103: Unified multi-kid Email Digest page + single digest per parent "
+                "with school-email attribution. ON by default since #4103 — the legacy per-kid "
+                "path leaked the wrong child's name into multi-kid parents' digests and was "
+                "retired. Ramp via variant: off / on_5 / on_25 / on_50 / on_100."
             ),
-            "enabled": False,
-            "variant": "off",
+            "enabled": True,
+            "variant": "on_100",
         },
     ]
 
@@ -120,6 +120,20 @@ def seed_features(db: Session) -> int:
                 db.commit()
                 added += 1
                 logger.info("Seeded feature flag '%s' with variant='%s'", seed["key"], seed["variant"])
+            elif (
+                seed["key"] == "parent.unified_digest_v2"
+                and existing.variant == "off"
+                and existing.enabled is False
+            ):
+                # #4103 — promote any existing row still pinned to the original
+                # OFF default. Admin overrides (variant != "off") are preserved.
+                existing.enabled = True
+                existing.variant = "on_100"
+                db.commit()
+                logger.info(
+                    "Promoted feature flag '%s' from off → on_100 (#4103)",
+                    seed["key"],
+                )
         except Exception:
             db.rollback()
             logger.warning("Could not seed feature flag '%s'", seed["key"])

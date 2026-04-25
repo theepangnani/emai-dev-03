@@ -116,10 +116,65 @@ def test_seed_is_idempotent(db_session):
     assert second.enabled == first_enabled
 
 
-# #4012, #4018 — parent.unified_digest_v2 flag
+# #4012, #4018, #4103 — parent.unified_digest_v2 flag
 
 def _reset_unified_digest_flag(db_session):
-    """Ensure `parent.unified_digest_v2` exists and is enabled=False before a test."""
+    """Re-seed `parent.unified_digest_v2` to the current default (ON since #4103)."""
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    return (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "parent.unified_digest_v2")
+        .first()
+    )
+
+
+def test_unified_digest_v2_flag_seeded_default_on(db_session):
+    """#4103 — `seed_features()` must add `parent.unified_digest_v2` with enabled=True."""
+    flag = _reset_unified_digest_flag(db_session)
+
+    assert flag is not None, "parent.unified_digest_v2 should be seeded"
+    assert flag.enabled is True
+    assert flag.name == "Unified Multi-Kid Email Digest V2"
+    assert flag.variant == "on_100"
+
+
+def test_is_feature_enabled_returns_true_for_unified_digest_v2_by_default(db_session):
+    """#4103 — `is_feature_enabled('parent.unified_digest_v2')` must be True on a fresh seed."""
+    from app.services.feature_flag_service import is_feature_enabled
+
+    _reset_unified_digest_flag(db_session)
+
+    assert is_feature_enabled("parent.unified_digest_v2", db=db_session) is True
+
+
+def test_seed_features_promotes_legacy_off_row_to_on(db_session):
+    """#4103 — existing rows pinned to the original OFF default get auto-promoted."""
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    # Simulate an existing DB still on the original (#4012) default.
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "parent.unified_digest_v2")
+        .first()
+    )
+    flag.enabled = False
+    flag.variant = "off"
+    db_session.commit()
+
+    seed_features(db_session)
+
+    db_session.refresh(flag)
+    assert flag.enabled is True
+    assert flag.variant == "on_100"
+
+
+def test_seed_features_preserves_admin_override_variant(db_session):
+    """#4103 — admin overrides (variant != 'off') must be preserved across re-seed."""
     from app.models.feature_flag import FeatureFlag
     from app.services.feature_seed_service import seed_features
 
@@ -129,26 +184,12 @@ def _reset_unified_digest_flag(db_session):
         .filter(FeatureFlag.key == "parent.unified_digest_v2")
         .first()
     )
-    if flag is not None and flag.enabled is True:
-        flag.enabled = False
-        db_session.commit()
-    return flag
+    # Admin paused the rollout at on_25 — must NOT be auto-promoted.
+    flag.enabled = True
+    flag.variant = "on_25"
+    db_session.commit()
 
+    seed_features(db_session)
 
-def test_unified_digest_v2_flag_seeded_default_off(db_session):
-    """`seed_features()` must add `parent.unified_digest_v2` with enabled=False."""
-    flag = _reset_unified_digest_flag(db_session)
-
-    assert flag is not None, "parent.unified_digest_v2 should be seeded"
-    assert flag.enabled is False
-    assert flag.name == "Unified Multi-Kid Email Digest V2"
-    assert flag.variant == "off"
-
-
-def test_is_feature_enabled_returns_false_for_unified_digest_v2_by_default(db_session):
-    """`is_feature_enabled('parent.unified_digest_v2')` must be False on a fresh seed."""
-    from app.services.feature_flag_service import is_feature_enabled
-
-    _reset_unified_digest_flag(db_session)
-
-    assert is_feature_enabled("parent.unified_digest_v2", db=db_session) is False
+    db_session.refresh(flag)
+    assert flag.variant == "on_25"
