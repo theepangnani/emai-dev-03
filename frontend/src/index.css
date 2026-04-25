@@ -383,16 +383,20 @@ body:has(.modal-overlay) {
 
   --color-blue: #3b6a8f;
   --color-blue-dark: #2d5475;
-  --color-danger: #c25b6f;
-  --color-danger-light: rgba(194, 91, 111, 0.10);
+  /* --color-danger darkened from #c25b6f (4.18:1 on white, fails AA) to #a84458
+     (5.78:1 on white, 5.13:1 on surface-bg) for WCAG 2.1 AA compliance.
+     Decorative --color-rose retains original #c25b6f. See cb-theme-001-s8-a11y-report.md */
+  --color-danger: #a84458;
+  --color-danger-light: rgba(168, 68, 88, 0.10);
   --color-warning: #d4a24b;
   --color-warning-light: rgba(212, 162, 75, 0.14);
   --color-warning-text: #7a5a1a;
   --color-success: #2d4a3e;
   --color-success-light: rgba(45, 74, 62, 0.12);
 
-  --priority-high: #c25b6f;
-  --priority-high-light: rgba(194, 91, 111, 0.10);
+  /* --priority-high darkened to match --color-danger for WCAG AA on text use. */
+  --priority-high: #a84458;
+  --priority-high-light: rgba(168, 68, 88, 0.10);
   --priority-medium: #d4a24b;
   --priority-medium-light: rgba(212, 162, 75, 0.14);
   --priority-low: #2d4a3e;
