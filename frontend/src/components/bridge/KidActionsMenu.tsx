@@ -12,6 +12,7 @@ interface KidActionsMenuProps {
   onExport: () => void;
   onResetPassword?: () => void;
   onAwardXp?: () => void;
+  onQuizHistory?: () => void;
   onResendInvite?: () => void;
   onCopyInviteLink?: () => void;
   onRemove: () => void;
@@ -25,6 +26,7 @@ export function KidActionsMenu({
   onExport,
   onResetPassword,
   onAwardXp,
+  onQuizHistory,
   onResendInvite,
   onCopyInviteLink,
   onRemove,
@@ -103,6 +105,15 @@ export function KidActionsMenu({
                 <polygon points="12 2 15 8.5 22 9.3 17 14 18.2 21 12 17.8 5.8 21 7 14 2 9.3 9 8.5 12 2" />
               </svg>
               Award XP
+            </button>
+          )}
+          {onQuizHistory && (
+            <button type="button" role="menuitem" onClick={choose(onQuizHistory)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <path d="M8 9h8M8 13h8M8 17h5" />
+              </svg>
+              Quiz history
             </button>
           )}
           {onResendInvite && (
