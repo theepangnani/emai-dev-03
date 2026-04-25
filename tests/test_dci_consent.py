@@ -414,6 +414,60 @@ class TestAssertDciConsent:
         assert snapshot.ai_ok is True
         assert snapshot.photo_ok is True
 
+    def test_single_query_round_trip(
+        self, db_session, client, parent_with_two_kids
+    ):
+        """#4191: assert_dci_consent issues a single SELECT round-trip.
+
+        Previously the helper ran 4 separate SELECTs (student, parent_students,
+        checkin_consent, checkin_settings). The optimised version folds them
+        into one inner+outer-join query.
+        """
+        from sqlalchemy import event
+
+        from app.services.dci_consent_service import assert_dci_consent
+
+        parent = parent_with_two_kids["parent"]
+        kid_a = parent_with_two_kids["kid_a"]
+        headers = _auth(client, parent.email)
+        client.post(
+            "/api/dci/consent",
+            headers=headers,
+            json={
+                "kid_id": kid_a.id,
+                "ai_ok": True,
+                "photo_ok": True,
+                "voice_ok": True,
+            },
+        )
+
+        # Count SELECT statements issued during the helper call.
+        select_count = {"n": 0}
+        engine = db_session.get_bind()
+
+        def _on_execute(conn, cursor, statement, parameters, context, executemany):
+            if statement.lstrip().upper().startswith("SELECT"):
+                select_count["n"] += 1
+
+        event.listen(engine, "before_cursor_execute", _on_execute)
+        try:
+            snapshot = assert_dci_consent(
+                db_session,
+                kid_id=kid_a.id,
+                parent_id=parent.id,
+                requires_photo=True,
+                requires_voice=True,
+            )
+        finally:
+            event.remove(engine, "before_cursor_execute", _on_execute)
+
+        assert snapshot.ai_ok is True
+        # Exactly one SELECT — the joined query. Allowing >1 would silently
+        # let a regression slip back in.
+        assert select_count["n"] == 1, (
+            f"expected single-query round-trip, got {select_count['n']} SELECTs"
+        )
+
 
 # ── Audit log written on every consent change ───────────────────
 

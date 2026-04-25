@@ -313,10 +313,16 @@ def assert_dci_consent(
     Returns the snapshot on success (so M0-4 can also gate retention etc.).
 
     Defense-in-depth: this helper also verifies the (parent, kid) link
-    via ``_verify_parent_owns_kid`` — a forged ``kid_id`` raises 404
+    via the ``parent_students`` join — a forged ``kid_id`` raises 404
     rather than falling through to the deny path. Callers should still
     perform their own ownership checks at the route level; this is the
     second line of defense.
+
+    Performance (#4191): ownership + consent + settings are fetched in a
+    single round-trip via an inner join to ``parent_students`` (ownership
+    gate) plus outer joins to ``checkin_consent`` and ``checkin_settings``
+    (both may legitimately be NULL on first checkin attempt). The previous
+    implementation issued 4 separate queries per call.
 
     Caller contract::
 
@@ -330,9 +336,37 @@ def assert_dci_consent(
             requires_voice=bool(payload.voice_uri),
         )
     """
-    _verify_parent_owns_kid(db, parent_id, kid_id)
-    consent = _load_consent(db, parent_id, kid_id)
-    settings_row = _load_settings(db, parent_id, kid_id)
+    # Single round-trip: inner join on ownership, outer joins on consent +
+    # settings (both may be NULL pre-first-checkin). A None result row means
+    # the (parent, kid) link doesn't exist => 404. A row with consent=None
+    # means owned-but-no-consent-yet => 403.
+    row = (
+        db.query(CheckinConsent, CheckinSettings)
+        .select_from(parent_students)
+        .outerjoin(
+            CheckinConsent,
+            (CheckinConsent.parent_id == parent_students.c.parent_id)
+            & (CheckinConsent.kid_id == parent_students.c.student_id),
+        )
+        .outerjoin(
+            CheckinSettings,
+            (CheckinSettings.parent_id == parent_students.c.parent_id)
+            & (CheckinSettings.kid_id == parent_students.c.student_id),
+        )
+        .filter(
+            parent_students.c.parent_id == parent_id,
+            parent_students.c.student_id == kid_id,
+        )
+        .first()
+    )
+
+    if row is None:
+        # Parent does not own this kid — 404 (avoid leaking existence).
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Kid not found"
+        )
+
+    consent, settings_row = row
 
     def _deny() -> "HTTPException":
         return HTTPException(
