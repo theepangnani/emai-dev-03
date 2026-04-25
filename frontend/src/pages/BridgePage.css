@@ -864,6 +864,13 @@
   border-bottom: 1px dashed var(--bridge-hair);
 }
 
+.bridge-card-summary {
+  color: var(--bridge-muted);
+  font-size: 14px;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
 .bridge-card-foot {
   margin-top: 14px;
   padding-top: 14px;

@@ -17,7 +17,7 @@ export function BridgeHeader({ kidsLinked, classesTracked, activeTasks }: Bridge
   return (
     <section className="bridge-header" aria-labelledby="bridge-title">
       <div>
-        <span className="bridge-kicker">Parent Hub · {linkedLabel}</span>
+        <span className="bridge-kicker">{linkedLabel}</span>
         <h1 id="bridge-title" className="bridge-title">
           Parent Hub
         </h1>

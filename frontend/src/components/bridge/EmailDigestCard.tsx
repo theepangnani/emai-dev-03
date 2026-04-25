@@ -37,9 +37,9 @@ export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, childNa
       </header>
 
       {hasIntegration ? (
-        <div className="bridge-empty-hint">
+        <p className="bridge-card-summary">
           Daily digest for {childName} — open the digest hub to manage delivery, school email, and recent sends.
-        </div>
+        </p>
       ) : (
         <div className="bridge-empty-hint">
           Not set up yet for {childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.
