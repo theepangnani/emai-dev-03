@@ -49,6 +49,7 @@ function PhotoCapture({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const snapshotRef = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<string | null>(null);
 
@@ -64,7 +65,12 @@ function PhotoCapture({
     }
     let cancelled = false;
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      // facingMode is "ideal" rather than required so desktops without a rear
+      // camera still get a working stream (otherwise getUserMedia rejects).
+      .getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -99,13 +105,31 @@ function PhotoCapture({
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
-        setSnapshot(URL.createObjectURL(blob));
+        // Revoke any prior snapshot URL before allocating a new one so we
+        // don't leak object URLs across re-snaps.
+        if (snapshotRef.current) {
+          URL.revokeObjectURL(snapshotRef.current);
+        }
+        const next = URL.createObjectURL(blob);
+        snapshotRef.current = next;
+        setSnapshot(next);
         onCapture({ blob });
       },
       'image/jpeg',
       0.92,
     );
   };
+
+  // Final cleanup: revoke whatever snapshot URL is still around when the
+  // PhotoCapture unmounts (mode switch, page nav, etc.).
+  useEffect(() => {
+    return () => {
+      if (snapshotRef.current) {
+        URL.revokeObjectURL(snapshotRef.current);
+        snapshotRef.current = null;
+      }
+    };
+  }, []);
 
   if (error) {
     return (
@@ -207,6 +231,9 @@ function VoiceCapture({
       return;
     }
     try {
+      // NOTE: sampleRate: 16_000 is best-effort — most browsers ignore the
+      // hint and capture at the device's native rate (typically 48 kHz). The
+      // backend (M0-5) downsamples to 16 kHz before STT, so we don't enforce.
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,

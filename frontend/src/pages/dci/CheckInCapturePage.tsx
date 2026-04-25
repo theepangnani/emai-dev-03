@@ -57,6 +57,7 @@ export function CheckInCapturePage() {
     checkinId,
   } = useDciCheckin();
   const submittedRef = useRef(false);
+  const [preparing, setPreparing] = useState(false);
 
   // Telemetry: classify_ms is reported once per submit, when polling settles.
   useEffect(() => {
@@ -65,45 +66,68 @@ export function CheckInCapturePage() {
     }
   }, [classifyMs]);
 
+  // Revoke any ObjectURLs we created for previews when the page unmounts so
+  // we don't leak blob handles across the kid's session.
+  useEffect(() => {
+    return () => {
+      Object.values(drafts).forEach((d) => {
+        if (d?.previewUrl) URL.revokeObjectURL(d.previewUrl);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup runs once on unmount, drafts read via closure at that moment
+  }, []);
+
   const onCapture = (
     capturedMode: CaptureMode,
     data: { blob?: Blob; text?: string },
   ) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [capturedMode]: {
-        artifact_type: capturedMode,
-        blob: data.blob,
-        text: data.text,
-        previewUrl: data.blob ? URL.createObjectURL(data.blob) : undefined,
-        textSnippet: data.text,
-      },
-    }));
+    setDrafts((prev) => {
+      // Revoke the previous preview URL for this slot before allocating a new one.
+      const previous = prev[capturedMode];
+      if (previous?.previewUrl) {
+        URL.revokeObjectURL(previous.previewUrl);
+      }
+      return {
+        ...prev,
+        [capturedMode]: {
+          artifact_type: capturedMode,
+          blob: data.blob,
+          text: data.text,
+          previewUrl: data.blob ? URL.createObjectURL(data.blob) : undefined,
+          textSnippet: data.text,
+        },
+      };
+    });
   };
 
   const sendToClassBridge = async () => {
-    if (submittedRef.current) return;
+    if (preparing || submittedRef.current) return;
     const photo = drafts.photo;
     const voice = drafts.voice;
     const text = drafts.text;
     if (!photo && !voice && !text) return;
+    setPreparing(true);
     submittedRef.current = true;
 
-    const form = new FormData();
-    // Lazy-import the resizer so the canvas/Image cost stays off the
-    // intro page's bundle. Voice/text users never pay for it.
-    if (photo?.blob) {
-      const { resizeJpegBlob } = await import('../../components/dci/imageResize');
-      const resized = await resizeJpegBlob(photo.blob);
-      form.append('photo', resized, 'photo.jpg');
+    try {
+      const form = new FormData();
+      // Lazy-import the resizer so the canvas/Image cost stays off the
+      // intro page's bundle. Voice/text users never pay for it.
+      if (photo?.blob) {
+        const { resizeJpegBlob } = await import('../../components/dci/imageResize');
+        const resized = await resizeJpegBlob(photo.blob);
+        form.append('photo', resized, 'photo.jpg');
+      }
+      if (voice?.blob) {
+        form.append('voice', voice.blob, 'voice.webm');
+      }
+      if (text?.text) {
+        form.append('text', text.text);
+      }
+      submit(form);
+    } finally {
+      setPreparing(false);
     }
-    if (voice?.blob) {
-      form.append('voice', voice.blob, 'voice.webm');
-    }
-    if (text?.text) {
-      form.append('text', text.text);
-    }
-    submit(form);
   };
 
   const onCorrect = async (next: {
@@ -125,6 +149,9 @@ export function CheckInCapturePage() {
     const completed = Math.round(
       (performance.now() - startedAtRef.current) / 1000,
     );
+    // NOTE: this measures "send-to-done click" timing (kid pressed the finish
+    // button), not "Done screen seen" timing — the Done screen is reached on
+    // the next render after navigate().
     emitDciKidEvent('dci.kid.completed_seconds', { seconds: completed });
     navigate('/checkin/done', {
       state: {
@@ -204,10 +231,10 @@ export function CheckInCapturePage() {
             <button
               type="button"
               className="dci-checkin__send"
-              disabled={!hasAnything || isSubmitting}
+              disabled={!hasAnything || isSubmitting || preparing}
               onClick={sendToClassBridge}
             >
-              {isSubmitting ? 'Sending…' : 'Send to ClassBridge'}
+              {isSubmitting || preparing ? 'Sending…' : 'Send to ClassBridge'}
             </button>
             {submitError && (
               <div className="dci-checkin__error" role="alert">

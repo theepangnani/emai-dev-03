@@ -64,13 +64,13 @@ export const dciApi = {
    * via `getStatus` polling (async path).
    */
   submitCheckin: async (form: FormData): Promise<DciCheckinCreateResponse> => {
+    // NOTE: do not set Content-Type explicitly — axios adds the multipart
+    // boundary parameter only when it generates the header itself. Forcing
+    // 'multipart/form-data' here strips the boundary and breaks parsing.
     const { data } = await api.post<DciCheckinCreateResponse>(
       '/api/dci/checkin',
       form,
-      {
-        ...AI_TIMEOUT,
-        headers: { 'Content-Type': 'multipart/form-data' },
-      },
+      AI_TIMEOUT,
     );
     return data;
   },

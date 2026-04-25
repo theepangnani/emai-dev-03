@@ -7,19 +7,17 @@
  * visible affordance: P3 "AI assists, never decides" on the kid side.
  */
 import { useState } from 'react';
-import type { DciClassification, DciArtifactType } from '../../api/dci';
+import type {
+  DciClassification,
+  DciCorrectionPayload,
+} from '../../api/dci';
 import './AIDetectedChip.css';
 
 export interface AIDetectedChipProps {
   classification: DciClassification | null;
   /** "loading" stops the chip from rendering "we don't know yet" jitter. */
   loading?: boolean;
-  onCorrect?: (next: {
-    artifact_type: DciArtifactType;
-    subject?: string;
-    topic?: string;
-    deadline_iso?: string | null;
-  }) => Promise<void> | void;
+  onCorrect?: (next: DciCorrectionPayload) => Promise<void> | void;
 }
 
 export function AIDetectedChip({
@@ -54,12 +52,21 @@ export function AIDetectedChip({
       setEditing(false);
       return;
     }
-    await onCorrect({
+    // Only include fields the kid actually changed so PATCH stays a true
+    // partial update (M0-4 contract). artifact_type is always required to
+    // identify which artifact in the check-in we're correcting.
+    const payload: DciCorrectionPayload = {
       artifact_type: classification.artifact_type,
-      subject: subject.trim() || undefined,
-      topic: topic.trim() || undefined,
-      deadline_iso: classification.deadline_iso,
-    });
+    };
+    const trimmedSubject = subject.trim();
+    const trimmedTopic = topic.trim();
+    if (trimmedSubject !== (classification.subject ?? '')) {
+      payload.subject = trimmedSubject || undefined;
+    }
+    if (trimmedTopic !== (classification.topic ?? '')) {
+      payload.topic = trimmedTopic || undefined;
+    }
+    await onCorrect(payload);
     setEditing(false);
   };
 
