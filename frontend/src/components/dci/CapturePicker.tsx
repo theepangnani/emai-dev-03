@@ -228,6 +228,11 @@ function VoiceCapture({
   };
 
   const start = async () => {
+    // Defense-in-depth: tear down any prior recorder/stream/audioCtx before
+    // starting a new one. The "Record again" path normally goes
+    // start → stop → start, but if a future code change ever triggers two
+    // start() calls back-to-back this prevents leaked MediaStream tracks.
+    stopAll();
     setError(null);
     const supported =
       typeof navigator !== 'undefined' &&

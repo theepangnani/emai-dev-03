@@ -287,4 +287,40 @@ describe('CheckInDonePage', () => {
     const list = within(container).getByRole('list')
     expect(within(list).getByText(/Math — Fractions/)).toBeInTheDocument()
   })
+
+  it('cancels auto-dismiss only via the explicit "Stay open" button (issue #4196)', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<CheckInDonePage />, {
+      initialEntries: [
+        {
+          pathname: '/checkin/done',
+          state: {
+            classifications: [],
+            completed_seconds: 12,
+          },
+        } as unknown as string,
+      ],
+    })
+
+    // The deliberate gesture is a button, not a whole-page click handler.
+    const stayBtn = await screen.findByRole('button', { name: /stay open/i })
+
+    // Tapping the streak heading or close-msg must NOT cancel — verify by
+    // confirming the button is still present after a click on body content.
+    const closeMsg = screen.getByText(
+      /close the app\. have a snack\. you're good\./i,
+    )
+    await user.click(closeMsg)
+    expect(
+      screen.getByRole('button', { name: /stay open/i }),
+    ).toBeInTheDocument()
+
+    // The deliberate "Stay open" gesture removes the button (timer cleared).
+    await user.click(stayBtn)
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: /stay open/i }),
+      ).not.toBeInTheDocument()
+    })
+  })
 })

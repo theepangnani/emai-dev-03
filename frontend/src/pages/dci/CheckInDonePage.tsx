@@ -8,11 +8,12 @@
  *
  * Spec: docs/design/CB-DCI-001-daily-checkin.md § 7.
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { ArcMascot } from '../../components/arc/ArcMascot';
+import { DciStreakBadge } from '../../components/dci/DciStreakBadge';
 import { dciApi, type DciClassification, type DciStreakResponse } from '../../api/dci';
 import './CheckIn.css';
 
@@ -23,50 +24,6 @@ interface DoneLocationState {
   completed_seconds?: number;
 }
 
-// Inline streak-only badge: no XP coupling, day count + secondary "Longest N"
-// label. Kept here (not as a new file) to avoid expanding the file footprint.
-function DciStreakBadge({
-  current,
-  longest,
-}: {
-  current: number;
-  longest: number;
-}) {
-  return (
-    <div
-      role="status"
-      aria-label={`Current streak ${current} days, longest ${longest} days`}
-      style={{
-        display: 'inline-flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2,
-        padding: '8px 16px',
-        borderRadius: 16,
-        background: 'var(--color-accent-light, #fff7e6)',
-        color: 'var(--color-accent-strong, #b45309)',
-        fontWeight: 600,
-      }}
-    >
-      <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{current}</span>
-      <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-        day{current === 1 ? '' : 's'} in a row
-      </span>
-      {longest > 0 && (
-        <span
-          style={{
-            fontSize: '0.72rem',
-            opacity: 0.75,
-            fontWeight: 400,
-          }}
-        >
-          Longest {longest}
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function CheckInDonePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -74,18 +31,21 @@ export function CheckInDonePage() {
   const { user } = useAuth();
   const kidId = user?.id ?? null;
   const dismissTimerRef = useRef<number | null>(null);
+  const [stayOpen, setStayOpen] = useState(false);
 
   const cancelDismiss = useCallback(() => {
     if (dismissTimerRef.current !== null) {
       window.clearTimeout(dismissTimerRef.current);
       dismissTimerRef.current = null;
     }
+    setStayOpen(true);
   }, []);
 
   // Auto-dismiss to /. Spec is explicit: kid should close, not engagement-farm.
-  // The kid can interrupt by tapping anywhere on the screen — handled below
-  // via onClick on <main>.
+  // The kid interrupts via the explicit "Stay open" button (issue #4196) —
+  // accidental scroll-taps on streak badge / preview list no longer cancel.
   useEffect(() => {
+    if (stayOpen) return;
     dismissTimerRef.current = window.setTimeout(
       () => navigate('/'),
       AUTO_DISMISS_MS,
@@ -96,7 +56,7 @@ export function CheckInDonePage() {
         dismissTimerRef.current = null;
       }
     };
-  }, [navigate]);
+  }, [navigate, stayOpen]);
 
   const streakQuery = useQuery<DciStreakResponse | null>({
     queryKey: ['dci', 'streak', kidId, 'after-checkin'],
@@ -118,7 +78,7 @@ export function CheckInDonePage() {
   const streak = streakQuery.data;
 
   return (
-    <main className="dci-checkin" onClick={cancelDismiss}>
+    <main className="dci-checkin">
       <div className="dci-checkin__shell dci-checkin__done">
         <div className="dci-checkin__success-ring" aria-hidden="true">
           ✓
@@ -145,6 +105,15 @@ export function CheckInDonePage() {
         <p className="dci-checkin__close-msg">
           Close the app. Have a snack. You're good.
         </p>
+        {!stayOpen && (
+          <button
+            type="button"
+            className="dci-checkin__stay-open"
+            onClick={cancelDismiss}
+          >
+            Stay open
+          </button>
+        )}
       </div>
     </main>
   );

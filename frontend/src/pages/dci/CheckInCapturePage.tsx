@@ -55,9 +55,18 @@ export function CheckInCapturePage() {
     classifyMs,
     applyCorrection,
     checkinId,
+    onSubmitSettled,
   } = useDciCheckin();
   const submittedRef = useRef(false);
   const [preparing, setPreparing] = useState(false);
+
+  // Tie `preparing` release to the mutation's onSettled (issue #4195) so the
+  // CTA stays "Sending…" through the entire submit cycle without flickering
+  // back to enabled between our local resize-finished and isPending=true.
+  useEffect(() => {
+    onSubmitSettled(() => setPreparing(false));
+    return () => onSubmitSettled(null);
+  }, [onSubmitSettled]);
   // Track every preview URL we allocate so the unmount cleanup can revoke
   // them all even if the latest `drafts` value isn't captured by the
   // mount-only effect closure.
@@ -132,8 +141,15 @@ export function CheckInCapturePage() {
         form.append('text', text.text);
       }
       submit(form);
-    } finally {
+      // NOTE: `setPreparing(false)` is intentionally NOT called here. It now
+      // fires in the mutation's onSettled (wired via `onSubmitSettled`
+      // above) so the CTA stays disabled across the full submit lifecycle.
+    } catch (err) {
+      // Resize/encode threw before we ever called submit() — release the
+      // preparing latch ourselves since onSettled won't fire.
       setPreparing(false);
+      submittedRef.current = false;
+      throw err;
     }
   };
 

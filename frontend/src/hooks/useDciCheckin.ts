@@ -21,15 +21,48 @@ import {
 const POLL_INTERVAL_MS = 250;
 const POLL_TIMEOUT_MS = 10_000;
 
+/**
+ * Discriminated-union status for the kid /checkin flow. Replaces the prior
+ * boolean-soup so callers can pattern-match on the exact phase:
+ *   - idle:        nothing submitted yet
+ *   - submitting:  POST /checkin in flight (mutation pending)
+ *   - pending:     POST returned 202 but no chip yet (polling /status)
+ *   - classified:  terminal — chip is ready (sync 202 OR poll resolved)
+ *   - failed:      terminal — backend marked the check-in failed OR
+ *                  poll-timeout fallback fired (chip never came)
+ */
+export type DciCheckinState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'pending'; checkinId: number }
+  | {
+      status: 'classified';
+      checkinId: number;
+      classifications: DciClassification[];
+      classifyMs: number;
+    }
+  | {
+      status: 'failed';
+      checkinId: number | null;
+      classifyMs: number | null;
+      error: Error | null;
+    };
+
 interface UseDciCheckinResult {
   submit: (form: FormData) => void;
+  /** Discriminated-union state — preferred over the legacy fields below. */
+  state: DciCheckinState;
+  // Legacy fields (kept for the existing CheckInCapturePage callsite). New
+  // code should consume `state` instead.
   isSubmitting: boolean;
   submitError: Error | null;
   checkinId: number | null;
   classifications: DciClassification[];
-  status: DciCheckinStatusResponse['status'] | null;
+  status: DciCheckinState['status'];
   /** ms taken from submit -> classified (for `dci.kid.classify_ms`). */
   classifyMs: number | null;
+  /** Settled callback — fires when the submit mutation resolves OR errors. */
+  onSubmitSettled: (cb: (() => void) | null) => void;
   applyCorrection: (
     payload: DciCorrectionPayload,
   ) => Promise<DciClassification>;
@@ -43,6 +76,14 @@ export function useDciCheckin(): UseDciCheckinResult {
   const [classifications, setClassifications] = useState<DciClassification[]>(
     [],
   );
+  // Caller-supplied "settled" callback so the page can release its
+  // `preparing` UI state in onSettled (not synchronously after mutate). See
+  // issue #4195 — keeps the "Sending…" CTA disabled until the mutation
+  // actually flips to isPending.
+  const onSettledRef = useRef<(() => void) | null>(null);
+  const onSubmitSettled = (cb: (() => void) | null) => {
+    onSettledRef.current = cb;
+  };
 
   const submitMutation = useMutation<DciCheckinCreateResponse, Error, FormData>({
     mutationFn: (form: FormData) => dciApi.submitCheckin(form),
@@ -61,6 +102,9 @@ export function useDciCheckin(): UseDciCheckinResult {
             : null,
         );
       }
+    },
+    onSettled: () => {
+      onSettledRef.current?.();
     },
   });
 
@@ -153,14 +197,53 @@ export function useDciCheckin(): UseDciCheckinResult {
     submitMutation.reset();
   };
 
+  // Derive the discriminated-union state. Single source of truth so callers
+  // can `switch (state.status)` without maintaining their own boolean math.
+  const polledStatus = statusQuery.data?.status;
+  let state: DciCheckinState;
+  if (submitMutation.isPending) {
+    state = { status: 'submitting' };
+  } else if (submitMutation.isError) {
+    state = {
+      status: 'failed',
+      checkinId,
+      classifyMs,
+      error: submitMutation.error ?? null,
+    };
+  } else if (
+    checkinId !== null &&
+    classifyMs !== null &&
+    polledStatus === 'failed'
+  ) {
+    state = {
+      status: 'failed',
+      checkinId,
+      classifyMs,
+      error: null,
+    };
+  } else if (checkinId !== null && classifyMs !== null) {
+    state = {
+      status: 'classified',
+      checkinId,
+      classifications,
+      classifyMs,
+    };
+  } else if (checkinId !== null) {
+    state = { status: 'pending', checkinId };
+  } else {
+    state = { status: 'idle' };
+  }
+
   return {
     submit: submitMutation.mutate,
+    state,
     isSubmitting: submitMutation.isPending,
     submitError: submitMutation.error,
     checkinId,
     classifications,
-    status: statusQuery.data?.status ?? (submitMutation.data ? 'pending' : null),
+    status: state.status,
     classifyMs,
+    onSubmitSettled,
     applyCorrection,
     reset,
   };

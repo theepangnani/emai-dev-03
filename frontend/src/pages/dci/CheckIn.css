@@ -196,3 +196,22 @@
   font-size: 0.95rem;
   padding: 4px 8px;
 }
+
+/* Done screen — explicit "Stay open" affordance (issue #4196).
+   Replaces the prior whole-page click cancel so accidental scroll-taps
+   on the streak badge / preview list no longer indefinitely freeze the
+   8s auto-dismiss. Kid taps this button to opt out deliberately. */
+.dci-checkin__stay-open {
+  background: transparent;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent-strong);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.dci-checkin__stay-open:hover {
+  background: var(--color-accent-light);
+}

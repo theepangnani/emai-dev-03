@@ -99,4 +99,31 @@ export const dciApi = {
     );
     return data;
   },
+
+  /**
+   * Fetch a DCI artifact (photo / voice) via the signed-URL consumer
+   * endpoint shipped in M0-4 (`make_signed_url` / `verify_signed_url`,
+   * cross-stripe owner: issue #4186).
+   *
+   * Accepts either a fully-built URL string (e.g. the `signed_url` returned
+   * by the digest backend) OR the three components (`uri`, `exp`, `sig`)
+   * needed to construct one. Returns a Blob the caller can pipe into an
+   * <img>/<audio> via `URL.createObjectURL`.
+   *
+   * Auth Bearer flows through the shared axios interceptor — the backend
+   * still re-checks family scope (kid + linked parents only) on top of
+   * the HMAC verification.
+   */
+  fetchArtifact: async (
+    signed: string | { uri: string; exp: number | string; sig: string },
+  ): Promise<Blob> => {
+    const url =
+      typeof signed === 'string'
+        ? signed
+        : `/api/dci/artifact?uri=${encodeURIComponent(signed.uri)}` +
+          `&exp=${encodeURIComponent(String(signed.exp))}` +
+          `&sig=${encodeURIComponent(signed.sig)}`;
+    const { data } = await api.get<Blob>(url, { responseType: 'blob' });
+    return data;
+  },
 };
