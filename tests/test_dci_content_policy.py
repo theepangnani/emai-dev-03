@@ -16,12 +16,21 @@ test suite once the fast-follow ships.
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from app.services import dci_content_policy
-from app.services.dci_content_policy import check
+from app.services.dci_content_policy import check, get_and_reset_block_counter
+
+
+@pytest.fixture(autouse=True)
+def _reset_block_counter() -> None:
+    """Drain the module-level block counter before AND after each test."""
+    get_and_reset_block_counter()
+    yield
+    get_and_reset_block_counter()
 
 
 # ---------------------------------------------------------------------------
@@ -356,3 +365,104 @@ def test_result_shape_is_typeddict_compliant(text, family, expected_allowed) -> 
     assert isinstance(result["allowed"], bool)
     assert isinstance(result["blocked_rules"], list)
     assert result["allowed"] is expected_allowed
+
+
+# ---------------------------------------------------------------------------
+# Block counter + DEBUG-level per-event log (fast-follow #4211)
+# ---------------------------------------------------------------------------
+
+def test_block_emits_debug_log_not_info(caplog: pytest.LogCaptureFixture) -> None:
+    """Per-block log line MUST be DEBUG (was INFO in v0)."""
+    text = "Aanya said her classmate Priya cried at recess today."
+    with caplog.at_level(logging.DEBUG, logger="app.services.dci_content_policy"):
+        result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is False
+    # The block-event line is now DEBUG, not INFO.
+    debug_blocked = [
+        r for r in caplog.records
+        if r.levelno == logging.DEBUG and "dci.policy.blocked" in r.getMessage()
+    ]
+    info_blocked = [
+        r for r in caplog.records
+        if r.levelno == logging.INFO and "dci.policy.blocked" in r.getMessage()
+    ]
+    assert len(debug_blocked) == 1
+    assert info_blocked == []
+
+
+def test_block_does_not_emit_info_log_at_info_level(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Regression: at the default INFO level, no per-block line should appear."""
+    text = "Aanya said her classmate Priya cried at recess today."
+    with caplog.at_level(logging.INFO, logger="app.services.dci_content_policy"):
+        result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is False
+    blocked_lines = [
+        r for r in caplog.records if "dci.policy.blocked" in r.getMessage()
+    ]
+    assert blocked_lines == []
+
+
+def test_block_counter_increments_per_fired_rule() -> None:
+    """The in-memory counter must increment by one per fired rule per check."""
+    # Fires three rules: named_other_kid, medical_keyword, pii_email.
+    text = (
+        "Aanya's friend Priya was diagnosed with autism. "
+        "Reach out at parent@example.com."
+    )
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is False
+    snapshot = get_and_reset_block_counter()
+    assert snapshot.get("named_other_kid") == 1
+    assert snapshot.get("medical_keyword") == 1
+    assert snapshot.get("pii_email") == 1
+
+
+def test_block_counter_aggregates_across_calls() -> None:
+    """Multiple blocks accumulate in the counter until flushed."""
+    text = "Aanya said her classmate Priya cried at recess today."
+    for _ in range(3):
+        check(text, family_kid_names=["Aanya"])
+    snapshot = get_and_reset_block_counter()
+    assert snapshot.get("named_other_kid") == 3
+
+
+def test_get_and_reset_block_counter_resets_to_empty() -> None:
+    """Calling the flush helper twice in a row returns an empty dict."""
+    text = "Aanya said her classmate Priya cried at recess today."
+    check(text, family_kid_names=["Aanya"])
+    first = get_and_reset_block_counter()
+    assert first.get("named_other_kid") == 1
+    second = get_and_reset_block_counter()
+    assert second == {}
+
+
+def test_block_counter_does_not_increment_on_clean_text() -> None:
+    """A clean check must not increment the counter."""
+    text = "Aanya finished her math homework today."
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is True
+    assert get_and_reset_block_counter() == {}
+
+
+def test_block_counter_does_not_increment_on_pii_only_redaction() -> None:
+    """PII-only redactions stay allowed and must not bump the counter."""
+    text = "Call the teacher at 416-555-1234 to discuss next steps."
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is True
+    # PII-only is a redaction, not a hard block — counter only tracks hard blocks.
+    assert get_and_reset_block_counter() == {}
+
+
+def test_get_and_reset_returns_plain_dict_not_live_counter() -> None:
+    """Snapshot must be a plain dict — mutating it must not affect the counter."""
+    text = "Aanya said her classmate Priya cried at recess today."
+    check(text, family_kid_names=["Aanya"])
+    snapshot = get_and_reset_block_counter()
+    snapshot["EVIL_INJECTION"] = 999
+    # Re-flush after another block; the EVIL_INJECTION key must NOT carry over.
+    check(text, family_kid_names=["Aanya"])
+    second = get_and_reset_block_counter()
+    assert "EVIL_INJECTION" not in second
+    assert second.get("named_other_kid") == 1

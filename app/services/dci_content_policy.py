@@ -58,6 +58,8 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
+from collections import Counter
 from typing import Any, Iterable, TypedDict
 
 from sqlalchemy.orm import Session
@@ -70,6 +72,40 @@ from app.services.dci_policy_rules import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Block-rate counter (fast-follow #4211)
+# ---------------------------------------------------------------------------
+# v0 emits one DEBUG log per block (low signal in prod) plus an in-memory
+# counter keyed by rule. The counter is read+reset via
+# :func:`get_and_reset_block_counter` and SHOULD be flushed periodically
+# (e.g. by a daily summary task or a metrics-scrape endpoint) to surface
+# block-rate trends without per-event INFO log noise. The audit_event row
+# remains the durable evidence record and is unaffected.
+
+_block_counter: Counter[str] = Counter()
+_block_counter_lock = threading.Lock()
+
+
+def _record_block(blocked_rules: list[str]) -> None:
+    """Increment the in-memory counter by one per fired rule."""
+    if not blocked_rules:
+        return
+    with _block_counter_lock:
+        _block_counter.update(blocked_rules)
+
+
+def get_and_reset_block_counter() -> dict[str, int]:
+    """Atomically return the current per-rule block counts and reset to zero.
+
+    Intended to be called by a periodic flush task (e.g. a daily summary
+    job or a metrics-scrape endpoint). Returns a plain ``dict`` snapshot
+    so callers cannot mutate the live counter.
+    """
+    with _block_counter_lock:
+        snapshot = dict(_block_counter)
+        _block_counter.clear()
+    return snapshot
 
 
 class PolicyResult(TypedDict):
@@ -312,11 +348,15 @@ def check(text: str, family_kid_names: list[str]) -> PolicyResult:
     allowed = not non_pii_fired
 
     if not allowed:
-        logger.info(
+        # Per-event log at DEBUG (was INFO in v0) — INFO was too noisy
+        # once the M0-6 generator wires up. Aggregate trends are surfaced
+        # via the in-memory counter flushed by the periodic task.
+        logger.debug(
             "dci.policy.blocked rules=%s named_kids=%s",
             blocked_rules,
             named_kids,
         )
+        _record_block(blocked_rules)
 
     return PolicyResult(
         allowed=allowed,
@@ -369,4 +409,9 @@ def audit_block(
     )
 
 
-__all__ = ["check", "audit_block", "PolicyResult"]
+__all__ = [
+    "check",
+    "audit_block",
+    "PolicyResult",
+    "get_and_reset_block_counter",
+]
