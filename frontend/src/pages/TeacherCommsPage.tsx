@@ -186,9 +186,9 @@ export function TeacherCommsPage() {
       </div>
 
       {error && (
-        <div className="error-banner" style={{ background: '#fef2f2', color: '#991b1b', padding: '8px 16px', borderRadius: '8px', margin: '0 16px 8px' }}>
+        <div className="error-banner" style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', padding: '8px 16px', borderRadius: '8px', margin: '0 16px 8px' }}>
           {error}
-          <button onClick={() => setError('')} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }}>&times;</button>
+          <button onClick={() => setError('')} style={{ marginLeft: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}>&times;</button>
         </div>
       )}
 
