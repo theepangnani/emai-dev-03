@@ -1,0 +1,50 @@
+.dci-deadline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.dci-deadline-chip__label {
+  white-space: nowrap;
+}
+
+.dci-deadline-chip--amber {
+  background: var(--color-warning-bg, #fff3e0);
+  color: var(--color-warning-text, #8a5a12);
+  border-color: var(--color-warning-border, #ffe0b2);
+}
+
+.dci-deadline-chip--red {
+  background: rgba(220, 38, 38, 0.10);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+.dci-deadline-chip__badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-ink-muted, #5b6274);
+  font-size: 0.72rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+[data-theme="dark"] .dci-deadline-chip--red {
+  background: rgba(252, 165, 165, 0.12);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.25);
+}
+
+[data-theme="dark"] .dci-deadline-chip__badge {
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
+  border-color: rgba(255, 255, 255, 0.12);
+}

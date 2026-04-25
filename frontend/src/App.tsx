@@ -11,6 +11,7 @@ import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
+import { useFeatureFlagEnabled } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
@@ -115,6 +116,11 @@ const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachCompo
 const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
 const LearningCyclePage = lazyRetry(() => import('./pages/LearningCyclePage').then((m) => ({ default: m.LearningCyclePage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
+// CB-DCI-001 M0-10 — parent /parent/today route block. Flag-gated via DciFlagGate
+// below; if `dci_v1_enabled` is OFF (the M0 default) the routes redirect to /.
+const EveningSummaryPage = lazyRetry(() => import('./pages/dci/EveningSummaryPage').then((m) => ({ default: m.EveningSummaryPage })));
+const ArtifactDeepDivePage = lazyRetry(() => import('./pages/dci/ArtifactDeepDivePage').then((m) => ({ default: m.ArtifactDeepDivePage })));
+const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').then((m) => ({ default: m.PatternsStubPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -598,6 +604,39 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* CB-DCI-001 M0-10 — parent /parent/today route block.
+                  Flag-gated via <DciFlagGate>; routes redirect to / when
+                  `dci_v1_enabled` is off (the M0 default on prod). */}
+              <Route
+                path="/parent/today"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <EveningSummaryPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/artifact/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <ArtifactDeepDivePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/patterns"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <PatternsStubPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
@@ -617,6 +656,18 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   // User already completed onboarding — send them to the dashboard
   if (!user.needs_onboarding && user.onboarding_completed) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * CB-DCI-001 M0-10 — gates the /parent/today routes behind the
+ * `dci_v1_enabled` feature flag (default OFF). When the flag is off the
+ * route silently redirects to `/` so the routes are invisible until M0
+ * ramps. When it is on, the wrapped page renders.
+ */
+function DciFlagGate({ children }: { children: ReactNode }) {
+  const enabled = useFeatureFlagEnabled('dci_v1_enabled');
+  if (!enabled) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
