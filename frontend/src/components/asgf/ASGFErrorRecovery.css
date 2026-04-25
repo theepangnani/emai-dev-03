@@ -156,7 +156,7 @@
 
 .asgf-error-recovery__btn--primary {
   background: var(--color-accent, #4a90d9);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .asgf-error-recovery__btn--primary:hover:not(:disabled) {

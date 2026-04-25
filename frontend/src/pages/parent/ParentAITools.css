@@ -124,7 +124,7 @@
   border: none;
   border-radius: 8px;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -215,7 +215,7 @@
   text-transform: uppercase;
   padding: 0.15rem 0.5rem;
   border-radius: 9999px;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .pai-badge.pai-severity-high { background: #ef4444; }
@@ -328,7 +328,7 @@
   height: 2rem;
   border-radius: 50%;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;

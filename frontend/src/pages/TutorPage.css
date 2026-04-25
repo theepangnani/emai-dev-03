@@ -101,7 +101,7 @@
 }
 .ask-arc-error__retry {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 6px 14px;
@@ -292,7 +292,7 @@
   margin-left: auto;
   padding: 10px 18px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 999px;
   font-size: var(--text-base);
@@ -405,7 +405,7 @@
   gap: 8px;
   padding: 12px 24px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 999px;
   font-size: var(--text-base);
@@ -850,7 +850,7 @@
 .tutor-drill__pill--active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 .tutor-drill__start {
   align-self: center;

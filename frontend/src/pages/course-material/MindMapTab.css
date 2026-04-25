@@ -40,7 +40,7 @@
 /* ── Center node ───────────────────────────── */
 .mm-center-node {
   background: var(--color-accent-strong, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 700;
   font-size: 1.05rem;
   padding: 0.85rem 1.5rem;

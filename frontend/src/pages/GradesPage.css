@@ -245,12 +245,12 @@
 }
 
 .grades-color-yellow, .gp-container .grades-color-yellow {
-  background: rgba(243, 176, 76, 0.15);
+  background: var(--color-warning-light);
   color: var(--color-warning);
 }
 
 .grades-color-red, .gp-container .grades-color-red {
-  background: rgba(214, 69, 69, 0.1);
+  background: var(--color-danger-light);
   color: var(--color-danger);
 }
 

@@ -41,7 +41,7 @@
   border: none;
   border-radius: 8px;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
@@ -183,7 +183,7 @@
   border: none;
   border-radius: 6px;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;
@@ -270,7 +270,7 @@
   padding: 0.1rem 0.5rem;
   border-radius: 6px;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .rca-subject-card p {
@@ -444,7 +444,7 @@
 .rca-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;

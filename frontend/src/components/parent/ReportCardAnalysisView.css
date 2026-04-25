@@ -219,7 +219,7 @@
   font-weight: 700;
   padding: 0.15rem 0.5rem;
   border-radius: 9999px;
-  color: #fff;
+  color: var(--color-surface);
   min-width: 1.75rem;
   text-align: center;
 }
@@ -304,7 +304,7 @@
   text-transform: uppercase;
   padding: 0.1rem 0.4rem;
   border-radius: 9999px;
-  color: #fff;
+  color: var(--color-surface);
   flex-shrink: 0;
   align-self: flex-start;
   margin-top: 0.15rem;
@@ -355,7 +355,7 @@
   padding: 0.1rem 0.4rem;
   border-radius: 4px;
   background: var(--primary-color, #4a7dff);
-  color: #fff;
+  color: var(--color-surface);
   margin-top: 0.35rem;
 }
 

@@ -22,11 +22,11 @@
 }
 .material-ctx-trigger:hover {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 .material-ctx-trigger.open {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   transform: rotate(45deg);
 }
 

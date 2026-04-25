@@ -430,7 +430,7 @@
   letter-spacing: 0.04em;
   align-self: flex-start;
   background: var(--color-success, #22c55e);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .cycle-feedback__badge--warn {
@@ -531,7 +531,7 @@
 
 .cycle-cta--primary {
   background: var(--color-accent-warm);
-  color: #fff;
+  color: var(--color-surface);
   box-shadow: 0 6px 18px -8px var(--color-accent-warm);
 }
 
@@ -670,7 +670,7 @@
   height: 20px;
   border-radius: 999px;
   background: var(--cycle-accent, var(--color-accent-warm));
-  color: #fff;
+  color: var(--color-surface);
   display: inline-flex;
   align-items: center;
   justify-content: center;

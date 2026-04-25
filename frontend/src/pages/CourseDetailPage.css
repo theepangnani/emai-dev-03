@@ -1022,7 +1022,7 @@
   align-items: center;
   justify-content: center;
   background: var(--color-accent, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 12px;
   font-weight: 600;
   min-width: 20px;
@@ -1137,7 +1137,7 @@
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 13px;
   cursor: pointer;
 }

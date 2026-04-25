@@ -54,7 +54,7 @@
 .st-chip-active {
   background: var(--color-accent, #2563eb);
   border-color: var(--color-accent, #2563eb);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* Timeline */
@@ -109,7 +109,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 700;
   font-size: 0.85rem;
   z-index: 1;
@@ -163,7 +163,7 @@
 }
 
 .st-entry-score {
-  color: #7c3aed;
+  color: var(--color-purple);
   font-weight: 600;
 }
 

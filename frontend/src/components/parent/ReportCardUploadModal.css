@@ -296,7 +296,7 @@
 
 .rc-upload-footer .btn-primary {
   background: var(--color-accent, #4A90D9);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: var(--radius-sm, 6px);
   padding: 10px 24px;

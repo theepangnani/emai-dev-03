@@ -72,7 +72,7 @@
 .ed-kid-chip--active {
   background: var(--color-primary, #2563eb);
   border-color: var(--color-primary, #2563eb);
-  color: #ffffff;
+  color: var(--color-surface);
 }
 
 .ed-loading {
@@ -112,7 +112,7 @@
 .ed-primary-btn {
   padding: 10px 24px;
   background: var(--color-primary, #4A90D9);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -264,7 +264,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-surface);
   position: absolute;
   top: 2px;
   left: 2px;
@@ -615,7 +615,7 @@
 .ed-input:focus {
   outline: none;
   border-color: var(--color-primary, #4A90D9);
-  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.12);
+  box-shadow: 0 0 0 2px var(--color-accent-light);
 }
 
 /* WhatsApp (#3592) */
@@ -890,7 +890,7 @@ button.ed-kid-chip:hover {
 
 .ed-kid-chip--active {
   background: var(--color-primary, #4A90D9);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .ed-kid-chip--assigned {
@@ -899,7 +899,7 @@ button.ed-kid-chip:hover {
 }
 
 .ed-kid-chip--all {
-  background: #ede9fe;
+  background: var(--color-purple-bg);
   color: #5b21b6;
 }
 

@@ -280,7 +280,7 @@
   border: none;
   border-radius: 8px;
   background: var(--color-accent-strong, var(--color-accent));
-  color: #fff;
+  color: var(--color-surface);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -306,7 +306,7 @@
    Dark theme
    ============================================ */
 [data-theme="dark"] .subguide-modal {
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-border);
+  box-shadow: 0 20px 60px var(--color-overlay), 0 0 0 1px var(--color-border);
 }
 
 [data-theme="dark"] .subguide-type-card:hover {

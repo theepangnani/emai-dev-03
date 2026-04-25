@@ -268,7 +268,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -401,7 +401,7 @@
 }
 .pd-child-tab.active .invite-status-active {
   background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  color: var(--color-surface);
 }
 .invite-status-pending {
   background: #fef3c7;
@@ -409,7 +409,7 @@
 }
 .pd-child-tab.active .invite-status-pending {
   background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  color: var(--color-surface);
 }
 .invite-status-email_unverified {
   background: #f3f4f6;
@@ -417,7 +417,7 @@
 }
 .pd-child-tab.active .invite-status-email_unverified {
   background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* ── Invite Context Menu ─────────────────────── */
