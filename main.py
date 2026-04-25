@@ -39,6 +39,7 @@ from app.api.routes import public as public_routes  # CB-DEMO-001 B2 (#3604)
 from app.api.routes import demo  # CB-DEMO-001 B1 (#3603)
 from app.api.routes import class_import  # CB-ONBOARD-001 (#3985)
 from app.api.routes import tutor  # CB-TUTOR-002 Phase 1 (#4063)
+from app.api.routes import dci_streak  # CB-DCI-001 M0-8 (#4145)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -128,6 +129,37 @@ if _is_pg:
     except Exception as _conn_err:
         print(f"[UTDF-MIGRATION] FAILED: {_conn_err}", flush=True)
         logger.error("UTDF synchronous migration FAILED (connection level): %s", _conn_err)
+
+# CB-DCI-001 M0-8 (#4145, #4183): widen ``streak_log`` unique constraint to
+# include ``qualifying_action`` so the study stream and the DCI
+# ``daily_checkin`` stream can coexist on the same kid + same day. The
+# original constraint ``uq_student_log_date`` (student_id, log_date) blocks
+# the second stream's INSERT with IntegrityError. Idempotent — wrapped in
+# try/except per existing migration pattern. PG only; SQLite test runs use
+# ``Base.metadata.create_all`` which already picks up the widened constraint.
+if _is_pg:
+    try:
+        with engine.connect() as _sl_conn:
+            try:
+                _sl_conn.execute(text(
+                    "ALTER TABLE streak_log DROP CONSTRAINT IF EXISTS uq_student_log_date"
+                ))
+                _sl_conn.commit()
+            except Exception as _sl_drop_err:
+                _sl_conn.rollback()
+                logger.warning("streak_log uq_student_log_date drop note: %s", _sl_drop_err)
+            try:
+                _sl_conn.execute(text(
+                    "ALTER TABLE streak_log ADD CONSTRAINT uq_student_log_date_action "
+                    "UNIQUE (student_id, log_date, qualifying_action)"
+                ))
+                _sl_conn.commit()
+                logger.info("streak_log uq_student_log_date_action constraint added (#4183)")
+            except Exception as _sl_add_err:
+                _sl_conn.rollback()
+                logger.warning("streak_log uq_student_log_date_action add note: %s", _sl_add_err)
+    except Exception as _sl_conn_err:
+        logger.error("streak_log constraint migration FAILED: %s", _sl_conn_err)
 
 # Safety CREATE TABLE for learning_history (#3391) — create_all should handle it,
 # but explicit migration ensures it exists even if import order changes.
@@ -1227,6 +1259,7 @@ app.include_router(demo_verify.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#360
 app.include_router(public_routes.router, prefix="/api/v1")  # CB-DEMO-001 B2 (#3604)
 app.include_router(demo.router, prefix="/api/v1")  # CB-DEMO-001 B1 (#3603)
 app.include_router(tutor.router, prefix="/api")  # CB-TUTOR-002 Phase 1 (#4063)
+app.include_router(dci_streak.router, prefix="/api")  # CB-DCI-001 M0-8 (#4145)
 
 logger.info("API routes registered at /api")
 
