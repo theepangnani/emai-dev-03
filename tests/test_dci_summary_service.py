@@ -293,6 +293,25 @@ async def test_idempotent_rerun_replaces_existing_row(mock_get_client):
         "2nd run should issue 2 more DELETEs (starter pre-purge + AiSummary)"
     )
 
+    # Sharper assertion: verify the 2nd run actually queried
+    # ConversationStarter (the starter pre-purge) — without this, the
+    # delete-count check above could pass even if the code accidentally
+    # ran two AiSummary deletes. Compare query() positional args by
+    # identity against the fake model classes.
+    queried_args = [
+        call.args[0] for call in fake_db.query.call_args_list if call.args
+    ]
+    # ConversationStarter is the bare class (used in `db.query(ConversationStarter)`),
+    # whereas AiSummary is queried both as the class (DELETE) and as
+    # `AiSummary.id` (the existing-id lookup, which is an attribute access on
+    # the MagicMock — a *different* identity). So the only call where
+    # the positional arg IS `fake_models.ConversationStarter` is the
+    # starter pre-purge, which only fires on run 2.
+    assert fake_models.ConversationStarter in queried_args, (
+        "2nd run must purge ConversationStarter rows before AiSummary; "
+        "no db.query(ConversationStarter) call was recorded."
+    )
+
 
 # ---------------------------------------------------------------------------
 # Model-override env flag swaps the model — no branching
