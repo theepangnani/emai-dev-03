@@ -226,6 +226,22 @@ def _persist_classification(
         logger.exception("DCI: failed to persist classification_event row")
 
 
+def _safe_filename(name: Optional[str], kind: str) -> str:
+    """Strip control chars and cap length on user-supplied filenames.
+
+    PR-review pass 2 [P2-I2]: filenames flow into the classifier prompt
+    AND the structured log line, so a kid (or attacker) embedding
+    newlines / "ignore previous instructions" text is a (small)
+    prompt-injection + log-injection vector. Falls back to a stable
+    placeholder rather than the raw value.
+    """
+    if not name:
+        return f"<unnamed {kind}>"
+    cleaned = "".join(c for c in name if c.isprintable() and c not in "\r\n\t")
+    cleaned = cleaned.strip()
+    return cleaned[:64] if cleaned else f"<unnamed {kind}>"
+
+
 def _classifier_prompt(
     *, photo_filename: Optional[str], voice_filename: Optional[str], text_content: Optional[str]
 ) -> str:
@@ -233,19 +249,19 @@ def _classifier_prompt(
 
     M0 keeps this dumb — text wins, then voice filename hint, then photo
     filename hint. M0-5/M0-6 will replace these hints with real OCR /
-    transcript text.
+    transcript text. Filenames are sanitised by `_safe_filename`.
     """
     parts: list[str] = []
     if text_content:
         parts.append(f"Kid wrote: {text_content.strip()}")
-    if voice_filename:
+    if voice_filename is not None:
         parts.append(
-            f"Kid recorded a voice note (filename: {voice_filename}). "
+            f"Kid recorded a voice note (filename: {_safe_filename(voice_filename, 'voice')}). "
             "Transcript not yet available."
         )
-    if photo_filename:
+    if photo_filename is not None:
         parts.append(
-            f"Kid uploaded a photo (filename: {photo_filename}). "
+            f"Kid uploaded a photo (filename: {_safe_filename(photo_filename, 'photo')}). "
             "OCR text not yet available."
         )
     return "\n".join(parts)
@@ -434,12 +450,16 @@ async def submit_checkin(
     )
 
     # ── Schedule async pipeline (M0-5 + M0-6 stubs) ──────────────────
-    background_tasks.add_task(
-        dci_service.run_async_pipeline,
-        checkin_id=checkin_id or 0,
-        kid_id=kid.id,
-        voice_uri=voice_uri,
-    )
+    # PR-review pass 2 [P2-I1]: skip the fan-out entirely when there's
+    # no real checkin_id. Passing 0 would let the M0-5/M0-6 services
+    # (once shipped) dereference a non-existent row and fail confusingly.
+    if checkin_id is not None:
+        background_tasks.add_task(
+            dci_service.run_async_pipeline,
+            checkin_id=checkin_id,
+            kid_id=kid.id,
+            voice_uri=voice_uri,
+        )
 
     job_id = f"dci-{kid.id}-{datetime.now(timezone.utc).timestamp():.0f}"
     logger.info(

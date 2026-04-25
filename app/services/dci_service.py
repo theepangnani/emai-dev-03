@@ -212,6 +212,11 @@ async def run_async_pipeline(
     Kept side-effect-light for M0 — real implementations land in the
     M0-5 and M0-6 stripes. This function never raises so background
     failures don't crash the worker.
+
+    Caller contract: ``checkin_id`` MUST reference a real
+    ``daily_checkins.id``. The route layer skips the schedule call
+    when persistence was a no-op so this function never sees a
+    placeholder ID. (PR-review pass 2 [P2-I1].)
     """
     voice_result = await _maybe_transcribe_voice(voice_uri)
     summary_result = await _maybe_generate_summary(checkin_id, kid_id)
