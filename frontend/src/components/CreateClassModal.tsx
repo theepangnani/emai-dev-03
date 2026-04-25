@@ -194,7 +194,7 @@ export default function CreateClassModal({ open, onClose, onCreated }: CreateCla
           )}
 
           <label>
-            Students <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#6b7280' }}>(optional — students can enroll later)</span>
+            Students <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--color-ink-muted)' }}>(optional — students can enroll later)</span>
           </label>
           <MultiSearchableSelect
             placeholder="Search students by name or email..."
