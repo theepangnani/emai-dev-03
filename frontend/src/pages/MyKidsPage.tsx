@@ -675,7 +675,7 @@ export function MyKidsPage() {
       <div className="bridge-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
-        { label: 'My Kids' },
+        { label: 'My Hub' },
       ]} />
       <BridgeHeader {...bridgeStats} />
       <JourneyNudgeBanner pageName="my-kids" />
