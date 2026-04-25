@@ -210,6 +210,10 @@ class ConversationStarter(Base):
 
     # Relationships
     summary = relationship("AISummary", back_populates="starters")
+    # Self-reference: this starter was regenerated from another starter id.
+    # Unidirectional by design — to find children of a starter, query
+    # ``.filter(ConversationStarter.regenerated_from == id)``. No inverse
+    # collection is exposed to keep the relationship graph simple.
     regenerated_from_starter = relationship(
         "ConversationStarter",
         remote_side="ConversationStarter.id",
@@ -240,6 +244,10 @@ class CheckinStreakSummary(Base):
         server_default="0",
     )
     last_checkin_date = Column(Date, nullable=True)
+    # NOTE: ``onupdate`` fires only on ORM updates. Raw SQL bulk updates
+    # (e.g. nightly streak recompute jobs) MUST set updated_at = NOW()
+    # explicitly — the ``CREATE TABLE`` migration does not install a DB
+    # trigger to back this field.
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -291,6 +299,8 @@ class CheckinConsent(Base):
         default=90,
         server_default="90",
     )
+    # NOTE: ``onupdate`` fires only on ORM updates. Raw SQL bulk updates
+    # MUST set updated_at = NOW() explicitly — see CheckinStreakSummary.
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,

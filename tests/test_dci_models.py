@@ -524,7 +524,13 @@ class TestDCIMigrationIdempotency:
     def test_calling_migrate_twice_is_safe(self, db_session):
         """Re-running _migrate_dci_tables() must not raise — every CREATE
         TABLE / CREATE INDEX uses IF NOT EXISTS, and the function catches
-        per-statement failures."""
+        per-statement failures.
+
+        NOTE: This test reaches into ``main._migrate_dci_tables`` — the single
+        startup entry point for DCI DDL. If the function is renamed or
+        relocated (e.g. to ``app/db/migrations.py``), this test must move
+        with it.
+        """
         import main as main_module
 
         # Should not raise on second invocation
