@@ -1,0 +1,198 @@
+/* Kid-mode chrome — full-bleed, no parent header. Stays on a single
+   column under 480px so it works on phones too. */
+.dci-checkin {
+  min-height: 100vh;
+  background: var(--color-surface-bg);
+  padding: 24px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  color: var(--color-text, #1b1e2b);
+}
+
+.dci-checkin__shell {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dci-checkin__greeting {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+}
+
+.dci-checkin__sub {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--color-text-muted, #555);
+}
+
+.dci-checkin__input-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 480px) {
+  .dci-checkin__input-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dci-checkin__input-cta {
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  color: var(--color-accent-strong);
+  border-radius: 16px;
+  padding: 18px 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+}
+
+.dci-checkin__input-cta:hover {
+  background: var(--color-accent-light);
+}
+
+.dci-checkin__input-cta-icon {
+  font-size: 1.6rem;
+}
+
+.dci-checkin__input-cta-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-text-muted, #666);
+}
+
+.dci-checkin__add-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dci-checkin__add-more-chip {
+  padding: 6px 14px;
+  border: 1px dashed var(--color-accent);
+  background: transparent;
+  color: var(--color-accent-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.dci-checkin__add-more-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dci-checkin__bill194 {
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #555);
+  text-align: center;
+  background: var(--color-surface-alt);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.dci-checkin__send {
+  background: var(--color-accent-warm);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dci-checkin__send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dci-checkin__error {
+  color: var(--color-accent-warm-strong);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+/* Done screen */
+.dci-checkin__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.dci-checkin__success-ring {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--color-success-light);
+  border: 4px solid var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  color: var(--color-success-dark);
+}
+
+.dci-checkin__close-msg {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-accent-strong);
+}
+
+.dci-checkin__preview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.dci-checkin__preview-list li {
+  background: var(--color-surface);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.dci-checkin__preview-heading {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted, #666);
+  margin: 0;
+}
+
+.dci-checkin__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.dci-checkin__back {
+  background: transparent;
+  border: none;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 4px 8px;
+}

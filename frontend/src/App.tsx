@@ -11,6 +11,7 @@ import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
+import { useFeatureFlagEnabled } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
@@ -115,6 +116,11 @@ const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachCompo
 const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
 const LearningCyclePage = lazyRetry(() => import('./pages/LearningCyclePage').then((m) => ({ default: m.LearningCyclePage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
+// CB-DCI-001 M0-9 — kid /checkin flow (3 screens). Gated by `dci_v1_enabled`
+// flag; flag-OFF visitors get redirected to `/` by `DciFlagGate`.
+const CheckInIntroPage = lazyRetry(() => import('./pages/dci/CheckInIntroPage').then((m) => ({ default: m.CheckInIntroPage })));
+const CheckInCapturePage = lazyRetry(() => import('./pages/dci/CheckInCapturePage').then((m) => ({ default: m.CheckInCapturePage })));
+const CheckInDonePage = lazyRetry(() => import('./pages/dci/CheckInDonePage').then((m) => ({ default: m.CheckInDonePage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -598,6 +604,40 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* CB-DCI-001 M0-9 — kid daily check-in /checkin (3 screens).
+                  Flag-gated via `dci_v1_enabled`; ProtectedRoute role=student.
+                  Routes are intentionally added as a small additive block so
+                  ParentDashboard / MyKids / Tutor groupings stay untouched. */}
+              <Route
+                path="/checkin"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInIntroPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkin/capture"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInCapturePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkin/done"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInDonePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
@@ -609,6 +649,14 @@ function App() {
     </QueryClientProvider>
     </ThemeProvider>
   );
+}
+
+/** CB-DCI-001 M0-9 — gate `/checkin/*` on the `dci_v1_enabled` feature flag.
+ *  Flag stays OFF in prod by design; OFF redirects to `/`. */
+function DciFlagGate({ children }: { children: ReactNode }) {
+  const enabled = useFeatureFlagEnabled('dci_v1_enabled');
+  if (!enabled) return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function OnboardingGuard({ children }: { children: ReactNode }) {

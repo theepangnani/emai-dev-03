@@ -1,0 +1,48 @@
+.dci-artifact-corrector {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dci-artifact-corrector__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-surface-alt);
+}
+
+.dci-artifact-corrector__thumb {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 1.4rem;
+}
+
+.dci-artifact-corrector__thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dci-artifact-corrector__text {
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.dci-artifact-corrector__chip-icon {
+  font-size: 1.6rem;
+}
