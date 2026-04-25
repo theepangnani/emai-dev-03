@@ -122,6 +122,37 @@ if _is_pg:
         print(f"[UTDF-MIGRATION] FAILED: {_conn_err}", flush=True)
         logger.error("UTDF synchronous migration FAILED (connection level): %s", _conn_err)
 
+# CB-DCI-001 M0-8 (#4145, #4183): widen ``streak_log`` unique constraint to
+# include ``qualifying_action`` so the study stream and the DCI
+# ``daily_checkin`` stream can coexist on the same kid + same day. The
+# original constraint ``uq_student_log_date`` (student_id, log_date) blocks
+# the second stream's INSERT with IntegrityError. Idempotent — wrapped in
+# try/except per existing migration pattern. PG only; SQLite test runs use
+# ``Base.metadata.create_all`` which already picks up the widened constraint.
+if _is_pg:
+    try:
+        with engine.connect() as _sl_conn:
+            try:
+                _sl_conn.execute(text(
+                    "ALTER TABLE streak_log DROP CONSTRAINT IF EXISTS uq_student_log_date"
+                ))
+                _sl_conn.commit()
+            except Exception as _sl_drop_err:
+                _sl_conn.rollback()
+                logger.warning("streak_log uq_student_log_date drop note: %s", _sl_drop_err)
+            try:
+                _sl_conn.execute(text(
+                    "ALTER TABLE streak_log ADD CONSTRAINT uq_student_log_date_action "
+                    "UNIQUE (student_id, log_date, qualifying_action)"
+                ))
+                _sl_conn.commit()
+                logger.info("streak_log uq_student_log_date_action constraint added (#4183)")
+            except Exception as _sl_add_err:
+                _sl_conn.rollback()
+                logger.warning("streak_log uq_student_log_date_action add note: %s", _sl_add_err)
+    except Exception as _sl_conn_err:
+        logger.error("streak_log constraint migration FAILED: %s", _sl_conn_err)
+
 # Safety CREATE TABLE for learning_history (#3391) — create_all should handle it,
 # but explicit migration ensures it exists even if import order changes.
 # Wrapped with pg_try_advisory_lock for Cloud Run safety (#3425).

@@ -543,6 +543,80 @@ class TestPreviousSchoolDayBound:
             db_session.commit()
 
 
+# ── Regression: study + DCI streams coexist on same day (#4183) ─────
+
+
+class TestSameDayCoexistence:
+    """The widened ``streak_log`` unique constraint
+    (``student_id, log_date, qualifying_action``) must allow both a
+    study-streak row AND a DCI check-in row for the same kid on the
+    same day. Without the widening, the second INSERT raises
+    IntegrityError and silently breaks the DCI write path.
+    """
+
+    def test_same_day_study_then_checkin(self, db_session, kid_record):
+        from app.models.xp import StreakLog
+        from app.services.dci_streak_service import (
+            ACTION_TYPE_DAILY_CHECKIN,
+            record_checkin,
+        )
+        from app.services.streak_service import StreakService
+
+        kid_user = kid_record["user"]
+        student = kid_record["student"]
+
+        # Study action first (writes (user_id, today, 'study_guide'))
+        study_log = StreakService.record_qualifying_action(
+            db_session, kid_user.id, "study_guide"
+        )
+        assert study_log is not None
+
+        # Then DCI check-in (writes (user_id, today, 'daily_checkin'))
+        # — must NOT raise IntegrityError.
+        record_checkin(db_session, student.id, checkin_date=date.today())
+
+        rows = (
+            db_session.query(StreakLog)
+            .filter(
+                StreakLog.student_id == kid_user.id,
+                StreakLog.log_date == date.today(),
+            )
+            .all()
+        )
+        actions = sorted(r.qualifying_action for r in rows)
+        assert "study_guide" in actions
+        assert ACTION_TYPE_DAILY_CHECKIN in actions
+
+    def test_record_checkin_backfills_streak_value(
+        self, db_session, kid_record
+    ):
+        """Regression for #4184 — the inserted StreakLog row must end up
+        with streak_value populated without a second SELECT."""
+        from app.models.xp import StreakLog
+        from app.services.dci_streak_service import (
+            ACTION_TYPE_DAILY_CHECKIN,
+            record_checkin,
+        )
+
+        kid_user = kid_record["user"]
+        student = kid_record["student"]
+
+        record_checkin(db_session, student.id, checkin_date=date(2026, 4, 13))
+        record_checkin(db_session, student.id, checkin_date=date(2026, 4, 14))
+
+        log = (
+            db_session.query(StreakLog)
+            .filter(
+                StreakLog.student_id == kid_user.id,
+                StreakLog.log_date == date(2026, 4, 14),
+                StreakLog.qualifying_action == ACTION_TYPE_DAILY_CHECKIN,
+            )
+            .first()
+        )
+        assert log is not None
+        assert log.streak_value == 2
+
+
 # ── Regression: existing study streak still works after refactor ────
 
 

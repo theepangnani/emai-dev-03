@@ -90,6 +90,13 @@ class StreakLog(Base):
     streak_value = Column(Integer, nullable=True)
     multiplier = Column(Float, nullable=True)
 
+    # CB-DCI-001 M0-8 (#4183): widened to include ``qualifying_action`` so the
+    # study stream and the DCI ``daily_checkin`` stream can coexist on the
+    # same kid + same day. Original ``uq_student_log_date`` (student_id,
+    # log_date) blocked the second stream's INSERT with IntegrityError.
     __table_args__ = (
-        UniqueConstraint("student_id", "log_date", name="uq_student_log_date"),
+        UniqueConstraint(
+            "student_id", "log_date", "qualifying_action",
+            name="uq_student_log_date_action",
+        ),
     )

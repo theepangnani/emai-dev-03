@@ -161,9 +161,11 @@ def record_checkin(
 
     user_id = _resolve_user_id(db, kid_id)
 
-    # StreakLog write — only if not already present for this user/date.
+    # StreakLog write — only if not already present for this user/date+action.
     # ``qualifying_action`` is the discriminator that keeps the DCI stream
-    # separate from study-streak aggregates.
+    # separate from study-streak aggregates (see #4183 for the constraint
+    # widening that makes this safe on the same day as a study action).
+    log_row_to_insert: Optional[StreakLog] = None
     if user_id is not None:
         existing_log = (
             db.query(StreakLog)
@@ -175,15 +177,14 @@ def record_checkin(
             .first()
         )
         if existing_log is None:
-            db.add(
-                StreakLog(
-                    student_id=user_id,
-                    log_date=checkin_date,
-                    qualifying_action=ACTION_TYPE_DAILY_CHECKIN,
-                    streak_value=None,  # filled in below
-                    multiplier=None,
-                )
+            log_row_to_insert = StreakLog(
+                student_id=user_id,
+                log_date=checkin_date,
+                qualifying_action=ACTION_TYPE_DAILY_CHECKIN,
+                streak_value=None,  # set after the math below
+                multiplier=None,
             )
+            db.add(log_row_to_insert)
             db.flush()
 
     # Streak math:
@@ -212,20 +213,10 @@ def record_checkin(
         summary.longest_streak = new_current
     summary.last_checkin_date = checkin_date
 
-    # Backfill streak_value on the StreakLog row we just wrote (if any) so
-    # downstream tooling can sort by it.
-    if user_id is not None:
-        log_row = (
-            db.query(StreakLog)
-            .filter(
-                StreakLog.student_id == user_id,
-                StreakLog.log_date == checkin_date,
-                StreakLog.qualifying_action == ACTION_TYPE_DAILY_CHECKIN,
-            )
-            .first()
-        )
-        if log_row is not None and log_row.streak_value is None:
-            log_row.streak_value = new_current
+    # Backfill streak_value on the row we just inserted (if any) using the
+    # held reference — no extra SELECT (#4184).
+    if log_row_to_insert is not None:
+        log_row_to_insert.streak_value = new_current
 
     db.commit()
     return summary
