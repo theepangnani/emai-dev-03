@@ -71,7 +71,7 @@ const NAV_SVG: Record<string, React.ReactNode> = {
       <polyline points="9 22 9 12 15 12 15 22"/>
     </svg>
   ),
-  'My Kids': (
+  'My Hub': (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/>
@@ -267,8 +267,8 @@ const QUICK_ACTION_SVG: Record<string, React.ReactNode> = {
   '+ Course Material': NAV_SVG.Materials, // legacy fallback
   '+ Create Class Material': NAV_SVG.Materials,
   '+ Task': NAV_SVG.Tasks,
-  '+ Child': NAV_SVG['My Kids'],
-  '+ Add Child': NAV_SVG['My Kids'],
+  '+ Child': NAV_SVG['My Hub'],
+  '+ Add Child': NAV_SVG['My Hub'],
   '+ Class': NAV_SVG.Classes,
   '+ Add Class': NAV_SVG.Classes,
   '+ Create Study Material': NAV_SVG.Materials,
@@ -354,7 +354,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
   useEffect(() => {
     const PAGE_TITLES: Record<string, string> = {
       '/dashboard': 'Home',
-      '/my-kids': 'My Kids',
+      '/my-kids': 'My Hub',
       '/school-report-cards': 'Report Cards',
       '/analytics': 'Analytics',
       '/tasks': 'Tasks',
@@ -419,7 +419,7 @@ export function DashboardLayout({ children, welcomeSubtitle, sidebarActions, hea
     if (user?.role === 'parent') {
       const items: Array<{ label: string; path: string; group?: string }> = [
         { label: 'Home', path: '/dashboard' },
-        { label: 'My Kids', path: '/my-kids' },
+        { label: 'My Hub', path: '/my-kids' },
       ];
       if (features.report_cards) items.push({ label: 'Report Cards', path: '/school-report-cards' });
       if (features.analytics) items.push({ label: 'Analytics', path: '/analytics' });

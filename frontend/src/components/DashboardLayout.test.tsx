@@ -64,7 +64,7 @@ describe('DashboardLayout', () => {
     renderLayout('parent')
     // Nav items appear in both slide-out menu and persistent sidebar
     expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('My Kids').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('My Hub').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Tasks').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Messages').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Help').length).toBeGreaterThanOrEqual(1)
