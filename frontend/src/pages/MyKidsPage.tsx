@@ -926,6 +926,54 @@ export function MyKidsPage() {
                     childName={childName}
                   />
                   <ListCard
+                    kicker="Content library"
+                    title="Class Materials"
+                    count={materials.length}
+                    description="Handouts, slides, photos of notes — parsed into study tools."
+                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
+                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
+                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
+                  >
+                    {recentMaterials.slice(0, 5).map(m => {
+                      const cls = matClass(m.content_type);
+                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
+                      return (
+                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
+                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
+                          <div>
+                            <div className="bridge-item-title">{m.title}</div>
+                            <div className="bridge-item-meta">
+                              {m.course_name}
+                            </div>
+                          </div>
+                          <span className="bridge-item-chev" aria-hidden="true">›</span>
+                        </li>
+                      );
+                    })}
+                  </ListCard>
+                  <ListCard
+                    kicker="People"
+                    title="Teachers"
+                    count={allTeachers.length}
+                    description={`Everyone teaching ${childName} this term.`}
+                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
+                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
+                  >
+                    {allTeachers.slice(0, 4).map(t => (
+                      <li key={t.key}>
+                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
+                        <div>
+                          <div className="bridge-item-title">{t.name}</div>
+                          <div className="bridge-item-meta">
+                            {t.subject && <span>{t.subject}</span>}
+                            {t.subject && t.email && <span> · </span>}
+                            {t.email && <span>{t.email}</span>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
                     kicker="Courses · schedule"
                     title="Classes"
                     count={courses.length}
@@ -955,54 +1003,6 @@ export function MyKidsPage() {
                         <span className="bridge-item-chev" aria-hidden="true">›</span>
                       </li>
                     ))}
-                  </ListCard>
-                  <ListCard
-                    kicker="People"
-                    title="Teachers"
-                    count={allTeachers.length}
-                    description={`Everyone teaching ${childName} this term.`}
-                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
-                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
-                  >
-                    {allTeachers.slice(0, 4).map(t => (
-                      <li key={t.key}>
-                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
-                        <div>
-                          <div className="bridge-item-title">{t.name}</div>
-                          <div className="bridge-item-meta">
-                            {t.subject && <span>{t.subject}</span>}
-                            {t.subject && t.email && <span> · </span>}
-                            {t.email && <span>{t.email}</span>}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ListCard>
-                  <ListCard
-                    kicker="Content library"
-                    title="Class Materials"
-                    count={materials.length}
-                    description="Handouts, slides, photos of notes — parsed into study tools."
-                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
-                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
-                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
-                  >
-                    {recentMaterials.slice(0, 5).map(m => {
-                      const cls = matClass(m.content_type);
-                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
-                      return (
-                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
-                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
-                          <div>
-                            <div className="bridge-item-title">{m.title}</div>
-                            <div className="bridge-item-meta">
-                              {m.course_name}
-                            </div>
-                          </div>
-                          <span className="bridge-item-chev" aria-hidden="true">›</span>
-                        </li>
-                      );
-                    })}
                   </ListCard>
                 </div>
               </>
