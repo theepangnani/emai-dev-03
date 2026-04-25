@@ -1007,7 +1007,7 @@ export function MyKidsPage() {
                     footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
                     emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
                   >
-                    {recentMaterials.slice(0, 4).map(m => {
+                    {recentMaterials.slice(0, 5).map(m => {
                       const cls = matClass(m.content_type);
                       const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
                       return (
