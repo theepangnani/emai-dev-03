@@ -568,6 +568,124 @@ class TestCreateChildProfile:
         resp = client.post(PREFIX, json={"first_name": "BadRole"}, headers=headers)
         assert resp.status_code == 403
 
+    # ----- #4101 / I2: IntegrityError race-safety branch coverage -----
+
+    def test_create_returns_winner_on_integrity_error_race(self, db_session, setup):
+        """#4101 / I2: when db.commit() races with another concurrent insert,
+        the IntegrityError is caught and the existing winner is returned
+        (instead of bubbling up as a 500)."""
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.exc import IntegrityError
+
+        from app.api.routes.parent_email_digest import (
+            ChildProfileCreate,
+            create_child_profile,
+        )
+        from app.models.parent_gmail_integration import ParentChildProfile
+
+        parent = setup["parent"]
+
+        # Pre-seed the winner row directly via the real session so the
+        # re-fetch path inside the handler finds something on
+        # case-insensitive first_name match.
+        pre_seeded = ParentChildProfile(
+            parent_id=parent.id,
+            first_name="Winner",
+            student_id=None,
+        )
+        db_session.add(pre_seeded)
+        db_session.commit()
+
+        class _ExplodingDb:
+            def __init__(self, real):
+                self._real = real
+
+            def query(self, *a, **k):
+                return self._real.query(*a, **k)
+
+            def add(self, *a, **k):
+                # Don't actually add — keep the real session clean so the
+                # re-fetch sees only the pre-seeded winner.
+                return None
+
+            def commit(self):
+                raise IntegrityError("UNIQUE", {}, Exception())
+
+            def rollback(self):
+                return self._real.rollback()
+
+            def refresh(self, *a, **k):
+                return self._real.refresh(*a, **k)
+
+            def execute(self, *a, **k):
+                return self._real.execute(*a, **k)
+
+        fake_db = _ExplodingDb(db_session)
+
+        # Case-insensitive match against the pre-seeded "Winner" row.
+        response = create_child_profile(
+            request=MagicMock(),
+            body=ChildProfileCreate(first_name="winner"),
+            db=fake_db,
+            current_user=parent,
+        )
+        assert response is not None
+        assert response.id == pre_seeded.id
+
+    def test_create_unreachable_branch_when_winner_missing(self, db_session, setup):
+        """#4101 / I2: if commit raises IntegrityError but the re-fetch
+        returns nothing, the handler raises a 500 with an explanatory
+        detail (rather than silently returning None)."""
+        from unittest.mock import MagicMock
+
+        import pytest as _pytest
+        from fastapi import HTTPException
+        from sqlalchemy.exc import IntegrityError
+
+        from app.api.routes.parent_email_digest import (
+            ChildProfileCreate,
+            create_child_profile,
+        )
+
+        parent = setup["parent"]
+
+        class _ExplodingDb:
+            def __init__(self, real):
+                self._real = real
+
+            def query(self, *a, **k):
+                return self._real.query(*a, **k)
+
+            def add(self, *a, **k):
+                # Don't actually add (so the re-fetch finds nothing).
+                return None
+
+            def commit(self):
+                raise IntegrityError("UNIQUE", {}, Exception())
+
+            def rollback(self):
+                return self._real.rollback()
+
+            def refresh(self, *a, **k):
+                return None
+
+            def execute(self, *a, **k):
+                return self._real.execute(*a, **k)
+
+        fake_db = _ExplodingDb(db_session)
+
+        with _pytest.raises(HTTPException) as exc_info:
+            create_child_profile(
+                request=MagicMock(),
+                body=ChildProfileCreate(first_name="GhostKid"),
+                db=fake_db,
+                current_user=parent,
+            )
+        assert exc_info.value.status_code == 500
+        detail = (exc_info.value.detail or "").lower()
+        assert "raced" in detail or "concurrent" in detail
+
 
 # ---------------------------------------------------------------------------
 # N+1 regression (#4049) — list_child_profiles eager-loads school_emails

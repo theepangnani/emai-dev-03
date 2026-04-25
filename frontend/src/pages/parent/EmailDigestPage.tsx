@@ -1152,9 +1152,17 @@ function EmailDigestPageUnified() {
     | { kind: 'placeholder'; userId: number; firstName: string };
 
   const profilesByUserId = new Map<number, ChildProfile>();
+  // #4101 / I1: also build a case-insensitive first_name lookup so that
+  // legacy wizard-created profiles whose student_id was never populated
+  // by the Stream 1 backfill still merge into the linked-kid row instead
+  // of rendering as a duplicate orphan row.
+  const profilesByLowerName = new Map<string, ChildProfile>();
   for (const p of childProfiles) {
     if (p.student_id != null) {
       profilesByUserId.set(p.student_id, p);
+    }
+    if (p.first_name) {
+      profilesByLowerName.set(p.first_name.toLowerCase(), p);
     }
   }
 
@@ -1164,31 +1172,34 @@ function EmailDigestPageUnified() {
     return trimmed.split(/\s+/)[0];
   };
 
+  const linkedProfileIds = new Set<number>();
   const kidRows: KidRow[] = [];
   for (const kid of parentKids) {
-    const existingProfile = profilesByUserId.get(kid.user_id);
-    if (existingProfile) {
+    const firstName = deriveFirstName(kid.full_name);
+    // Prefer student_id match; fall back to case-insensitive first_name
+    // match for legacy profiles whose student_id was never populated by
+    // the Stream 1 backfill (#4101 / I1).
+    const linked =
+      profilesByUserId.get(kid.user_id) ??
+      profilesByLowerName.get(firstName.toLowerCase());
+    if (linked) {
+      linkedProfileIds.add(linked.id);
       kidRows.push({
         kind: 'profile',
-        profile: existingProfile,
-        firstName: existingProfile.first_name,
+        profile: linked,
+        firstName: linked.first_name,
         userId: kid.user_id,
       });
     } else {
       kidRows.push({
         kind: 'placeholder',
         userId: kid.user_id,
-        firstName: deriveFirstName(kid.full_name),
+        firstName,
       });
     }
   }
-  // Append orphan profiles (no matching kid in parentKids — e.g., wizard
-  // pre-creation or a kid that was unlinked).
-  const linkedProfileIds = new Set<number>();
-  for (const kid of parentKids) {
-    const p = profilesByUserId.get(kid.user_id);
-    if (p) linkedProfileIds.add(p.id);
-  }
+  // Append true orphan profiles (no matching kid in parentKids by either
+  // student_id or first_name — e.g., wizard pre-creation or an unlinked kid).
   for (const p of childProfiles) {
     if (!linkedProfileIds.has(p.id)) {
       kidRows.push({

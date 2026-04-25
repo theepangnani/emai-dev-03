@@ -1164,6 +1164,50 @@ describe('EmailDigestPage — unified renders all kids (#4044)', () => {
     expect(email).toBe('thanushan@ocdsb.ca');
   });
 
+  it('merges legacy NULL-student_id profile into the linked kid row by name (#4101)', async () => {
+    // Legacy wizard-created profile: student_id is null, first_name matches
+    // the linked kid. The kid must render exactly once with the legacy
+    // profile's school emails — no duplicate placeholder row.
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9001, user_id: 500, full_name: 'Haashini Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          student_id: null, // legacy NULL — Stream 1 backfill missed this row
+          first_name: 'Haashini',
+          school_emails: [
+            {
+              id: 700,
+              child_profile_id: 11,
+              email_address: 'haashini@ocdsb.ca',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Haashini')).toBeInTheDocument();
+    });
+
+    // Exactly one Haashini row.
+    expect(screen.getAllByText('Haashini')).toHaveLength(1);
+
+    // Existing school email is visible (matched via first_name fallback).
+    expect(screen.getByText('haashini@ocdsb.ca')).toBeInTheDocument();
+
+    // The × remove button is present (so it's a profile row, not a placeholder).
+    expect(
+      screen.getByRole('button', { name: 'Remove haashini@ocdsb.ca' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders an orphan profile (no matching parent kid) so legacy data is visible', async () => {
     // #4100 pass-1 review suggestion 7: a profile whose student_id doesn't
     // match any kid on the parent's account (e.g., kid was unlinked but the
