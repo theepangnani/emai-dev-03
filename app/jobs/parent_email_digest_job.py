@@ -23,6 +23,12 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
+# #4103 — placeholder passed to generate_sectioned_digest when the unified
+# path delivers WhatsApp across all of a parent's kids. The AI uses this
+# literal in greeting text where specific kid attribution isn't available.
+UNIFIED_CHILD_NAME_PLACEHOLDER = "your kids"
+
+
 def _notify_digest_task_created(
     db: Session,
     task: Task,
@@ -1081,6 +1087,18 @@ async def send_unified_digest_for_parent(
     digest_html = _render_unified_digest_sections(sections)
     parent_name = _parent_first_name(parent)
 
+    # #4109 — personalize subject when the parent has exactly one kid.
+    # ``per_kid_names`` was populated above from ParentChildProfile rows
+    # referenced in ``sections["per_kid"]``. Fall back to the multi-kid
+    # phrasing when zero or multiple distinct names exist.
+    unique_kid_names: list[str] = sorted(
+        {n for n in per_kid_names.values() if n}
+    )
+    if len(unique_kid_names) == 1:
+        digest_title: str = f"Email Digest for {unique_kid_names[0]}"
+    else:
+        digest_title = "Email Digest for your kids"
+
     # Delivery channels — reuse the primary integration's ``delivery_channels``
     # setting so the unified path honors the same parent preferences as the
     # legacy per-integration path.
@@ -1109,7 +1127,7 @@ async def send_unified_digest_for_parent(
             db=db,
             recipient=parent,
             sender=None,
-            title="Email Digest for your kids",
+            title=digest_title,
             content=digest_html,
             notification_type=NotificationType.PARENT_EMAIL_DIGEST,
             link="/email-digest",
@@ -1154,13 +1172,45 @@ async def send_unified_digest_for_parent(
 
                 wa_emails = [pair[0] for pair in attributed_pairs]
                 sectioned_for_wa = await generate_sectioned_digest(
-                    wa_emails, "your kids", parent_name
+                    wa_emails, UNIFIED_CHILD_NAME_PLACEHOLDER, parent_name
                 )
 
                 v2_sid = app_settings.twilio_whatsapp_digest_content_sid_v2
                 v1_sid = app_settings.twilio_whatsapp_digest_content_sid
 
-                if v2_sid and not sectioned_for_wa.get("legacy_blob"):
+                # #4106 — empty-digest WA short-circuit. When notify_on_empty
+                # is true and no emails came through, generate_sectioned_digest
+                # returns all-empty sections; flattening yields ``""``, which
+                # Twilio's V1 template may reject or render blank. Detect this
+                # case BEFORE branching to V2/V1/freeform and substitute a
+                # fixed message. Skipped when the legacy_blob fallback path
+                # produced its own (non-empty) HTML body.
+                empty_sectioned = (
+                    not sectioned_for_wa.get("legacy_blob")
+                    and not sectioned_for_wa.get("urgent")
+                    and not sectioned_for_wa.get("announcements")
+                    and not sectioned_for_wa.get("action_items")
+                )
+                if empty_sectioned:
+                    fallback_text: str = "No new school emails today."
+                    sanitised_parent_name = re.sub(
+                        r'[\x00-\x1f]', ' ', parent_name
+                    ).strip()
+                    if v1_sid:
+                        wa_success = send_whatsapp_template(
+                            wa_integration.whatsapp_phone,
+                            v1_sid,
+                            {
+                                "1": sanitised_parent_name,
+                                "2": fallback_text,
+                            },
+                        )
+                    else:
+                        wa_success = send_whatsapp_message(
+                            wa_integration.whatsapp_phone,
+                            f"Hi {parent_name}, {fallback_text}",
+                        )
+                elif v2_sid and not sectioned_for_wa.get("legacy_blob"):
                     wa_success = _send_sectioned_whatsapp_v2(
                         wa_integration.whatsapp_phone,
                         v2_sid,
