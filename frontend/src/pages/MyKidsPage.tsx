@@ -27,6 +27,8 @@ import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
 import { BridgeHeader } from '../components/bridge/BridgeHeader';
 import { KidHero } from '../components/bridge/KidHero';
 import { KidRail } from '../components/bridge/KidRail';
+import { ListCard } from '../components/bridge/ListCard';
+import { EmailDigestCard } from '../components/bridge/EmailDigestCard';
 import { useBridgeFonts } from '../components/bridge/fonts';
 import './BridgePage.css';
 import './DashboardGrid.css';
@@ -959,6 +961,123 @@ export function MyKidsPage() {
               <span>Email Digest</span>
             </button>
           </div>
+
+          {/* ── Bridge management grid (PR 4 / #4117) — additive; legacy SectionPanels below cleaned up in PR 6 ── */}
+          {(() => {
+            const childName = children.find(c => c.student_id === selectedChild)?.full_name ?? 'this child';
+            const courses = overview?.courses ?? [];
+            const teachersFromCourses = courses.filter(c => c.teacher_name).map(c => ({
+              key: `course-${c.id}`,
+              name: c.teacher_name as string,
+              email: c.teacher_email,
+              subject: c.subject ?? c.name,
+            }));
+            const teachersFromLinked = linkedTeachers.map(t => ({
+              key: `linked-${t.id}`,
+              name: t.teacher_name ?? 'Unknown',
+              email: t.teacher_email,
+              subject: null,
+            }));
+            const allTeachers = [...teachersFromCourses, ...teachersFromLinked];
+            const teacherInitials = (name: string) =>
+              name.trim().split(/\s+/).slice(0, 2).map(p => p[0] ?? '').join('').toUpperCase() || '?';
+            const matClass = (ct: string | null | undefined): string => {
+              const v = (ct || '').toLowerCase();
+              if (v.includes('pdf')) return 'pdf';
+              if (v.includes('slide') || v.includes('ppt')) return 'slide';
+              if (v.includes('video') || v.includes('mp4')) return 'vid';
+              if (v.includes('doc') || v.includes('word') || v.includes('text')) return 'doc';
+              return 'other';
+            };
+            return (
+              <>
+                <div className="bridge-section-head">
+                  <h2>Manage this bridge</h2>
+                  <span className="bridge-section-meta">4 · domains</span>
+                </div>
+                <div className="bridge-grid">
+                  <EmailDigestCard
+                    hasIntegration={hasEmailDigestIntegration}
+                    onSetup={() => setShowEmailDigestWizard(true)}
+                    childName={childName}
+                  />
+                  <ListCard
+                    kicker="Courses · schedule"
+                    title="Classes"
+                    count={courses.length}
+                    description={`Synced courses for ${childName}.`}
+                    headAction={{ label: '+ Add class', onClick: () => setShowAddCourseModal(true) }}
+                    footAction={courses.length > 0 ? { label: 'View all classes →', onClick: () => navigate('/courses') } : undefined}
+                    emptyState={courses.length === 0 ? `No classes for ${childName} yet.` : undefined}
+                  >
+                    {courses.slice(0, 4).map(c => (
+                      // TODO(#4117): per-course swatch colour — derive a stable hue from c.id once palette is finalised (PR 6 polish)
+                      <li key={c.id} className="is-clickable" onClick={() => navigate(`/courses/${c.id}`)}>
+                        <span className="bridge-item-swatch" style={{ background: 'var(--bridge-rust)' }} aria-hidden="true" />
+                        <div>
+                          <div className="bridge-item-title">{c.name}</div>
+                          <div className="bridge-item-meta">
+                            {c.subject && <>{c.subject}</>}
+                            {c.subject && c.teacher_name && <> · </>}
+                            {c.teacher_name}
+                          </div>
+                        </div>
+                        <span className="bridge-item-chev" aria-hidden="true">›</span>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
+                    kicker="People"
+                    title="Teachers"
+                    count={allTeachers.length}
+                    description={`Everyone teaching ${childName} this term.`}
+                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
+                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
+                  >
+                    {allTeachers.slice(0, 4).map(t => (
+                      <li key={t.key}>
+                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
+                        <div>
+                          <div className="bridge-item-title">{t.name}</div>
+                          <div className="bridge-item-meta">
+                            {t.subject && <span>{t.subject}</span>}
+                            {t.subject && t.email && <span> · </span>}
+                            {t.email && <span>{t.email}</span>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
+                    kicker="Content library"
+                    title="Class Materials"
+                    count={materials.length}
+                    description="Handouts, slides, photos of notes — parsed into study tools."
+                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
+                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
+                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
+                  >
+                    {recentMaterials.slice(0, 4).map(m => {
+                      const cls = matClass(m.content_type);
+                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
+                      return (
+                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
+                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
+                          <div>
+                            <div className="bridge-item-title">{m.title}</div>
+                            <div className="bridge-item-meta">
+                              {m.course_name}
+                            </div>
+                          </div>
+                          <span className="bridge-item-chev" aria-hidden="true">›</span>
+                        </li>
+                      );
+                    })}
+                  </ListCard>
+                </div>
+              </>
+            );
+          })()}
 
           <div className="dashboard-redesign">
           {/* ── Class Materials ───────────────────── */}
