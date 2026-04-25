@@ -125,8 +125,18 @@ def seed_features(db: Session) -> int:
                 and existing.variant == "off"
                 and existing.enabled is False
             ):
-                # #4103 — promote any existing row still pinned to the original
-                # OFF default. Admin overrides (variant != "off") are preserved.
+                # #4103 — promote any existing row still pinned to the EXACT original
+                # fresh-seed default (enabled=False AND variant="off"). This is the
+                # state seeded by #4012 before #4103, so we treat it as a "fresh-seed
+                # marker" and force rollout to on_100 on next deploy.
+                #
+                # Admin overrides are preserved by setting EITHER:
+                #   * variant != "off"  (e.g. "on_5" / "on_25" / "on_50" / "on_100"
+                #     for partial rollout, or any custom variant string)
+                #   * enabled=True with variant="off"  (explicit enabled-but-off)
+                # For a permanent disable that survives re-seeds, set variant to a
+                # sentinel value such as "off_admin_disabled" so the guard above
+                # does not match.
                 existing.enabled = True
                 existing.variant = "on_100"
                 db.commit()
