@@ -1079,6 +1079,52 @@ export function MyKidsPage() {
             );
           })()}
 
+          {/* ── Bridge insight grid (PR 5 / #4119) — additive; legacy SectionPanels removed in PR 6 ── */}
+          {selectedChild != null && (() => {
+            const childName = children.find(c => c.student_id === selectedChild)?.full_name ?? 'this child';
+            return (
+              <>
+                <div className="bridge-section-head">
+                  <h2>How {childName} is doing</h2>
+                  <span className="bridge-section-meta">2 · domains</span>
+                </div>
+                <div className="bridge-grid">
+                  <article className="bridge-card bridge-card--muted">
+                    <header className="bridge-card-head">
+                      <div className="bridge-card-title-wrap">
+                        <span className="bridge-card-kicker">Performance · this term</span>
+                        <h3>Grade snapshot</h3>
+                      </div>
+                    </header>
+                    <div className="bridge-card-body">
+                      <GradesSummaryCard
+                        selectedChildId={selectedChild ?? undefined}
+                        onViewDetails={() => navigate('/grades')}
+                      />
+                    </div>
+                    <footer className="bridge-card-foot">
+                      <span className="bridge-card-foot-meta">Term snapshot</span>
+                      <button type="button" className="bridge-head-action" onClick={() => navigate('/grades')}>
+                        Open report cards →
+                      </button>
+                    </footer>
+                  </article>
+                  <article className="bridge-card bridge-card--muted">
+                    <header className="bridge-card-head">
+                      <div className="bridge-card-title-wrap">
+                        <span className="bridge-card-kicker">Habits · last 4 weeks</span>
+                        <h3>Best study times</h3>
+                      </div>
+                    </header>
+                    <div className="bridge-card-body">
+                      <StudyTimeSuggestions studentId={selectedChild} />
+                    </div>
+                  </article>
+                </div>
+              </>
+            );
+          })()}
+
           <div className="dashboard-redesign">
           {/* ── Class Materials ───────────────────── */}
           <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)} headerRight={
