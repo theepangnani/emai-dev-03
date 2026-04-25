@@ -2143,3 +2143,33 @@ Follow-on to §6.142.1. After 10 feature streams merged, `/pr-review` was run ag
 - **4 `/pr-review` passes** · **2 APPROVE verdicts** (pass 2 and pass 4)
 - Integration branch: `integrate/cb-tutor-002-phase-1` (final HEAD `35d2eae3`)
 - Single PR to master: #4077
+
+### 6.143 CB-DCI-001 Daily Check-In Ritual (V1 Pain #4) — IN PROGRESS
+
+**Epic:** #4135 · **Design lock:** `docs/design/CB-DCI-001-daily-checkin.md` · **Source PRD:** `CB_DCI_001_PRD_v2.docx` · **Target ship:** Sept 2026 · **M0 ships:** flag OFF, web only
+
+**Strategic framing.** DCI is V1 Pain #4 — *the retention engine of the $19/mo AI tier*. It is NOT the primary content-ingestion mechanism (Gmail forwarding + Classroom OAuth cover ~85 %); DCI's job is to fill the last 10 % gap (paper handouts, kid-narrated context) AND to create a 60-second kid-initiated / 4-minute parent-consumed daily loop that converts a Contextual-stage parent into an 8-year Continuous-stage family. Together with CB-ILE-001 study guides (the conversion lever), DCI forms the core economic loop of the AI tier.
+
+**Personas.** Priya (primary buyer · dual-earner Markham parent · 4 min review + 5 min talk per evening) · Haashini-like kid (Grade 5-8 · 60 sec/day) · older sibling (Grade 9+ · 30-60 sec/day) · second parent (3 min × 2/wk async).
+
+**M0 scope (this weekend, flag OFF):**
+
+- [ ] M0-1 (#4136) Design lock — `docs/design/CB-DCI-001-daily-checkin.md` + this section
+- [ ] M0-2 (#4140) Data model — 6 new tables (`daily_checkins`, `classification_events`, `ai_summaries`, `conversation_starters`, `checkin_streak_summary`, `checkin_consent`) + ALTER TABLE migrations + advisory lock
+- [ ] M0-3 (#4141) Feature flag `dci_v1_enabled` (default OFF)
+- [ ] M0-4 (#4139) `POST /api/dci/checkin` — multipart, sync GPT-4o-mini classify chip ≤ 2 s, async summary job
+- [ ] M0-5 (#4142) Whisper transcription + Haiku 4.5 sentiment scoring
+- [ ] M0-6 (#4143) Sonnet 4.6 summary + conversation starter generator (prompt-cached, ≤ $0.04/family/day)
+- [ ] M0-7 (#4144) Content-policy v0 — regex + keyword (PII / named-other-kid / medical-legal); fail-closed
+- [ ] M0-8 (#4145) Check-in streak — separate stream from study streak; school-day-aware; never guilts
+- [ ] M0-9 (#4146) Kid web flow `/checkin` — 3 screens (greet → capture via webcam/MediaRecorder/text → done)
+- [ ] M0-10 (#4147) Parent evening summary `/parent/today` — navy hero + amber/red chips + italic conversation starter
+- [ ] M0-11 (#4148) Consent flow + Bill 194 disclosure + DCI settings section
+
+**Fast-follow scope (post-M0, tracked in #4149):** Expo mobile (kid + parent · push · camera · voice) · Cross-reference DCI ↔ Gmail/Classroom · Day-7 parent nudge job (invitation-framed, school-day-aware, mute toggle, re-arms after resume) · Lifecycle/purge cron · DCI → CB-TASKSYNC auto-task creation · DCI → CB-ILE-001 study-guide upsell · Content-policy red team + external counsel review · Pattern view (V2 prep) · Telemetry dashboard · DCI → Smart Briefing integration · Priya interviews + PRD §14 Q4-Q6 validation · Q9 missed-7-days UX formalization.
+
+**Success metrics (V1 targets).** 70 %+ kid check-in completion on school days · ≤ 75 s median kid time-on-task (target 60 s) · 60 %+ parent review rate · 30 %+ "I used the conversation starter" feedback · 20-30 % Contextual → Continuous conversion in 90 days · 70 %+ 30-d retention · 50 %+ 90-d retention · NPS 50+ · cost ≤ $0.04/family/day.
+
+**Non-goals (V1).** Not the primary ingestion path · no teacher/admin role · no multi-week pattern view (stub only in V1) · no grading · no kid-to-kid social · **no homework-answering chatbot for kids** (principle-level constraint, not just scope).
+
+**Key resolved decisions (full table in design lock §13).** Sonnet 4.6 + prompt cache for summary (Opus 4.7 reserved as one-flag fallback) · separate `checkin_streak_summary` table (reusing `StreakLog` writes via existing `action_type`) · Day-7 parent nudge invitation-framed + mute toggle (P1 honored without violating P2) · streak monetization NONE (resolves PRD §14 Q8) · content-policy v0 = regex + keyword, fail-closed (ML classifier in fast-follow) · slot in §6.143 (note: §6.142 is duplicated between CB-TUTOR-002 and CB-PEDI-002 — fast-follow renumbering issue).
