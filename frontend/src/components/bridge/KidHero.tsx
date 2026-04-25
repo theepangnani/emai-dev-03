@@ -11,6 +11,7 @@
 import type { ChildSummary } from '../../api/client';
 import { OnTrackBadge } from '../OnTrackBadge';
 import { KidActionsMenu } from './KidActionsMenu';
+import { getInitial } from './util';
 
 interface KidHeroProps {
   child: ChildSummary;
@@ -26,10 +27,6 @@ interface KidHeroProps {
   resending?: boolean;
   resendSuccess?: boolean;
   copyInviteSuccess?: boolean;
-}
-
-function getInitial(name: string): string {
-  return (name.trim()[0] || '?').toUpperCase();
 }
 
 export function KidHero({

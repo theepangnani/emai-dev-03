@@ -18,6 +18,12 @@
   --bridge-rust: #b04a2c;
   --bridge-rust-ink: #7a2f18;
   --bridge-pine: #2d4a3e;
+  --bridge-pending-bg: #f6ead3;
+  --bridge-pending-ink: #7a5a1a;
+  --bridge-unverified-bg: #fce9e4;
+  --bridge-unverified-ink: #8a2e16;
+  --bridge-active-bg: #e6efe8;
+  --bridge-active-ink: #23523f;
 
   font-family: "DM Sans", system-ui, sans-serif;
   color: var(--bridge-ink);
@@ -250,18 +256,18 @@
 }
 
 .bridge-hero-status--active {
-  background: #e6efe8;
-  color: #23523f;
+  background: var(--bridge-active-bg);
+  color: var(--bridge-active-ink);
 }
 
 .bridge-hero-status--pending {
-  background: #f6ead3;
-  color: #7a5a1a;
+  background: var(--bridge-pending-bg);
+  color: var(--bridge-pending-ink);
 }
 
 .bridge-hero-status--email_unverified {
-  background: #fce9e4;
-  color: #8a2e16;
+  background: var(--bridge-unverified-bg);
+  color: var(--bridge-unverified-ink);
 }
 
 .bridge-hero-right {
@@ -585,13 +591,13 @@
 }
 
 .bridge-chip-status--pending {
-  background: #f6ead3;
-  color: #7a5a1a;
+  background: var(--bridge-pending-bg);
+  color: var(--bridge-pending-ink);
 }
 
 .bridge-chip-status--unverified {
-  background: #fce9e4;
-  color: #8a2e16;
+  background: var(--bridge-unverified-bg);
+  color: var(--bridge-unverified-ink);
 }
 
 .bridge-chip.is-active .bridge-chip-status--pending,

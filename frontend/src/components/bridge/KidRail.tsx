@@ -7,6 +7,7 @@
  * exactly one place to manage a kid.
  */
 import type { ChildSummary } from '../../api/client';
+import { getInitial } from './util';
 
 interface KidRailProps {
   children: ChildSummary[];
@@ -14,10 +15,6 @@ interface KidRailProps {
   onSelect: (studentId: number | null) => void;
   onAddChild: () => void;
   colors: readonly string[];
-}
-
-function getInitial(name: string): string {
-  return (name.trim()[0] || '?').toUpperCase();
 }
 
 export function KidRail({ children, selectedChild, onSelect, onAddChild, colors }: KidRailProps) {
