@@ -29,27 +29,31 @@ export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, childNa
               'SETUP NEEDED'
             )}
           </span>
-          <h3>Email Digest</h3>
+          <h3>Daily Digest</h3>
           <p className="bridge-card-desc">
-            What lands in your inbox each morning — tuned for {childName}.
+            What lands in your inbox each morning.
           </p>
         </div>
       </header>
 
       {hasIntegration ? (
         <p className="bridge-card-summary">
-          Daily digest for {childName} — open the digest hub to manage delivery, school email, and recent sends.
+          {childName === 'all kids'
+            ? 'Your daily digest — open the digest hub to manage delivery and recent sends.'
+            : `Daily digest for ${childName} — open the digest hub to manage delivery, school email, and recent sends.`}
         </p>
       ) : (
         <div className="bridge-empty-hint">
-          Not set up yet for {childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.
+          {childName === 'all kids'
+            ? 'Not set up yet. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.'
+            : `Not set up yet for ${childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.`}
         </div>
       )}
 
       <footer className="bridge-card-foot">
         {hasIntegration ? (
           <button type="button" className="bridge-head-action" onClick={onOpenDigest}>
-            Open digest →
+            Open daily digest →
           </button>
         ) : (
           <button type="button" className="bridge-head-action" onClick={onSetup}>

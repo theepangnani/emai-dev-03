@@ -1492,7 +1492,7 @@ export function MyKidsPage() {
         open={showEmailDigestWizard}
         onClose={() => setShowEmailDigestWizard(false)}
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
-        onComplete={() => { toast('Email digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
+        onComplete={() => { toast('Daily digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
       />
       </div>
     </DashboardLayout>
