@@ -58,6 +58,10 @@ export function CheckInCapturePage() {
   } = useDciCheckin();
   const submittedRef = useRef(false);
   const [preparing, setPreparing] = useState(false);
+  // Track every preview URL we allocate so the unmount cleanup can revoke
+  // them all even if the latest `drafts` value isn't captured by the
+  // mount-only effect closure.
+  const previewUrlsRef = useRef<Set<string>>(new Set());
 
   // Telemetry: classify_ms is reported once per submit, when polling settles.
   useEffect(() => {
@@ -66,26 +70,29 @@ export function CheckInCapturePage() {
     }
   }, [classifyMs]);
 
-  // Revoke any ObjectURLs we created for previews when the page unmounts so
-  // we don't leak blob handles across the kid's session.
+  // Revoke every preview URL we ever allocated when the page unmounts.
+  // Uses a ref-tracked set so we don't race the stale-`drafts` closure
+  // problem of a `[]`-dep cleanup effect.
   useEffect(() => {
+    const urls = previewUrlsRef.current;
     return () => {
-      Object.values(drafts).forEach((d) => {
-        if (d?.previewUrl) URL.revokeObjectURL(d.previewUrl);
-      });
+      urls.forEach((u) => URL.revokeObjectURL(u));
+      urls.clear();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup runs once on unmount, drafts read via closure at that moment
   }, []);
 
   const onCapture = (
     capturedMode: CaptureMode,
     data: { blob?: Blob; text?: string },
   ) => {
+    const nextUrl = data.blob ? URL.createObjectURL(data.blob) : undefined;
+    if (nextUrl) previewUrlsRef.current.add(nextUrl);
     setDrafts((prev) => {
       // Revoke the previous preview URL for this slot before allocating a new one.
       const previous = prev[capturedMode];
       if (previous?.previewUrl) {
         URL.revokeObjectURL(previous.previewUrl);
+        previewUrlsRef.current.delete(previous.previewUrl);
       }
       return {
         ...prev,
@@ -93,7 +100,7 @@ export function CheckInCapturePage() {
           artifact_type: capturedMode,
           blob: data.blob,
           text: data.text,
-          previewUrl: data.blob ? URL.createObjectURL(data.blob) : undefined,
+          previewUrl: nextUrl,
           textSnippet: data.text,
         },
       };

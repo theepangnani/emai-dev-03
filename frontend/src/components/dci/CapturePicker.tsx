@@ -187,6 +187,7 @@ function VoiceCapture({
   const rafRef = useRef<number | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startedAtRef = useRef<number | null>(null);
+  const recordedUrlRef = useRef<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [level, setLevel] = useState(0);
   const [seconds, setSeconds] = useState(0);
@@ -194,7 +195,14 @@ function VoiceCapture({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    return () => stopAll();
+    return () => {
+      stopAll();
+      // Final revoke for the playback URL so we don't leak after unmount.
+      if (recordedUrlRef.current) {
+        URL.revokeObjectURL(recordedUrlRef.current);
+        recordedUrlRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -256,7 +264,14 @@ function VoiceCapture({
         const blob = new Blob(chunksRef.current, {
           type: mime ?? 'audio/webm',
         });
-        setRecordedUrl(URL.createObjectURL(blob));
+        // Revoke the previous playback URL before allocating a new one so
+        // "Record again" doesn't leak the prior take's blob handle.
+        if (recordedUrlRef.current) {
+          URL.revokeObjectURL(recordedUrlRef.current);
+        }
+        const next = URL.createObjectURL(blob);
+        recordedUrlRef.current = next;
+        setRecordedUrl(next);
         onCapture({ blob });
       };
       recorder.start(250);
