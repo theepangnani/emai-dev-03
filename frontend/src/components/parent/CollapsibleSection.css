@@ -60,7 +60,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--color-ink-muted);
   color: var(--color-surface);
   font-size: 11px;

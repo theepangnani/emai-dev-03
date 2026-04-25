@@ -745,7 +745,7 @@ export function ParentDashboard() {
                           )}
                         </div>
                       </div>
-                      <span style={{ fontSize: 11, color: '#6b7280' }}>{pd.editChildInterests.length}/10 - AI will use these to personalize study materials</span>
+                      <span style={{ fontSize: 11, color: 'var(--color-ink-muted)' }}>{pd.editChildInterests.length}/10 - AI will use these to personalize study materials</span>
                     </label>
                   </div>
                 )}

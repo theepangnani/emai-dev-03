@@ -85,7 +85,7 @@
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 600;
   border: none;
@@ -108,13 +108,13 @@
 .pd-focus-tag.overdue {
   background: var(--priority-high-light);
   color: var(--priority-high);
-  box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.18);
+  box-shadow: inset 0 0 0 1px var(--priority-high-light);
 }
 
 .pd-focus-tag.today {
   background: var(--priority-medium-light);
   color: var(--priority-medium);
-  box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.18);
+  box-shadow: inset 0 0 0 1px var(--priority-medium-light);
 }
 
 .pd-focus-tag.upcoming {
@@ -124,9 +124,9 @@
 }
 
 .pd-focus-tag.invites {
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--color-accent-light);
   color: var(--color-accent-strong);
-  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15);
+  box-shadow: inset 0 0 0 1px var(--color-focus-ring);
 }
 
 .pd-today-focus-inspiration {
@@ -164,7 +164,7 @@
   color: var(--color-ink-muted);
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   line-height: 1;
   opacity: 0.5;
   transition: opacity 0.15s, background 0.15s;
@@ -246,7 +246,7 @@
   font-size: 14px;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: color 0.15s, background 0.15s;
   flex-shrink: 0;
   line-height: 1;
@@ -294,7 +294,7 @@
   display: inline-flex;
   align-items: center;
   padding: 8px 20px;
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   font-size: 14px;
   font-weight: 600;
   border: none;
@@ -304,22 +304,22 @@
 
 .pd-status-pill:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .pd-status-pill-overdue {
-  background: #FEE2E2;
-  color: #DC2626;
+  background: var(--priority-high-light);
+  color: var(--priority-high);
 }
 
 .pd-status-pill-today {
-  background: #FEF3C7;
-  color: #D97706;
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
 .pd-status-pill-upcoming {
-  background: #DBEAFE;
-  color: #2563EB;
+  background: var(--color-accent-light);
+  color: var(--color-accent-strong);
 }
 
 /* ============================================
@@ -335,7 +335,7 @@
 .pd-view-toggle {
   display: inline-flex;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--color-surface);
   padding: 2px;
   cursor: pointer;
@@ -346,7 +346,7 @@
 
 .pd-view-toggle-option {
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: all 0.2s ease;
   color: var(--color-ink-muted);
 }
@@ -354,7 +354,7 @@
 .pd-view-toggle-option.active {
   background: var(--color-accent);
   color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-xs);
 }
 
 /* Empty States */
@@ -366,7 +366,7 @@
   padding: 40px 20px;
   color: var(--color-ink-muted);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
 .pd-empty-state-icon {
@@ -399,7 +399,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -413,7 +413,7 @@
   text-align: center;
   padding: 60px 20px;
   background: var(--color-surface);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-top: 24px;
 }
 
@@ -435,7 +435,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -458,7 +458,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -529,7 +529,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -581,7 +581,7 @@
   gap: 12px;
   padding: 12px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -630,7 +630,7 @@
   display: inline-block;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-success-light);
   color: var(--color-success);
   font-weight: 500;
@@ -658,7 +658,7 @@
 /* Mode toggle & file upload styles moved to Dashboard.css (shared via DashboardLayout) */
 
 .link-success {
-  color: var(--color-success, #2e7d32);
+  color: var(--color-success);
   font-size: 13px;
   margin-top: 8px;
 }
@@ -667,7 +667,7 @@
 .invite-success-box {
   background: var(--color-success-light);
   border: 1px solid var(--color-success-light);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 12px;
   margin-top: 12px;
 }
@@ -688,7 +688,7 @@
   flex: 1;
   background: var(--color-surface);
   padding: 8px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   word-break: break-all;
   border: 1px solid var(--color-border);
@@ -699,7 +699,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
@@ -822,9 +822,9 @@
   min-width: 18px;
   min-height: 18px;
   max-height: 18px;
-  border: 2px solid var(--color-muted-border, #c5c5c5);
-  border-radius: 4px;
-  background: var(--color-surface, #fff);
+  border: 2px solid var(--color-muted-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
   cursor: pointer;
   flex-shrink: 0;
   align-self: center;
@@ -860,7 +860,7 @@
   font-size: 18px;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: all 0.2s;
   line-height: 1;
   flex-shrink: 0;
@@ -879,7 +879,7 @@
 .pd-task-priority-badge {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
@@ -906,15 +906,15 @@
 
 .pd-task-sticky-note {
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border-left: 4px solid;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .pd-task-sticky-note:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-sm);
 }
 
 .pd-task-sticky-note.completed {
@@ -977,7 +977,7 @@
 .pd-task-sticky-detail {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--color-border);
   animation: pd-slideDown 0.15s ease-out;
 }
 
@@ -1125,7 +1125,7 @@
   .modal {
     max-width: calc(100vw - 32px);
     margin: 16px;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
   }
 
   /* Modal internal padding reduction */
@@ -1171,7 +1171,7 @@
   .modal {
     max-width: calc(100vw - 16px);
     margin: 8px;
-    border-radius: 10px;
+    border-radius: var(--radius-md);
   }
 
   /* Day modal items: stack actions below */
@@ -1262,7 +1262,7 @@
   text-align: center;
   padding: 24px 20px;
   border: 2px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   width: 180px;
   gap: 8px;
   animation: pd-onboard-fadeUp 0.5s ease-out both;
@@ -1318,7 +1318,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -1327,7 +1327,7 @@
 
 .pd-onboard-cta:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 /* Contextual Upload Tip */
@@ -1336,7 +1336,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.08));
+  background: var(--color-accent-subtle);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-md);
   margin-bottom: 16px;
@@ -1359,7 +1359,7 @@
   background: var(--color-accent);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -1399,24 +1399,24 @@
    Responsive: Onboarding & Feed
    ============================================ */
 
-/* ── Dark mode ── */
+/* ── Dark mode overrides (kept for backwards compat — pills now use tokens that auto-theme) ── */
 [data-theme="dark"] .pd-status-pill-overdue {
-  background: rgba(252, 165, 165, 0.14);
-  color: #fca5a5;
+  background: var(--priority-high-light);
+  color: var(--priority-high);
 }
 
 [data-theme="dark"] .pd-status-pill-today {
-  background: rgba(253, 230, 138, 0.14);
-  color: #fbbf24;
+  background: var(--priority-medium-light);
+  color: var(--priority-medium);
 }
 
 [data-theme="dark"] .pd-status-pill-upcoming {
-  background: rgba(125, 211, 252, 0.14);
-  color: #60a5fa;
+  background: var(--color-accent-light);
+  color: var(--color-accent);
 }
 
 [data-theme="dark"] .link-success {
-  color: var(--color-success, #6ee7b7);
+  color: var(--color-success);
 }
 
 @media (max-width: 768px) {
@@ -1495,7 +1495,7 @@
 .pd-skeleton-tag {
   height: 20px;
   width: 80px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 }
 
 /* Child selector skeleton */
@@ -1507,7 +1507,7 @@
 .pd-skeleton-pill {
   height: 36px;
   width: 120px;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
 }
 
 /* Timeline skeleton */
@@ -1580,7 +1580,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 16px;
@@ -1609,7 +1609,7 @@
 .pd-gen-view-btn {
   padding: 4px 12px;
   border: 1px solid currentColor;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: inherit;
   font-size: 12px;
@@ -1618,7 +1618,7 @@
 }
 
 .pd-gen-view-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--color-surface-alt);
 }
 
 .pd-gen-dismiss-btn {
