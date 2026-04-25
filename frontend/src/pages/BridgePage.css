@@ -141,3 +141,349 @@
     padding-left: 0;
   }
 }
+
+/* ---------------- Hero ---------------- */
+.bridge-hero {
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 22px;
+  padding: 32px 36px;
+  box-shadow: 0 1px 2px rgba(28, 26, 22, 0.05), 0 24px 48px -24px rgba(28, 26, 22, 0.22);
+  margin-bottom: 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.bridge-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(600px 240px at 110% -10%, rgba(176, 74, 44, 0.08), transparent 60%),
+    radial-gradient(500px 200px at -10% 120%, rgba(45, 74, 62, 0.06), transparent 60%);
+}
+
+.bridge-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.bridge-hero-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: "Fraunces", serif;
+  font-size: 34px;
+  font-weight: 400;
+  color: #fff;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.bridge-hero-avatar::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(28, 26, 22, 0.25);
+}
+
+.bridge-hero-name {
+  font-family: "Fraunces", serif;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--bridge-ink);
+}
+
+.bridge-hero-grade {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  background: var(--bridge-rail);
+  color: var(--bridge-muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.bridge-hero-sub {
+  color: var(--bridge-muted);
+  font-size: 14px;
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bridge-hero-dotsep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--bridge-hair);
+}
+
+.bridge-hero-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.bridge-hero-status--active {
+  background: #e6efe8;
+  color: #23523f;
+}
+
+.bridge-hero-status--pending {
+  background: #f6ead3;
+  color: #7a5a1a;
+}
+
+.bridge-hero-status--email_unverified {
+  background: #fce9e4;
+  color: #8a2e16;
+}
+
+.bridge-hero-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.bridge-hero-vitals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--bridge-paper);
+}
+
+.bridge-vital {
+  padding: 14px 20px;
+  border-right: 1px solid var(--bridge-hair);
+  min-width: 92px;
+}
+
+.bridge-vital:last-child {
+  border-right: 0;
+}
+
+.bridge-vital-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bridge-muted);
+}
+
+.bridge-vital-value {
+  font-family: "Fraunces", serif;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1.1;
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+  color: var(--bridge-ink);
+}
+
+.bridge-vital--status .bridge-vital-value {
+  font-size: 14px;
+}
+
+.bridge-hero-cta {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.bridge-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  background: var(--bridge-ink);
+  color: var(--bridge-paper);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.18s ease;
+}
+
+.bridge-btn-primary:hover {
+  background: var(--bridge-rust);
+}
+
+.bridge-btn-arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.bridge-btn-primary:hover .bridge-btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ---------------- Overflow kebab ---------------- */
+.bridge-overflow-wrap {
+  position: relative;
+}
+
+.bridge-overflow-trigger {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bridge-paper);
+  border: 1px solid var(--bridge-hair);
+  color: var(--bridge-ink);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+  font-family: inherit;
+}
+
+.bridge-overflow-trigger:hover {
+  border-color: var(--bridge-ink);
+  background: var(--bridge-card);
+}
+
+.bridge-overflow-dots {
+  letter-spacing: 1px;
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-3px);
+}
+
+.bridge-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.bridge-overflow-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px -16px rgba(28, 26, 22, 0.25), 0 2px 6px rgba(28, 26, 22, 0.06);
+  padding: 6px;
+  z-index: 30;
+  animation: bridgeMenuIn 0.14s ease;
+}
+
+@keyframes bridgeMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bridge-overflow-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--bridge-ink);
+  font-weight: 500;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bridge-overflow-menu button svg {
+  width: 16px;
+  height: 16px;
+  color: var(--bridge-muted);
+  flex-shrink: 0;
+}
+
+.bridge-overflow-menu button:hover {
+  background: var(--bridge-paper);
+}
+
+.bridge-overflow-menu button:hover svg {
+  color: var(--bridge-ink);
+}
+
+.bridge-overflow-menu button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bridge-overflow-menu button.danger {
+  color: var(--bridge-rust-ink);
+}
+
+.bridge-overflow-menu button.danger:hover {
+  background: #fdefeb;
+}
+
+.bridge-overflow-menu button.danger svg {
+  color: var(--bridge-rust);
+}
+
+.bridge-overflow-divider {
+  height: 1px;
+  background: var(--bridge-hair);
+  margin: 6px 4px;
+}
+
+@media (max-width: 720px) {
+  .bridge-hero {
+    grid-template-columns: 1fr;
+    padding: 26px;
+  }
+
+  .bridge-hero-vitals {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .bridge-hero-cta {
+    justify-content: space-between;
+  }
+}
