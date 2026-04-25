@@ -27,6 +27,7 @@ import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
 import { BridgeHeader } from '../components/bridge/BridgeHeader';
+import { KidHero } from '../components/bridge/KidHero';
 import { useBridgeFonts } from '../components/bridge/fonts';
 import './BridgePage.css';
 import './DashboardGrid.css';
@@ -850,6 +851,65 @@ export function MyKidsPage() {
         ]} />
         </div>
       </div>
+
+      {selectedChild != null && (() => {
+        const child = children.find(c => c.student_id === selectedChild);
+        if (!child) return null;
+        const idx = children.findIndex(c => c.student_id === selectedChild);
+        const color = CHILD_COLORS[idx % CHILD_COLORS.length];
+        const canResend = child.invite_status === 'pending' && !!child.invite_id;
+        return (
+          <KidHero
+            child={child}
+            color={color}
+            onOpenTutor={() => navigate('/tutor')}
+            onEdit={() => {
+              setEditingChild(child);
+              setEditName(child.full_name);
+              setEditGrade(child.grade_level != null ? String(child.grade_level) : '');
+              setEditSchool(child.school_name || '');
+            }}
+            onExport={() => navigate('/settings/data-export')}
+            onResetPassword={() => {
+              setShowResetPassword(true);
+              setResetPwMethod(child.email ? 'email' : 'direct');
+              setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
+            }}
+            onResendInvite={canResend ? async () => {
+              setResendingInviteId(child.invite_id);
+              setResendSuccess(null);
+              try {
+                await invitesApi.resend(child.invite_id!);
+                setResendSuccess(child.invite_id);
+                setTimeout(() => setResendSuccess(null), 3000);
+              } catch {
+                /* rate limit or other error — silently handled */
+              } finally {
+                setResendingInviteId(null);
+              }
+            } : undefined}
+            resending={canResend && resendingInviteId === child.invite_id}
+            resendSuccess={canResend && resendSuccess === child.invite_id}
+            onRemove={async () => {
+              const ok = await confirm({
+                title: 'Remove Child',
+                message: `Are you sure you want to remove ${child.full_name}? This will unlink them from your account but won't delete their account.`,
+                confirmLabel: 'Remove',
+                variant: 'danger',
+              });
+              if (!ok) return;
+              try {
+                await parentApi.removeChild(child.student_id);
+                toast(`${child.full_name} has been removed`, 'success');
+                setChildren(prev => prev.filter(c => c.student_id !== child.student_id));
+                setSelectedChild(null);
+              } catch {
+                toast('Failed to remove child', 'error');
+              }
+            }}
+          />
+        );
+      })()}
 
       {!selectedChild ? (
         /* All-children overview — two-column grid with materials, study times, and unassigned sections */
