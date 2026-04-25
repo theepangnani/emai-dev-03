@@ -19,10 +19,13 @@ interface KidHeroProps {
   onEdit: () => void;
   onExport: () => void;
   onResetPassword?: () => void;
+  onAwardXp?: () => void;
   onResendInvite?: () => void;
+  onCopyInviteLink?: () => void;
   onRemove: () => void;
   resending?: boolean;
   resendSuccess?: boolean;
+  copyInviteSuccess?: boolean;
 }
 
 function getInitial(name: string): string {
@@ -36,10 +39,13 @@ export function KidHero({
   onEdit,
   onExport,
   onResetPassword,
+  onAwardXp,
   onResendInvite,
+  onCopyInviteLink,
   onRemove,
   resending,
   resendSuccess,
+  copyInviteSuccess,
 }: KidHeroProps) {
   const status = child.invite_status;
   const statusLabel =
@@ -91,10 +97,13 @@ export function KidHero({
             onEdit={onEdit}
             onExport={onExport}
             onResetPassword={onResetPassword}
+            onAwardXp={onAwardXp}
             onResendInvite={onResendInvite}
+            onCopyInviteLink={onCopyInviteLink}
             onRemove={onRemove}
             resending={resending}
             resendSuccess={resendSuccess}
+            copyInviteSuccess={copyInviteSuccess}
           />
           <button type="button" className="bridge-btn-primary" onClick={onOpenTutor}>
             Open Tutor <span className="bridge-btn-arrow" aria-hidden="true">→</span>

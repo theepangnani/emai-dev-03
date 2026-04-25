@@ -19,8 +19,6 @@ import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
-import { ChildXpStats } from '../components/xp/ChildXpStats';
-import { OnTrackBadge } from '../components/OnTrackBadge';
 import { StudyRequestModal } from '../components/StudyRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
@@ -28,6 +26,7 @@ import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
 import { BridgeHeader } from '../components/bridge/BridgeHeader';
 import { KidHero } from '../components/bridge/KidHero';
+import { KidRail } from '../components/bridge/KidRail';
 import { useBridgeFonts } from '../components/bridge/fonts';
 import './BridgePage.css';
 import './DashboardGrid.css';
@@ -201,21 +200,12 @@ export function MyKidsPage() {
   const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
   const [resendSuccess, setResendSuccess] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
-  const [openChildMenuId, setOpenChildMenuId] = useState<number | null>(null);
 
   // Focus traps for modals
   const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
   const addCourseModalRef = useFocusTrap<HTMLDivElement>(showAddCourseModal);
   const assignCourseModalRef = useFocusTrap<HTMLDivElement>(!!assignCourseModal, () => setAssignCourseModal(null));
   const reassignContentModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
-
-  // Close child context menu on outside click
-  useEffect(() => {
-    if (!openChildMenuId) return;
-    const close = () => setOpenChildMenuId(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [openChildMenuId]);
 
   useEffect(() => {
     (async () => {
@@ -692,165 +682,36 @@ export function MyKidsPage() {
       ]} />
       <BridgeHeader {...bridgeStats} />
       <JourneyNudgeBanner pageName="my-kids" />
-      {/* Child Tabs */}
-      <div className="pd-child-selector-wrapper">
-        <div className="pd-child-selector">
-        {/* "All" button — shown when there are multiple children */}
-        {children.length > 1 && (
-          <button
-            className={`pd-child-tab pd-child-tab-all ${selectedChild === null ? 'active' : ''}`}
-            onClick={() => { setSelectedChild(null); sessionStorage.removeItem('selectedChildId'); }}
-            title="All children"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </button>
-        )}
-        {children.map((child, index) => (
-          <div key={child.student_id} className="child-tab-wrapper">
-            <button
-              className={`pd-child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-              onClick={() => {
-                if (selectedChild === child.student_id) {
-                  setSelectedChild(null);
-                  sessionStorage.removeItem('selectedChildId');
-                } else {
-                  setSelectedChild(child.student_id);
-                  sessionStorage.setItem('selectedChildId', String(child.user_id));
-                }
-              }}
-            >
-              <span className="pd-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-              {child.full_name}
-              {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-              {child.invite_status && (
-                <span className={`invite-status-badge invite-status-${child.invite_status}`}>
-                  {child.invite_status === 'active' ? 'Active' : child.invite_status === 'pending' ? 'Pending' : 'Unverified'}
-                </span>
-              )}
-              <span className="child-tab-detail">
-                {child.school_name && <>{child.school_name} · </>}
-                {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
-              </span>
-              <ChildXpStats studentId={child.student_id} />
-              <OnTrackBadge studentId={child.student_id} />
-            </button>
-            <div className="invite-menu-wrapper">
-              <button
-                className="invite-menu-trigger"
-                title="Child options"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenChildMenuId(openChildMenuId === child.student_id ? null : child.student_id);
-                }}
-              >
-                ···
-              </button>
-              {openChildMenuId === child.student_id && (
-                <div className="invite-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="invite-menu-item"
-                    onClick={() => {
-                      setOpenChildMenuId(null);
-                      setEditingChild(child);
-                      setEditName(child.full_name);
-                      setEditGrade(child.grade_level != null ? String(child.grade_level) : '');
-                      setEditSchool(child.school_name || '');
-                    }}
-                  >
-                    Edit Child
-                  </button>
-                  {child.invite_status === 'pending' && child.invite_id && (
-                    <>
-                      <button
-                        className="invite-menu-item"
-                        disabled={resendingInviteId === child.invite_id}
-                        onClick={async () => {
-                          setResendingInviteId(child.invite_id);
-                          setResendSuccess(null);
-                          try {
-                            await invitesApi.resend(child.invite_id!);
-                            setResendSuccess(child.invite_id);
-                            setTimeout(() => setResendSuccess(null), 3000);
-                          } catch {
-                            /* rate limit or other error — silently handled */
-                          } finally {
-                            setResendingInviteId(null);
-                          }
-                        }}
-                      >
-                        {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? '✓ Sent!' : 'Resend Invite'}
-                      </button>
-                      <button
-                        className="invite-menu-item"
-                        onClick={async () => {
-                          const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
-                          await navigator.clipboard.writeText(link);
-                          setCopiedInviteId(child.invite_id);
-                          setOpenChildMenuId(null);
-                          setTimeout(() => setCopiedInviteId(null), 2000);
-                        }}
-                      >
-                        {copiedInviteId === child.invite_id ? '✓ Copied!' : 'Copy Invite Link'}
-                      </button>
-                    </>
-                  )}
-                  <button
-                    className="invite-menu-item"
-                    onClick={() => {
-                      setOpenChildMenuId(null);
-                      setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name });
-                    }}
-                  >
-                    Award XP
-                  </button>
-                  <button
-                    className="invite-menu-item invite-menu-item--danger"
-                    onClick={async () => {
-                      setOpenChildMenuId(null);
-                      const ok = await confirm({
-                        title: 'Remove Child',
-                        message: `Are you sure you want to remove ${child.full_name}? This will unlink them from your account but won't delete their account.`,
-                        confirmLabel: 'Remove',
-                        variant: 'danger',
-                      });
-                      if (!ok) return;
-                      try {
-                        await parentApi.removeChild(child.student_id);
-                        toast(`${child.full_name} has been removed`, 'success');
-                        setChildren(prev => prev.filter(c => c.student_id !== child.student_id));
-                        if (selectedChild === child.student_id) setSelectedChild(null);
-                      } catch {
-                        toast('Failed to remove child', 'error');
-                      }
-                    }}
-                  >
-                    Remove Child
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => studyTools.setShowStudyModal(true), showPlus: true },
-          { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
-          { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
-          { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
-          { icon: '\u{1F4E5}', label: 'Export Data', onClick: () => navigate('/settings/data-export') },
-          ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
-            setShowResetPassword(true);
-            const child = children.find(c => c.student_id === selectedChild);
-            setResetPwMethod(child?.email ? 'email' : 'direct');
-            setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
-          }}] : []),
-        ]} />
-        </div>
-      </div>
+      {/* Kid switcher rail — replaces legacy pd-child-selector (PR 3 / #4115) */}
+      <KidRail
+        children={children}
+        selectedChild={selectedChild}
+        onSelect={(id) => {
+          if (id === null) {
+            setSelectedChild(null);
+            sessionStorage.removeItem('selectedChildId');
+          } else {
+            const c = children.find(ch => ch.student_id === id);
+            setSelectedChild(id);
+            if (c) sessionStorage.setItem('selectedChildId', String(c.user_id));
+          }
+        }}
+        onAddChild={() => setShowAddChildModal(true)}
+        colors={CHILD_COLORS}
+      />
+      <AddActionButton actions={[
+        { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => studyTools.setShowStudyModal(true), showPlus: true },
+        { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
+        { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
+        { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
+        { icon: '\u{1F4E5}', label: 'Export Data', onClick: () => navigate('/settings/data-export') },
+        ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
+          setShowResetPassword(true);
+          const child = children.find(c => c.student_id === selectedChild);
+          setResetPwMethod(child?.email ? 'email' : 'direct');
+          setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
+        }}] : []),
+      ]} />
 
       {selectedChild != null && (() => {
         const child = children.find(c => c.student_id === selectedChild);
@@ -875,6 +736,7 @@ export function MyKidsPage() {
               setResetPwMethod(child.email ? 'email' : 'direct');
               setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
             }}
+            onAwardXp={() => setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name })}
             onResendInvite={canResend ? async () => {
               setResendingInviteId(child.invite_id);
               setResendSuccess(null);
@@ -888,8 +750,15 @@ export function MyKidsPage() {
                 setResendingInviteId(null);
               }
             } : undefined}
+            onCopyInviteLink={canResend ? async () => {
+              const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
+              await navigator.clipboard.writeText(link);
+              setCopiedInviteId(child.invite_id);
+              setTimeout(() => setCopiedInviteId(null), 2000);
+            } : undefined}
             resending={canResend && resendingInviteId === child.invite_id}
             resendSuccess={canResend && resendSuccess === child.invite_id}
+            copyInviteSuccess={canResend && copiedInviteId === child.invite_id}
             onRemove={async () => {
               const ok = await confirm({
                 title: 'Remove Child',

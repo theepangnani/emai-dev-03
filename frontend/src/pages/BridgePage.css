@@ -487,3 +487,127 @@
     justify-content: space-between;
   }
 }
+
+/* ---------------- Kid rail ---------------- */
+.bridge-rail-wrap {
+  margin-bottom: 28px;
+}
+
+.bridge-rail-label {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bridge-muted);
+  margin-bottom: 10px;
+}
+
+.bridge-rail {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bridge-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 10px;
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bridge-ink-2);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.bridge-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--bridge-ink);
+}
+
+.bridge-chip.is-active {
+  background: var(--bridge-ink);
+  color: var(--bridge-paper);
+  border-color: var(--bridge-ink);
+}
+
+.bridge-chip.is-active .bridge-chip-grade {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--bridge-paper);
+}
+
+.bridge-chip.is-active .bridge-chip-dot {
+  outline: 2px solid var(--bridge-paper);
+  outline-offset: 2px;
+}
+
+.bridge-chip-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  font-family: "DM Sans", system-ui, sans-serif;
+  flex-shrink: 0;
+}
+
+.bridge-chip-dot--all {
+  background: linear-gradient(135deg, var(--bridge-rust), var(--bridge-pine));
+}
+
+.bridge-chip-name {
+  white-space: nowrap;
+}
+
+.bridge-chip-grade {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bridge-rail);
+  color: var(--bridge-muted);
+  font-weight: 500;
+}
+
+.bridge-chip-status {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.bridge-chip-status--pending {
+  background: #f6ead3;
+  color: #7a5a1a;
+}
+
+.bridge-chip-status--unverified {
+  background: #fce9e4;
+  color: #8a2e16;
+}
+
+.bridge-chip.is-active .bridge-chip-status--pending,
+.bridge-chip.is-active .bridge-chip-status--unverified {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--bridge-paper);
+}
+
+.bridge-chip--ghost {
+  background: transparent;
+  color: var(--bridge-muted);
+  border-style: dashed;
+}
+
+.bridge-chip--ghost:hover {
+  color: var(--bridge-ink);
+  border-color: var(--bridge-ink);
+  border-style: solid;
+}
