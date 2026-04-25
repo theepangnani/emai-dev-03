@@ -20,6 +20,7 @@ import {
   disconnectWhatsApp,
   listChildProfiles,
   addChildSchoolEmail,
+  removeChildSchoolEmail,
   listMonitoredSenders,
   addMonitoredSender,
   removeMonitoredSender,
@@ -1100,6 +1101,8 @@ function EmailDigestPageUnified() {
   >({});
   // #4053: dismissable banner for removeSenderMutation failures.
   const [removeSenderError, setRemoveSenderError] = useState<string | null>(null);
+  // #4098: dismissable banner for removeSchoolEmailMutation failures.
+  const [removeSchoolEmailError, setRemoveSchoolEmailError] = useState<string | null>(null);
   // #4055: restore focus to the "+ Add sender" trigger when modal closes.
   const addSenderTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -1157,6 +1160,21 @@ function EmailDigestPageUnified() {
         "Couldn't add school email. Please try again.",
       );
       setAddEmailErrorByProfile((prev) => ({ ...prev, [vars.profileId]: msg }));
+    },
+  });
+
+  // #4098: remove a misclassified/legacy school email from a kid profile.
+  const removeSchoolEmailMutation = useMutation({
+    mutationFn: ({ profileId, emailId }: { profileId: number; emailId: number }) =>
+      removeChildSchoolEmail(profileId, emailId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
+      setRemoveSchoolEmailError(null);
+    },
+    onError: (err: unknown) => {
+      setRemoveSchoolEmailError(
+        getApiErrorMessage(err, 'Could not remove school email. Please try again.'),
+      );
     },
   });
 
@@ -1350,6 +1368,23 @@ function EmailDigestPageUnified() {
       return next;
     });
     addSchoolEmailMutation.mutate({ profileId, email: trimmed });
+  };
+
+  // #4098: confirm + remove a school email row (parents must be able to clear
+  // misclassified entries left behind by the legacy setup wizard).
+  const handleRemoveSchoolEmail = async (
+    profileId: number,
+    emailId: number,
+    addr: string,
+  ) => {
+    const confirmed = await confirm({
+      title: 'Remove school email',
+      message: `Remove "${addr}" from this kid? Future digests will no longer attribute messages from this address to this kid.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    removeSchoolEmailMutation.mutate({ profileId, emailId });
   };
 
   if (intLoading) {
@@ -1570,6 +1605,19 @@ function EmailDigestPageUnified() {
             School email is the board-issued address where teachers email your kid
             (e.g., @ocdsb.ca). Different from the ClassBridge login email.
           </p>
+          {removeSchoolEmailError && (
+            <div className="ed-remove-sender-error" role="alert">
+              <span>{removeSchoolEmailError}</span>
+              <button
+                type="button"
+                className="ed-remove-sender-error__dismiss"
+                onClick={() => setRemoveSchoolEmailError(null)}
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            </div>
+          )}
           {childProfiles.length === 0 && (
             <p className="ed-empty-history">No kids on your account yet.</p>
           )}
@@ -1595,6 +1643,17 @@ function EmailDigestPageUnified() {
                     <div key={se.id} className="ed-school-email-item">
                       <span className="ed-school-email-addr">{se.email_address}</span>
                       <span className={badge.className}>{badge.label}</span>
+                      <button
+                        type="button"
+                        className="ed-icon-btn"
+                        aria-label={`Remove ${se.email_address}`}
+                        onClick={() =>
+                          handleRemoveSchoolEmail(profile.id, se.id, se.email_address)
+                        }
+                        disabled={removeSchoolEmailMutation.isPending}
+                      >
+                        &times;
+                      </button>
                     </div>
                   );
                 })}

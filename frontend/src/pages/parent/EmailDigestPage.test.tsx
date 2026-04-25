@@ -18,6 +18,7 @@ const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
 const mockListChildProfiles = vi.fn();
 const mockAddChildSchoolEmail = vi.fn();
+const mockRemoveChildSchoolEmail = vi.fn();
 const mockListMonitoredSenders = vi.fn();
 const mockAddMonitoredSender = vi.fn();
 const mockRemoveMonitoredSender = vi.fn();
@@ -38,6 +39,7 @@ vi.mock('../../api/parentEmailDigest', async () => {
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
     listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
     addChildSchoolEmail: (...args: unknown[]) => mockAddChildSchoolEmail(...args),
+    removeChildSchoolEmail: (...args: unknown[]) => mockRemoveChildSchoolEmail(...args),
     listMonitoredSenders: (...args: unknown[]) => mockListMonitoredSenders(...args),
     addMonitoredSender: (...args: unknown[]) => mockAddMonitoredSender(...args),
     removeMonitoredSender: (...args: unknown[]) => mockRemoveMonitoredSender(...args),
@@ -957,5 +959,107 @@ describe('EmailDigestPage — multi-kid routing (#4007)', () => {
       expect(screen.getByText('for Thanushan')).toBeInTheDocument();
     });
     expect(screen.queryByRole('tab', { name: 'Thanushan' })).not.toBeInTheDocument();
+  });
+});
+
+// #4098: parents must be able to remove school-email rows from the unified
+// digest page (legacy setup wizard sometimes seeded misclassified entries).
+describe('EmailDigestPage — unified remove school email (#4098)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          first_name: 'Thanushan',
+          school_emails: [
+            {
+              id: 501,
+              child_profile_id: 11,
+              email_address: 'no-reply@classroom.google.com',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+            {
+              id: 502,
+              child_profile_id: 11,
+              email_address: 'kid@ocdsb.ca',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+  });
+
+  it('renders a remove button for each school-email row', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('no-reply@classroom.google.com')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls removeChildSchoolEmail with (profileId, emailId) when confirmed', async () => {
+    confirmResolveValue = true;
+    mockRemoveChildSchoolEmail.mockResolvedValue({ data: {} });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+    );
+
+    await waitFor(() => {
+      expect(mockRemoveChildSchoolEmail).toHaveBeenCalledWith(11, 501);
+    });
+  });
+
+  it('does NOT call API when the confirm modal is cancelled', async () => {
+    confirmResolveValue = false;
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }));
+
+    // Allow the confirm promise + microtasks to resolve.
+    await waitFor(() => {
+      expect(mockRemoveChildSchoolEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  it('shows an error banner when the remove API fails', async () => {
+    confirmResolveValue = true;
+    mockRemoveChildSchoolEmail.mockRejectedValue({
+      response: { data: { detail: 'School email is in use.' } },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('School email is in use.')).toBeInTheDocument();
+    });
   });
 });
