@@ -8,7 +8,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin: 0.5rem 0 1rem;
-  color: var(--color-text);
+  color: var(--color-ink);
 }
 
 /* Filters */
@@ -22,10 +22,10 @@
 
 .st-select {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
-  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
   font-size: 0.875rem;
   cursor: pointer;
 }
@@ -38,23 +38,23 @@
 
 .st-chip {
   padding: 0.35rem 0.75rem;
-  border: 1px solid var(--color-border, #d1d5db);
+  border: 1px solid var(--color-border);
   border-radius: 20px;
-  background: var(--color-surface, #fff);
-  color: var(--color-text);
+  background: var(--color-surface);
+  color: var(--color-ink);
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .st-chip:hover {
-  border-color: var(--color-accent, #2563eb);
+  border-color: var(--color-accent);
 }
 
 .st-chip-active {
-  background: var(--color-accent, #2563eb);
-  border-color: var(--color-accent, #2563eb);
-  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-surface);
 }
 
 /* Timeline */
@@ -69,7 +69,7 @@
 .st-day-label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   margin-bottom: 0.5rem;
   padding-left: 2.5rem;
 }
@@ -94,7 +94,7 @@
   top: 2.25rem;
   bottom: -0.75rem;
   width: 2px;
-  background: var(--color-border, #e5e7eb);
+  background: var(--color-border);
 }
 
 .st-day-entries .st-entry:last-child .st-entry-line {
@@ -109,7 +109,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 700;
   font-size: 0.85rem;
   z-index: 1;
@@ -130,7 +130,7 @@
 .st-entry-title {
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--color-text);
+  color: var(--color-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -138,7 +138,7 @@
 
 .st-entry-time {
   font-size: 0.75rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-muted);
   white-space: nowrap;
 }
 
@@ -151,19 +151,19 @@
 }
 
 .st-entry-course {
-  color: var(--color-text-secondary, #6b7280);
-  background: var(--color-bg, #f3f4f6);
+  color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
   padding: 0.1rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .st-entry-xp {
-  color: #059669;
+  color: var(--color-success);
   font-weight: 600;
 }
 
 .st-entry-score {
-  color: #7c3aed;
+  color: var(--color-purple);
   font-weight: 600;
 }
 
@@ -175,18 +175,18 @@
 .st-error {
   text-align: center;
   padding: 2rem;
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .st-empty {
   text-align: center;
   padding: 3rem 1rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
 }
 
 .st-empty h3 {
   margin: 0 0 0.5rem;
-  color: var(--color-text);
+  color: var(--color-ink);
 }
 
 .st-load-more {
@@ -194,23 +194,23 @@
   width: 100%;
   padding: 0.75rem;
   margin-top: 1rem;
-  border: 1px solid var(--color-border, #d1d5db);
-  border-radius: 8px;
-  background: var(--color-surface, #fff);
-  color: var(--color-accent, #2563eb);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-accent);
   font-weight: 600;
   cursor: pointer;
   text-align: center;
 }
 
 .st-load-more:hover {
-  background: var(--color-bg, #f9fafb);
+  background: var(--color-surface-alt);
 }
 
 .st-count {
   text-align: center;
   font-size: 0.8rem;
-  color: var(--color-text-secondary, #9ca3af);
+  color: var(--color-muted);
   margin-top: 0.75rem;
 }
 

@@ -18,14 +18,14 @@
 .badges-counter {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--color-accent-strong, #4f46e5);
-  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.1));
+  color: var(--color-accent-strong);
+  background: var(--color-accent-subtle);
   padding: 4px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .badges-error {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
   text-align: center;
   padding: 24px;
 }
@@ -41,15 +41,15 @@
   align-items: flex-start;
   gap: 14px;
   padding: 16px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  background: var(--color-card, #fff);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   transition: box-shadow 0.15s;
 }
 
 .badge-card--earned {
-  border-color: var(--color-accent, #6366f1);
-  box-shadow: 0 0 0 1px var(--color-accent-subtle, rgba(99, 102, 241, 0.15));
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent-subtle);
 }
 
 .badge-card--locked {
@@ -80,18 +80,18 @@
 .badge-description {
   margin: 0 0 6px;
   font-size: 0.82rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
 }
 
 .badge-status {
   margin: 0;
   font-size: 0.78rem;
   font-weight: 500;
-  color: var(--color-text-tertiary, #9ca3af);
+  color: var(--color-muted);
 }
 
 .badge-card--earned .badge-status {
-  color: var(--color-accent-strong, #4f46e5);
+  color: var(--color-accent-strong);
 }
 
 /* ── Dark mode ── */

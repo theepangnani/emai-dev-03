@@ -106,7 +106,7 @@
   padding-bottom: 56.25%;
   height: 0;
   overflow: hidden;
-  background: #000;
+  background: var(--color-ink);
 }
 
 .vl-youtube-info {
@@ -335,10 +335,10 @@
   margin-left: auto;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #166534;
-  background: #dcfce7;
+  color: var(--color-success);
+  background: var(--color-success-bg);
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   white-space: nowrap;
 }
 
@@ -410,21 +410,21 @@
 }
 
 .vl-search-section {
-  border-color: #bbf7d0;
+  border-color: var(--color-success-border);
 }
 
 /* ── AI-Suggested Section ───────────────────── */
 .vl-ai-section {
-  border-color: color-mix(in srgb, var(--color-purple, #7c3aed) 25%, var(--color-border, #e5e7eb));
+  border-color: color-mix(in srgb, var(--color-purple) 25%, var(--color-border));
 }
 
 .vl-ai-heading {
   gap: 6px;
-  color: var(--color-purple, #7c3aed);
+  color: var(--color-purple);
 }
 
 .vl-ai-heading svg:first-of-type {
-  color: var(--color-purple, #7c3aed);
+  color: var(--color-purple);
 }
 
 .vl-ai-badge {
@@ -434,10 +434,10 @@
   padding: 1px 8px;
   font-size: 0.7rem;
   font-weight: 600;
-  color: var(--color-purple, #7c3aed);
-  background: color-mix(in srgb, var(--color-purple, #7c3aed) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-purple, #7c3aed) 25%, transparent);
-  border-radius: 10px;
+  color: var(--color-purple);
+  background: color-mix(in srgb, var(--color-purple) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-purple) 25%, transparent);
+  border-radius: var(--radius-md);
   white-space: nowrap;
   vertical-align: middle;
   line-height: 1.6;
@@ -448,8 +448,8 @@
   top: 8px;
   left: 8px;
   z-index: 2;
-  background: var(--color-surface, #fff);
-  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.05));
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
 }
 
 .vl-ai-link-row {
@@ -480,9 +480,9 @@
 
 .vl-ai-youtube-actions .vl-pin-btn,
 .vl-ai-youtube-actions .vl-delete-btn {
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #e5e7eb);
-  box-shadow: var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.05));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-xs);
 }
 
 /* ── Responsive ──────────────────────────────── */
