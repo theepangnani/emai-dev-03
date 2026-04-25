@@ -1,8 +1,9 @@
 name: Security Scanning
 
 on:
-  schedule:
-    - cron: '0 6 * * *'
+  # schedule trigger disabled per owner directive (#4125) — re-enable when ready to resume nightly scans
+  # schedule:
+  #   - cron: '0 6 * * *'
   # pull_request trigger disabled — re-enable for production hardening
   # pull_request:
   #   branches: [master]
