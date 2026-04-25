@@ -804,7 +804,7 @@ export function MyKidsPage() {
                 hasIntegration={hasEmailDigestIntegration}
                 onSetup={() => setShowEmailDigestWizard(true)}
                 onOpenDigest={() => navigate('/email-digest')}
-                childName="all kids"
+                aggregate
               />
 
 

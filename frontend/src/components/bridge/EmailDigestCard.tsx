@@ -11,10 +11,12 @@ interface EmailDigestCardProps {
   hasIntegration: boolean;
   onSetup: () => void;
   onOpenDigest: () => void;
-  childName: string;
+  /** When `aggregate` is true, copy renders without a kid name (used in the all-kids view). When false, `childName` must be set to a real name. */
+  aggregate?: boolean;
+  childName?: string;
 }
 
-export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, childName }: EmailDigestCardProps) {
+export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, aggregate = false, childName }: EmailDigestCardProps) {
   return (
     <article className="bridge-card bridge-card--digest">
       <header className="bridge-card-head">
@@ -38,13 +40,13 @@ export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, childNa
 
       {hasIntegration ? (
         <p className="bridge-card-summary">
-          {childName === 'all kids'
+          {aggregate
             ? 'Your daily digest — open the digest hub to manage delivery and recent sends.'
             : `Daily digest for ${childName} — open the digest hub to manage delivery, school email, and recent sends.`}
         </p>
       ) : (
         <div className="bridge-empty-hint">
-          {childName === 'all kids'
+          {aggregate
             ? 'Not set up yet. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.'
             : `Not set up yet for ${childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.`}
         </div>
