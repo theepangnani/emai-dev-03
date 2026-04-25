@@ -2089,7 +2089,7 @@ For each ingested email:
 
 #### Known follow-ups (not blocking)
 - ~~**#4044** — Add `POST /api/parent/child-profiles` so the wizard can create profiles for brand-new parents (no pre-existing Gmail integration). Currently the wizard catches the 404 with a friendly error message; profiles for existing integrations were seeded by the Stream 1 backfill.~~ **Shipped via PR #4100 (2026-04-24).**
-- **#4056** — Decide whether to preserve "Send Digest Now" / "Sync Now" / "Digest History" features in the unified page (legacy parity question). Currently dropped from the unified path; needs product input before `on_for_all` ramp.
+- ~~**#4056** — Decide whether to preserve "Send Digest Now" / "Sync Now" / "Digest History" features in the unified page (legacy parity question).~~ **Shipped via PR #4102 (2026-04-25)** — user confirmed regression and approved port. Faithful port of all 3 sections from `EmailDigestPageLegacy` to `EmailDigestPageUnified`: Sync Now button, Send Digest Now button + per-channel delivery status banner (delivered/partial/failed/skipped + Try again retry + Open preferences link), Digest History card with DOMPurify-sanitized HTML expansion. 2 parallel streams + 2 rounds of `/pr-review` (62/62 frontend tests pass).
 
 #### Post-launch defect batch — PR #4100 (2026-04-24)
 

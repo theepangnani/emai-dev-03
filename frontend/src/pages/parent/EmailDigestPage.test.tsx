@@ -1654,7 +1654,12 @@ describe('EmailDigestPage — unified Digest History (#4056)', () => {
           parent_id: 100,
           integration_id: 1,
           email_count: 1,
-          digest_content: '<p>Safe paragraph</p><script>alert("xss")</script>',
+          // Payload includes both <script> AND an onerror attribute on <img>.
+          // DOMPurify strips both; jsdom alone preserves both in the DOM tree.
+          digest_content:
+            '<p>Safe paragraph</p>' +
+            '<script>alert("xss")</script>' +
+            '<img src="x" onerror="alert(1)" alt="ok">',
           digest_length_chars: 60,
           delivered_at: '2026-04-25T12:00:00Z',
           channels_used: 'in_app,email',
@@ -1674,9 +1679,15 @@ describe('EmailDigestPage — unified Digest History (#4056)', () => {
       expect(screen.getByText('Safe paragraph')).toBeInTheDocument();
     });
     // The <script> tag must be stripped — assert no script element exists
-    // under the rendered digest content.
+    // under the rendered digest content. Also assert the onerror attribute
+    // is stripped from the <img> (a more distinctive DOMPurify behavior;
+    // jsdom would preserve onerror on its own).
     const digestText = screen.getByText('Safe paragraph').closest('.ed-digest-text');
     expect(digestText).not.toBeNull();
     expect(digestText!.querySelector('script')).toBeNull();
+    const img = digestText!.querySelector('img');
+    if (img) {
+      expect(img.hasAttribute('onerror')).toBe(false);
+    }
   });
 });
