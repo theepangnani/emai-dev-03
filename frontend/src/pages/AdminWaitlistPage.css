@@ -11,7 +11,7 @@
 
 .admin-waitlist-header h1 {
   font-size: 18px;
-  font-family: var(--font-display);
+  font-family: var(--font-display-serif, var(--font-display));
   color: var(--color-ink);
   margin: 0;
 }
@@ -177,25 +177,25 @@
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface-alt);
   color: var(--color-ink-muted);
   text-transform: capitalize;
 }
 
 .waitlist-role-badge.parent {
-  background: #e8d5f5;
-  color: #7c3aed;
+  background: var(--color-purple-bg);
+  color: var(--color-purple-strong);
 }
 
 .waitlist-role-badge.student {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-dark);
 }
 
 .waitlist-role-badge.teacher {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-blue-dark);
 }
 
 /* Status badges */
@@ -204,28 +204,28 @@
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   text-transform: capitalize;
 }
 
 .waitlist-status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .waitlist-status-badge.approved {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-bg);
+  color: var(--color-blue-dark);
 }
 
 .waitlist-status-badge.registered {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-bg);
+  color: var(--color-success-dark);
 }
 
 .waitlist-status-badge.declined {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Row actions */
@@ -316,41 +316,7 @@
   border-radius: var(--radius-md);
 }
 
-/* Dark theme overrides for hardcoded badge colors */
-[data-theme="dark"] .waitlist-role-badge.parent {
-  background: #4c1d95;
-  color: #ddd6fe;
-}
-
-[data-theme="dark"] .waitlist-role-badge.student {
-  background: #064e3b;
-  color: #a7f3d0;
-}
-
-[data-theme="dark"] .waitlist-role-badge.teacher {
-  background: #1e3a5f;
-  color: #bfdbfe;
-}
-
-[data-theme="dark"] .waitlist-status-badge.pending {
-  background: #78350f;
-  color: #fde68a;
-}
-
-[data-theme="dark"] .waitlist-status-badge.approved {
-  background: #1e3a5f;
-  color: #bfdbfe;
-}
-
-[data-theme="dark"] .waitlist-status-badge.registered {
-  background: #064e3b;
-  color: #a7f3d0;
-}
-
-[data-theme="dark"] .waitlist-status-badge.declined {
-  background: #7f1d1d;
-  color: #fecaca;
-}
+/* Role/status badges use semantic tokens — no per-theme overrides needed */
 
 @media (max-width: 768px) {
   .admin-waitlist-stats {
