@@ -1,0 +1,1321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bridge · ClassBridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ivory: #f5f1ea;
+      --paper: #fbf8f2;
+      --card:  #ffffff;
+      --ink:   #1c1a16;
+      --ink-2: #3a3630;
+      --muted: #6b645b;
+      --hair:  #e5ddd1;
+      --rail:  #ece4d6;
+      --rust:  #b04a2c;
+      --rust-ink: #7a2f18;
+      --pine:  #2d4a3e;
+      --amber: #d4a24b;
+      --sky:   #3b6a8f;
+      --rose:  #c25b6f;
+      --on-track-bg: #e6efe8;
+      --on-track-ink: #23523f;
+      --pending-bg: #f6ead3;
+      --pending-ink: #7a5a1a;
+      --r-sm: 8px;
+      --r-md: 14px;
+      --r-lg: 22px;
+      --shadow-card: 0 1px 2px rgba(28,26,22,.04), 0 12px 30px -18px rgba(28,26,22,.18);
+      --shadow-feature: 0 1px 2px rgba(28,26,22,.05), 0 24px 48px -24px rgba(28,26,22,.22);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--ivory);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    h1, h2, h3 {
+      font-family: "Fraunces", "Georgia", serif;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      margin: 0;
+    }
+    button { font-family: inherit; cursor: pointer; border: 0; background: transparent; color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    ul { list-style: none; margin: 0; padding: 0; }
+
+    /* ================= Shell ================ */
+    .shell { max-width: 1240px; margin: 0 auto; padding: 28px 40px 96px; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0 28px;
+    }
+    .logo {
+      font-family: "Fraunces", serif; font-weight: 500; font-size: 22px;
+      letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-bridge {
+      width: 34px; height: 18px;
+      background: radial-gradient(circle at 50% 120%, var(--rust) 0 55%, transparent 55%);
+      border-bottom: 1.5px solid var(--ink);
+      position: relative;
+    }
+    .logo-bridge::before, .logo-bridge::after {
+      content: ""; position: absolute; bottom: -1.5px;
+      width: 1.5px; height: 7px; background: var(--ink);
+    }
+    .logo-bridge::before { left: 4px; } .logo-bridge::after  { right: 4px; }
+
+    .topbar-right { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; }
+    .ai-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--paper); border: 1px solid var(--hair); color: var(--ink);
+      font-size: 13px; font-weight: 500;
+    }
+    .ai-pill .spark { width: 10px; height: 10px; border-radius: 2px; background: var(--pine); transform: rotate(45deg); }
+    .avatar-me {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--ink); color: var(--paper);
+      display: grid; place-items: center; font-size: 13px; font-weight: 600;
+      font-family: "DM Sans";
+    }
+
+    /* =============== Breadcrumb =============== */
+    .crumbs {
+      font-size: 13px; color: var(--muted);
+      margin-bottom: 22px; display: flex; align-items: center; gap: 8px;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .crumbs a { color: var(--muted); }
+    .crumbs .sep { opacity: .5; }
+    .crumbs .here { color: var(--ink); }
+
+    /* =============== Page header =============== */
+    .header {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 48px;
+      padding: 28px 0 40px;
+      border-bottom: 1px solid var(--hair);
+      margin-bottom: 32px;
+    }
+    .kicker {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--rust); font-weight: 500;
+    }
+    .title {
+      font-size: clamp(44px, 6vw, 72px);
+      line-height: 0.98;
+      margin-top: 14px;
+      letter-spacing: -0.035em;
+      color: var(--ink);
+    }
+    .title em {
+      font-style: normal;
+      font-weight: 400;
+      color: var(--rust);
+    }
+    .arch {
+      display: block;
+      width: min(320px, 80%);
+      height: 38px;
+      color: var(--rust);
+      margin: 18px 0 0;
+      opacity: .85;
+    }
+    .lede {
+      margin-top: 18px;
+      font-size: 17px;
+      color: var(--ink-2);
+      max-width: 52ch;
+      line-height: 1.55;
+    }
+
+    .header-stats {
+      align-self: end;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      border-left: 1px solid var(--hair);
+    }
+    .hs {
+      padding: 4px 22px;
+      border-right: 1px solid transparent;
+    }
+    .hs + .hs { border-left: 1px solid var(--hair); }
+    .hs-num {
+      font-family: "Fraunces", serif;
+      font-size: 44px; font-weight: 400; line-height: 1;
+      letter-spacing: -0.02em;
+      display: block;
+    }
+    .hs-num sub {
+      font-size: 13px; font-family: "JetBrains Mono", monospace;
+      color: var(--muted); vertical-align: 6px; margin-left: 2px; font-weight: 500;
+    }
+    .hs-label {
+      font-size: 12px; color: var(--muted); margin-top: 6px; display: block;
+      font-family: "JetBrains Mono", monospace; letter-spacing: 0.05em;
+    }
+
+    /* =============== Kid rail =============== */
+    .rail-wrap {
+      position: relative;
+      margin-bottom: 28px;
+    }
+    .rail-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .rail {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 10px 16px 10px 10px;
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: 999px;
+      font-size: 14px; font-weight: 500; color: var(--ink-2);
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .chip:hover { transform: translateY(-1px); border-color: var(--ink); }
+    .chip.active {
+      background: var(--ink); color: var(--paper);
+      border-color: var(--ink);
+    }
+    .chip.active .chip-dot { outline: 2px solid var(--paper); outline-offset: 2px; }
+    .chip.active .chip-grade { background: rgba(255,255,255,.12); color: var(--paper); }
+    .chip-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 11px; font-weight: 600; color: #fff;
+      font-family: "DM Sans";
+    }
+    .chip-grade {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; padding: 2px 8px; border-radius: 999px;
+      background: var(--rail); color: var(--muted); font-weight: 500;
+    }
+    .chip.all .chip-dot { background: linear-gradient(135deg, var(--rust), var(--pine)); }
+    .chip.ghost {
+      background: transparent; color: var(--muted);
+      border-style: dashed;
+    }
+    .chip.ghost:hover { color: var(--ink); border-color: var(--ink); border-style: solid; }
+
+    /* =============== Hero kid card =============== */
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-lg);
+      padding: 32px 36px;
+      box-shadow: var(--shadow-feature);
+      margin-bottom: 40px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 32px;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(600px 240px at 110% -10%, rgba(176,74,44,.08), transparent 60%),
+        radial-gradient(500px 200px at -10% 120%, rgba(45,74,62,.06), transparent 60%);
+    }
+    .hero-left { display: flex; align-items: center; gap: 24px; position: relative; z-index: 1; }
+    .hero-avatar {
+      width: 76px; height: 76px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-family: "Fraunces", serif;
+      font-size: 34px; font-weight: 400;
+      color: #fff;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .hero-avatar::after {
+      content: ""; position: absolute; inset: -6px; border-radius: 50%;
+      border: 1.5px dashed rgba(28,26,22,.25);
+    }
+    .hero-name {
+      font-family: "Fraunces", serif;
+      font-size: 32px; font-weight: 400; letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .hero-name .grade {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; background: var(--rail); color: var(--muted);
+      padding: 3px 10px; border-radius: 999px; font-weight: 500;
+      letter-spacing: 0.05em;
+    }
+    .hero-sub {
+      color: var(--muted); font-size: 14px; margin-top: 4px;
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    }
+    .hero-sub .chip-inline {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      background: var(--on-track-bg); color: var(--on-track-ink);
+      font-size: 12px; font-weight: 500;
+      font-family: "DM Sans";
+    }
+    .hero-sub .chip-inline.pending { background: var(--pending-bg); color: var(--pending-ink); }
+    .hero-sub .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--hair); }
+
+    .hero-right {
+      display: flex; flex-direction: column; gap: 16px;
+      position: relative; z-index: 1;
+    }
+    .hero-vitals {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      background: var(--paper);
+    }
+    .vital {
+      padding: 14px 20px;
+      border-right: 1px solid var(--hair);
+      min-width: 92px;
+    }
+    .vital:last-child { border-right: 0; }
+    .vital-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .vital-value {
+      font-family: "Fraunces", serif;
+      font-size: 26px; font-weight: 400; line-height: 1.1; margin-top: 4px;
+      letter-spacing: -0.02em;
+    }
+    .vital-value .unit { font-size: 12px; color: var(--muted); font-family: "JetBrains Mono", monospace; margin-left: 3px; font-weight: 500; }
+    .vital-value.ok { color: var(--pine); }
+
+    .hero-cta { display: flex; gap: 10px; justify-content: flex-end; align-items: center; }
+    .overflow-wrap { position: relative; }
+    .overflow-trigger {
+      width: 42px; height: 42px; padding: 0; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--paper); border: 1px solid var(--hair); color: var(--ink);
+    }
+    .overflow-trigger:hover { border-color: var(--ink); background: var(--card); }
+    .overflow-trigger .dots {
+      letter-spacing: 1px; font-size: 18px; line-height: 1;
+      transform: translateY(-3px);
+    }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    .overflow-menu {
+      position: absolute;
+      top: calc(100% + 8px); right: 0;
+      min-width: 220px;
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-md);
+      box-shadow: 0 16px 48px -16px rgba(28,26,22,.25), 0 2px 6px rgba(28,26,22,.06);
+      padding: 6px;
+      z-index: 30;
+      display: none;
+      animation: menuIn .14s ease;
+    }
+    .overflow-menu.open { display: block; }
+    @keyframes menuIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .overflow-menu button {
+      width: 100%;
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 14px; color: var(--ink); font-weight: 500;
+      text-align: left;
+    }
+    .overflow-menu button svg {
+      width: 16px; height: 16px; color: var(--muted); flex-shrink: 0;
+    }
+    .overflow-menu button:hover { background: var(--paper); }
+    .overflow-menu button:hover svg { color: var(--ink); }
+    .overflow-menu button.danger { color: var(--rust-ink); }
+    .overflow-menu button.danger:hover { background: #fdefeb; }
+    .overflow-menu button.danger svg { color: var(--rust); }
+    .overflow-divider { height: 1px; background: var(--hair); margin: 6px 4px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px; font-weight: 500;
+      border: 1px solid transparent;
+      transition: all .18s ease;
+      white-space: nowrap;
+    }
+    .btn.primary { background: var(--ink); color: var(--paper); }
+    .btn.primary:hover { background: var(--rust); }
+    .btn.ghost { background: var(--card); color: var(--ink); border-color: var(--hair); }
+    .btn.ghost:hover { border-color: var(--ink); }
+    .btn .arrow { transition: transform .2s ease; }
+    .btn:hover .arrow { transform: translateX(3px); }
+
+    /* =============== Management grid =============== */
+    .section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 0 4px 18px;
+    }
+    .section-head h2 {
+      font-size: 28px; letter-spacing: -0.02em;
+    }
+    .section-head .section-meta {
+      color: var(--muted); font-size: 13px;
+      font-family: "JetBrains Mono", monospace; letter-spacing: 0.04em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+      margin-bottom: 48px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-lg);
+      padding: 26px;
+      box-shadow: var(--shadow-card);
+      display: flex; flex-direction: column;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-feature); }
+    .card.span-6 { grid-column: span 6; }
+    .card.span-4 { grid-column: span 4; }
+    .card.span-12 { grid-column: span 12; }
+
+    .card-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 12px; margin-bottom: 18px;
+    }
+    .card-title-wrap .card-kicker {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--rust); font-weight: 500;
+      margin-bottom: 8px; display: block;
+    }
+    .card-title-wrap h3 {
+      font-size: 24px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 12px;
+    }
+    .card-title-wrap .count {
+      font-family: "DM Sans";
+      font-size: 12px; background: var(--rail); color: var(--muted);
+      padding: 3px 10px; border-radius: 999px; font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .card-title-wrap p {
+      color: var(--muted); font-size: 14px; margin: 6px 0 0; max-width: 44ch;
+    }
+    .head-action {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--ink-2); font-weight: 500;
+      padding: 7px 12px; border-radius: 999px; border: 1px solid var(--hair);
+      background: var(--paper);
+    }
+    .head-action:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+    /* ------ Digest card ------ */
+    .card--digest {
+      background:
+        linear-gradient(180deg, #fff 0%, #fdfaf3 100%);
+      border-color: #ece2cb;
+    }
+    .digest-meta {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px;
+      background: #fff6e0; color: var(--rust-ink);
+      font-size: 12px; font-weight: 500;
+      font-family: "JetBrains Mono", monospace;
+      margin-bottom: 6px;
+    }
+    .digest-meta .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--rust);
+      box-shadow: 0 0 0 4px rgba(176,74,44,.15);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(176,74,44,.15); }
+      50% { box-shadow: 0 0 0 7px rgba(176,74,44,.05); }
+    }
+    .digest-list {
+      margin-top: 18px;
+      border-top: 1px solid var(--hair);
+    }
+    .digest-list li {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px; align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--hair);
+    }
+    .digest-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--rail);
+      color: var(--ink);
+    }
+    .digest-icon svg { width: 18px; height: 18px; stroke-width: 1.5; }
+    .di-title { font-weight: 500; color: var(--ink); }
+    .di-meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .toggle {
+      width: 40px; height: 24px; border-radius: 999px;
+      background: var(--hair); position: relative;
+      transition: background .18s ease;
+      cursor: pointer;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.18);
+      transition: transform .2s ease;
+    }
+    .toggle.on { background: var(--pine); }
+    .toggle.on::after { transform: translateX(16px); }
+    .digest-foot {
+      margin-top: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      color: var(--muted); font-size: 13px;
+    }
+    .digest-foot strong { color: var(--ink); }
+
+    /* ------ List card (generic) ------ */
+    .item-list {
+      flex: 1;
+      display: flex; flex-direction: column;
+    }
+    .item-list > li {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px; align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--hair);
+      cursor: pointer;
+      transition: padding-left .2s ease;
+    }
+    .item-list > li:first-child { border-top: 1px solid var(--hair); }
+    .item-list > li:hover { padding-left: 6px; }
+    .item-list > li:hover .chev { color: var(--rust); transform: translateX(3px); }
+    .li-title {
+      font-size: 14px; font-weight: 500; color: var(--ink);
+    }
+    .li-meta {
+      font-size: 13px; color: var(--muted); margin-top: 2px;
+    }
+    .chev { color: var(--hair); font-size: 18px; transition: all .18s ease; }
+
+    .swatch {
+      width: 4px; height: 36px; border-radius: 2px;
+    }
+    .t-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 13px; font-weight: 600;
+      background: var(--rail); color: var(--ink-2);
+      font-family: "DM Sans";
+    }
+    .mat-type {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: grid; place-items: center;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+    }
+    .mat-type.pdf  { background: #fce9e4; color: #8a2e16; }
+    .mat-type.doc  { background: #e0ebf5; color: #214966; }
+    .mat-type.slide { background: #faf0d4; color: #7a5a1a; }
+    .mat-type.vid   { background: #e5e7f7; color: #3d3f7a; }
+
+    .empty-hint {
+      color: var(--muted);
+      font-size: 14px;
+      padding: 24px 0;
+      text-align: center;
+      border-top: 1px dashed var(--hair);
+      border-bottom: 1px dashed var(--hair);
+    }
+
+    /* ------ Secondary grid (Grades + Study Times) ------ */
+    .card--muted {
+      background: var(--paper);
+      border: 1px solid var(--hair);
+      box-shadow: none;
+    }
+    .card--muted:hover { box-shadow: var(--shadow-card); }
+
+    .grades-list {
+      display: grid; gap: 10px; margin-top: 14px;
+    }
+    .grade-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 14px; align-items: center;
+      padding: 12px 14px;
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-md);
+    }
+    .grade-course { font-weight: 500; }
+    .grade-teacher { font-size: 13px; color: var(--muted); }
+    .grade-pct {
+      font-family: "Fraunces", serif;
+      font-size: 22px; font-weight: 400; letter-spacing: -0.01em;
+    }
+    .grade-pct.a { color: var(--pine); }
+    .grade-pct.b { color: var(--sky); }
+    .grade-pct.c { color: var(--amber); }
+    .grade-trend {
+      font-size: 12px; color: var(--muted);
+      font-family: "JetBrains Mono", monospace;
+    }
+    .grade-trend.up { color: var(--pine); }
+    .grade-trend.down { color: var(--rose); }
+
+    .times-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 18px;
+    }
+    .times-col { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+    .times-col-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px; color: var(--muted); letter-spacing: 0.08em;
+      margin-top: 6px;
+    }
+    .times-cell {
+      width: 100%; height: 22px; border-radius: 4px;
+      background: var(--rail);
+    }
+    .times-cell.h1 { background: #efe5d1; }
+    .times-cell.h2 { background: #e4cc93; }
+    .times-cell.h3 { background: #c89047; }
+    .times-cell.h4 { background: var(--rust); }
+
+    /* =============== Meta actions =============== */
+    .meta-bar {
+      display: flex; flex-wrap: wrap; gap: 10px;
+      padding: 24px 2px 0;
+      border-top: 1px solid var(--hair);
+      margin-top: 16px;
+    }
+    .meta-bar button {
+      padding: 8px 14px;
+      border-radius: var(--r-sm);
+      font-size: 13px; color: var(--muted); font-weight: 500;
+      border: 1px solid transparent;
+    }
+    .meta-bar button:hover { color: var(--ink); border-color: var(--hair); background: var(--paper); }
+    .meta-bar button.danger:hover { color: var(--rust); border-color: #f1d3cb; background: #fdefeb; }
+    .meta-bar .meta-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--muted); align-self: center; margin-right: 12px;
+    }
+
+    /* =============== All-kids overview ================ */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+    .kid-card {
+      background: var(--card);
+      border: 1px solid var(--hair);
+      border-radius: var(--r-lg);
+      padding: 22px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 18px;
+      box-shadow: var(--shadow-card);
+    }
+    .kid-card .kc-avatar {
+      width: 58px; height: 58px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-family: "Fraunces", serif; font-size: 24px;
+      color: #fff;
+    }
+    .kc-name {
+      font-family: "Fraunces", serif;
+      font-size: 22px; letter-spacing: -0.02em;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .kc-vitals {
+      display: flex; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 13px;
+    }
+    .kc-vitals strong { color: var(--ink); font-weight: 600; }
+    .kc-open {
+      margin-top: 14px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; color: var(--rust);
+    }
+    .kc-open:hover { color: var(--rust-ink); }
+
+    /* =============== Responsive =============== */
+    @media (max-width: 960px) {
+      .shell { padding: 20px 22px 80px; }
+      .header { grid-template-columns: 1fr; gap: 28px; }
+      .header-stats { border-left: 0; border-top: 1px solid var(--hair); padding-top: 22px; }
+      .hs:first-child { padding-left: 0; }
+      .hero { grid-template-columns: 1fr; padding: 26px; }
+      .hero-vitals { grid-template-columns: repeat(2, 1fr); }
+      .vital { border-right: 0; border-bottom: 1px solid var(--hair); }
+      .vital:nth-child(odd) { border-right: 1px solid var(--hair); }
+      .card.span-6, .card.span-4 { grid-column: span 12; }
+      .overview-grid { grid-template-columns: 1fr; }
+    }
+
+    /* tiny focus ring */
+    button:focus-visible, .chip:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--rust); outline-offset: 3px; border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ===== top bar ===== -->
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-bridge" aria-hidden="true"></span>
+        ClassBridge
+      </div>
+      <div class="topbar-right">
+        <span class="ai-pill"><span class="spark"></span> AI · 103/147</span>
+        <div class="avatar-me">TG</div>
+      </div>
+    </header>
+
+    <!-- ===== breadcrumb ===== -->
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="#">Home</a>
+      <span class="sep">/</span>
+      <span class="here">Bridge</span>
+    </nav>
+
+    <!-- ===== page header ===== -->
+    <section class="header">
+      <div>
+        <span class="kicker">Parent Hub · 2 kids linked</span>
+        <h1 class="title">Bridge<em>.</em></h1>
+        <svg class="arch" viewBox="0 0 320 40" aria-hidden="true">
+          <path d="M2 36 Q160 -16 318 36" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <circle cx="2"  cy="36" r="2.5" fill="currentColor"/>
+          <circle cx="80" cy="20" r="2"   fill="currentColor"/>
+          <circle cx="160" cy="12" r="2.5" fill="currentColor"/>
+          <circle cx="240" cy="20" r="2"   fill="currentColor"/>
+          <circle cx="318" cy="36" r="2.5" fill="currentColor"/>
+        </svg>
+        <p class="lede">Where you meet every class, teacher, digest, and update — one hub, one structure, per kid.</p>
+      </div>
+
+      <div class="header-stats">
+        <div class="hs">
+          <span class="hs-num">2</span>
+          <span class="hs-label">Kids linked</span>
+        </div>
+        <div class="hs">
+          <span class="hs-num">16</span>
+          <span class="hs-label">Classes tracked</span>
+        </div>
+        <div class="hs">
+          <span class="hs-num">100<sub>xp</sub></span>
+          <span class="hs-label">This week</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== kid rail ===== -->
+    <section class="rail-wrap" aria-label="Select a child">
+      <div class="rail-label">Choose a bridge</div>
+      <div class="rail" id="kidRail">
+        <button class="chip all" data-kid="all">
+          <span class="chip-dot" style="background:linear-gradient(135deg,#b04a2c,#2d4a3e);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          All kids
+        </button>
+        <button class="chip active" data-kid="thanushan" data-color="#3b6a8f">
+          <span class="chip-dot" style="background:#3b6a8f;">T</span>
+          Thanushan
+          <span class="chip-grade">Grade 10</span>
+        </button>
+        <button class="chip" data-kid="haashini" data-color="#c25b6f">
+          <span class="chip-dot" style="background:#c25b6f;">H</span>
+          Haashini
+          <span class="chip-grade">Grade 8</span>
+        </button>
+        <button class="chip ghost">+ Add child</button>
+      </div>
+    </section>
+
+    <!-- ===== SELECTED KID VIEW ===== -->
+    <section id="kidView">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-left">
+          <div class="hero-avatar" id="heroAvatar" style="background:#3b6a8f;">T</div>
+          <div>
+            <div class="hero-name" id="heroName">
+              Thanushan
+              <span class="grade" id="heroGrade">Grade 10</span>
+            </div>
+            <div class="hero-sub" id="heroSub">
+              <span>Bill Horgarth · English teacher</span>
+              <span class="dot-sep"></span>
+              <span>Curious Learner</span>
+              <span class="chip-inline pending">● Pending link</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="hero-vitals" id="heroVitals">
+            <div class="vital">
+              <div class="vital-label">Weekly XP</div>
+              <div class="vital-value">70<span class="unit">/wk</span></div>
+            </div>
+            <div class="vital">
+              <div class="vital-label">Classes</div>
+              <div class="vital-value">11</div>
+            </div>
+            <div class="vital">
+              <div class="vital-label">Open tasks</div>
+              <div class="vital-value">78</div>
+            </div>
+            <div class="vital">
+              <div class="vital-label">Status</div>
+              <div class="vital-value ok">● On&nbsp;track</div>
+            </div>
+          </div>
+          <div class="hero-cta">
+            <div class="overflow-wrap">
+              <button class="btn ghost overflow-trigger" aria-haspopup="menu" aria-expanded="false" id="kidMenuBtn">
+                <span class="dots" aria-hidden="true">···</span>
+                <span class="visually-hidden">Manage child</span>
+              </button>
+              <div class="overflow-menu" id="kidMenu" role="menu">
+                <button role="menuitem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+                  Edit child
+                </button>
+                <button role="menuitem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export data
+                </button>
+                <button role="menuitem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="14" r="5"/><path d="m13 10 8-8"/><path d="m17 6 3 3"/></svg>
+                  Reset password
+                </button>
+                <button role="menuitem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+                  Resend invite
+                </button>
+                <div class="overflow-divider"></div>
+                <button role="menuitem" class="danger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  Remove child
+                </button>
+              </div>
+            </div>
+            <button class="btn primary">Open Tutor <span class="arrow">→</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section head -->
+      <div class="section-head">
+        <h2>Manage this bridge</h2>
+        <span class="section-meta">4 · domains</span>
+      </div>
+
+      <!-- Management grid -->
+      <div class="grid">
+
+        <!-- EMAIL DIGEST — feature card, span 6 -->
+        <article class="card card--digest span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="digest-meta"><span class="live-dot"></span> DAILY · 7:30 AM</span>
+              <h3>Email Digest</h3>
+              <p>What lands in your inbox each morning — tuned per child.</p>
+            </div>
+            <button class="head-action">Edit setup</button>
+          </div>
+
+          <ul class="digest-list" role="list">
+            <li>
+              <div class="digest-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 8l9 6 9-6"/><rect x="3" y="5" width="18" height="14" rx="2"/></svg>
+              </div>
+              <div>
+                <div class="di-title">Classroom updates</div>
+                <div class="di-meta">Announcements, new assignments, grades posted</div>
+              </div>
+              <div class="toggle on" aria-pressed="true" role="switch"></div>
+            </li>
+            <li>
+              <div class="digest-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+              </div>
+              <div>
+                <div class="di-title">Teacher emails</div>
+                <div class="di-meta">From 8 linked teachers · Auto-summarised</div>
+              </div>
+              <div class="toggle on" aria-pressed="true" role="switch"></div>
+            </li>
+            <li>
+              <div class="digest-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M2 12h20"/></svg>
+              </div>
+              <div>
+                <div class="di-title">Weekly progress</div>
+                <div class="di-meta">XP earned, study streaks, weak spots</div>
+              </div>
+              <div class="toggle on" aria-pressed="true" role="switch"></div>
+            </li>
+            <li>
+              <div class="digest-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              </div>
+              <div>
+                <div class="di-title">Dinner-table talk</div>
+                <div class="di-meta">AI-picked conversation starters from the week</div>
+              </div>
+              <div class="toggle" aria-pressed="false" role="switch"></div>
+            </li>
+          </ul>
+
+          <div class="digest-foot">
+            <span>Next digest <strong>tomorrow 7:30 AM</strong> to theepang@gmail.com</span>
+            <button class="head-action">Send preview</button>
+          </div>
+        </article>
+
+        <!-- CLASSES — span 6 -->
+        <article class="card span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-kicker">Courses · schedule</span>
+              <h3>Classes <span class="count">11</span></h3>
+              <p>All of Thanushan's Grade 10 courses, synced from Classroom.</p>
+            </div>
+            <button class="head-action">+ Add class</button>
+          </div>
+          <ul class="item-list" role="list">
+            <li>
+              <span class="swatch" style="background:#b04a2c;"></span>
+              <div>
+                <div class="li-title">English · ENG2D</div>
+                <div class="li-meta">Bill Horgarth · 14 materials · 6 open tasks</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <span class="swatch" style="background:#2d4a3e;"></span>
+              <div>
+                <div class="li-title">Applied Mathematics · MPM2D</div>
+                <div class="li-meta">Dr. Patel · 22 materials · 9 open tasks</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <span class="swatch" style="background:#d4a24b;"></span>
+              <div>
+                <div class="li-title">Science · SNC2D</div>
+                <div class="li-meta">Ms. Okafor · 18 materials · 4 open tasks</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <span class="swatch" style="background:#3b6a8f;"></span>
+              <div>
+                <div class="li-title">Civics &amp; Careers · CHV2O</div>
+                <div class="li-meta">Mr. Laurent · 6 materials · 2 open tasks</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+          </ul>
+          <div class="digest-foot" style="border-top:1px solid var(--hair); margin-top:10px; padding-top:14px;">
+            <span>Showing 4 of 11</span>
+            <button class="head-action">View all classes →</button>
+          </div>
+        </article>
+
+        <!-- TEACHERS — span 6 -->
+        <article class="card span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-kicker">People</span>
+              <h3>Teachers <span class="count">8</span></h3>
+              <p>Everyone teaching Thanushan this term. Add any off-Classroom teachers manually.</p>
+            </div>
+            <button class="head-action">+ Add teacher</button>
+          </div>
+          <ul class="item-list" role="list">
+            <li>
+              <div class="t-avatar" style="background:#efe0d1; color:#7a2f18;">BH</div>
+              <div>
+                <div class="li-title">Bill Horgarth</div>
+                <div class="li-meta">English · bhorgarth@tdsb.on.ca</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="t-avatar" style="background:#e0ebf5; color:#214966;">AP</div>
+              <div>
+                <div class="li-title">Dr. Arun Patel</div>
+                <div class="li-meta">Applied Mathematics · apatel@tdsb.on.ca</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="t-avatar" style="background:#e6efe8; color:#23523f;">NO</div>
+              <div>
+                <div class="li-title">Ms. Nadia Okafor</div>
+                <div class="li-meta">Science · nokafor@tdsb.on.ca</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="t-avatar" style="background:#f6ead3; color:#7a5a1a;">ML</div>
+              <div>
+                <div class="li-title">Mr. Laurent</div>
+                <div class="li-meta">Civics · mlaurent@tdsb.on.ca</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+          </ul>
+          <div class="digest-foot" style="border-top:1px solid var(--hair); margin-top:10px; padding-top:14px;">
+            <span>4 more via Classroom sync</span>
+            <button class="head-action">View all teachers →</button>
+          </div>
+        </article>
+
+        <!-- CLASS MATERIALS — span 6 -->
+        <article class="card span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-kicker">Content library</span>
+              <h3>Class Materials <span class="count">78</span></h3>
+              <p>Upload handouts, slides, or photos of notes. We'll parse and turn them into study tools.</p>
+            </div>
+            <button class="head-action">↑ Upload</button>
+          </div>
+          <ul class="item-list" role="list">
+            <li>
+              <div class="mat-type pdf">PDF</div>
+              <div>
+                <div class="li-title">Macbeth Act III — Close reading</div>
+                <div class="li-meta">English · 2 days ago · 12 flashcards generated</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="mat-type slide">SLD</div>
+              <div>
+                <div class="li-title">Quadratics: factoring practice</div>
+                <div class="li-meta">Applied Math · 4 days ago · Quiz ready</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="mat-type doc">DOC</div>
+              <div>
+                <div class="li-title">Lab report template</div>
+                <div class="li-meta">Science · 1 week ago</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+            <li>
+              <div class="mat-type vid">VID</div>
+              <div>
+                <div class="li-title">Citizenship amendment debate</div>
+                <div class="li-meta">Civics · 1 week ago · Transcript ready</div>
+              </div>
+              <span class="chev">›</span>
+            </li>
+          </ul>
+          <div class="digest-foot" style="border-top:1px solid var(--hair); margin-top:10px; padding-top:14px;">
+            <span>74 more materials</span>
+            <button class="head-action">View library →</button>
+          </div>
+        </article>
+      </div>
+
+      <!-- Section: insights -->
+      <div class="section-head">
+        <h2>How Thanushan is doing</h2>
+        <span class="section-meta">updated · 2h ago</span>
+      </div>
+
+      <div class="grid">
+        <!-- GRADES -->
+        <article class="card card--muted span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-kicker">Performance · Term 2</span>
+              <h3>Grade snapshot</h3>
+            </div>
+          </div>
+          <div class="grades-list">
+            <div class="grade-row">
+              <div>
+                <div class="grade-course">English · ENG2D</div>
+                <div class="grade-teacher">Bill Horgarth</div>
+              </div>
+              <div class="grade-pct a">87%</div>
+              <div class="grade-trend up">↑ 3</div>
+            </div>
+            <div class="grade-row">
+              <div>
+                <div class="grade-course">Applied Mathematics</div>
+                <div class="grade-teacher">Dr. Patel</div>
+              </div>
+              <div class="grade-pct b">74%</div>
+              <div class="grade-trend up">↑ 1</div>
+            </div>
+            <div class="grade-row">
+              <div>
+                <div class="grade-course">Science</div>
+                <div class="grade-teacher">Ms. Okafor</div>
+              </div>
+              <div class="grade-pct a">91%</div>
+              <div class="grade-trend">—</div>
+            </div>
+            <div class="grade-row">
+              <div>
+                <div class="grade-course">Civics &amp; Careers</div>
+                <div class="grade-teacher">Mr. Laurent</div>
+              </div>
+              <div class="grade-pct c">68%</div>
+              <div class="grade-trend down">↓ 4</div>
+            </div>
+          </div>
+          <div class="digest-foot" style="border-top:1px solid var(--hair); margin-top:18px; padding-top:14px;">
+            <span>Term average <strong>80%</strong></span>
+            <button class="head-action">Open report cards →</button>
+          </div>
+        </article>
+
+        <!-- STUDY TIMES -->
+        <article class="card card--muted span-6">
+          <div class="card-head">
+            <div class="card-title-wrap">
+              <span class="card-kicker">Habits · last 4 weeks</span>
+              <h3>Best study times</h3>
+              <p>When Thanushan actually studies — based on activity.</p>
+            </div>
+          </div>
+
+          <div class="times-grid">
+            <div class="times-col">
+              <div class="times-cell h2"></div><div class="times-cell h1"></div>
+              <div class="times-cell h3"></div><div class="times-cell h4"></div>
+              <div class="times-cell h2"></div>
+              <div class="times-col-label">MON</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell h1"></div><div class="times-cell h2"></div>
+              <div class="times-cell h2"></div><div class="times-cell h3"></div>
+              <div class="times-cell h1"></div>
+              <div class="times-col-label">TUE</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell h2"></div><div class="times-cell h3"></div>
+              <div class="times-cell h4"></div><div class="times-cell h4"></div>
+              <div class="times-cell h3"></div>
+              <div class="times-col-label">WED</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell"></div><div class="times-cell h1"></div>
+              <div class="times-cell h2"></div><div class="times-cell h2"></div>
+              <div class="times-cell h1"></div>
+              <div class="times-col-label">THU</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell"></div><div class="times-cell"></div>
+              <div class="times-cell h1"></div><div class="times-cell h2"></div>
+              <div class="times-cell h1"></div>
+              <div class="times-col-label">FRI</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell h3"></div><div class="times-cell h4"></div>
+              <div class="times-cell h4"></div><div class="times-cell h3"></div>
+              <div class="times-cell h2"></div>
+              <div class="times-col-label">SAT</div>
+            </div>
+            <div class="times-col">
+              <div class="times-cell h2"></div><div class="times-cell h3"></div>
+              <div class="times-cell h3"></div><div class="times-cell h2"></div>
+              <div class="times-cell h1"></div>
+              <div class="times-col-label">SUN</div>
+            </div>
+          </div>
+
+          <div class="digest-foot" style="border-top:1px solid var(--hair); margin-top:18px; padding-top:14px;">
+            <span>Peak <strong>Wed 4–6 PM</strong> &amp; <strong>Sat 10 AM</strong></span>
+            <button class="head-action">Suggest study plan →</button>
+          </div>
+        </article>
+      </div>
+
+    </section>
+
+    <!-- ===== ALL-KIDS OVERVIEW (hidden by default) ===== -->
+    <section id="allView" style="display:none;">
+      <div class="section-head">
+        <h2>Bridges at a glance</h2>
+        <span class="section-meta">2 · kids</span>
+      </div>
+
+      <div class="overview-grid">
+        <div class="kid-card">
+          <div class="kc-avatar" style="background:#3b6a8f;">T</div>
+          <div>
+            <div class="kc-name">Thanushan <span class="chip-grade">Grade 10</span></div>
+            <div class="kc-vitals">
+              <span><strong>11</strong> classes</span>
+              <span><strong>78</strong> tasks</span>
+              <span><strong>70</strong> XP/wk</span>
+            </div>
+            <a class="kc-open" href="#" data-open="thanushan">Open bridge <span>→</span></a>
+          </div>
+        </div>
+
+        <div class="kid-card">
+          <div class="kc-avatar" style="background:#c25b6f;">H</div>
+          <div>
+            <div class="kc-name">Haashini <span class="chip-grade">Grade 8</span></div>
+            <div class="kc-vitals">
+              <span><strong>5</strong> classes</span>
+              <span><strong>2</strong> tasks</span>
+              <span><strong>30</strong> XP/wk</span>
+            </div>
+            <a class="kc-open" href="#" data-open="haashini">Open bridge <span>→</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // ---- Kid data ---------------------------------------------------------
+    const KIDS = {
+      thanushan: {
+        initial: 'T', color: '#3b6a8f', name: 'Thanushan', grade: 'Grade 10',
+        sub: 'Bill Horgarth · English teacher',
+        flair: 'Curious Learner', status: 'pending',
+        vitals: { xp: '70', classes: '11', tasks: '78' },
+      },
+      haashini: {
+        initial: 'H', color: '#c25b6f', name: 'Haashini', grade: 'Grade 8',
+        sub: 'Franklin Street Public School',
+        flair: 'Curious Learner', status: 'pending',
+        vitals: { xp: '30', classes: '5', tasks: '2' },
+      },
+    };
+
+    const rail = document.getElementById('kidRail');
+    const kidView = document.getElementById('kidView');
+    const allView = document.getElementById('allView');
+
+    function select(id) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.kid === id));
+      if (id === 'all') {
+        kidView.style.display = 'none';
+        allView.style.display = 'block';
+        return;
+      }
+      const k = KIDS[id]; if (!k) return;
+      kidView.style.display = 'block';
+      allView.style.display = 'none';
+      const avatar = document.getElementById('heroAvatar');
+      avatar.textContent = k.initial;
+      avatar.style.background = k.color;
+      document.getElementById('heroName').firstChild.nodeValue = k.name + ' ';
+      document.getElementById('heroGrade').textContent = k.grade;
+      document.getElementById('heroSub').innerHTML = `
+        <span>${k.sub}</span>
+        <span class="dot-sep"></span>
+        <span>${k.flair}</span>
+        <span class="chip-inline ${k.status === 'pending' ? 'pending' : ''}">● ${k.status === 'pending' ? 'Pending link' : 'Active'}</span>
+      `;
+      // swap vitals
+      const v = document.getElementById('heroVitals');
+      v.children[0].querySelector('.vital-value').innerHTML = `${k.vitals.xp}<span class="unit">/wk</span>`;
+      v.children[1].querySelector('.vital-value').textContent = k.vitals.classes;
+      v.children[2].querySelector('.vital-value').textContent = k.vitals.tasks;
+    }
+
+    rail.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip || chip.classList.contains('ghost')) return;
+      select(chip.dataset.kid);
+    });
+
+    // "Open bridge" links from overview
+    document.querySelectorAll('[data-open]').forEach(el => {
+      el.addEventListener('click', e => { e.preventDefault(); select(el.dataset.open); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    });
+
+    // Toggle behavior (demo only)
+    document.querySelectorAll('.toggle').forEach(t => {
+      t.addEventListener('click', () => {
+        t.classList.toggle('on');
+        t.setAttribute('aria-pressed', t.classList.contains('on'));
+      });
+    });
+
+    // Overflow kebab menu
+    const menuBtn = document.getElementById('kidMenuBtn');
+    const menu    = document.getElementById('kidMenu');
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = menu.classList.toggle('open');
+      menuBtn.setAttribute('aria-expanded', open);
+    });
+    document.addEventListener('click', (e) => {
+      if (!menu.contains(e.target) && e.target !== menuBtn) {
+        menu.classList.remove('open');
+        menuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        menu.classList.remove('open');
+        menuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  </script>
+</body>
+</html>

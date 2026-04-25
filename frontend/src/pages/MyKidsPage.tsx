@@ -26,6 +26,9 @@ import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
+import { BridgeHeader } from '../components/bridge/BridgeHeader';
+import { useBridgeFonts } from '../components/bridge/fonts';
+import './BridgePage.css';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -57,6 +60,12 @@ export function MyKidsPage() {
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const selectedChildUserId = children.find(c => c.student_id === selectedChild)?.user_id ?? null;
   const studyTools = useParentStudyTools({ selectedChildUserId, navigate });
+  useBridgeFonts();
+  const bridgeStats = useMemo(() => ({
+    kidsLinked: children.length,
+    classesTracked: children.reduce((s, c) => s + (c.course_count ?? 0), 0),
+    activeTasks: children.reduce((s, c) => s + (c.active_task_count ?? 0), 0),
+  }), [children]);
   const urlStudentId = searchParams.get('student_id');
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
@@ -675,10 +684,12 @@ export function MyKidsPage() {
 
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
+      <div className="bridge-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
         { label: 'My Kids' },
       ]} />
+      <BridgeHeader {...bridgeStats} />
       <JourneyNudgeBanner pageName="my-kids" />
       {/* Child Tabs */}
       <div className="pd-child-selector-wrapper">
@@ -1557,6 +1568,7 @@ export function MyKidsPage() {
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
         onComplete={() => { toast('Email digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
       />
+      </div>
     </DashboardLayout>
   );
 }
