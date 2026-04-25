@@ -55,6 +55,9 @@ smoke-results.json
 # Uploaded files
 uploads/
 
+# DCI dev/test artifact storage stub (CB-DCI-001 M0-4 — TODO: GCS swap)
+app/storage/dci/
+
 # Temp files
 ERROR
 WARNING
