@@ -1107,6 +1107,8 @@ function EmailDigestPageUnified() {
   const [removeSchoolEmailError, setRemoveSchoolEmailError] = useState<string | null>(null);
   // #4055: restore focus to the "+ Add sender" trigger when modal closes.
   const addSenderTriggerRef = useRef<HTMLButtonElement | null>(null);
+  // #4056: digest-history expand/collapse state — mirrors the legacy UX.
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
 
   const { data: integrations = [], isLoading: intLoading, isError: intError } =
     useQuery<EmailDigestIntegration[]>({
@@ -1139,6 +1141,16 @@ function EmailDigestPageUnified() {
     queryKey: ['parent', 'monitored-senders'],
     queryFn: () => listMonitoredSenders().then((r) => r.data),
     // Always fetch — parent-scoped (#4048).
+  });
+
+  // #4056: digest history — same query shape as legacy.
+  const { data: logs = [], isLoading: logsLoading } = useQuery<DigestDeliveryLog[]>({
+    queryKey: ['email-digest', 'logs', activeIntegration?.id],
+    queryFn: () =>
+      getLogs(activeIntegration ? { integration_id: activeIntegration.id, limit: 50 } : { limit: 50 }).then(
+        (r) => r.data,
+      ),
+    enabled: !!activeIntegration,
   });
 
   // #4044: derive a unified list of "rows" to render. Every linked kid gets
@@ -1963,6 +1975,64 @@ function EmailDigestPageUnified() {
             </div>
           )}
         </div>
+
+        {/* 4. Digest History (#4056) — mirrors legacy ordering: last section. */}
+        {activeIntegration && (
+          <div className="ed-history-section">
+            <h2 className="ed-section-title">Digest History</h2>
+            {logsLoading && <div className="ed-loading">Loading history...</div>}
+            {!logsLoading && logs.length === 0 && (
+              <div className="ed-empty-history">
+                <p>No digests delivered yet. Your first digest will appear here after the next scheduled run.</p>
+              </div>
+            )}
+            {!logsLoading && logs.length > 0 && (
+              <div className="ed-log-list">
+                {logs.map((log) => (
+                  <div key={log.id} className="ed-log-card">
+                    <button
+                      className="ed-log-header"
+                      onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}
+                      aria-expanded={expandedLogId === log.id}
+                    >
+                      <div className="ed-log-meta">
+                        <span className="ed-log-date">{formatDate(log.delivered_at)}</span>
+                        <span className="ed-log-count">
+                          {log.email_count} {log.email_count === 1 ? 'email' : 'emails'}
+                        </span>
+                        <StatusBadge status={log.status} />
+                      </div>
+                      <svg
+                        className={`ed-chevron ${expandedLogId === log.id ? 'ed-chevron--open' : ''}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+                    {expandedLogId === log.id && (
+                      <div className="ed-log-content">
+                        {log.digest_content ? (
+                          <div className="ed-digest-text" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.digest_content) }} />
+                        ) : (
+                          <p className="ed-no-content">No digest content available.</p>
+                        )}
+                        {log.channels_used && (
+                          <div className="ed-log-channels">
+                            Delivered via: {log.channels_used}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {addSenderOpen && (
           <AddSenderModal

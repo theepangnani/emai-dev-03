@@ -1339,3 +1339,150 @@ describe('EmailDigestPage — unified remove school email (#4098)', () => {
     });
   });
 });
+
+describe('EmailDigestPage — unified Digest History (#4056)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({ data: [] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  });
+
+  it('renders the empty state when there are no logs', async () => {
+    mockGetLogs.mockResolvedValue({ data: [] });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /No digests delivered yet\. Your first digest will appear here after the next scheduled run\./,
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText('Digest History')).toBeInTheDocument();
+  });
+
+  it('renders log cards when there are logs', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 3,
+          digest_content: '<p>Today\'s digest</p>',
+          digest_length_chars: 24,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email',
+          status: 'delivered',
+        },
+        {
+          id: 302,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 1,
+          digest_content: null,
+          digest_length_chars: null,
+          delivered_at: '2026-04-21T11:00:00Z',
+          channels_used: null,
+          status: 'failed',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('3 emails')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Digest History')).toBeInTheDocument();
+    expect(screen.getByText('1 email')).toBeInTheDocument();
+    expect(screen.getByText('delivered')).toBeInTheDocument();
+    expect(screen.getByText('failed')).toBeInTheDocument();
+  });
+
+  it('expands a log card on click to show digest_content', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 2,
+          digest_content: '<p>Today\'s digest body</p>',
+          digest_length_chars: 30,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email',
+          status: 'delivered',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 emails')).toBeInTheDocument();
+    });
+
+    // Header button toggles expansion.
+    const header = screen.getByText('2 emails').closest('button');
+    expect(header).not.toBeNull();
+    fireEvent.click(header!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Today's digest body")).toBeInTheDocument();
+    });
+  });
+
+  it('shows the channels_used line when expanded', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 2,
+          digest_content: '<p>Body</p>',
+          digest_length_chars: 14,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email, whatsapp',
+          status: 'delivered',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 emails')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('2 emails').closest('button')!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Delivered via:/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/email, whatsapp/)).toBeInTheDocument();
+  });
+
+  it('renders the loading state while the logs query is in flight', async () => {
+    let resolveLogs: ((value: { data: unknown[] }) => void) | undefined;
+    mockGetLogs.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLogs = resolve;
+        }),
+    );
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Digest History')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Loading history...')).toBeInTheDocument();
+
+    // Resolve so the test cleanly tears down.
+    resolveLogs?.({ data: [] });
+  });
+});
