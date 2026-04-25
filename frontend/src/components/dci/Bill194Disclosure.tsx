@@ -53,9 +53,10 @@ const labelStyle: CSSProperties = {
 /**
  * Reusable inline AI disclosure required on every kid capture screen.
  *
- * Renders an `aria-live="polite"` region so screen readers announce the
- * disclosure when it appears (e.g. when a kid first opens the capture
- * screen). The wrapper has `role="note"` to mark it as advisory text.
+ * The wrapper uses `role="note"` to mark it as advisory text — that's
+ * the WCAG-correct affordance for static content. (We intentionally do
+ * not use `aria-live` here: it's for dynamic regions that change after
+ * mount, and the disclosure copy is static.)
  */
 export function Bill194Disclosure({
   message = DEFAULT_MESSAGE,
@@ -65,7 +66,6 @@ export function Bill194Disclosure({
   return (
     <div
       role="note"
-      aria-live="polite"
       data-testid={testId}
       style={{ ...containerStyle, ...style }}
     >

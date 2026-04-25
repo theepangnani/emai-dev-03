@@ -251,11 +251,12 @@ def upsert_consent(
         if parent_push_time is not None:
             settings_row.parent_push_time = parent_push_time
 
-    db.commit()
-    if consent is not None:
-        db.refresh(consent)
-    if settings_row is not None:
-        db.refresh(settings_row)
+    # Flush so attribute reads below see post-mutation values, but defer
+    # the outer commit until AFTER log_action stages the audit row in its
+    # SAVEPOINT. This keeps consent change + audit entry atomic — Bill 194
+    # § 11 requires every consent change to be auditable; a mid-flow crash
+    # must not leave a consent change persisted without its audit row.
+    db.flush()
 
     after = {
         "photo_ok": bool(consent.photo_ok) if consent else False,
@@ -284,7 +285,12 @@ def upsert_consent(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+    # Single commit persists consent + settings + audit row atomically.
     db.commit()
+    if consent is not None:
+        db.refresh(consent)
+    if settings_row is not None:
+        db.refresh(settings_row)
 
     return _to_snapshot(consent, settings_row, parent_id, kid_id)
 
@@ -306,6 +312,12 @@ def assert_dci_consent(
 
     Returns the snapshot on success (so M0-4 can also gate retention etc.).
 
+    Defense-in-depth: this helper also verifies the (parent, kid) link
+    via ``_verify_parent_owns_kid`` — a forged ``kid_id`` raises 404
+    rather than falling through to the deny path. Callers should still
+    perform their own ownership checks at the route level; this is the
+    second line of defense.
+
     Caller contract::
 
         from app.services.dci_consent_service import assert_dci_consent
@@ -318,6 +330,7 @@ def assert_dci_consent(
             requires_voice=bool(payload.voice_uri),
         )
     """
+    _verify_parent_owns_kid(db, parent_id, kid_id)
     consent = _load_consent(db, parent_id, kid_id)
     settings_row = _load_settings(db, parent_id, kid_id)
 

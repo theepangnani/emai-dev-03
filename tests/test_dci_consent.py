@@ -373,6 +373,19 @@ class TestAssertDciConsent:
             )
         assert exc.value.status_code == 403
 
+    def test_404_when_kid_not_owned_by_parent(
+        self, db_session, parent_with_two_kids, other_parent
+    ):
+        from app.services.dci_consent_service import assert_dci_consent
+
+        kid_a = parent_with_two_kids["kid_a"]
+        # other_parent is unrelated to kid_a
+        with pytest.raises(HTTPException) as exc:
+            assert_dci_consent(
+                db_session, kid_id=kid_a.id, parent_id=other_parent.id
+            )
+        assert exc.value.status_code == 404
+
     def test_passes_when_all_required_consent_granted(
         self, db_session, client, parent_with_two_kids
     ):

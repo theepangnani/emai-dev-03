@@ -205,6 +205,16 @@ function ConsentEditor({ kid, initialConsent, onSaved }: ConsentEditorProps) {
               Allow AI to summarize the check-in for your evening
               digest. Required to use Daily Check-In.
             </p>
+            {!aiOk && (
+              <p
+                style={{ ...toggleDesc, color: '#b45309', marginTop: 4 }}
+                data-testid="dci-consent-ai-warning"
+                role="status"
+              >
+                Daily Check-In stays paused for {kid.full_name} while
+                AI processing is off.
+              </p>
+            )}
           </div>
         </div>
       </fieldset>
