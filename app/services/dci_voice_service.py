@@ -71,11 +71,11 @@ def _load_from_cache(content_hash: str) -> dict | None:
         _memory_cache.pop(content_hash, None)
 
     path = _cache_path_for(content_hash)
-    if not path.exists():
-        return None
     try:
         with path.open("r", encoding="utf-8") as fh:
             entry = json.load(fh)
+    except FileNotFoundError:
+        return None
     except (OSError, json.JSONDecodeError) as e:
         logger.warning("DCI voice cache read failed for %s: %s", content_hash, e)
         return None
@@ -260,6 +260,17 @@ async def _score_sentiment(transcript: str) -> float:
     if not transcript or not transcript.strip():
         return 0.0
 
+    # Truncate long transcripts so the sentiment call stays cheap. Logged
+    # so callers know the score reflects only the first 4 000 chars — a
+    # 5-minute kid recap is typically <1 500 chars, so this triggers only
+    # for unusually long clips.
+    payload_text = transcript[:4000]
+    if len(transcript) > 4000:
+        logger.info(
+            "DCI sentiment truncated transcript %d -> 4000 chars",
+            len(transcript),
+        )
+
     try:
         # Local import keeps the Anthropic SDK out of test collection when
         # the caller stubs ``_score_sentiment`` directly.
@@ -273,7 +284,7 @@ async def _score_sentiment(transcript: str) -> float:
             system=_SENTIMENT_SYSTEM_PROMPT,
             tools=[_SENTIMENT_TOOL_SCHEMA],
             tool_choice={"type": "tool", "name": "score_sentiment"},
-            messages=[{"role": "user", "content": transcript[:4000]}],
+            messages=[{"role": "user", "content": payload_text}],
         )
 
         for block in message.content:
