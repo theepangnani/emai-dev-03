@@ -583,8 +583,8 @@
 }
 
 .study-type-quiz {
-  background: var(--color-warning-light);
-  color: var(--color-accent-warm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .study-type-flashcards {
