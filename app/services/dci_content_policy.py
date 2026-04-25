@@ -93,10 +93,23 @@ _SCHOOL_CONTEXT_WORDS: frozenset[str] = frozenset({
     "buddy", "buddies", "peer", "peers", "desk", "table",
 })
 
-# A "name-shaped" capitalised token: starts with uppercase, then 2-19
-# alpha chars. We exclude common sentence-start uppercased words via the
-# stop list below to keep precision high.
-_NAME_TOKEN_RE = re.compile(r"\b([A-Z][a-z]{2,19})\b")
+# A "name-shaped" capitalised token: starts with uppercase, then 1-19
+# more chars (lower/upper/apostrophe/hyphen) AND must contain at least
+# one lowercase letter. The lowercase requirement is what excludes
+# all-caps acronyms ("SIN", "OCD", "REDACTED") that would otherwise
+# read as 3-letter names. Catches 2-letter names ("Bo", "Al", "Mo"),
+# internal caps ("DeShawn", "MacKenzie"), and apostrophe/hyphen names
+# ("O'Brien", "Anne-Marie"). We exclude common sentence-start
+# uppercased words via the stop list below to keep precision high.
+_NAME_TOKEN_RE = re.compile(r"\b([A-Z][A-Za-z'\-]{1,19})\b")
+
+
+def _is_name_shaped(token: str) -> bool:
+    """True iff token is name-shaped: uppercase lead + at least one lowercase."""
+    if not _NAME_TOKEN_RE.fullmatch(token):
+        return False
+    # All-caps acronyms ("SIN", "PTSD", "REDACTED") have no lowercase.
+    return any(c.islower() for c in token)
 
 # Common false-positive words that look like names at sentence start.
 # The v0 list is short on purpose; ML classifier widens this.
@@ -141,7 +154,10 @@ def _detect_named_other_kid(text: str, family_kid_names: Iterable[str]) -> list[
     # immediately preceded (after stripping whitespace) by '.', '!', or '?'.
     raw_tokens: list[tuple[str, bool]] = []  # (token, is_sentence_initial)
     is_initial_next = True
-    for match in re.finditer(r"[A-Za-z]+|[.!?]", text):
+    # Word tokens may include internal apostrophes / hyphens so names like
+    # "O'Brien" and "Anne-Marie" stay one token. Sentence terminators are
+    # tracked separately to drive ``is_sentence_initial``.
+    for match in re.finditer(r"[A-Za-z][A-Za-z'\-]*|[.!?]", text):
         tok = match.group(0)
         if tok in (".", "!", "?"):
             is_initial_next = True
@@ -163,11 +179,15 @@ def _detect_named_other_kid(text: str, family_kid_names: Iterable[str]) -> list[
     flagged: list[str] = []
     seen: set[str] = set()
     for i, (raw, sentence_initial) in enumerate(raw_tokens):
-        if not _NAME_TOKEN_RE.fullmatch(raw):
+        if not _is_name_shaped(raw):
             continue
-        if raw in _NAME_STOPLIST:
+        # Normalise possessive ("Aanya's" -> "Aanya") for both stoplist
+        # and family-whitelist comparisons. The display token (``raw``)
+        # keeps its original form for the flagged list.
+        bare = raw[:-2] if raw.lower().endswith("'s") else raw
+        if bare in _NAME_STOPLIST:
             continue
-        if raw.lower() in family_lc:
+        if bare.lower() in family_lc:
             continue
         if sentence_initial:
             # Sentence-start capitalisation is too noisy in v0 — common
@@ -196,11 +216,18 @@ _PII_REPLACEMENT = {
 
 
 def _scrub_pii(text: str) -> tuple[str, list[str]]:
-    """Apply every PII pattern; return scrubbed text + fired rule names."""
+    """Apply every PII pattern; return scrubbed text + fired rule names.
+
+    Order matters: phone runs FIRST so a string like ``"416-555-1234"``
+    is labelled ``pii_phone`` rather than the looser SIN pattern (which
+    also accepts 3-3-3 digit groups). SIN runs SECOND to catch the
+    no-separator 9-digit form. Address runs THIRD so its multi-word
+    capture cannot include a token already replaced by ``[REDACTED_*]``.
+    Email runs LAST because the ``@`` anchor makes it the most specific
+    pattern and order does not change its match set.
+    """
     fired: list[str] = []
     scrubbed = text
-    # Phone before SIN before address before email — the more specific
-    # patterns must win against the looser ones.
     for rule in ("pii_phone", "pii_sin", "pii_address", "pii_email"):
         pattern = PII_PATTERNS[rule]
         if pattern.search(scrubbed):
@@ -228,6 +255,12 @@ def _find_keyword(text: str, keywords: Iterable[str]) -> str | None:
 # Public API
 # ---------------------------------------------------------------------------
 
+# Defensive cap: Sonnet output is bounded to ~16KB in practice, but a
+# pathological caller could feed us a megabyte of text. The check still
+# runs, but we hard-truncate first so regex backtracking stays bounded.
+_MAX_INPUT_CHARS: int = 64_000
+
+
 def check(text: str, family_kid_names: list[str]) -> PolicyResult:
     """Run the full v0 policy check against an AI-generated summary.
 
@@ -243,6 +276,8 @@ def check(text: str, family_kid_names: list[str]) -> PolicyResult:
     """
     if text is None:
         text = ""
+    if len(text) > _MAX_INPUT_CHARS:
+        text = text[:_MAX_INPUT_CHARS]
 
     blocked_rules: list[str] = []
 
@@ -314,7 +349,16 @@ def audit_block(
         "raw_excerpt": (raw or "")[:500],
     }
     if extra:
-        details.update(extra)
+        # Protect canonical fields — a buggy caller passing ``extra``
+        # must not be able to overwrite the audit-trail evidence.
+        _protected = {"blocked_rules", "raw_excerpt"}
+        for k, v in extra.items():
+            if k in _protected:
+                logger.warning(
+                    "dci.policy.audit_block: ignoring protected key %r in extra", k
+                )
+                continue
+            details[k] = v
     audit_service.log_action(
         db,
         user_id=parent_id,

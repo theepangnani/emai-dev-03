@@ -147,6 +147,31 @@ def test_multiple_family_kids_whitelisted() -> None:
     assert result["allowed"] is True
 
 
+def test_possessive_form_of_own_kid_does_not_block() -> None:
+    """``Aanya's`` should be normalised to ``Aanya`` for whitelist match."""
+    text = "Aanya's classmate Priya cried at recess today."
+    result = check(text, family_kid_names=["Aanya"])
+    # Aanya itself stays whitelisted; only Priya should flag.
+    assert result["allowed"] is False
+    assert "named_other_kid" in result["blocked_rules"]
+
+
+def test_apostrophe_name_detected_in_school_context() -> None:
+    """Internal-apostrophe names like O'Brien should still flag."""
+    text = "Aanya played at recess with her classmate O'Brien today."
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is False
+    assert "named_other_kid" in result["blocked_rules"]
+
+
+def test_empty_family_list_flags_school_context_name() -> None:
+    """When family list is unknown, any school-context name flags."""
+    text = "The classmate Priya cried at recess today."
+    result = check(text, family_kid_names=[])
+    assert result["allowed"] is False
+    assert "named_other_kid" in result["blocked_rules"]
+
+
 # ---------------------------------------------------------------------------
 # Medical rule — must block
 # ---------------------------------------------------------------------------
@@ -260,6 +285,60 @@ def test_audit_block_supports_extra_details() -> None:
     _args, kwargs = mock_log.call_args
     assert kwargs["details"]["retry_count"] == 2
     assert kwargs["details"]["model_version"] == "sonnet-4.6"
+
+
+def test_audit_block_extra_cannot_clobber_canonical_keys() -> None:
+    """A buggy caller passing protected keys in ``extra`` must not win."""
+    fake_db = MagicMock()
+    with patch.object(dci_content_policy.audit_service, "log_action") as mock_log:
+        dci_content_policy.audit_block(
+            fake_db,
+            parent_id=1,
+            summary_id=1,
+            blocked_rules=["pii_sin"],
+            raw="real raw text",
+            extra={
+                "blocked_rules": ["EVIL_OVERRIDE"],
+                "raw_excerpt": "EVIL_OVERRIDE",
+                "retry_count": 3,
+            },
+        )
+    _args, kwargs = mock_log.call_args
+    assert kwargs["details"]["blocked_rules"] == ["pii_sin"]
+    assert kwargs["details"]["raw_excerpt"] == "real raw text"
+    assert kwargs["details"]["retry_count"] == 3
+
+
+# ---------------------------------------------------------------------------
+# Defensive cap on input length
+# ---------------------------------------------------------------------------
+
+def test_check_truncates_pathologically_long_input() -> None:
+    """``check`` must not blow up on a 1MB input — it truncates first."""
+    big = "All good today. " * 100_000  # ~1.6MB
+    result = check(big, family_kid_names=["Aanya"])
+    # Should still return a well-formed result without raising.
+    assert isinstance(result["allowed"], bool)
+
+
+# ---------------------------------------------------------------------------
+# Substring-tightening regression: legitimate "diagnosed with" usage
+# ---------------------------------------------------------------------------
+
+def test_benign_diagnosed_with_does_not_block() -> None:
+    """v0 must not block ``diagnosed with a stomach bug`` etc."""
+    text = "Aanya was diagnosed with a stomach bug and stayed home today."
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is True
+    assert "medical_keyword" not in result["blocked_rules"]
+
+
+def test_iep_form_does_not_block() -> None:
+    """``IEP form`` (paperwork) must not trip the medical filter."""
+    text = "Please sign the IEP form and return it tomorrow."
+    result = check(text, family_kid_names=["Aanya"])
+    assert result["allowed"] is True
+    assert "medical_keyword" not in result["blocked_rules"]
 
 
 # ---------------------------------------------------------------------------

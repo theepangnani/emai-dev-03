@@ -88,6 +88,12 @@ PII_PATTERNS: dict[str, re.Pattern[str]] = {
 # a child. Matched as case-insensitive substrings. Kept short on purpose:
 # v0 favours precision over recall — the ML classifier (#4149) will widen
 # the net.
+# NOTE: each entry is matched as a case-insensitive SUBSTRING (see
+# ``_find_keyword`` in ``dci_content_policy``). Keep entries specific
+# enough that they do not fire on benign substrings — e.g. prefer
+# ``"diagnosed with adhd"`` over the bare ``"diagnosed with"`` (which
+# would block the legitimate "diagnosed with a stomach bug"). This is
+# the v0 precision lever; recall widens with the ML classifier (#4149).
 MEDICAL_KEYWORDS: tuple[str, ...] = (
     "ADHD",
     "autism",
@@ -96,7 +102,16 @@ MEDICAL_KEYWORDS: tuple[str, ...] = (
     "anxiety disorder",
     "depression diagnosis",
     "diagnosed with depression",
-    "diagnosed with",
+    "diagnosed with adhd",
+    "diagnosed with autism",
+    "diagnosed with bipolar",
+    "diagnosed with anxiety",
+    "diagnosed with ocd",
+    "diagnosed with ptsd",
+    # "medication for" is intentionally broad: surfacing any "medication
+    # for X" phrase in a school summary about a kid is sensitive enough
+    # to warrant a block + human-rewrite. False-positive risk is the
+    # narrow "medication formula" string, judged acceptable for v0.
     "medication for",
     "is medicated",
     "on medication",
@@ -107,7 +122,9 @@ MEDICAL_KEYWORDS: tuple[str, ...] = (
     "dyslexia",
     "dyscalculia",
     "dysgraphia",
-    "IEP for",
+    "iep for autism",
+    "iep for adhd",
+    "iep for a learning",
     "psychiatric",
     "psychotic",
     "self-harm",
