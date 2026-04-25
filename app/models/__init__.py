@@ -64,6 +64,7 @@ from app.models.learning_cycle import (
     LearningCycleAnswer,
 )
 from app.models.tutor import TutorConversation, TutorMessage
+from app.models.checkin_streak import CheckinStreakSummary  # CB-DCI-001 M0-8 (#4145)
 
 
 __all__ = [
@@ -159,4 +160,5 @@ __all__ = [
     "LearningCycleAnswer",
     "TutorConversation",
     "TutorMessage",
+    "CheckinStreakSummary",
 ]
