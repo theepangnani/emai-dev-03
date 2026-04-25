@@ -79,6 +79,14 @@ from app.models.learning_cycle import (  # noqa: F401 — CB-TUTOR-002 Phase 2 (
     LearningCycleAnswer,
 )
 from app.models.tutor import TutorConversation, TutorMessage  # noqa: F401 — CB-TUTOR-002 Phase 1 (#4063)
+from app.models.dci import (  # noqa: F401 — CB-DCI-001 M0 (#4140)
+    DailyCheckin,
+    ClassificationEvent,
+    AISummary,
+    ConversationStarter,
+    CheckinStreakSummary,
+    CheckinConsent,
+)
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
@@ -656,6 +664,327 @@ finally:
             except Exception:
                 pass
         _lc_lock_conn.close()
+
+# CB-DCI-001 M0 (#4140) — Daily Check-In Ritual: 6 new tables.
+# `create_all` already handles these, but explicit CREATE TABLE keeps the
+# migration self-describing for Cloud Run cold starts and gives us a single
+# pg_try_advisory_lock boundary. Wrapped in try/except so startup never blocks.
+def _migrate_dci_tables() -> None:
+    """Create the 6 DCI tables (daily_checkins, classification_events,
+    ai_summaries, conversation_starters, checkin_streak_summary, checkin_consent)
+    plus required indexes and unique constraints. Idempotent — safe to call
+    on every cold start.
+
+    Each statement runs inside a single ``with engine.connect()`` block with
+    its own ``conn.commit()`` and a top-level try/except so a partial failure
+    cannot block startup.
+    """
+    _dci_lock_conn = None
+    _dci_lock_acquired = False
+    try:
+        if _is_pg:
+            _dci_lock_conn = engine.connect()
+            for _dci_attempt in range(1, 4):
+                _dci_result = _dci_lock_conn.execute(
+                    text("SELECT pg_try_advisory_lock(4140)")
+                )
+                _dci_lock_acquired = _dci_result.scalar()
+                if _dci_lock_acquired:
+                    logger.info(
+                        "Acquired advisory lock 4140 for DCI tables migration "
+                        "(attempt %d)",
+                        _dci_attempt,
+                    )
+                    break
+                logger.warning(
+                    "Advisory lock 4140 held by another instance "
+                    "(attempt %d/3), retrying in 5s...",
+                    _dci_attempt,
+                )
+                time.sleep(5)
+            if not _dci_lock_acquired:
+                logger.warning(
+                    "Could not acquire advisory lock 4140 after 3 attempts — "
+                    "running DCI tables migration without lock"
+                )
+
+        # 1) daily_checkins
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS daily_checkins (
+                            id SERIAL PRIMARY KEY,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            photo_uris JSON NOT NULL DEFAULT '[]',
+                            voice_uri VARCHAR(500),
+                            text_content VARCHAR(280),
+                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web',
+                            CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'))
+                        )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE daily_checkins
+                                ADD CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS daily_checkins (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            photo_uris JSON NOT NULL DEFAULT '[]',
+                            voice_uri VARCHAR(500),
+                            text_content VARCHAR(280),
+                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web',
+                            CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'))
+                        )
+                    """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_daily_checkins_kid_date "
+                    "ON daily_checkins(kid_id, submitted_at)"
+                ))
+                _conn.commit()
+                logger.info("dci.daily_checkins migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.daily_checkins migration note: %s", _err)
+
+        # 2) classification_events
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS classification_events (
+                            id SERIAL PRIMARY KEY,
+                            checkin_id INTEGER NOT NULL REFERENCES daily_checkins(id) ON DELETE CASCADE,
+                            artifact_type VARCHAR(20) NOT NULL,
+                            subject VARCHAR(50),
+                            topic VARCHAR(200),
+                            strand_code VARCHAR(20),
+                            deadline_iso DATE,
+                            confidence DOUBLE PRECISION,
+                            corrected_by_kid BOOLEAN NOT NULL DEFAULT FALSE,
+                            model_version VARCHAR(50),
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'))
+                        )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE classification_events
+                                ADD CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS classification_events (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            checkin_id INTEGER NOT NULL REFERENCES daily_checkins(id) ON DELETE CASCADE,
+                            artifact_type VARCHAR(20) NOT NULL,
+                            subject VARCHAR(50),
+                            topic VARCHAR(200),
+                            strand_code VARCHAR(20),
+                            deadline_iso DATE,
+                            confidence REAL,
+                            corrected_by_kid BOOLEAN NOT NULL DEFAULT FALSE,
+                            model_version VARCHAR(50),
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'))
+                        )
+                    """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_classification_events_checkin_id "
+                    "ON classification_events(checkin_id)"
+                ))
+                _conn.commit()
+                logger.info("dci.classification_events migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.classification_events migration note: %s", _err)
+
+        # 3) ai_summaries
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS ai_summaries (
+                            id SERIAL PRIMARY KEY,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            summary_date DATE NOT NULL,
+                            summary_json JSON NOT NULL,
+                            generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            model_version VARCHAR(50) NOT NULL,
+                            prompt_hash VARCHAR(64) NOT NULL,
+                            policy_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+                            parent_edited BOOLEAN NOT NULL DEFAULT FALSE,
+                            CONSTRAINT uq_ai_summaries_kid_date UNIQUE (kid_id, summary_date)
+                        )
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS ai_summaries (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            summary_date DATE NOT NULL,
+                            summary_json JSON NOT NULL,
+                            generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            model_version VARCHAR(50) NOT NULL,
+                            prompt_hash VARCHAR(64) NOT NULL,
+                            policy_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+                            parent_edited BOOLEAN NOT NULL DEFAULT FALSE,
+                            CONSTRAINT uq_ai_summaries_kid_date UNIQUE (kid_id, summary_date)
+                        )
+                    """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_ai_summaries_kid_id "
+                    "ON ai_summaries(kid_id)"
+                ))
+                _conn.commit()
+                logger.info("dci.ai_summaries migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.ai_summaries migration note: %s", _err)
+
+        # 4) conversation_starters
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS conversation_starters (
+                            id SERIAL PRIMARY KEY,
+                            summary_id INTEGER NOT NULL REFERENCES ai_summaries(id) ON DELETE CASCADE,
+                            text TEXT NOT NULL,
+                            was_used BOOLEAN,
+                            parent_feedback VARCHAR(20),
+                            regenerated_from INTEGER REFERENCES conversation_starters(id) ON DELETE SET NULL,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'))
+                        )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE conversation_starters
+                                ADD CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS conversation_starters (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            summary_id INTEGER NOT NULL REFERENCES ai_summaries(id) ON DELETE CASCADE,
+                            text TEXT NOT NULL,
+                            was_used BOOLEAN,
+                            parent_feedback VARCHAR(20),
+                            regenerated_from INTEGER REFERENCES conversation_starters(id) ON DELETE SET NULL,
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'))
+                        )
+                    """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_conversation_starters_summary_id "
+                    "ON conversation_starters(summary_id)"
+                ))
+                _conn.commit()
+                logger.info("dci.conversation_starters migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.conversation_starters migration note: %s", _err)
+
+        # 5) checkin_streak_summary
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS checkin_streak_summary (
+                            kid_id INTEGER PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+                            current_streak INTEGER NOT NULL DEFAULT 0,
+                            longest_streak INTEGER NOT NULL DEFAULT 0,
+                            last_checkin_date DATE,
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                        )
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS checkin_streak_summary (
+                            kid_id INTEGER PRIMARY KEY REFERENCES students(id) ON DELETE CASCADE,
+                            current_streak INTEGER NOT NULL DEFAULT 0,
+                            longest_streak INTEGER NOT NULL DEFAULT 0,
+                            last_checkin_date DATE,
+                            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                _conn.commit()
+                logger.info("dci.checkin_streak_summary migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.checkin_streak_summary migration note: %s", _err)
+
+        # 6) checkin_consent (composite PK)
+        try:
+            with engine.connect() as _conn:
+                if _is_pg:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS checkin_consent (
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            photo_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            voice_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            ai_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            retention_days INTEGER NOT NULL DEFAULT 90,
+                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT pk_checkin_consent PRIMARY KEY (parent_id, kid_id)
+                        )
+                    """))
+                else:
+                    _conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS checkin_consent (
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            kid_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                            photo_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            voice_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            ai_ok BOOLEAN NOT NULL DEFAULT FALSE,
+                            retention_days INTEGER NOT NULL DEFAULT 90,
+                            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT pk_checkin_consent PRIMARY KEY (parent_id, kid_id)
+                        )
+                    """))
+                _conn.commit()
+                logger.info("dci.checkin_consent migration completed (#4140)")
+        except Exception as _err:
+            logger.warning("dci.checkin_consent migration note: %s", _err)
+
+    finally:
+        if _dci_lock_conn is not None:
+            if _dci_lock_acquired:
+                try:
+                    _dci_lock_conn.execute(text("SELECT pg_advisory_unlock(4140)"))
+                    _dci_lock_conn.commit()
+                except Exception:
+                    pass
+            _dci_lock_conn.close()
+
+
+_migrate_dci_tables()
+
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
