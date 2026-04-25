@@ -21,6 +21,7 @@ interface KidHeroProps {
   onExport: () => void;
   onResetPassword?: () => void;
   onAwardXp?: () => void;
+  onQuizHistory?: () => void;
   onResendInvite?: () => void;
   onCopyInviteLink?: () => void;
   onRemove: () => void;
@@ -37,6 +38,7 @@ export function KidHero({
   onExport,
   onResetPassword,
   onAwardXp,
+  onQuizHistory,
   onResendInvite,
   onCopyInviteLink,
   onRemove,
@@ -95,6 +97,7 @@ export function KidHero({
             onExport={onExport}
             onResetPassword={onResetPassword}
             onAwardXp={onAwardXp}
+            onQuizHistory={onQuizHistory}
             onResendInvite={onResendInvite}
             onCopyInviteLink={onCopyInviteLink}
             onRemove={onRemove}

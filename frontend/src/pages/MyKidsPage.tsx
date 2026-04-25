@@ -3,17 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, courseContentsApi, coursesApi, tasksApi, invitesApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
 import { listIntegrations } from '../api/parentEmailDigest';
-import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
-import { AddActionButton } from '../components/AddActionButton';
 import { useToast } from '../components/Toast';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
-import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { SectionPanel } from '../components/SectionPanel';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
@@ -83,12 +80,8 @@ export function MyKidsPage() {
   const [sectionLoading, setSectionLoading] = useState(false);
 
 
-  // Collapsible sections
-  const [showCourses, setShowCourses] = useState(false);
-  const [showGrades, setShowGrades] = useState(false);
+  // Collapsible sections (showMaterials still drives the all-kids view; others removed in PR 6 / #4121)
   const [showMaterials, setShowMaterials] = useState(false);
-  const [showTeachers, setShowTeachers] = useState(false);
-  const [showConversation, setShowConversation] = useState(false);
 
   // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
@@ -701,20 +694,6 @@ export function MyKidsPage() {
         onAddChild={() => setShowAddChildModal(true)}
         colors={CHILD_COLORS}
       />
-      <AddActionButton actions={[
-        { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => studyTools.setShowStudyModal(true), showPlus: true },
-        { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
-        { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
-        { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
-        { icon: '\u{1F4E5}', label: 'Export Data', onClick: () => navigate('/settings/data-export') },
-        ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
-          setShowResetPassword(true);
-          const child = children.find(c => c.student_id === selectedChild);
-          setResetPwMethod(child?.email ? 'email' : 'direct');
-          setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
-        }}] : []),
-      ]} />
-
       {selectedChild != null && (() => {
         const child = children.find(c => c.student_id === selectedChild);
         if (!child) return null;
@@ -739,6 +718,7 @@ export function MyKidsPage() {
               setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
             }}
             onAwardXp={() => setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name })}
+            onQuizHistory={() => navigate('/quiz-history')}
             onResendInvite={canResend ? async () => {
               setResendingInviteId(child.invite_id);
               setResendSuccess(null);
@@ -918,51 +898,7 @@ export function MyKidsPage() {
             );
           })()}
 
-          {/* ── Quick Actions ──────────────────────── */}
-          <div className="dash-quick-actions" style={{ marginBottom: 16 }}>
-            <button className="dash-quick-action" onClick={() => navigate('/study')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128214;</span>
-              <span>Study</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate(selectedChild ? `/tasks?student_id=${selectedChild}` : '/tasks')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#9989;</span>
-              <span>View Tasks</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/courses')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128218;</span>
-              <span>View Classes</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128196;</span>
-              <span>View Class Material</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/ai-tools')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128161;</span>
-              <span>Help My Kid</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => setShowStudyRequest(true)}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128172;</span>
-              <span>Request Study</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/school-report-cards')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
-              <span>Report Cards</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => {
-              if (!hasEmailDigestIntegration) {
-                setShowEmailDigestWizard(true);
-                return;
-              }
-              const activeChild = children.find(c => c.student_id === selectedChild);
-              const firstName = activeChild?.full_name?.trim().split(/\s+/)[0] ?? '';
-              navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
-            }}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4E7;</span>
-              <span>Email Digest</span>
-            </button>
-          </div>
-
-          {/* ── Bridge management grid (PR 4 / #4117) — additive; legacy SectionPanels below cleaned up in PR 6 ── */}
+          {/* ── Bridge management grid (PR 4 / #4117) ── */}
           {(() => {
             const childName = children.find(c => c.student_id === selectedChild)?.full_name ?? 'this child';
             const courses = overview?.courses ?? [];
@@ -1118,137 +1054,6 @@ export function MyKidsPage() {
             );
           })()}
 
-          <div className="dashboard-redesign">
-          {/* ── Class Materials ───────────────────── */}
-          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)} headerRight={
-            materials.length > 0 ? (
-              <button
-                className="section-panel__view-all"
-                onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
-              >
-                View All
-              </button>
-            ) : undefined
-          }>
-              <div className="mykids-list">
-                {materials.length === 0 ? (
-                  <p className="dash-empty-hint">No class materials yet.</p>
-                ) : recentMaterials.map(m => (
-                  <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{m.title}</span>
-                      <span className="mykids-list-meta">
-                        <span className="mykids-badge">{m.content_type}</span>
-                        {m.course_name && <span> &middot; {m.course_name}</span>}
-                      </span>
-                    </div>
-                    <button
-                            className="mykids-list-action-btn"
-                      title="Move to class"
-                      onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
-                    >&#128194;</button>
-                  </div>
-                ))}
-              </div>
-          </SectionPanel>
-
-          {/* ── Best Study Times ──────────────────── */}
-          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
-
-          {/* ── Courses ───────────────────────────── */}
-          <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>
-            {overview && (
-              <div className="mykids-list">
-                {overview.courses.length === 0 ? (
-                  <GoogleClassroomPrompt
-                    childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
-                    childStudentId={selectedChild}
-                    onAddManually={() => setShowAddCourseModal(true)}
-                  />
-                ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{c.name}</span>
-                      <span className="mykids-list-meta">
-                        {c.subject && <span>{c.subject}</span>}
-                        {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
-                      </span>
-                    </div>
-                    <span className="mykids-list-chevron">&#8250;</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionPanel>
-
-          {/* ── Dinner Table Talk ──────────────────── */}
-          <SectionPanel title="Dinner Table Talk" icon="&#128172;" collapsed={!showConversation} onToggle={() => setShowConversation(p => !p)}>
-                <ConversationStartersCard studentId={selectedChild} />
-          </SectionPanel>
-
-          {/* ── Grades ────────────────────────────── */}
-          <SectionPanel title="Grades" icon="&#128202;" collapsed={!showGrades} onToggle={() => setShowGrades(p => !p)}>
-              <GradesSummaryCard
-                selectedChildId={selectedChild ?? undefined}
-                onViewDetails={() => navigate('/grades')}
-              />
-          </SectionPanel>
-
-          {/* ── Linked Teachers ────────────────────── */}
-          <SectionPanel title="Teachers" icon="&#128105;&#8205;&#127979;" count={(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length} collapsed={!showTeachers} onToggle={() => setShowTeachers(p => !p)} className="dash-section--full" headerRight={<button className="mykids-add-teacher-btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}>+ Add Teacher</button>}>
-              <div className="mykids-list">
-                {/* Teachers from courses */}
-                {overview?.courses.filter(c => c.teacher_name).map(c => (
-                  <div key={`course-${c.id}`} className="mykids-teacher-row">
-                    <div className="mykids-teacher-info">
-                      <span className="mykids-teacher-name">{c.teacher_name}</span>
-                      <span className="mykids-teacher-email">{c.teacher_email || c.name} (via class)</span>
-                    </div>
-                    {c.teacher_id && (
-                      <button
-                        className="mykids-message-btn btn-secondary btn-sm"
-                        onClick={() => navigate(`/messages?recipient_id=${c.teacher_id}`)}
-                      >
-                        Message
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {/* Directly linked teachers */}
-                {linkedTeachers.map(t => (
-                  <div key={`link-${t.id}`} className="mykids-teacher-row">
-                    <div className="mykids-teacher-info">
-                      <span className="mykids-teacher-name">{t.teacher_name || 'Unknown'}</span>
-                      <span className="mykids-teacher-email">{t.teacher_email}</span>
-                    </div>
-                    {t.teacher_user_id && (
-                      <button
-                        className="mykids-message-btn btn-secondary btn-sm"
-                        onClick={() => navigate(`/messages?recipient_id=${t.teacher_user_id}`)}
-                      >
-                        Message
-                      </button>
-                    )}
-                    <button
-                      className="mykids-remove-btn btn-danger btn-sm"
-                      onClick={async () => {
-                        if (!selectedChild) return;
-                        const ok = await confirm({ title: 'Remove Teacher', message: `Remove ${t.teacher_name || t.teacher_email} as a linked teacher?`, confirmLabel: 'Remove', variant: 'danger' });
-                        if (!ok) return;
-                        await parentApi.unlinkTeacher(selectedChild, t.id);
-                        setLinkedTeachers(prev => prev.filter(lt => lt.id !== t.id));
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-                {(overview?.courses.filter(c => c.teacher_name).length ?? 0) === 0 && linkedTeachers.length === 0 && (
-                  <p className="dash-empty-hint">No teachers linked yet. Add a teacher by email to start messaging.</p>
-                )}
-              </div>
-          </SectionPanel>
-        </div>
         </>
       )}
       {/* Add Teacher Modal */}
