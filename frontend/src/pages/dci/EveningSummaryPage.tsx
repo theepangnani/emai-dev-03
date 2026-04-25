@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { ChildSelectorTabs } from '../../components/ChildSelectorTabs';
 import { parentApi, type ChildSummary } from '../../api/parent';
@@ -15,6 +16,19 @@ import { logger } from '../../utils/logger';
 import './EveningSummaryPage.css';
 
 /**
+ * Format the current local date as yyyy-mm-dd. Pulled out so the
+ * midnight-recompute effect (S-2 / #4215) and the initial value share
+ * a single source of truth.
+ */
+function todayLocal(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
  * CB-DCI-001 M0-10 — Parent evening summary at /parent/today.
  *
  * Spec § 8. Reuses DashboardLayout + ChildSelectorTabs. Renders the new
@@ -26,45 +40,51 @@ import './EveningSummaryPage.css';
  * plus starter_used / starter_regenerated / deep_dive_opened on action.
  */
 export function EveningSummaryPage() {
-  const [children, setChildren] = useState<ChildSummary[]>([]);
-  const [selectedKidId, setSelectedKidId] = useState<number | null>(null);
-  const [childrenLoading, setChildrenLoading] = useState(true);
-  const [childrenError, setChildrenError] = useState(false);
+  // `null` means "no explicit choice yet" — the page derives the effective
+  // selection from the children list (first kid wins) until the parent
+  // taps a tab. We avoid setState-in-effect (project lint rule) by deriving
+  // the value during render rather than syncing it back into state.
+  const [explicitlySelectedKidId, setExplicitlySelectedKidId] = useState<
+    number | null
+  >(null);
 
-  // Today, in local time, formatted yyyy-mm-dd. M0 only renders today —
-  // historical days are a fast-follow.
-  const today = useMemo(() => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }, []);
-
+  // S-2 (#4215): recompute `today` past midnight. Without this, parents who
+  // leave the tab open across midnight see yesterday's date in chips and
+  // queries. We refresh on focus + on a 60s interval — both cheap.
+  const [today, setToday] = useState<string>(() => todayLocal());
   useEffect(() => {
-    let cancelled = false;
-    parentApi
-      .getChildren()
-      .then((kids) => {
-        if (cancelled) return;
-        setChildren(kids);
-        if (kids.length > 0) {
-          setSelectedKidId(kids[0].student_id);
-        }
-      })
-      .catch(() => {
-        // I-3: distinguish "no kids linked" (empty list) from "load failed"
-        // so the parent sees an actionable error state instead of being
-        // told they have no children.
-        if (!cancelled) setChildrenError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setChildrenLoading(false);
-      });
+    const tick = () => {
+      const fresh = todayLocal();
+      setToday((prev) => (prev === fresh ? prev : fresh));
+    };
+    const id = window.setInterval(tick, 60_000);
+    window.addEventListener('focus', tick);
     return () => {
-      cancelled = true;
+      window.clearInterval(id);
+      window.removeEventListener('focus', tick);
     };
   }, []);
+
+  // S-4 (#4217): TanStack Query for children — caches across the session,
+  // dedupes against other consumers (e.g. dashboard), and gives us a clean
+  // refetch handle for the Retry button (S-7 / #4220).
+  const childrenQuery = useQuery<ChildSummary[]>({
+    queryKey: ['parent', 'children'],
+    queryFn: () => parentApi.getChildren(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const children = childrenQuery.data ?? [];
+  const childrenLoading = childrenQuery.isLoading;
+  const childrenError = childrenQuery.isError;
+
+  // Effective selection: parent's explicit pick, else first kid in the
+  // list. Derived during render to avoid the cascading-render lint rule
+  // that bans `setState` inside `useEffect`.
+  const selectedKidId =
+    explicitlySelectedKidId ??
+    (children.length > 0 ? children[0].student_id : null);
+  const setSelectedKidId = setExplicitlySelectedKidId;
 
   const summaryQuery = useDciSummary(selectedKidId, today);
   const feedbackMutation = useConversationStarterFeedback();
@@ -107,14 +127,18 @@ export function EveningSummaryPage() {
   const handleStarterUsedToggle = useCallback(() => {
     if (!summary?.conversation_starter || !selectedKidId) return;
     const starter = summary.conversation_starter;
+    // S-5 (#4218): clicking an already-used starter is an explicit untoggle.
+    // We send `'undo_used'` so the backend can clear `was_used`. Clicking
+    // an un-used starter still sends `'thumbs_up'`.
+    const nextValue = !starter.was_used;
     trackDciTelemetry('dci.parent.starter_used', {
       kid_id: selectedKidId,
       starter_id: starter.id,
-      next_value: !starter.was_used,
+      next_value: nextValue,
     });
     feedbackMutation.mutate({
       starterId: starter.id,
-      feedback: 'thumbs_up',
+      feedback: nextValue ? 'thumbs_up' : 'undo_used',
       kidId: selectedKidId,
       date: today,
     });
@@ -164,9 +188,16 @@ export function EveningSummaryPage() {
         {childrenLoading ? (
           <SummaryShimmer />
         ) : childrenError ? (
+          // S-7 (#4220): Retry button so a transient network failure
+          // doesn't force a full page reload.
           <EmptyState
             title="We couldn't load your kids"
             body="Try refreshing in a moment. If this keeps happening, please contact support."
+            action={{
+              label: 'Retry',
+              onClick: () => childrenQuery.refetch(),
+              disabled: childrenQuery.isFetching,
+            }}
           />
         ) : children.length === 0 ? (
           <EmptyState
@@ -219,6 +250,9 @@ export function EveningSummaryPage() {
                 onToggleUsed={handleStarterUsedToggle}
                 onRegenerate={handleStarterRegenerate}
                 disabled={feedbackMutation.isPending}
+                /* S-6 (#4219): inline Retry surfaces if the toast is missed. */
+                hasError={feedbackMutation.isError}
+                onRetry={feedbackMutation.retry}
               />
             )}
 
@@ -244,6 +278,8 @@ interface ConversationStarterCardProps {
   onToggleUsed: () => void;
   onRegenerate: () => void;
   disabled?: boolean;
+  hasError?: boolean;
+  onRetry?: () => void;
 }
 
 function ConversationStarterCard({
@@ -252,6 +288,8 @@ function ConversationStarterCard({
   onToggleUsed,
   onRegenerate,
   disabled,
+  hasError,
+  onRetry,
 }: ConversationStarterCardProps) {
   return (
     <section
@@ -286,6 +324,23 @@ function ConversationStarterCard({
           Regenerate
         </button>
       </footer>
+      {hasError && (
+        <div className="dci-conv-starter__error" role="alert">
+          <span className="dci-conv-starter__error-text">
+            Couldn&rsquo;t save your choice.
+          </span>
+          {onRetry && (
+            <button
+              type="button"
+              className="dci-conv-starter__retry"
+              onClick={onRetry}
+              disabled={disabled}
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -306,11 +361,32 @@ function SummaryShimmer() {
   );
 }
 
-function EmptyState({ title, body }: { title: string; body: string }) {
+interface EmptyStateProps {
+  title: string;
+  body: string;
+  /** Optional CTA — used by the children-load error state's Retry (S-7). */
+  action?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+  };
+}
+
+function EmptyState({ title, body, action }: EmptyStateProps) {
   return (
     <section className="dci-evening-page__empty" role="status">
       <h3 className="dci-evening-page__empty-title">{title}</h3>
       <p className="dci-evening-page__empty-body">{body}</p>
+      {action && (
+        <button
+          type="button"
+          className="dci-evening-page__empty-action"
+          onClick={action.onClick}
+          disabled={action.disabled}
+        >
+          {action.label}
+        </button>
+      )}
     </section>
   );
 }

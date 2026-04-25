@@ -106,6 +106,32 @@
   cursor: not-allowed;
 }
 
+/* S-6 (#4219): inline error + retry on conversation starter */
+.dci-conv-starter__error {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #fca5a5;
+}
+
+.dci-conv-starter__retry {
+  background: transparent;
+  color: #f1f5f9;
+  border: 1px solid rgba(252, 165, 165, 0.45);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dci-conv-starter__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Empty state ── */
 .dci-evening-page__empty {
   background: var(--color-surface, #ffffff);
@@ -127,6 +153,24 @@
   font-size: 0.9rem;
   color: var(--color-ink-muted, #5b6274);
   line-height: 1.5;
+}
+
+/* S-7 (#4220): retry CTA inside the empty/error state */
+.dci-evening-page__empty-action {
+  margin-top: 14px;
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dci-evening-page__empty-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Shimmer ── */

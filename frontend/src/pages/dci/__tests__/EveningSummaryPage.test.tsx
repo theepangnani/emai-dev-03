@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/helpers';
+import { ToastProvider } from '../../../components/Toast';
 import { EveningSummaryPage } from '../EveningSummaryPage';
 import type {
   DciSummaryResponse,
@@ -127,6 +128,18 @@ function buildSummary(overrides: Partial<DciDailySummary> = {}): DciDailySummary
   };
 }
 
+/**
+ * Render the page wrapped in ToastProvider — the conversation-starter
+ * feedback hook calls `useToast()` for the S-6 (#4219) error toast.
+ */
+function renderPage() {
+  return renderWithProviders(
+    <ToastProvider>
+      <EveningSummaryPage />
+    </ToastProvider>,
+  );
+}
+
 // ── Tests ────────────────────────────────────────────────────────────────
 describe('EveningSummaryPage', () => {
   beforeEach(() => {
@@ -140,7 +153,7 @@ describe('EveningSummaryPage', () => {
     // summary fetch is held.
     mockGetSummary.mockReturnValue(new Promise<DciSummaryResponse>(() => {}));
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(
@@ -156,7 +169,7 @@ describe('EveningSummaryPage', () => {
       state: 'ready',
     } satisfies DciSummaryResponse);
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     // Block 1: EveningSummaryHero — kid name in the hero heading + each
     // subject bullet. Match the hero's <h2> by id rather than a loose text
@@ -215,7 +228,7 @@ describe('EveningSummaryPage', () => {
       state: 'no_checkin_today',
     } satisfies DciSummaryResponse);
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(
@@ -230,7 +243,7 @@ describe('EveningSummaryPage', () => {
       state: 'first_30_days',
     } satisfies DciSummaryResponse);
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(
@@ -243,7 +256,7 @@ describe('EveningSummaryPage', () => {
   it('shows the empty "no kids linked" state when the parent has no children', async () => {
     mockGetChildren.mockResolvedValue([]);
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText(/No kids linked yet/)).toBeInTheDocument();
@@ -255,7 +268,7 @@ describe('EveningSummaryPage', () => {
   it('shows a distinct error state when getChildren fails', async () => {
     mockGetChildren.mockRejectedValue(new Error('network'));
 
-    renderWithProviders(<EveningSummaryPage />);
+    renderPage();
 
     await waitFor(() => {
       expect(
@@ -266,5 +279,119 @@ describe('EveningSummaryPage', () => {
     // network failure.
     expect(screen.queryByText(/No kids linked yet/)).not.toBeInTheDocument();
     expect(mockGetSummary).not.toHaveBeenCalled();
+  });
+
+  // S-7 (#4220): the children-load error state offers a Retry button that
+  // re-runs the children query without forcing a page reload.
+  it('shows a Retry button on the children-load error state and re-runs getChildren on click', async () => {
+    mockGetChildren.mockRejectedValueOnce(new Error('network'));
+
+    renderPage();
+
+    const retryBtn = await screen.findByRole('button', { name: /retry/i });
+    expect(mockGetChildren).toHaveBeenCalledTimes(1);
+
+    // Make the next call succeed so we can verify it's actually invoked.
+    mockGetChildren.mockResolvedValueOnce([buildChild()]);
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(mockGetChildren).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // S-5 (#4218): clicking "I used this" while the starter is already
+  // marked as used must send the explicit `'undo_used'` feedback so the
+  // backend can clear `was_used`.
+  it('sends undo_used feedback when toggling an already-used starter off', async () => {
+    const summary = buildSummary({
+      conversation_starter: {
+        id: 11,
+        text: 'What surprised you in science today?',
+        was_used: true,
+      },
+    });
+    mockGetSummary.mockResolvedValue({
+      summary,
+      state: 'ready',
+    } satisfies DciSummaryResponse);
+    mockSubmitFeedback.mockResolvedValue({ starter: summary.conversation_starter });
+
+    renderPage();
+
+    const usedBtn = await screen.findByRole('button', { name: /I used this/i });
+    fireEvent.click(usedBtn);
+
+    await waitFor(() => {
+      expect(mockSubmitFeedback).toHaveBeenCalledWith(11, 'undo_used');
+    });
+  });
+
+  // S-5 (#4218) — companion: clicking "I used this" while NOT yet used
+  // still sends `'thumbs_up'`. Locks down the chosen toggle semantics.
+  it('sends thumbs_up feedback when toggling a not-yet-used starter on', async () => {
+    const summary = buildSummary();
+    mockGetSummary.mockResolvedValue({
+      summary,
+      state: 'ready',
+    } satisfies DciSummaryResponse);
+    mockSubmitFeedback.mockResolvedValue({ starter: summary.conversation_starter });
+
+    renderPage();
+
+    const usedBtn = await screen.findByRole('button', { name: /I used this/i });
+    fireEvent.click(usedBtn);
+
+    await waitFor(() => {
+      expect(mockSubmitFeedback).toHaveBeenCalledWith(11, 'thumbs_up');
+    });
+  });
+
+  // S-6 (#4219): on feedback failure, the page surfaces an inline Retry
+  // affordance that re-runs the same mutation.
+  it('surfaces an inline Retry on feedback failure and re-fires the mutation when clicked', async () => {
+    const summary = buildSummary();
+    mockGetSummary.mockResolvedValue({
+      summary,
+      state: 'ready',
+    } satisfies DciSummaryResponse);
+    mockSubmitFeedback.mockRejectedValueOnce(new Error('network'));
+
+    renderPage();
+
+    const usedBtn = await screen.findByRole('button', { name: /I used this/i });
+    fireEvent.click(usedBtn);
+
+    // First call fails — Retry should appear.
+    const retryBtn = await screen.findByRole('button', { name: /^retry$/i });
+    expect(retryBtn).toBeInTheDocument();
+
+    // Re-fire — make the second attempt succeed.
+    mockSubmitFeedback.mockResolvedValueOnce({ starter: summary.conversation_starter });
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(mockSubmitFeedback).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // S-1 (#4214): due_date is now exposed via a <time> element so screen
+  // readers and tooltips can read the actual date.
+  it('renders the deadline due_date as a <time> element', async () => {
+    mockGetSummary.mockResolvedValue({
+      summary: buildSummary(),
+      state: 'ready',
+    } satisfies DciSummaryResponse);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Math quiz Friday')).toBeInTheDocument();
+    });
+    // At least one <time dateTime="..."> should render with the ISO date.
+    const times = document.querySelectorAll('time[datetime]');
+    const dateTimes = Array.from(times).map((t) => t.getAttribute('datetime'));
+    expect(dateTimes).toContain('2026-04-28');
+    expect(dateTimes).toContain('2026-04-22');
   });
 });

@@ -72,7 +72,12 @@ export interface DciSummaryResponse {
   state: 'ready' | 'no_checkin_today' | 'first_30_days';
 }
 
-export type ConversationStarterFeedback = 'thumbs_up' | 'regenerate';
+export type ConversationStarterFeedback =
+  | 'thumbs_up'
+  | 'regenerate'
+  // S-5 (#4218): explicit untoggle signal so the parent can clear the
+  // "I used this" state. Backend M0-6 owner: interpret as `was_used=false`.
+  | 'undo_used';
 
 export interface ConversationStarterFeedbackResponse {
   starter: DciConversationStarter;

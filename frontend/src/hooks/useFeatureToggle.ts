@@ -122,3 +122,21 @@ export function useFeatureFlagEnabled(key: string): boolean {
   const value = (data as Record<string, unknown>)[key];
   return typeof value === 'boolean' ? value : false;
 }
+
+/**
+ * Same as `useFeatureFlagEnabled` but also returns the underlying query's
+ * loading state so callers can render a placeholder during hydration
+ * instead of acting on the default-false value (#4216).
+ */
+export function useFeatureFlagState(key: string): {
+  enabled: boolean;
+  isLoading: boolean;
+} {
+  const { data, isLoading } = useFeatureQuery();
+  if (!data) return { enabled: false, isLoading };
+  const value = (data as Record<string, unknown>)[key];
+  return {
+    enabled: typeof value === 'boolean' ? value : false,
+    isLoading,
+  };
+}

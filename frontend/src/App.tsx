@@ -11,7 +11,7 @@ import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
-import { useFeatureFlagEnabled } from './hooks/useFeatureToggle';
+import { useFeatureFlagState } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
@@ -666,7 +666,11 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
  * ramps. When it is on, the wrapped page renders.
  */
 function DciFlagGate({ children }: { children: ReactNode }) {
-  const enabled = useFeatureFlagEnabled('dci_v1_enabled');
+  // S-3 (#4216): show a loader while the feature-flag query hydrates so
+  // parents with the flag ON don't see a momentary redirect-to-/ flash on
+  // cold loads. Once hydrated, redirect when disabled / render when enabled.
+  const { enabled, isLoading } = useFeatureFlagState('dci_v1_enabled');
+  if (isLoading) return <PageLoader />;
   if (!enabled) return <Navigate to="/" replace />;
   return <>{children}</>;
 }

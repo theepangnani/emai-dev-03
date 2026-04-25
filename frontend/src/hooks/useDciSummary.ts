@@ -5,6 +5,7 @@ import {
   type ConversationStarterFeedback,
   type ConversationStarterFeedbackResponse,
 } from '../api/dciSummary';
+import { useToast } from '../components/Toast';
 
 /**
  * CB-DCI-001 M0-10 — TanStack Query hooks for the parent evening summary.
@@ -42,13 +43,43 @@ interface FeedbackVars {
   date: string;
 }
 
+/**
+ * Conversation-starter feedback mutation.
+ *
+ * S-5 (#4218): callers should send `'undo_used'` (not `'thumbs_up'`) when
+ * the user clicks the "I used this" button while it is already toggled on.
+ * The hook itself is feedback-agnostic — the page owns the toggle decision.
+ *
+ * S-6 (#4219): toasts on error and exposes a `retry()` callback that
+ * replays the most recent variables. The page wires `retry` to a "Retry"
+ * button in the toast/error UI.
+ */
 export function useConversationStarterFeedback() {
   const qc = useQueryClient();
-  return useMutation<ConversationStarterFeedbackResponse, unknown, FeedbackVars>({
+  const { toast } = useToast();
+  const mutation = useMutation<
+    ConversationStarterFeedbackResponse,
+    unknown,
+    FeedbackVars
+  >({
     mutationFn: ({ starterId, feedback }) =>
       dciSummaryApi.submitStarterFeedback(starterId, feedback),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: dciSummaryKey(vars.kidId, vars.date) });
     },
+    onError: () => {
+      toast(
+        "Couldn't save your choice — tap to retry.",
+        'error',
+      );
+    },
   });
+
+  const retry = () => {
+    if (mutation.variables) {
+      mutation.mutate(mutation.variables);
+    }
+  };
+
+  return Object.assign(mutation, { retry });
 }
