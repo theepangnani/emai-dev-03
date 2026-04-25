@@ -3,29 +3,31 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parentApi, courseContentsApi, coursesApi, tasksApi, invitesApi } from '../api/client';
 import type { ChildSummary, ChildOverview, CourseContentItem, TaskItem, LinkedTeacher } from '../api/client';
 import { listIntegrations } from '../api/parentEmailDigest';
-import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useConfirm } from '../components/ConfirmModal';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { PageSkeleton } from '../components/Skeleton';
-import { AddActionButton } from '../components/AddActionButton';
 import { useToast } from '../components/Toast';
 import { GradesSummaryCard } from '../components/GradesSummaryCard';
 import { isValidEmail } from '../utils/validation';
 import { PageNav } from '../components/PageNav';
-import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
 import { SectionPanel } from '../components/SectionPanel';
 import UploadMaterialWizard from '../components/UploadMaterialWizard';
 import { useParentStudyTools } from '../components/parent/hooks/useParentStudyTools';
 import { GenerationSpinner } from '../components/GenerationSpinner';
 import './MyKidsPage.css';
-import { ChildXpStats } from '../components/xp/ChildXpStats';
-import { OnTrackBadge } from '../components/OnTrackBadge';
 import { StudyRequestModal } from '../components/StudyRequestModal';
 import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
+import { BridgeHeader } from '../components/bridge/BridgeHeader';
+import { KidHero } from '../components/bridge/KidHero';
+import { KidRail } from '../components/bridge/KidRail';
+import { ListCard } from '../components/bridge/ListCard';
+import { EmailDigestCard } from '../components/bridge/EmailDigestCard';
+import { useBridgeFonts } from '../components/bridge/fonts';
+import './BridgePage.css';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
@@ -57,6 +59,12 @@ export function MyKidsPage() {
   const [selectedChild, setSelectedChild] = useState<number | null>(null);
   const selectedChildUserId = children.find(c => c.student_id === selectedChild)?.user_id ?? null;
   const studyTools = useParentStudyTools({ selectedChildUserId, navigate });
+  useBridgeFonts();
+  const bridgeStats = useMemo(() => ({
+    kidsLinked: children.length,
+    classesTracked: children.reduce((s, c) => s + (c.course_count ?? 0), 0),
+    activeTasks: children.reduce((s, c) => s + (c.active_task_count ?? 0), 0),
+  }), [children]);
   const urlStudentId = searchParams.get('student_id');
   const [overview, setOverview] = useState<ChildOverview | null>(null);
   const [materials, setMaterials] = useState<CourseContentItem[]>([]);
@@ -72,12 +80,8 @@ export function MyKidsPage() {
   const [sectionLoading, setSectionLoading] = useState(false);
 
 
-  // Collapsible sections
-  const [showCourses, setShowCourses] = useState(false);
-  const [showGrades, setShowGrades] = useState(false);
+  // Collapsible sections (showMaterials still drives the all-kids view; others removed in PR 6 / #4121)
   const [showMaterials, setShowMaterials] = useState(false);
-  const [showTeachers, setShowTeachers] = useState(false);
-  const [showConversation, setShowConversation] = useState(false);
 
   // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
@@ -191,21 +195,12 @@ export function MyKidsPage() {
   const [resendingInviteId, setResendingInviteId] = useState<number | null>(null);
   const [resendSuccess, setResendSuccess] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
-  const [openChildMenuId, setOpenChildMenuId] = useState<number | null>(null);
 
   // Focus traps for modals
   const addChildModalRef = useFocusTrap<HTMLDivElement>(showAddChildModal);
   const addCourseModalRef = useFocusTrap<HTMLDivElement>(showAddCourseModal);
   const assignCourseModalRef = useFocusTrap<HTMLDivElement>(!!assignCourseModal, () => setAssignCourseModal(null));
   const reassignContentModalRef = useFocusTrap<HTMLDivElement>(!!reassignContent, () => setReassignContent(null));
-
-  // Close child context menu on outside click
-  useEffect(() => {
-    if (!openChildMenuId) return;
-    const close = () => setOpenChildMenuId(null);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [openChildMenuId]);
 
   useEffect(() => {
     (async () => {
@@ -675,170 +670,97 @@ export function MyKidsPage() {
 
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
+      <div className="bridge-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
         { label: 'My Kids' },
       ]} />
+      <BridgeHeader {...bridgeStats} />
       <JourneyNudgeBanner pageName="my-kids" />
-      {/* Child Tabs */}
-      <div className="pd-child-selector-wrapper">
-        <div className="pd-child-selector">
-        {/* "All" button — shown when there are multiple children */}
-        {children.length > 1 && (
-          <button
-            className={`pd-child-tab pd-child-tab-all ${selectedChild === null ? 'active' : ''}`}
-            onClick={() => { setSelectedChild(null); sessionStorage.removeItem('selectedChildId'); }}
-            title="All children"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </button>
-        )}
-        {children.map((child, index) => (
-          <div key={child.student_id} className="child-tab-wrapper">
-            <button
-              className={`pd-child-tab ${selectedChild === child.student_id ? 'active' : ''}`}
-              onClick={() => {
-                if (selectedChild === child.student_id) {
-                  setSelectedChild(null);
-                  sessionStorage.removeItem('selectedChildId');
-                } else {
-                  setSelectedChild(child.student_id);
-                  sessionStorage.setItem('selectedChildId', String(child.user_id));
-                }
-              }}
-            >
-              <span className="pd-child-color-dot" style={{ backgroundColor: CHILD_COLORS[index % CHILD_COLORS.length] }} />
-              {child.full_name}
-              {child.grade_level != null && <span className="pd-grade-badge">Grade {child.grade_level}</span>}
-              {child.invite_status && (
-                <span className={`invite-status-badge invite-status-${child.invite_status}`}>
-                  {child.invite_status === 'active' ? 'Active' : child.invite_status === 'pending' ? 'Pending' : 'Unverified'}
-                </span>
-              )}
-              <span className="child-tab-detail">
-                {child.school_name && <>{child.school_name} · </>}
-                {child.course_count} {child.course_count === 1 ? 'class' : 'classes'} · {child.active_task_count} {child.active_task_count === 1 ? 'task' : 'tasks'}
-              </span>
-              <ChildXpStats studentId={child.student_id} />
-              <OnTrackBadge studentId={child.student_id} />
-            </button>
-            <div className="invite-menu-wrapper">
-              <button
-                className="invite-menu-trigger"
-                title="Child options"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpenChildMenuId(openChildMenuId === child.student_id ? null : child.student_id);
-                }}
-              >
-                ···
-              </button>
-              {openChildMenuId === child.student_id && (
-                <div className="invite-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="invite-menu-item"
-                    onClick={() => {
-                      setOpenChildMenuId(null);
-                      setEditingChild(child);
-                      setEditName(child.full_name);
-                      setEditGrade(child.grade_level != null ? String(child.grade_level) : '');
-                      setEditSchool(child.school_name || '');
-                    }}
-                  >
-                    Edit Child
-                  </button>
-                  {child.invite_status === 'pending' && child.invite_id && (
-                    <>
-                      <button
-                        className="invite-menu-item"
-                        disabled={resendingInviteId === child.invite_id}
-                        onClick={async () => {
-                          setResendingInviteId(child.invite_id);
-                          setResendSuccess(null);
-                          try {
-                            await invitesApi.resend(child.invite_id!);
-                            setResendSuccess(child.invite_id);
-                            setTimeout(() => setResendSuccess(null), 3000);
-                          } catch {
-                            /* rate limit or other error — silently handled */
-                          } finally {
-                            setResendingInviteId(null);
-                          }
-                        }}
-                      >
-                        {resendingInviteId === child.invite_id ? 'Sending...' : resendSuccess === child.invite_id ? '✓ Sent!' : 'Resend Invite'}
-                      </button>
-                      <button
-                        className="invite-menu-item"
-                        onClick={async () => {
-                          const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
-                          await navigator.clipboard.writeText(link);
-                          setCopiedInviteId(child.invite_id);
-                          setOpenChildMenuId(null);
-                          setTimeout(() => setCopiedInviteId(null), 2000);
-                        }}
-                      >
-                        {copiedInviteId === child.invite_id ? '✓ Copied!' : 'Copy Invite Link'}
-                      </button>
-                    </>
-                  )}
-                  <button
-                    className="invite-menu-item"
-                    onClick={() => {
-                      setOpenChildMenuId(null);
-                      setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name });
-                    }}
-                  >
-                    Award XP
-                  </button>
-                  <button
-                    className="invite-menu-item invite-menu-item--danger"
-                    onClick={async () => {
-                      setOpenChildMenuId(null);
-                      const ok = await confirm({
-                        title: 'Remove Child',
-                        message: `Are you sure you want to remove ${child.full_name}? This will unlink them from your account but won't delete their account.`,
-                        confirmLabel: 'Remove',
-                        variant: 'danger',
-                      });
-                      if (!ok) return;
-                      try {
-                        await parentApi.removeChild(child.student_id);
-                        toast(`${child.full_name} has been removed`, 'success');
-                        setChildren(prev => prev.filter(c => c.student_id !== child.student_id));
-                        if (selectedChild === child.student_id) setSelectedChild(null);
-                      } catch {
-                        toast('Failed to remove child', 'error');
-                      }
-                    }}
-                  >
-                    Remove Child
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        <AddActionButton actions={[
-          { icon: '\u{1F4C4}', label: 'Class Material', onClick: () => studyTools.setShowStudyModal(true), showPlus: true },
-          { icon: '\u{1F4DA}', label: 'Add Class', onClick: () => setShowAddCourseModal(true), showPlus: true },
-          { icon: '\u{1F4CA}', label: 'Quiz History', onClick: () => navigate('/quiz-history') },
-          { icon: '\u{1F476}', label: 'Add Child', onClick: () => setShowAddChildModal(true), showPlus: true },
-          { icon: '\u{1F4E5}', label: 'Export Data', onClick: () => navigate('/settings/data-export') },
-          ...(selectedChild ? [{ icon: '\u{1F511}', label: 'Reset Password', onClick: () => {
-            setShowResetPassword(true);
-            const child = children.find(c => c.student_id === selectedChild);
-            setResetPwMethod(child?.email ? 'email' : 'direct');
-            setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
-          }}] : []),
-        ]} />
-        </div>
-      </div>
+      {/* Kid switcher rail — replaces legacy pd-child-selector (PR 3 / #4115) */}
+      <KidRail
+        children={children}
+        selectedChild={selectedChild}
+        onSelect={(id) => {
+          if (id === null) {
+            setSelectedChild(null);
+            sessionStorage.removeItem('selectedChildId');
+          } else {
+            const c = children.find(ch => ch.student_id === id);
+            setSelectedChild(id);
+            if (c) sessionStorage.setItem('selectedChildId', String(c.user_id));
+          }
+        }}
+        onAddChild={() => setShowAddChildModal(true)}
+        colors={CHILD_COLORS}
+      />
+      {selectedChild != null && (() => {
+        const child = children.find(c => c.student_id === selectedChild);
+        if (!child) return null;
+        const idx = children.findIndex(c => c.student_id === selectedChild);
+        const color = CHILD_COLORS[idx % CHILD_COLORS.length];
+        const canResend = child.invite_status === 'pending' && !!child.invite_id;
+        return (
+          <KidHero
+            child={child}
+            color={color}
+            onOpenTutor={() => navigate('/tutor')}
+            onEdit={() => {
+              setEditingChild(child);
+              setEditName(child.full_name);
+              setEditGrade(child.grade_level != null ? String(child.grade_level) : '');
+              setEditSchool(child.school_name || '');
+            }}
+            onExport={() => navigate('/settings/data-export')}
+            onResetPassword={() => {
+              setShowResetPassword(true);
+              setResetPwMethod(child.email ? 'email' : 'direct');
+              setResetPwValue(''); setResetPwConfirm(''); setResetPwError(''); setResetPwSuccess('');
+            }}
+            onAwardXp={() => setAwardXpChild({ studentId: child.student_id, userId: child.user_id, name: child.full_name })}
+            onQuizHistory={() => navigate('/quiz-history')}
+            onResendInvite={canResend ? async () => {
+              setResendingInviteId(child.invite_id);
+              setResendSuccess(null);
+              try {
+                await invitesApi.resend(child.invite_id!);
+                setResendSuccess(child.invite_id);
+                setTimeout(() => setResendSuccess(null), 3000);
+              } catch {
+                /* rate limit or other error — silently handled */
+              } finally {
+                setResendingInviteId(null);
+              }
+            } : undefined}
+            onCopyInviteLink={canResend ? async () => {
+              const link = child.invite_link ?? `${window.location.origin}/accept-invite`;
+              await navigator.clipboard.writeText(link);
+              setCopiedInviteId(child.invite_id);
+              setTimeout(() => setCopiedInviteId(null), 2000);
+            } : undefined}
+            resending={canResend && resendingInviteId === child.invite_id}
+            resendSuccess={canResend && resendSuccess === child.invite_id}
+            copyInviteSuccess={canResend && copiedInviteId === child.invite_id}
+            onRemove={async () => {
+              const ok = await confirm({
+                title: 'Remove Child',
+                message: `Are you sure you want to remove ${child.full_name}? This will unlink them from your account but won't delete their account.`,
+                confirmLabel: 'Remove',
+                variant: 'danger',
+              });
+              if (!ok) return;
+              try {
+                await parentApi.removeChild(child.student_id);
+                toast(`${child.full_name} has been removed`, 'success');
+                setChildren(prev => prev.filter(c => c.student_id !== child.student_id));
+                setSelectedChild(null);
+              } catch {
+                toast('Failed to remove child', 'error');
+              }
+            }}
+          />
+        );
+      })()}
 
       {!selectedChild ? (
         /* All-children overview — two-column grid with materials, study times, and unassigned sections */
@@ -976,181 +898,162 @@ export function MyKidsPage() {
             );
           })()}
 
-          {/* ── Quick Actions ──────────────────────── */}
-          <div className="dash-quick-actions" style={{ marginBottom: 16 }}>
-            <button className="dash-quick-action" onClick={() => navigate('/study')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128214;</span>
-              <span>Study</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate(selectedChild ? `/tasks?student_id=${selectedChild}` : '/tasks')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#9989;</span>
-              <span>View Tasks</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/courses')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128218;</span>
-              <span>View Classes</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/course-materials')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128196;</span>
-              <span>View Class Material</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/ai-tools')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128161;</span>
-              <span>Help My Kid</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => setShowStudyRequest(true)}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#128172;</span>
-              <span>Request Study</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => navigate('/school-report-cards')}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4CB;</span>
-              <span>Report Cards</span>
-            </button>
-            <button className="dash-quick-action" onClick={() => {
-              if (!hasEmailDigestIntegration) {
-                setShowEmailDigestWizard(true);
-                return;
-              }
-              const activeChild = children.find(c => c.student_id === selectedChild);
-              const firstName = activeChild?.full_name?.trim().split(/\s+/)[0] ?? '';
-              navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
-            }}>
-              <span className="dash-quick-action-icon" aria-hidden="true">&#x1F4E7;</span>
-              <span>Email Digest</span>
-            </button>
-          </div>
-
-          <div className="dashboard-redesign">
-          {/* ── Class Materials ───────────────────── */}
-          <SectionPanel title="Class Materials" icon="&#128196;" count={materials.length} collapsed={!showMaterials} onToggle={() => setShowMaterials(p => !p)} headerRight={
-            materials.length > 0 ? (
-              <button
-                className="section-panel__view-all"
-                onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
-              >
-                View All
-              </button>
-            ) : undefined
-          }>
-              <div className="mykids-list">
-                {materials.length === 0 ? (
-                  <p className="dash-empty-hint">No class materials yet.</p>
-                ) : recentMaterials.map(m => (
-                  <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{m.title}</span>
-                      <span className="mykids-list-meta">
-                        <span className="mykids-badge">{m.content_type}</span>
-                        {m.course_name && <span> &middot; {m.course_name}</span>}
-                      </span>
-                    </div>
-                    <button
-                            className="mykids-list-action-btn"
-                      title="Move to class"
-                      onClick={(e) => { e.stopPropagation(); openReassignModal(m); }}
-                    >&#128194;</button>
-                  </div>
-                ))}
-              </div>
-          </SectionPanel>
-
-          {/* ── Best Study Times ──────────────────── */}
-          {selectedChild && <StudyTimeSuggestions studentId={selectedChild} />}
-
-          {/* ── Courses ───────────────────────────── */}
-          <SectionPanel title="Classes" icon="&#128218;" count={overview?.courses.length ?? 0} collapsed={!showCourses} onToggle={() => setShowCourses(p => !p)}>
-            {overview && (
-              <div className="mykids-list">
-                {overview.courses.length === 0 ? (
-                  <GoogleClassroomPrompt
-                    childName={children.find(c => c.student_id === selectedChild)?.full_name ?? 'your child'}
-                    childStudentId={selectedChild}
-                    onAddManually={() => setShowAddCourseModal(true)}
+          {/* ── Bridge management grid (PR 4 / #4117) ── */}
+          {(() => {
+            const childName = children.find(c => c.student_id === selectedChild)?.full_name ?? 'this child';
+            const courses = overview?.courses ?? [];
+            const teachersFromCourses = courses.filter(c => c.teacher_name).map(c => ({
+              key: `course-${c.id}`,
+              name: c.teacher_name as string,
+              email: c.teacher_email,
+              subject: c.subject ?? c.name,
+            }));
+            const teachersFromLinked = linkedTeachers.map(t => ({
+              key: `linked-${t.id}`,
+              name: t.teacher_name ?? 'Unknown',
+              email: t.teacher_email,
+              subject: null,
+            }));
+            const allTeachers = [...teachersFromCourses, ...teachersFromLinked];
+            const teacherInitials = (name: string) =>
+              name.trim().split(/\s+/).slice(0, 2).map(p => p[0] ?? '').join('').toUpperCase() || '?';
+            const matClass = (ct: string | null | undefined): string => {
+              const v = (ct || '').toLowerCase();
+              if (v.includes('pdf')) return 'pdf';
+              if (v.includes('slide') || v.includes('ppt')) return 'slide';
+              if (v.includes('video') || v.includes('mp4')) return 'vid';
+              if (v.includes('doc') || v.includes('word') || v.includes('text')) return 'doc';
+              return 'other';
+            };
+            return (
+              <>
+                <div className="bridge-section-head">
+                  <h2>Manage this bridge</h2>
+                  <span className="bridge-section-meta">4 · domains</span>
+                </div>
+                <div className="bridge-grid">
+                  <EmailDigestCard
+                    hasIntegration={hasEmailDigestIntegration}
+                    onSetup={() => setShowEmailDigestWizard(true)}
+                    childName={childName}
                   />
-                ) : overview.courses.map(c => (
-                  <div key={c.id} className="mykids-list-row" onClick={() => navigate(`/courses/${c.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/courses/${c.id}`))} role="button" tabIndex={0}>
-                    <div className="mykids-list-body">
-                      <span className="mykids-list-title">{c.name}</span>
-                      <span className="mykids-list-meta">
-                        {c.subject && <span>{c.subject}</span>}
-                        {c.teacher_name && <span>{c.subject ? ' \u00B7 ' : ''}{c.teacher_name}</span>}
-                      </span>
-                    </div>
-                    <span className="mykids-list-chevron">&#8250;</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionPanel>
+                  <ListCard
+                    kicker="Courses · schedule"
+                    title="Classes"
+                    count={courses.length}
+                    description={`Synced courses for ${childName}.`}
+                    headAction={{ label: '+ Add class', onClick: () => setShowAddCourseModal(true) }}
+                    footAction={courses.length > 0 ? { label: 'View all classes →', onClick: () => navigate('/courses') } : undefined}
+                    emptyState={courses.length === 0 ? `No classes for ${childName} yet.` : undefined}
+                  >
+                    {courses.slice(0, 4).map(c => (
+                      // TODO(#4117): per-course swatch colour — derive a stable hue from c.id once palette is finalised (PR 6 polish)
+                      <li key={c.id} className="is-clickable" onClick={() => navigate(`/courses/${c.id}`)}>
+                        <span className="bridge-item-swatch" style={{ background: 'var(--bridge-rust)' }} aria-hidden="true" />
+                        <div>
+                          <div className="bridge-item-title">{c.name}</div>
+                          <div className="bridge-item-meta">
+                            {c.subject && <>{c.subject}</>}
+                            {c.subject && c.teacher_name && <> · </>}
+                            {c.teacher_name}
+                          </div>
+                        </div>
+                        <span className="bridge-item-chev" aria-hidden="true">›</span>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
+                    kicker="People"
+                    title="Teachers"
+                    count={allTeachers.length}
+                    description={`Everyone teaching ${childName} this term.`}
+                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
+                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
+                  >
+                    {allTeachers.slice(0, 4).map(t => (
+                      <li key={t.key}>
+                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
+                        <div>
+                          <div className="bridge-item-title">{t.name}</div>
+                          <div className="bridge-item-meta">
+                            {t.subject && <span>{t.subject}</span>}
+                            {t.subject && t.email && <span> · </span>}
+                            {t.email && <span>{t.email}</span>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
+                    kicker="Content library"
+                    title="Class Materials"
+                    count={materials.length}
+                    description="Handouts, slides, photos of notes — parsed into study tools."
+                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
+                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
+                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
+                  >
+                    {recentMaterials.slice(0, 4).map(m => {
+                      const cls = matClass(m.content_type);
+                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
+                      return (
+                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
+                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
+                          <div>
+                            <div className="bridge-item-title">{m.title}</div>
+                            <div className="bridge-item-meta">
+                              {m.course_name}
+                            </div>
+                          </div>
+                          <span className="bridge-item-chev" aria-hidden="true">›</span>
+                        </li>
+                      );
+                    })}
+                  </ListCard>
+                </div>
+              </>
+            );
+          })()}
 
-          {/* ── Dinner Table Talk ──────────────────── */}
-          <SectionPanel title="Dinner Table Talk" icon="&#128172;" collapsed={!showConversation} onToggle={() => setShowConversation(p => !p)}>
-                <ConversationStartersCard studentId={selectedChild} />
-          </SectionPanel>
-
-          {/* ── Grades ────────────────────────────── */}
-          <SectionPanel title="Grades" icon="&#128202;" collapsed={!showGrades} onToggle={() => setShowGrades(p => !p)}>
-              <GradesSummaryCard
-                selectedChildId={selectedChild ?? undefined}
-                onViewDetails={() => navigate('/grades')}
-              />
-          </SectionPanel>
-
-          {/* ── Linked Teachers ────────────────────── */}
-          <SectionPanel title="Teachers" icon="&#128105;&#8205;&#127979;" count={(overview?.courses.filter(c => c.teacher_name).length ?? 0) + linkedTeachers.length} collapsed={!showTeachers} onToggle={() => setShowTeachers(p => !p)} className="dash-section--full" headerRight={<button className="mykids-add-teacher-btn btn-primary btn-sm" onClick={(e) => { e.stopPropagation(); setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); }}>+ Add Teacher</button>}>
-              <div className="mykids-list">
-                {/* Teachers from courses */}
-                {overview?.courses.filter(c => c.teacher_name).map(c => (
-                  <div key={`course-${c.id}`} className="mykids-teacher-row">
-                    <div className="mykids-teacher-info">
-                      <span className="mykids-teacher-name">{c.teacher_name}</span>
-                      <span className="mykids-teacher-email">{c.teacher_email || c.name} (via class)</span>
+          {/* ── Bridge insight grid (PR 5 / #4119) — additive; legacy SectionPanels removed in PR 6 ── */}
+          {selectedChild != null && (() => {
+            const childName = children.find(c => c.student_id === selectedChild)?.full_name ?? 'this child';
+            return (
+              <>
+                <div className="bridge-section-head">
+                  <h2>How {childName} is doing</h2>
+                </div>
+                <div className="bridge-grid">
+                  <article className="bridge-card bridge-card--muted">
+                    <header className="bridge-card-head">
+                      <div className="bridge-card-title-wrap">
+                        <span className="bridge-card-kicker">Performance · this term</span>
+                        <h3>Grade snapshot</h3>
+                      </div>
+                    </header>
+                    <div className="bridge-card-body">
+                      <GradesSummaryCard
+                        selectedChildId={selectedChild ?? undefined}
+                        onViewDetails={() => navigate('/grades')}
+                      />
                     </div>
-                    {c.teacher_id && (
-                      <button
-                        className="mykids-message-btn btn-secondary btn-sm"
-                        onClick={() => navigate(`/messages?recipient_id=${c.teacher_id}`)}
-                      >
-                        Message
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {/* Directly linked teachers */}
-                {linkedTeachers.map(t => (
-                  <div key={`link-${t.id}`} className="mykids-teacher-row">
-                    <div className="mykids-teacher-info">
-                      <span className="mykids-teacher-name">{t.teacher_name || 'Unknown'}</span>
-                      <span className="mykids-teacher-email">{t.teacher_email}</span>
+                  </article>
+                  <article className="bridge-card bridge-card--muted">
+                    <header className="bridge-card-head">
+                      <div className="bridge-card-title-wrap">
+                        <span className="bridge-card-kicker">Habits · last 4 weeks</span>
+                        <h3>Best study times</h3>
+                      </div>
+                    </header>
+                    <div className="bridge-card-body">
+                      <StudyTimeSuggestions studentId={selectedChild} />
                     </div>
-                    {t.teacher_user_id && (
-                      <button
-                        className="mykids-message-btn btn-secondary btn-sm"
-                        onClick={() => navigate(`/messages?recipient_id=${t.teacher_user_id}`)}
-                      >
-                        Message
-                      </button>
-                    )}
-                    <button
-                      className="mykids-remove-btn btn-danger btn-sm"
-                      onClick={async () => {
-                        if (!selectedChild) return;
-                        const ok = await confirm({ title: 'Remove Teacher', message: `Remove ${t.teacher_name || t.teacher_email} as a linked teacher?`, confirmLabel: 'Remove', variant: 'danger' });
-                        if (!ok) return;
-                        await parentApi.unlinkTeacher(selectedChild, t.id);
-                        setLinkedTeachers(prev => prev.filter(lt => lt.id !== t.id));
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-                {(overview?.courses.filter(c => c.teacher_name).length ?? 0) === 0 && linkedTeachers.length === 0 && (
-                  <p className="dash-empty-hint">No teachers linked yet. Add a teacher by email to start messaging.</p>
-                )}
-              </div>
-          </SectionPanel>
-        </div>
+                  </article>
+                </div>
+              </>
+            );
+          })()}
+
         </>
       )}
       {/* Add Teacher Modal */}
@@ -1557,6 +1460,7 @@ export function MyKidsPage() {
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
         onComplete={() => { toast('Email digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
       />
+      </div>
     </DashboardLayout>
   );
 }
