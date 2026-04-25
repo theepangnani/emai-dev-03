@@ -265,6 +265,31 @@ def test_checkin_flag_off_returns_403(
     mock_classifier.assert_not_called()
 
 
+def test_checkin_flag_off_short_circuits_before_rate_limit(
+    client, db_session, kid, linked_parent, mock_classifier, app
+):
+    """PR-review pass 1 [I1]: 403 must fire BEFORE the 10/min limiter
+    decrements. Flag-OFF traffic should not be able to burn through the
+    kid's rate-limit bucket. Mirrors `test_stream_flag_off_returns_403_before_rate_limit`
+    in CB-TUTOR-002."""
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        headers = _auth(client, linked_parent.email)
+        # Far more than 10 — if the limiter ran first we'd see a 429
+        # before this loop ended.
+        for _ in range(15):
+            resp = client.post(
+                "/api/dci/checkin",
+                headers=headers,
+                data={"kid_id": str(kid.id), "text": "blocked"},
+            )
+            assert resp.status_code == 403
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
+
+
 # ── 422 / 413 invalid input ───────────────────────────────────────────
 
 
@@ -391,6 +416,26 @@ def test_correct_returns_corrected_false_when_model_missing(
     # Either corrected=False (M0-2 not yet shipped) OR 404 if M0-2 + missing row.
     # In this test the M0-2 model file is not on disk, so corrected=False is expected.
     assert body["corrected"] is False
+
+
+def test_kid_checkin_resolves_linked_parent_not_self(
+    db_session, kid, student_user, linked_parent
+):
+    """PR-review pass 1 [C1]: when a kid checks in, the row's parent_id
+    must reference the LINKED parent, not the kid's own user_id."""
+    from app.api.routes.dci import _resolve_parent_id_for_kid
+
+    resolved = _resolve_parent_id_for_kid(db=db_session, kid_id=kid.id)
+    assert resolved == linked_parent.id
+    assert resolved != student_user.id
+
+
+def test_kid_checkin_with_no_linked_parent_returns_none(db_session, kid):
+    """A kid with no linked parent gets None — persistence is skipped
+    rather than FK-violating once M0-2 lands."""
+    from app.api.routes.dci import _resolve_parent_id_for_kid
+
+    assert _resolve_parent_id_for_kid(db=db_session, kid_id=kid.id) is None
 
 
 def test_correct_requires_at_least_one_field(
