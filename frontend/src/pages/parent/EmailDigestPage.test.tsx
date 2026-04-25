@@ -1163,6 +1163,32 @@ describe('EmailDigestPage — unified renders all kids (#4044)', () => {
     expect(profileId).toBe(11);
     expect(email).toBe('thanushan@ocdsb.ca');
   });
+
+  it('renders an orphan profile (no matching parent kid) so legacy data is visible', async () => {
+    // #4100 pass-1 review suggestion 7: a profile whose student_id doesn't
+    // match any kid on the parent's account (e.g., kid was unlinked but the
+    // profile lingered) must still render so school-email management isn't
+    // hidden.
+    mockGetChildren.mockResolvedValue([]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 77,
+          student_id: 99999, // not in mockGetChildren
+          first_name: 'OrphanKid',
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('OrphanKid')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: '+ Add school email' }),
+    ).toBeInTheDocument();
+  });
 });
 
 // #4098: parents must be able to remove school-email rows from the unified

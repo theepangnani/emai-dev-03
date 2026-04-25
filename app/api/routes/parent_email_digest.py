@@ -16,6 +16,8 @@ import requests as _requests
 from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_role
@@ -1245,8 +1247,48 @@ def create_child_profile(
         first_name=first_name,
     )
     db.add(profile)
-    db.commit()
+    # #4100 pass-1 review:
+    # - Catch IntegrityError so a race between two concurrent POSTs (or
+    #   between this and the unified worker's auto-create path) doesn't
+    #   500 the second caller. The functional unique index on
+    #   (parent_id, LOWER(first_name)) and the unique constraint on
+    #   (parent_id, student_id) both guarantee at most one row exists;
+    #   on collision we re-fetch and return the winner.
+    # - Eager-load school_emails so the Pydantic response serializer
+    #   doesn't issue a lazy SELECT after refresh.
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        winner = (
+            db.query(ParentChildProfile)
+            .options(selectinload(ParentChildProfile.school_emails))
+            .filter(
+                ParentChildProfile.parent_id == current_user.id,
+                or_(
+                    sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+                    *(
+                        [ParentChildProfile.student_id == body.student_id]
+                        if body.student_id is not None
+                        else []
+                    ),
+                ),
+            )
+            .first()
+        )
+        if winner is None:
+            # Should be unreachable — unique constraint fired but no row
+            # matches our dedupe predicates. Surface for ops visibility.
+            raise HTTPException(
+                status_code=500,
+                detail="Profile create raced with a concurrent insert that could not be reconciled.",
+            )
+        return winner
+
     db.refresh(profile)
+    # Initialize the empty relationship explicitly so Pydantic
+    # `from_attributes=True` doesn't lazy-load (matches dedupe paths).
+    profile.school_emails = []
     return profile
 
 

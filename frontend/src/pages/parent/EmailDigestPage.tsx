@@ -1451,8 +1451,11 @@ function EmailDigestPageUnified() {
   const handleAddSchoolEmail = (row: KidRow) => {
     const trimmed = newSchoolEmail.trim().toLowerCase();
     if (!isValidEmail(trimmed)) return;
+    // #4100 pass-1 review: negate userId for placeholder rows so
+    // ChildSummary.user_id can never collide with a different kid's
+    // ParentChildProfile.id (different tables, IDs CAN coincide).
     const errorKey =
-      row.kind === 'profile' ? row.profile.id : row.userId;
+      row.kind === 'profile' ? row.profile.id : -row.userId;
     setAddEmailErrorByProfile((prev) => {
       const next = { ...prev };
       delete next[errorKey];
@@ -1740,8 +1743,13 @@ function EmailDigestPageUnified() {
             // IDs in the keyed list / focus-target state.
             const rowKey =
               row.kind === 'profile' ? row.profile.id : -row.userId;
+            // #4100 pass-1 review: use the negative-userId trick (same as
+            // editTargetKey + rowKey) for placeholder errorKey so a profile
+            // and a placeholder can never collide on errorKey when their
+            // ids share a value (profile.id and ChildSummary.user_id come
+            // from different tables and CAN coincide).
             const errorKey =
-              row.kind === 'profile' ? row.profile.id : row.userId;
+              row.kind === 'profile' ? row.profile.id : -row.userId;
             const editTargetKey =
               row.kind === 'profile' ? row.profile.id : -row.userId;
             const schoolEmails =

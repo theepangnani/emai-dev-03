@@ -452,6 +452,37 @@ class TestCreateChildProfile:
         assert second.status_code == 201
         assert second.json()["id"] == first_id
 
+    def test_create_strips_first_name_whitespace(self, client, setup):
+        """#4100 pass-1 review suggestion 5: leading/trailing whitespace is stripped."""
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "  Riley  "},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["first_name"] == "Riley"
+
+    def test_create_dedupes_across_case_and_whitespace(self, client, setup):
+        """#4100 pass-1 review suggestion 6: dedupe should cover combined case + whitespace."""
+        headers = _auth(client, PARENT_EMAIL)
+        first = client.post(
+            PREFIX,
+            json={"first_name": "Avery"},
+            headers=headers,
+        )
+        assert first.status_code == 201
+        first_id = first.json()["id"]
+
+        # Different casing AND surrounding whitespace → still the same row.
+        second = client.post(
+            PREFIX,
+            json={"first_name": "  AVERY  "},
+            headers=headers,
+        )
+        assert second.status_code == 201
+        assert second.json()["id"] == first_id
+
     def test_create_with_mismatched_student_id_returns_404(self, client, setup):
         # 999999 is unlinked / nonexistent.
         headers = _auth(client, PARENT_EMAIL)

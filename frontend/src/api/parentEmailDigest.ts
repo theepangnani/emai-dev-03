@@ -241,11 +241,11 @@ export const listChildProfiles = () =>
   api.get<ChildProfile[]>('/api/parent/child-profiles');
 
 /**
- * Wizard-only stub (#4017). Stream 2 did not expose a child-profile CREATE
- * endpoint; profiles are currently seeded via the Stream 1 backfill from
- * existing integrations. Calling this hits the backend POST which currently
- * 404s — the wizard catches and surfaces a soft error to the user. A
- * follow-up issue tracks adding a real endpoint.
+ * Idempotent profile creation (#4044). Dedupes server-side on
+ * `(parent_id, student_id)` when `student_id` is provided, otherwise on
+ * `(parent_id, LOWER(first_name))`. Used by both the unified Email Digest
+ * page (auto-create on first school email for a kid without a profile)
+ * and the setup wizard.
  */
 export const createChildProfile = (data: { student_id?: number | null; first_name: string }) =>
   api.post<ChildProfile>('/api/parent/child-profiles', data);
