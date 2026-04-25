@@ -1179,9 +1179,18 @@ function EmailDigestPageUnified() {
     // Prefer student_id match; fall back to case-insensitive first_name
     // match for legacy profiles whose student_id was never populated by
     // the Stream 1 backfill (#4101 / I1).
+    //
+    // #4100 pass-4 review (N1): a profile must not bind to TWO kids in
+    // the same render. If the fallback returns a profile we've already
+    // linked (because its student_id matched an earlier kid AND its
+    // first_name now matches this kid), skip the fallback so the second
+    // kid renders as a placeholder rather than aliasing onto a profile
+    // that's already in use.
+    const idMatch = profilesByUserId.get(kid.user_id);
+    const nameMatch = profilesByLowerName.get(firstName.toLowerCase());
     const linked =
-      profilesByUserId.get(kid.user_id) ??
-      profilesByLowerName.get(firstName.toLowerCase());
+      idMatch ??
+      (nameMatch && !linkedProfileIds.has(nameMatch.id) ? nameMatch : undefined);
     if (linked) {
       linkedProfileIds.add(linked.id);
       kidRows.push({
