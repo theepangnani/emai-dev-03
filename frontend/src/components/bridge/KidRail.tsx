@@ -43,6 +43,9 @@ export function KidRail({ children, selectedChild, onSelect, onAddChild, colors 
         {children.map((child, index) => {
           const color = colors[index % colors.length];
           const isActive = selectedChild === child.student_id;
+          const classesLabel = child.course_count === 1 ? '1 class' : `${child.course_count} classes`;
+          const tasksLabel = child.active_task_count === 1 ? '1 task' : `${child.active_task_count} tasks`;
+          const detailParts = [child.school_name, classesLabel, tasksLabel].filter(Boolean);
           return (
             <button
               key={child.student_id}
@@ -54,16 +57,23 @@ export function KidRail({ children, selectedChild, onSelect, onAddChild, colors 
               <span className="bridge-chip-dot" style={{ background: color }} aria-hidden="true">
                 {getInitial(child.full_name)}
               </span>
-              <span className="bridge-chip-name">{child.full_name}</span>
-              {child.grade_level != null && (
-                <span className="bridge-chip-grade">Grade {child.grade_level}</span>
-              )}
-              {child.invite_status === 'pending' && (
-                <span className="bridge-chip-status bridge-chip-status--pending">Pending</span>
-              )}
-              {child.invite_status === 'email_unverified' && (
-                <span className="bridge-chip-status bridge-chip-status--unverified">Unverified</span>
-              )}
+              <span className="bridge-chip-body">
+                <span className="bridge-chip-main">
+                  <span className="bridge-chip-name">{child.full_name}</span>
+                  {child.grade_level != null && (
+                    <span className="bridge-chip-grade">Grade {child.grade_level}</span>
+                  )}
+                  {child.invite_status === 'pending' && (
+                    <span className="bridge-chip-status bridge-chip-status--pending">Pending</span>
+                  )}
+                  {child.invite_status === 'email_unverified' && (
+                    <span className="bridge-chip-status bridge-chip-status--unverified">Unverified</span>
+                  )}
+                </span>
+                {detailParts.length > 0 && (
+                  <span className="bridge-chip-detail">{detailParts.join(' · ')}</span>
+                )}
+              </span>
             </button>
           );
         })}

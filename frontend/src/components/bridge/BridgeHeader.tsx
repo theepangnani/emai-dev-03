@@ -17,27 +17,10 @@ export function BridgeHeader({ kidsLinked, classesTracked, activeTasks }: Bridge
   return (
     <section className="bridge-header" aria-labelledby="bridge-title">
       <div>
-        <span className="bridge-kicker">Parent Hub · {linkedLabel}</span>
+        <span className="bridge-kicker">{linkedLabel}</span>
         <h1 id="bridge-title" className="bridge-title">
-          Bridge<em>.</em>
+          Parent Hub
         </h1>
-        <svg className="bridge-arch" viewBox="0 0 320 40" aria-hidden="true">
-          <path
-            d="M2 36 Q160 -16 318 36"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-          <circle cx="2" cy="36" r="2.5" fill="currentColor" />
-          <circle cx="80" cy="20" r="2" fill="currentColor" />
-          <circle cx="160" cy="12" r="2.5" fill="currentColor" />
-          <circle cx="240" cy="20" r="2" fill="currentColor" />
-          <circle cx="318" cy="36" r="2.5" fill="currentColor" />
-        </svg>
-        <p className="bridge-lede">
-          Where you meet every class, teacher, digest, and update — one hub, one structure, per kid.
-        </p>
       </div>
 
       <div className="bridge-stats" role="list">
