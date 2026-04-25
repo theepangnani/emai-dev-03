@@ -721,8 +721,20 @@ def _migrate_dci_tables() -> None:
                             photo_uris JSON NOT NULL DEFAULT '[]',
                             voice_uri VARCHAR(500),
                             text_content VARCHAR(280),
-                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web'
+                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web',
+                            CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'))
                         )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE daily_checkins
+                                ADD CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
                     """))
                 else:
                     _conn.execute(text("""
@@ -734,11 +746,13 @@ def _migrate_dci_tables() -> None:
                             photo_uris JSON NOT NULL DEFAULT '[]',
                             voice_uri VARCHAR(500),
                             text_content VARCHAR(280),
-                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web'
+                            source VARCHAR(20) NOT NULL DEFAULT 'kid_web',
+                            CONSTRAINT ck_daily_checkins_source
+                                CHECK (source IN ('kid_web', 'kid_mobile'))
                         )
                     """))
                 _conn.execute(text(
-                    "CREATE INDEX IF NOT EXISTS idx_daily_checkins_kid_date "
+                    "CREATE INDEX IF NOT EXISTS ix_daily_checkins_kid_date "
                     "ON daily_checkins(kid_id, submitted_at)"
                 ))
                 _conn.commit()
@@ -762,8 +776,20 @@ def _migrate_dci_tables() -> None:
                             confidence DOUBLE PRECISION,
                             corrected_by_kid BOOLEAN NOT NULL DEFAULT FALSE,
                             model_version VARCHAR(50),
-                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'))
                         )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE classification_events
+                                ADD CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
                     """))
                 else:
                     _conn.execute(text("""
@@ -778,7 +804,9 @@ def _migrate_dci_tables() -> None:
                             confidence REAL,
                             corrected_by_kid BOOLEAN NOT NULL DEFAULT FALSE,
                             model_version VARCHAR(50),
-                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT ck_classification_events_artifact_type
+                                CHECK (artifact_type IN ('photo', 'voice', 'text'))
                         )
                     """))
                 _conn.execute(text(
@@ -844,8 +872,20 @@ def _migrate_dci_tables() -> None:
                             was_used BOOLEAN,
                             parent_feedback VARCHAR(20),
                             regenerated_from INTEGER REFERENCES conversation_starters(id) ON DELETE SET NULL,
-                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'))
                         )
+                    """))
+                    # Idempotent add for tables created before the CHECK was inlined
+                    _conn.execute(text("""
+                        DO $$
+                        BEGIN
+                            ALTER TABLE conversation_starters
+                                ADD CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'));
+                        EXCEPTION WHEN duplicate_object THEN NULL;
+                        END$$;
                     """))
                 else:
                     _conn.execute(text("""
@@ -856,7 +896,9 @@ def _migrate_dci_tables() -> None:
                             was_used BOOLEAN,
                             parent_feedback VARCHAR(20),
                             regenerated_from INTEGER REFERENCES conversation_starters(id) ON DELETE SET NULL,
-                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT ck_conversation_starters_parent_feedback
+                                CHECK (parent_feedback IS NULL OR parent_feedback IN ('thumbs_up', 'regenerate'))
                         )
                     """))
                 _conn.execute(text(

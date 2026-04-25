@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -41,10 +42,21 @@ from app.db.database import Base
 
 
 # --- Enum-like string sets (kept in Python; stored as VARCHAR per convention) ---
+# Wired into DB-level CheckConstraints below so writes that bypass Pydantic
+# (raw SQL, ORM bulk inserts, future migrations) still get rejected at the DB.
+# Mirrors the ``_in_clause`` pattern in ``app/models/learning_cycle.py``.
 
 ARTIFACT_TYPES = ("photo", "voice", "text")
 CHECKIN_SOURCES = ("kid_web", "kid_mobile")
 PARENT_FEEDBACK_VALUES = ("thumbs_up", "regenerate")
+
+
+# NOTE: ``_in_clause`` interpolates hardcoded tuple values into a SQL CHECK
+# constraint string. Values are in-process constants (never user input),
+# so there's no injection vector.
+def _in_clause(values: tuple) -> str:
+    """Build a SQL ``IN (...)`` clause from a tuple of string literals."""
+    return "(" + ", ".join(f"'{v}'" for v in values) + ")"
 
 
 class DailyCheckin(Base):
@@ -91,7 +103,11 @@ class DailyCheckin(Base):
     )
 
     __table_args__ = (
-        Index("idx_daily_checkins_kid_date", "kid_id", "submitted_at"),
+        CheckConstraint(
+            f"source IN {_in_clause(CHECKIN_SOURCES)}",
+            name="ck_daily_checkins_source",
+        ),
+        Index("ix_daily_checkins_kid_date", "kid_id", "submitted_at"),
     )
 
 
@@ -129,6 +145,13 @@ class ClassificationEvent(Base):
 
     # Relationships
     checkin = relationship("DailyCheckin", back_populates="classifications")
+
+    __table_args__ = (
+        CheckConstraint(
+            f"artifact_type IN {_in_clause(ARTIFACT_TYPES)}",
+            name="ck_classification_events_artifact_type",
+        ),
+    )
 
 
 class AISummary(Base):
@@ -218,6 +241,15 @@ class ConversationStarter(Base):
         "ConversationStarter",
         remote_side="ConversationStarter.id",
         foreign_keys=[regenerated_from],
+    )
+
+    __table_args__ = (
+        # parent_feedback is nullable — allow NULL or one of the enum values
+        CheckConstraint(
+            f"parent_feedback IS NULL OR parent_feedback IN "
+            f"{_in_clause(PARENT_FEEDBACK_VALUES)}",
+            name="ck_conversation_starters_parent_feedback",
+        ),
     )
 
 

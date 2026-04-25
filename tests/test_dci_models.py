@@ -188,7 +188,7 @@ class TestDCISchema:
 
         inspector = sa_inspect(engine)
         indexes = {i["name"] for i in inspector.get_indexes("daily_checkins")}
-        assert "idx_daily_checkins_kid_date" in indexes
+        assert "ix_daily_checkins_kid_date" in indexes
 
 
 # ─────────────────────── model CRUD ───────────────────────
@@ -516,6 +516,94 @@ class TestDCISchemas:
             CheckinConsentCreate(parent_id=1, kid_id=2, retention_days=0)
         with pytest.raises(Exception):
             CheckinConsentCreate(parent_id=1, kid_id=2, retention_days=2000)
+
+
+# ─────────────────────── CHECK constraint enforcement ───────────────────────
+
+class TestDCICheckConstraints:
+    """Verify DB-level CheckConstraints reject invalid enum values even when
+    Pydantic validation is bypassed (raw ORM writes, future migrations, etc).
+    """
+
+    def test_daily_checkins_source_check_rejects_invalid(self, db_session):
+        from app.models.dci import DailyCheckin
+
+        parent = _make_user(db_session, "dci_ck1@test.com")
+        kid = _make_student(db_session, parent.id, "dcick1")
+
+        bad = DailyCheckin(
+            kid_id=kid.id,
+            parent_id=parent.id,
+            photo_uris=[],
+            source="kid_carrier_pigeon",  # not in CHECKIN_SOURCES
+        )
+        db_session.add(bad)
+        with pytest.raises(Exception):
+            db_session.commit()
+        db_session.rollback()
+
+    def test_classification_events_artifact_type_check_rejects_invalid(self, db_session):
+        from app.models.dci import ClassificationEvent
+
+        parent = _make_user(db_session, "dci_ck2@test.com")
+        kid = _make_student(db_session, parent.id, "dcick2")
+        c = _make_checkin(db_session, kid.id, parent.id)
+
+        bad = ClassificationEvent(
+            checkin_id=c.id,
+            artifact_type="video",  # not in ARTIFACT_TYPES
+        )
+        db_session.add(bad)
+        with pytest.raises(Exception):
+            db_session.commit()
+        db_session.rollback()
+
+    def test_conversation_starters_parent_feedback_check_rejects_invalid(self, db_session):
+        from app.models.dci import AISummary, ConversationStarter
+
+        parent = _make_user(db_session, "dci_ck3@test.com")
+        kid = _make_student(db_session, parent.id, "dcick3")
+        summary = AISummary(
+            kid_id=kid.id,
+            summary_date=date.today(),
+            summary_json={"bullets": []},
+            model_version="m",
+            prompt_hash="h",
+        )
+        db_session.add(summary)
+        db_session.flush()
+
+        bad = ConversationStarter(
+            summary_id=summary.id,
+            text="?",
+            parent_feedback="not_a_value",  # not in PARENT_FEEDBACK_VALUES
+        )
+        db_session.add(bad)
+        with pytest.raises(Exception):
+            db_session.commit()
+        db_session.rollback()
+
+    def test_conversation_starters_parent_feedback_allows_null(self, db_session):
+        """parent_feedback is nullable; CHECK must permit NULL."""
+        from app.models.dci import AISummary, ConversationStarter
+
+        parent = _make_user(db_session, "dci_ck4@test.com")
+        kid = _make_student(db_session, parent.id, "dcick4")
+        summary = AISummary(
+            kid_id=kid.id,
+            summary_date=date.today(),
+            summary_json={"bullets": []},
+            model_version="m",
+            prompt_hash="h",
+        )
+        db_session.add(summary)
+        db_session.flush()
+
+        ok = ConversationStarter(summary_id=summary.id, text="?")
+        db_session.add(ok)
+        db_session.commit()
+        db_session.refresh(ok)
+        assert ok.parent_feedback is None
 
 
 # ─────────────────────── migration idempotency ───────────────────────
