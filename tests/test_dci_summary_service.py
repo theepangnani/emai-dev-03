@@ -257,30 +257,41 @@ async def test_idempotent_rerun_replaces_existing_row(mock_get_client):
     fake_models.ConversationStarter = MagicMock(return_value=fake_starter_row)
 
     fake_db = MagicMock()
-    # query(...).filter(...).delete(...) chain
-    delete_chain = fake_db.query.return_value.filter.return_value
-    delete_chain.delete.return_value = 0  # nothing existed yet
+    # query(...).filter(...).delete(...) chain — the AiSummary delete is the
+    # idempotent guard we count. (The starter pre-purge only fires when
+    # existing_ids is non-empty; we cover both legs in this test.)
+    chain = fake_db.query.return_value.filter.return_value
+    chain.delete.return_value = 0  # nothing existed yet on 1st run
+    chain.all.return_value = []    # no existing AiSummary rows on 1st run
 
     with patch.dict("sys.modules", {"app.models.dci": fake_models}):
-        # 1st run
+        # 1st run — empty DB
         await generate_summary(
             kid_id=7, summary_date="2026-04-25",
             classification_events=_events_single_subject(),
             db=fake_db,
         )
-        first_delete_calls = delete_chain.delete.call_count
+        first_delete_calls = chain.delete.call_count
 
-        # 2nd run — same kid+date
-        delete_chain.delete.return_value = 1  # now there's an existing row to nuke
+        # 2nd run — pretend the 1st run wrote a row that we now must replace.
+        chain.delete.return_value = 1
+        chain.all.return_value = [(42,)]  # existing AiSummary id tuple
         await generate_summary(
             kid_id=7, summary_date="2026-04-25",
             classification_events=_events_single_subject(),
             db=fake_db,
         )
-        second_delete_calls = delete_chain.delete.call_count
+        second_delete_calls = chain.delete.call_count
 
-    # Each run must issue exactly one DELETE (idempotent REPLACE pattern).
-    assert second_delete_calls == first_delete_calls + 1
+    # 1st run: exactly one DELETE (the AiSummary delete; starter pre-purge
+    # is skipped because existing_ids is empty).
+    # 2nd run: two DELETEs (starter pre-purge + AiSummary delete).
+    assert first_delete_calls == 1, (
+        f"1st run should issue 1 DELETE (AiSummary only), got {first_delete_calls}"
+    )
+    assert second_delete_calls == first_delete_calls + 2, (
+        "2nd run should issue 2 more DELETEs (starter pre-purge + AiSummary)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +390,10 @@ async def test_audit_records_provenance(mock_get_client, mock_log_action):
     mock_get_client.return_value = mock_client
 
     fake_db = MagicMock()
-    fake_db.query.return_value.filter.return_value.delete.return_value = 0
+    # Empty DB — no prior rows, audit fires either way.
+    chain = fake_db.query.return_value.filter.return_value
+    chain.delete.return_value = 0
+    chain.all.return_value = []
 
     await generate_summary(
         kid_id=3, summary_date="2026-04-25",

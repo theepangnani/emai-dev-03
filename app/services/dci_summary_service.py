@@ -86,10 +86,19 @@ def _extract_summary_payload(message: Any) -> dict[str, Any]:
     """
     for block in getattr(message, "content", []) or []:
         if getattr(block, "type", None) == "tool_use":
-            payload = block.input or {}
+            # Use getattr (not `block.input or {}`) so a missing/None
+            # `input` field surfaces as a hard error instead of silently
+            # producing an empty summary — that path masks SDK regressions
+            # and would write a meaningless row to ai_summaries.
+            payload = getattr(block, "input", None)
+            if payload is None:
+                raise ValueError(
+                    "DCI summary: tool_use block missing `input` field"
+                )
             if not isinstance(payload, dict):
                 raise ValueError(
-                    f"DCI summary tool returned non-dict input: {type(payload)}"
+                    "DCI summary: tool_use input is "
+                    f"{type(payload).__name__}, expected dict"
                 )
             return payload
     raise ValueError("DCI summary: no tool_use block in Claude response")
@@ -174,7 +183,23 @@ def _persist_summary(
 
     # Idempotent REPLACE: delete any existing summary row for the same
     # (kid, date) so the UNIQUE constraint stays clean and the new
-    # generation wins. Cascades to conversation_starters via FK.
+    # generation wins. Belt-and-braces: explicitly purge dependent
+    # `conversation_starters` rows first rather than rely on
+    # `ON DELETE CASCADE` on the FK (M0-2 owns that schema and we don't
+    # want a silent FK violation if CASCADE is omitted there).
+    existing_rows = (
+        db.query(AiSummary.id)
+        .filter(
+            AiSummary.kid_id == kid_id,
+            AiSummary.summary_date == summary_date,
+        )
+        .all()
+    )
+    existing_ids = [r[0] for r in existing_rows]
+    if existing_ids:
+        db.query(ConversationStarter).filter(
+            ConversationStarter.summary_id.in_(existing_ids),
+        ).delete(synchronize_session=False)
     db.query(AiSummary).filter(
         AiSummary.kid_id == kid_id,
         AiSummary.summary_date == summary_date,
@@ -266,10 +291,15 @@ async def generate_summary(
         kid_name: Optional first name — purely for prompt warmth; the
             kid's identity is never exposed in the structured payload.
         db: Optional SQLAlchemy session. When provided, the service
-            writes ``ai_summaries`` + ``conversation_starters`` rows
-            (idempotently REPLACING any existing row for that date) and
-            an ``audit_event`` row. When ``None`` (e.g. dry-run, tests),
-            the function still returns the structured payload.
+            stages INSERTs (via ``db.add`` + ``db.flush``) for
+            ``ai_summaries`` + ``conversation_starters``, idempotently
+            REPLACING any existing row for that date, plus an
+            ``audit_event`` row. **The caller MUST commit the session**
+            — this service never commits so it can compose with a
+            wider transaction (e.g. M0-7 scheduler batch). Audit row is
+            committed separately by ``audit_service.log_action`` via
+            its own SAVEPOINT. When ``db`` is ``None`` (e.g. dry-run,
+            tests), the function still returns the structured payload.
 
     Returns:
         ``{"subjects": [...], "deadlines": [...], "conversation_starter":
