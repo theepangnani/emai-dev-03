@@ -1011,6 +1011,7 @@ export function MyKidsPage() {
                     emptyState={courses.length === 0 ? `No classes for ${childName} yet.` : undefined}
                   >
                     {courses.slice(0, 4).map(c => (
+                      // TODO(#4117): per-course swatch colour — derive a stable hue from c.id once palette is finalised (PR 6 polish)
                       <li key={c.id} className="is-clickable" onClick={() => navigate(`/courses/${c.id}`)}>
                         <span className="bridge-item-swatch" style={{ background: 'var(--bridge-rust)' }} aria-hidden="true" />
                         <div>
@@ -1039,9 +1040,9 @@ export function MyKidsPage() {
                         <div>
                           <div className="bridge-item-title">{t.name}</div>
                           <div className="bridge-item-meta">
-                            {t.subject && <>{t.subject}</>}
-                            {t.subject && t.email && <> · </>}
-                            {t.email}
+                            {t.subject && <span>{t.subject}</span>}
+                            {t.subject && t.email && <span> · </span>}
+                            {t.email && <span>{t.email}</span>}
                           </div>
                         </div>
                       </li>
