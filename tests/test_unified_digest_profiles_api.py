@@ -303,6 +303,242 @@ class TestDeleteSchoolEmail:
 
 
 # ---------------------------------------------------------------------------
+# POST /child-profiles  (#4044) — parent creates a child profile, idempotent
+# ---------------------------------------------------------------------------
+
+
+class TestCreateChildProfile:
+    def test_create_profile_returns_201_with_empty_school_emails(self, client, setup):
+        from app.models.parent_gmail_integration import ParentChildProfile
+
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "Riley"},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["first_name"] == "Riley"
+        assert data["student_id"] is None
+        assert data["school_emails"] == []
+
+        # Confirm row was actually persisted with the right parent.
+        # (Lazy import per project convention.)
+        from app.db.database import SessionLocal
+
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(ParentChildProfile)
+                .filter(
+                    ParentChildProfile.parent_id == setup["parent"].id,
+                    ParentChildProfile.first_name == "Riley",
+                )
+                .first()
+            )
+            assert row is not None
+        finally:
+            db.close()
+
+    def test_create_with_student_id_links_profile(self, client, db_session, setup):
+        from app.models.student import Student, parent_students, RelationshipType
+
+        student_user = setup["student"]
+        # Link student to parent.
+        student_row = (
+            db_session.query(Student)
+            .filter(Student.user_id == student_user.id)
+            .first()
+        )
+        if student_row is None:
+            student_row = Student(user_id=student_user.id)
+            db_session.add(student_row)
+            db_session.commit()
+
+        existing_link = db_session.execute(
+            parent_students.select().where(
+                parent_students.c.parent_id == setup["parent"].id,
+                parent_students.c.student_id == student_row.id,
+            )
+        ).first()
+        if existing_link is None:
+            db_session.execute(
+                parent_students.insert().values(
+                    parent_id=setup["parent"].id,
+                    student_id=student_row.id,
+                    relationship_type=RelationshipType.GUARDIAN,
+                )
+            )
+            db_session.commit()
+
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "Casey", "student_id": student_user.id},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert data["first_name"] == "Casey"
+        assert data["student_id"] == student_user.id
+        assert data["school_emails"] == []
+
+    def test_create_is_idempotent_on_student_id(self, client, db_session, setup):
+        from app.models.student import Student, parent_students, RelationshipType
+
+        student_user = setup["student"]
+        student_row = (
+            db_session.query(Student)
+            .filter(Student.user_id == student_user.id)
+            .first()
+        )
+        if student_row is None:
+            student_row = Student(user_id=student_user.id)
+            db_session.add(student_row)
+            db_session.commit()
+
+        existing_link = db_session.execute(
+            parent_students.select().where(
+                parent_students.c.parent_id == setup["parent"].id,
+                parent_students.c.student_id == student_row.id,
+            )
+        ).first()
+        if existing_link is None:
+            db_session.execute(
+                parent_students.insert().values(
+                    parent_id=setup["parent"].id,
+                    student_id=student_row.id,
+                    relationship_type=RelationshipType.GUARDIAN,
+                )
+            )
+            db_session.commit()
+
+        headers = _auth(client, PARENT_EMAIL)
+        first = client.post(
+            PREFIX,
+            json={"first_name": "Drew", "student_id": student_user.id},
+            headers=headers,
+        )
+        assert first.status_code == 201, first.text
+        first_id = first.json()["id"]
+
+        # Second POST with the same student_id but different first_name —
+        # must return the SAME profile (dedupe path 1).
+        second = client.post(
+            PREFIX,
+            json={"first_name": "DifferentName", "student_id": student_user.id},
+            headers=headers,
+        )
+        assert second.status_code == 201, second.text
+        assert second.json()["id"] == first_id
+
+    def test_create_is_idempotent_on_first_name_case_insensitive(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        first = client.post(
+            PREFIX,
+            json={"first_name": "Sasha"},
+            headers=headers,
+        )
+        assert first.status_code == 201, first.text
+        first_id = first.json()["id"]
+
+        # Same parent + case-insensitive same first_name → returns same row.
+        second = client.post(
+            PREFIX,
+            json={"first_name": "SASHA"},
+            headers=headers,
+        )
+        assert second.status_code == 201
+        assert second.json()["id"] == first_id
+
+    def test_create_with_mismatched_student_id_returns_404(self, client, setup):
+        # 999999 is unlinked / nonexistent.
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "Ghost", "student_id": 999999},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_create_with_empty_first_name_returns_422(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "   "},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    def test_create_with_missing_first_name_returns_422(self, client, setup):
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+
+    def test_create_cross_parent_isolation(self, client, db_session, setup):
+        """Parent A cannot create a profile for parent B's student."""
+        from app.models.student import Student, parent_students, RelationshipType
+
+        # Link the student to OTHER parent only — caller (PARENT_EMAIL) must 404.
+        student_user = setup["student"]
+        student_row = (
+            db_session.query(Student)
+            .filter(Student.user_id == student_user.id)
+            .first()
+        )
+        if student_row is None:
+            student_row = Student(user_id=student_user.id)
+            db_session.add(student_row)
+            db_session.commit()
+
+        # Make sure caller is NOT linked.
+        db_session.execute(
+            parent_students.delete().where(
+                parent_students.c.parent_id == setup["parent"].id,
+                parent_students.c.student_id == student_row.id,
+            )
+        )
+        # Link to OTHER parent.
+        other_link = db_session.execute(
+            parent_students.select().where(
+                parent_students.c.parent_id == setup["other_parent"].id,
+                parent_students.c.student_id == student_row.id,
+            )
+        ).first()
+        if other_link is None:
+            db_session.execute(
+                parent_students.insert().values(
+                    parent_id=setup["other_parent"].id,
+                    student_id=student_row.id,
+                    relationship_type=RelationshipType.GUARDIAN,
+                )
+            )
+        db_session.commit()
+
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            PREFIX,
+            json={"first_name": "Stolen", "student_id": student_user.id},
+            headers=headers,
+        )
+        assert resp.status_code == 404
+
+    def test_create_unauthenticated(self, client, setup):
+        resp = client.post(PREFIX, json={"first_name": "NoAuth"})
+        assert resp.status_code in (401, 403)
+
+    def test_create_wrong_role(self, client, setup):
+        headers = _auth(client, STUDENT_EMAIL)
+        resp = client.post(PREFIX, json={"first_name": "BadRole"}, headers=headers)
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
 # N+1 regression (#4049) — list_child_profiles eager-loads school_emails
 # ---------------------------------------------------------------------------
 

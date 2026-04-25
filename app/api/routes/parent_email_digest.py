@@ -1169,6 +1169,87 @@ def list_child_profiles(
     return profiles
 
 
+class ChildProfileCreate(BaseModel):
+    first_name: str
+    student_id: int | None = None
+
+
+@profiles_router.post("", response_model=ChildProfileResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def create_child_profile(
+    request: Request,
+    body: ChildProfileCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Create a child profile (#4044).
+
+    Idempotent dedupe:
+    - When `student_id` is provided, verify the caller is linked to that
+      student and dedupe on (parent_id, student_id).
+    - Otherwise, dedupe on (parent_id, LOWER(first_name)) — matches the
+      functional unique index used by the v2 dual-write path.
+    """
+    from sqlalchemy import func as sa_func
+
+    first_name = body.first_name.strip()
+    if not first_name:
+        raise HTTPException(status_code=422, detail="first_name is required")
+
+    # Dedupe path 1: by student_id (when provided).
+    if body.student_id is not None:
+        from app.models.student import parent_students, Student
+
+        link = db.execute(
+            parent_students.select()
+            .join(Student, Student.id == parent_students.c.student_id)
+            .where(
+                parent_students.c.parent_id == current_user.id,
+                Student.user_id == body.student_id,
+            )
+        ).first()
+        if link is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Student not found or not linked to this parent",
+            )
+
+        existing = (
+            db.query(ParentChildProfile)
+            .options(selectinload(ParentChildProfile.school_emails))
+            .filter(
+                ParentChildProfile.parent_id == current_user.id,
+                ParentChildProfile.student_id == body.student_id,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+
+    # Dedupe path 2: by (parent_id, LOWER(first_name)).
+    existing = (
+        db.query(ParentChildProfile)
+        .options(selectinload(ParentChildProfile.school_emails))
+        .filter(
+            ParentChildProfile.parent_id == current_user.id,
+            sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    profile = ParentChildProfile(
+        parent_id=current_user.id,
+        student_id=body.student_id,
+        first_name=first_name,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
 @profiles_router.post(
     "/{profile_id}/school-emails",
     response_model=ChildSchoolEmailResponse,
