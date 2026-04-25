@@ -1086,7 +1086,6 @@ export function MyKidsPage() {
               <>
                 <div className="bridge-section-head">
                   <h2>How {childName} is doing</h2>
-                  <span className="bridge-section-meta">2 · domains</span>
                 </div>
                 <div className="bridge-grid">
                   <article className="bridge-card bridge-card--muted">
@@ -1102,12 +1101,6 @@ export function MyKidsPage() {
                         onViewDetails={() => navigate('/grades')}
                       />
                     </div>
-                    <footer className="bridge-card-foot">
-                      <span className="bridge-card-foot-meta">Term snapshot</span>
-                      <button type="button" className="bridge-head-action" onClick={() => navigate('/grades')}>
-                        Open report cards →
-                      </button>
-                    </footer>
                   </article>
                   <article className="bridge-card bridge-card--muted">
                     <header className="bridge-card-head">
