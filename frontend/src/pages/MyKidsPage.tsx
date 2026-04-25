@@ -935,6 +935,10 @@ export function MyKidsPage() {
                   <EmailDigestCard
                     hasIntegration={hasEmailDigestIntegration}
                     onSetup={() => setShowEmailDigestWizard(true)}
+                    onOpenDigest={() => {
+                      const firstName = childName.trim().split(/\s+/)[0] || '';
+                      navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
+                    }}
                     childName={childName}
                   />
                   <ListCard
