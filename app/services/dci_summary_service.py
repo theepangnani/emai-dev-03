@@ -55,6 +55,10 @@ logger = get_logger(__name__)
 DCI_SUMMARY_MODEL_DEFAULT = "claude-sonnet-4-6"
 
 # Cost guard — see § 13 "Cost ceiling" in design doc.
+# Thresholds were promoted to settings (#4204) so ops can tune per-env
+# without a deploy. Module constants kept for backwards-compat (legacy
+# tests / external callers may import them) but the service reads
+# `settings.dci_cost_*` at call time so monkey-patching settings works.
 DCI_COST_TARGET_USD = 0.02
 DCI_COST_ALERT_USD = 0.05
 
@@ -126,9 +130,29 @@ def _normalise_payload(payload: dict[str, Any]) -> dict[str, Any]:
     tone = str(starter.get("tone") or "curious").strip() or "curious"
 
     # Hard 25-word cap — design doc § 8 + acceptance criterion.
+    # #4207 — smart trim: when we MUST truncate, prefer the last clean
+    # sentence boundary (`.`, `!`, `?`) inside the 25-word window so the
+    # starter still reads as a complete clause. If the original ended
+    # with `?` (interrogative) but the cut chops it off, re-append `?`
+    # so the parent sees a question, not a half sentence.
     words = text.split()
     if len(words) > 25:
-        text = " ".join(words[:25])
+        original_ended_with_question = text.rstrip().endswith("?")
+        capped = " ".join(words[:25])
+        # Look for the last sentence-ending punctuation inside the cap.
+        last_boundary = max(
+            capped.rfind("."),
+            capped.rfind("!"),
+            capped.rfind("?"),
+        )
+        if last_boundary >= 0 and last_boundary >= len(capped) // 2:
+            # Trim back to a clean clause (must keep at least half the
+            # window so we don't gut the starter on a single early period).
+            text = capped[: last_boundary + 1]
+        else:
+            text = capped.rstrip(",;: ")
+            if original_ended_with_question and not text.endswith("?"):
+                text = text.rstrip(".!") + "?"
 
     return {
         "subjects": [
@@ -234,6 +258,7 @@ def _record_audit(
     summary_date: str,
     model_version: str,
     prompt_hash: str,
+    prompt_template_hash: str,
     input_hashes: dict[str, str],
     summary_id: int | None,
     cost_usd: float,
@@ -244,6 +269,16 @@ def _record_audit(
     the existing ``audit_logs`` table via ``audit_service.log_action``.
     The action name + details payload give us the hooks needed for the
     audit dashboard without a schema change.
+
+    Two hashes are recorded (#4205):
+      * ``prompt_hash`` — full envelope (system + tool schema + user
+        content blocks). Changes every call because user content
+        carries today's artifacts. Used to answer "did the same
+        envelope produce the same output?".
+      * ``prompt_template_hash`` — stable across daily-context changes
+        (system prompt + tool schema only). Used to answer "are we
+        still on the same prompt template?" without inspecting the
+        envelope. Lets the audit dashboard detect template drift.
     """
     if db is None:
         return
@@ -259,6 +294,7 @@ def _record_audit(
                 "summary_date": summary_date,
                 "model_version": model_version,
                 "prompt_hash": prompt_hash,
+                "prompt_template_hash": prompt_template_hash,
                 "input_hashes": input_hashes,
                 "estimated_cost_usd": round(cost_usd, 6),
             },
@@ -338,10 +374,19 @@ async def generate_summary(
     ]
     tool_with_cache = {**DCI_SUMMARY_TOOL_SCHEMA, "cache_control": {"type": "ephemeral"}}
 
-    # Hashes for audit provenance (NFR5). prompt_hash captures the full
-    # prompt envelope; input_hashes hash each input dimension so the
-    # audit dashboard can answer "did the same inputs produce the same
-    # output?" without storing raw kid content.
+    # Hashes for audit provenance (NFR5). Two hashes (#4205):
+    #   * prompt_hash         — full envelope (system + tool + user blocks),
+    #                           changes every call (today's artifacts drift).
+    #   * prompt_template_hash — stable across daily-context changes
+    #                           (system + tool schema only). Lets the audit
+    #                           dashboard answer "are we still on the same
+    #                           template?" without inspecting the envelope.
+    # input_hashes hash each input dimension so the dashboard can also
+    # answer "did the same inputs produce the same output?" without
+    # storing raw kid content.
+    prompt_template_hash = _hash_str(
+        DCI_SUMMARY_SYSTEM_PROMPT + "\n" + stable_json(DCI_SUMMARY_TOOL_SCHEMA)
+    )
     prompt_hash = _hash_str(
         DCI_SUMMARY_SYSTEM_PROMPT
         + "\n"
@@ -387,17 +432,21 @@ async def generate_summary(
     })
 
     # Cost-cap alert log — the M0 telemetry job tails for this string.
-    if cost_usd > DCI_COST_ALERT_USD:
+    # Thresholds resolved from settings at call time (#4204) so ops can
+    # tune per-environment without a deploy.
+    cost_alert_usd = float(settings.dci_cost_alert_usd)
+    cost_target_usd = float(settings.dci_cost_target_usd)
+    if cost_usd > cost_alert_usd:
         logger.warning(
             "DCI summary cost ALERT | kid_id=%s | date=%s | cost=$%.4f | "
             "alert_threshold=$%.4f | model=%s",
-            kid_id, summary_date, cost_usd, DCI_COST_ALERT_USD, model,
+            kid_id, summary_date, cost_usd, cost_alert_usd, model,
         )
-    elif cost_usd > DCI_COST_TARGET_USD:
+    elif cost_usd > cost_target_usd:
         logger.info(
             "DCI summary cost above target | kid_id=%s | date=%s | "
             "cost=$%.4f | target=$%.4f",
-            kid_id, summary_date, cost_usd, DCI_COST_TARGET_USD,
+            kid_id, summary_date, cost_usd, cost_target_usd,
         )
 
     payload = _normalise_payload(_extract_summary_payload(message))
@@ -417,6 +466,7 @@ async def generate_summary(
         summary_date=summary_date,
         model_version=model,
         prompt_hash=prompt_hash,
+        prompt_template_hash=prompt_template_hash,
         input_hashes=input_hashes,
         summary_id=summary_id,
         cost_usd=cost_usd,

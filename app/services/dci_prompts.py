@@ -164,7 +164,14 @@ def build_today_block(
         line = " · ".join(bits)
         excerpt = ev.get("excerpt") or ev.get("text") or ""
         if excerpt:
-            line += f"\n    excerpt: {str(excerpt)[:400]}"
+            # #4206 — flag truncation explicitly so the model doesn't treat a
+            # chopped excerpt as the complete artifact. Suffix is stable
+            # bytes so prompt-cache stability is preserved.
+            excerpt_str = str(excerpt)
+            if len(excerpt_str) > 400:
+                line += f"\n    excerpt: {excerpt_str[:400]}… [truncated]"
+            else:
+                line += f"\n    excerpt: {excerpt_str}"
         lines.append(line)
     return "\n".join(lines)
 

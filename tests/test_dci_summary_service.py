@@ -457,3 +457,243 @@ async def test_missing_tool_use_block_raises(mock_get_client):
             kid_id=1, summary_date="2026-04-25",
             classification_events=_events_single_subject(),
         )
+
+
+# ---------------------------------------------------------------------------
+# #4204 — cost thresholds resolved from Settings at call time
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_cost_thresholds_read_from_settings(mock_get_client, caplog):
+    """Lowering `settings.dci_cost_alert_usd` triggers ALERT at lower cost."""
+    from app.services import dci_summary_service
+    from app.services.dci_summary_service import generate_summary
+
+    mock_client = MagicMock()
+    # ~$0.0011 cost — well under the 0.05 default but above a 0.0005
+    # override, which lets us verify the override actually wires through.
+    mock_client.messages.create.return_value = _make_message(
+        _good_payload(), input_tok=100, output_tok=50,
+    )
+    mock_get_client.return_value = mock_client
+
+    with patch.object(dci_summary_service.settings, "dci_cost_alert_usd", 0.0005), \
+         patch.object(dci_summary_service.settings, "dci_cost_target_usd", 0.0001):
+        with caplog.at_level(logging.WARNING, logger="app.services.dci_summary_service"):
+            await generate_summary(
+                kid_id=1, summary_date="2026-04-25",
+                classification_events=_events_single_subject(),
+            )
+
+    alert_logs = [r for r in caplog.records if "ALERT" in r.getMessage()]
+    assert alert_logs, (
+        "Lowering dci_cost_alert_usd via settings should trigger ALERT log "
+        "even at sub-cent cost."
+    )
+
+
+# ---------------------------------------------------------------------------
+# #4205 — audit row carries BOTH prompt_hash and prompt_template_hash
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.log_action")
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_audit_records_dual_prompt_hashes(mock_get_client, mock_log_action):
+    """Audit details must include both prompt_hash and prompt_template_hash."""
+    from app.services.dci_summary_service import generate_summary
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_message(_good_payload())
+    mock_get_client.return_value = mock_client
+
+    fake_db = MagicMock()
+    chain = fake_db.query.return_value.filter.return_value
+    chain.delete.return_value = 0
+    chain.all.return_value = []
+
+    await generate_summary(
+        kid_id=3, summary_date="2026-04-25",
+        classification_events=_events_single_subject(),
+        db=fake_db,
+    )
+
+    details = mock_log_action.call_args.kwargs["details"]
+    assert "prompt_hash" in details
+    assert "prompt_template_hash" in details
+    assert details["prompt_hash"] != details["prompt_template_hash"], (
+        "Envelope hash and template hash should differ — envelope includes "
+        "today's user content blocks."
+    )
+    # Both must be 64-char SHA-256 hex strings.
+    assert len(details["prompt_hash"]) == 64
+    assert len(details["prompt_template_hash"]) == 64
+
+
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.log_action")
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_prompt_template_hash_stable_across_days(
+    mock_get_client, mock_log_action,
+):
+    """prompt_template_hash must NOT change when only today's events change."""
+    from app.services.dci_summary_service import generate_summary
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_message(_good_payload())
+    mock_get_client.return_value = mock_client
+
+    fake_db = MagicMock()
+    chain = fake_db.query.return_value.filter.return_value
+    chain.delete.return_value = 0
+    chain.all.return_value = []
+
+    # Day 1
+    await generate_summary(
+        kid_id=3, summary_date="2026-04-25",
+        classification_events=_events_single_subject(),
+        db=fake_db,
+    )
+    day1 = mock_log_action.call_args.kwargs["details"]
+
+    # Day 2 — different events, different date.
+    await generate_summary(
+        kid_id=3, summary_date="2026-04-26",
+        classification_events=_events_multi_subject(),
+        db=fake_db,
+    )
+    day2 = mock_log_action.call_args.kwargs["details"]
+
+    assert day1["prompt_template_hash"] == day2["prompt_template_hash"], (
+        "prompt_template_hash must be stable across days — only system + "
+        "tool schema feed it."
+    )
+    assert day1["prompt_hash"] != day2["prompt_hash"], (
+        "prompt_hash MUST differ across days — user content block changes."
+    )
+
+
+# ---------------------------------------------------------------------------
+# #4206 — long excerpt prompt-block carries truncation marker
+# ---------------------------------------------------------------------------
+
+def test_build_today_block_marks_truncated_excerpts():
+    """Excerpts > 400 chars are suffixed with `… [truncated]`."""
+    from app.services.dci_prompts import build_today_block
+
+    long_excerpt = "abcdefghij" * 50  # 500 chars
+    short_excerpt = "short note"
+    events = [
+        {"artifact_type": "photo", "subject": "Math", "excerpt": long_excerpt},
+        {"artifact_type": "text", "subject": "Reading", "excerpt": short_excerpt},
+    ]
+    block = build_today_block(events, "2026-04-25")
+
+    assert "… [truncated]" in block, (
+        "Truncation marker missing — model would treat chopped excerpt as complete."
+    )
+    # The short excerpt should NOT be flagged as truncated.
+    short_line = [ln for ln in block.splitlines() if "short note" in ln]
+    assert short_line, "Short excerpt should appear verbatim."
+    assert "[truncated]" not in short_line[0]
+
+
+# ---------------------------------------------------------------------------
+# #4207 — smart starter trim preserves question mark / clause boundary
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_smart_starter_trim_reappends_question_mark(mock_get_client):
+    """Overflow starter that ended with ? gets a ? back after trim."""
+    from app.services.dci_summary_service import generate_summary
+
+    payload = _good_payload()
+    # 30-word interrogative — chopped at 25 words should still end with ?
+    payload["conversation_starter"]["text"] = (
+        "Did the long division word problems feel a little easier today "
+        "compared with the practice set you tackled together yesterday "
+        "after your snack and quick break?"
+    )
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_message(payload)
+    mock_get_client.return_value = mock_client
+
+    result = await generate_summary(
+        kid_id=1, summary_date="2026-04-25",
+        classification_events=_events_single_subject(),
+    )
+    text = result["conversation_starter"]["text"]
+    assert text.endswith("?"), (
+        f"Smart trim should preserve interrogative tone, got: {text!r}"
+    )
+    assert len(text.split()) <= 25
+
+
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_smart_starter_trim_prefers_sentence_boundary(mock_get_client):
+    """When a clean clause-end sits within the 25-word window, prefer it."""
+    from app.services.dci_summary_service import generate_summary
+
+    payload = _good_payload()
+    # Sentence ends at word ~18 with "?"; 30 total words — trim should
+    # prefer the in-window question mark.
+    payload["conversation_starter"]["text"] = (
+        "Which part of the long division practice felt like the biggest "
+        "win for you today and why did it click? "
+        "Also tell me more about the Confederation notes you made."
+    )
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_message(payload)
+    mock_get_client.return_value = mock_client
+
+    result = await generate_summary(
+        kid_id=1, summary_date="2026-04-25",
+        classification_events=_events_single_subject(),
+    )
+    text = result["conversation_starter"]["text"]
+    assert text.endswith("?"), (
+        f"Smart trim should land on the in-window `?`, got: {text!r}"
+    )
+    # The trailing "Also tell me more…" clause must be gone.
+    assert "Confederation" not in text
+
+
+# ---------------------------------------------------------------------------
+# #4187 — subject taxonomy validator (shared with M0-4 PATCH endpoint)
+# ---------------------------------------------------------------------------
+
+def test_validate_subject_accepts_canonical_values():
+    from app.services.dci_subject_taxonomy import (
+        DCI_VALID_SUBJECTS,
+        validate_subject,
+    )
+
+    for subj in DCI_VALID_SUBJECTS:
+        assert validate_subject(subj) == subj
+
+
+def test_validate_subject_rejects_freeform_and_case_variants():
+    from app.services.dci_subject_taxonomy import validate_subject
+
+    # Case-sensitive: "MATH" / "math" / "maths" are NOT canonical.
+    assert validate_subject("MATH") is None
+    assert validate_subject("math") is None
+    assert validate_subject("maths") is None
+    assert validate_subject("english class") is None
+    assert validate_subject("Phys Ed") is None  # canonical is "Phys-Ed"
+    # Empty / whitespace / None
+    assert validate_subject("") is None
+    assert validate_subject("   ") is None
+    assert validate_subject(None) is None
+
+
+def test_validate_subject_strips_surrounding_whitespace():
+    from app.services.dci_subject_taxonomy import validate_subject
+
+    assert validate_subject("  Math  ") == "Math"
+    assert validate_subject("\tScience\n") == "Science"
