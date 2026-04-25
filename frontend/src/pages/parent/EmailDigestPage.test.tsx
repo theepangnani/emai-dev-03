@@ -17,6 +17,7 @@ const mockSendWhatsAppOTP = vi.fn();
 const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
+const mockTriggerSync = vi.fn();
 const mockListChildProfiles = vi.fn();
 const mockCreateChildProfile = vi.fn();
 const mockAddChildSchoolEmail = vi.fn();
@@ -40,6 +41,7 @@ vi.mock('../../api/parentEmailDigest', async () => {
     verifyWhatsAppOTP: (...args: unknown[]) => mockVerifyWhatsAppOTP(...args),
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
+    triggerSync: (...args: unknown[]) => mockTriggerSync(...args),
     listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
     createChildProfile: (...args: unknown[]) => mockCreateChildProfile(...args),
     addChildSchoolEmail: (...args: unknown[]) => mockAddChildSchoolEmail(...args),
@@ -1337,5 +1339,355 @@ describe('EmailDigestPage — unified remove school email (#4098)', () => {
     await waitFor(() => {
       expect(screen.getByText('School email is in use.')).toBeInTheDocument();
     });
+  });
+});
+
+describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockTriggerSync.mockResolvedValue({ data: buildIntegration() });
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'delivered', email_count: 3, message: 'Digest sent!' },
+    });
+  });
+
+  it('renders the Sync Now button when activeIntegration is active', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sync Now' })).toBeInTheDocument();
+    });
+  });
+
+  it('clicking Sync Now calls triggerSync(integrationId)', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sync Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync Now' }));
+
+    await waitFor(() => {
+      expect(mockTriggerSync).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('renders the Send Digest Now button', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+  });
+
+  it('clicking Send Digest Now calls sendDigestNow(integrationId)', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(mockSendDigestNow).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('renders the per-channel status banner with delivered status (no retry button)', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'delivered', email_count: 5, message: 'Digest sent to 5 messages.' },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      const banner = screen.getByText('Digest sent to 5 messages.').closest('.ed-digest-status');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('data-status', 'delivered');
+    });
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('renders the per-channel status banner with failed status (shows Try again button)', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'failed', email_count: 0, message: 'Failed to deliver digest.' },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      const banner = screen.getByText('Failed to deliver digest.').closest('.ed-digest-status');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('data-status', 'failed');
+    });
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  });
+
+  // #4102 pass-1 review: cover the remaining status branches the legacy
+  // tests had but the unified port skipped.
+  it('renders amber partial status with failed-channel list', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'partial',
+        email_count: 2,
+        message: 'Digest partially delivered (2 emails). Failed channels: WhatsApp.',
+        channel_status: { in_app: true, email: true, whatsapp: false },
+      },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+    await waitFor(() => {
+      expect(screen.getByText(/partially delivered/)).toBeInTheDocument();
+    });
+    const banner = screen.getByText(/partially delivered/).closest('.ed-digest-status') as HTMLElement;
+    expect(banner).toHaveAttribute('data-status', 'partial');
+    expect(banner.textContent).toContain('WhatsApp');
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('renders skipped status WITH preferences link when reason=no_eligible_channels', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 0,
+        message: 'No eligible delivery channels. Configure your delivery preferences.',
+        reason: 'no_eligible_channels',
+      },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+    await waitFor(() => {
+      expect(screen.getByText(/No eligible delivery channels/)).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: 'Open preferences' })).toBeInTheDocument();
+  });
+
+  it('does NOT render preferences link for skipped with reason=no_new_emails', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: {
+        status: 'skipped',
+        email_count: 0,
+        message: 'No new emails',
+        reason: 'no_new_emails',
+      },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+    await waitFor(() => {
+      expect(screen.getByText('No new emails')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('link', { name: 'Open preferences' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+});
+
+describe('EmailDigestPage — unified Digest History (#4056)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({ data: [] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  });
+
+  it('renders the empty state when there are no logs', async () => {
+    mockGetLogs.mockResolvedValue({ data: [] });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          /No digests delivered yet\. Your first digest will appear here after the next scheduled run\./,
+        ),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText('Digest History')).toBeInTheDocument();
+  });
+
+  it('renders log cards when there are logs', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 3,
+          digest_content: '<p>Today\'s digest</p>',
+          digest_length_chars: 24,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email',
+          status: 'delivered',
+        },
+        {
+          id: 302,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 1,
+          digest_content: null,
+          digest_length_chars: null,
+          delivered_at: '2026-04-21T11:00:00Z',
+          channels_used: null,
+          status: 'failed',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('3 emails')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Digest History')).toBeInTheDocument();
+    expect(screen.getByText('1 email')).toBeInTheDocument();
+    expect(screen.getByText('delivered')).toBeInTheDocument();
+    expect(screen.getByText('failed')).toBeInTheDocument();
+  });
+
+  it('expands a log card on click to show digest_content', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 2,
+          digest_content: '<p>Today\'s digest body</p>',
+          digest_length_chars: 30,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email',
+          status: 'delivered',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 emails')).toBeInTheDocument();
+    });
+
+    // Header button toggles expansion.
+    const header = screen.getByText('2 emails').closest('button');
+    expect(header).not.toBeNull();
+    fireEvent.click(header!);
+
+    await waitFor(() => {
+      expect(screen.getByText("Today's digest body")).toBeInTheDocument();
+    });
+  });
+
+  it('shows the channels_used line when expanded', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 301,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 2,
+          digest_content: '<p>Body</p>',
+          digest_length_chars: 14,
+          delivered_at: '2026-04-22T11:00:00Z',
+          channels_used: 'email, whatsapp',
+          status: 'delivered',
+        },
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 emails')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('2 emails').closest('button')!);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Delivered via:/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/email, whatsapp/)).toBeInTheDocument();
+  });
+
+  it('renders the loading state while the logs query is in flight', async () => {
+    let resolveLogs: ((value: { data: unknown[] }) => void) | undefined;
+    mockGetLogs.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveLogs = resolve;
+        }),
+    );
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Digest History')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Loading history...')).toBeInTheDocument();
+
+    // Resolve so the test cleanly tears down.
+    resolveLogs?.({ data: [] });
+  });
+
+  // #4102 pass-1 review: assert DOMPurify sanitization actually fires on
+  // expanded digest content. Critical security gate — the legacy path was
+  // hardened around this.
+  it('sanitizes <script> tags out of digest_content via DOMPurify', async () => {
+    mockGetLogs.mockResolvedValue({
+      data: [
+        {
+          id: 901,
+          parent_id: 100,
+          integration_id: 1,
+          email_count: 1,
+          // Payload includes both <script> AND an onerror attribute on <img>.
+          // DOMPurify strips both; jsdom alone preserves both in the DOM tree.
+          digest_content:
+            '<p>Safe paragraph</p>' +
+            '<script>alert("xss")</script>' +
+            '<img src="x" onerror="alert(1)" alt="ok">',
+          digest_length_chars: 60,
+          delivered_at: '2026-04-25T12:00:00Z',
+          channels_used: 'in_app,email',
+          status: 'delivered',
+        },
+      ],
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('1 email')).toBeInTheDocument();
+    });
+    // Expand the log card.
+    const header = screen.getByText('1 email').closest('button') as HTMLElement;
+    expect(header).not.toBeNull();
+    fireEvent.click(header);
+    await waitFor(() => {
+      expect(screen.getByText('Safe paragraph')).toBeInTheDocument();
+    });
+    // The <script> tag must be stripped — assert no script element exists
+    // under the rendered digest content. Also assert the onerror attribute
+    // is stripped from the <img> (a more distinctive DOMPurify behavior;
+    // jsdom would preserve onerror on its own).
+    const digestText = screen.getByText('Safe paragraph').closest('.ed-digest-text');
+    expect(digestText).not.toBeNull();
+    expect(digestText!.querySelector('script')).toBeNull();
+    const img = digestText!.querySelector('img');
+    if (img) {
+      expect(img.hasAttribute('onerror')).toBe(false);
+    }
   });
 });
