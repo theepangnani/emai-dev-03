@@ -116,6 +116,12 @@ class Settings(BaseSettings):
     # GCP Vision OCR (#3410) — enable for handwritten student notes
     gcp_vision_enabled: bool = False
 
+    # CB-DCI-001 voice transcription (#4142) — Whisper cost cap + cache settings
+    dci_voice_cost_cap_usd: float = 0.03  # Per-voice-note hard cap; over → fail closed
+    dci_voice_whisper_price_per_minute_usd: float = 0.006  # OpenAI Whisper-1 list price
+    dci_voice_cache_ttl_days: int = 30  # SHA256(content) cache TTL
+    dci_voice_cache_dir: str = "./data/dci_voice_cache"  # Disk cache for M0 dev
+
     # Storage limits per tier (#1007)
     free_storage_limit_bytes: int = 104857600
     free_upload_limit_bytes: int = 10485760
