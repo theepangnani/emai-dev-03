@@ -1,0 +1,143 @@
+/* CB-BRIDGE-001 — Bridge re-skin (#4105).
+ *
+ * PR 1 scope: tokens + header only. All selectors are namespaced under
+ * `.bridge-page` so the new visual language cannot leak into other routes.
+ * Subsequent PRs will add `.bridge-rail`, `.bridge-hero`, `.bridge-card`,
+ * etc. under the same scope.
+ */
+
+.bridge-page {
+  --bridge-ivory: #f5f1ea;
+  --bridge-paper: #fbf8f2;
+  --bridge-card: #ffffff;
+  --bridge-ink: #1c1a16;
+  --bridge-ink-2: #3a3630;
+  --bridge-muted: #6b645b;
+  --bridge-hair: #e5ddd1;
+  --bridge-rail: #ece4d6;
+  --bridge-rust: #b04a2c;
+  --bridge-rust-ink: #7a2f18;
+  --bridge-pine: #2d4a3e;
+
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--bridge-ink);
+}
+
+.bridge-page h1,
+.bridge-page h2,
+.bridge-page h3 {
+  font-family: "Fraunces", "Georgia", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* ---------------- Header ---------------- */
+.bridge-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 48px;
+  padding: 28px 0 40px;
+  border-bottom: 1px solid var(--bridge-hair);
+  margin-bottom: 32px;
+}
+
+.bridge-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bridge-rust);
+  font-weight: 500;
+}
+
+.bridge-title {
+  font-size: clamp(44px, 6vw, 72px);
+  line-height: 0.98;
+  margin-top: 14px;
+  letter-spacing: -0.035em;
+  color: var(--bridge-ink);
+}
+
+.bridge-title em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--bridge-rust);
+}
+
+.bridge-arch {
+  display: block;
+  width: min(320px, 80%);
+  height: 38px;
+  color: var(--bridge-rust);
+  margin: 18px 0 0;
+  opacity: 0.85;
+}
+
+.bridge-lede {
+  margin-top: 18px;
+  font-size: 17px;
+  color: var(--bridge-ink-2);
+  max-width: 52ch;
+  line-height: 1.55;
+}
+
+.bridge-stats {
+  align-self: end;
+  display: grid;
+  grid-template-columns: repeat(var(--bridge-stat-count, 3), 1fr);
+  border-left: 1px solid var(--bridge-hair);
+}
+
+.bridge-stat {
+  padding: 4px 22px;
+}
+
+.bridge-stat + .bridge-stat {
+  border-left: 1px solid var(--bridge-hair);
+}
+
+.bridge-stat-num {
+  font-family: "Fraunces", serif;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  display: block;
+  color: var(--bridge-ink);
+}
+
+.bridge-stat-num sub {
+  font-size: 13px;
+  font-family: "JetBrains Mono", monospace;
+  color: var(--bridge-muted);
+  vertical-align: 6px;
+  margin-left: 2px;
+  font-weight: 500;
+}
+
+.bridge-stat-label {
+  font-size: 12px;
+  color: var(--bridge-muted);
+  margin-top: 6px;
+  display: block;
+  font-family: "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 960px) {
+  .bridge-header {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .bridge-stats {
+    border-left: 0;
+    border-top: 1px solid var(--bridge-hair);
+    padding-top: 22px;
+  }
+
+  .bridge-stat:first-child {
+    padding-left: 0;
+  }
+}
