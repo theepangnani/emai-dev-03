@@ -46,6 +46,12 @@ ACTION_TYPE_DAILY_CHECKIN = "daily_checkin"
 # ``days_until_next_milestone`` — never to gate features or shame the kid.
 CHECKIN_STREAK_MILESTONES = (3, 7, 14, 30, 60, 100)
 
+# Maximum number of days ``_previous_school_day`` walks back before giving up.
+# Bounded so a pathological holiday calendar (e.g. 4-week winter break +
+# back-to-back PD days) cannot loop forever; on exhaustion we log a warning
+# and return a deterministic anchor minus the bound.
+MAX_BACKFILL_DAYS = 30
+
 
 # ── School-day helpers ──────────────────────────────────────────────
 
@@ -73,14 +79,21 @@ def is_school_day(db: Session, d: date) -> bool:
 def _previous_school_day(db: Session, anchor: date) -> date:
     """Walk backward from ``anchor - 1`` until we land on a school day.
 
-    Bounded walk (max 30 days) — protects against pathological holiday data.
+    Bounded walk (``MAX_BACKFILL_DAYS``) — protects against pathological
+    holiday data. On exhaustion we log a warning and return a deterministic
+    anchor (``anchor - MAX_BACKFILL_DAYS``) so the streak math never compares
+    against a non-school cursor that drifted past the bound.
     """
     cursor = anchor - timedelta(days=1)
-    for _ in range(30):
+    for _ in range(MAX_BACKFILL_DAYS):
         if is_school_day(db, cursor):
             return cursor
         cursor -= timedelta(days=1)
-    return cursor
+    logger.warning(
+        "DCI: no school day found in past %d days from %s — using fallback anchor",
+        MAX_BACKFILL_DAYS, anchor.isoformat(),
+    )
+    return anchor - timedelta(days=MAX_BACKFILL_DAYS)
 
 
 # ── Internal aggregate helpers ──────────────────────────────────────
@@ -241,7 +254,9 @@ def evaluate_checkin_streak(db: Session, kid_id: int) -> str:
     if not is_school_day(db, yesterday):
         return "skip"
 
-    # School day — was there a check-in?
+    # School day — was there a check-in? ``StreakLog`` is the single source
+    # of truth for "did this kid actually check in yesterday" — the summary
+    # aggregate is derived state and must NOT short-circuit this decision.
     user_id = _resolve_user_id(db, kid_id)
     if user_id is not None:
         log = (
@@ -257,9 +272,6 @@ def evaluate_checkin_streak(db: Session, kid_id: int) -> str:
             return "active"
 
     # Missed school day → break (silently — never surface to the kid).
-    if summary.last_checkin_date and summary.last_checkin_date >= yesterday:
-        return "active"
-
     logger.info(
         "DCI streak broken (silent): kid_id=%d previous=%d",
         kid_id,

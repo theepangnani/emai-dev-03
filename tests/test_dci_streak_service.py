@@ -442,6 +442,107 @@ class TestEvaluateCheckinStreak:
             db_session.commit()
 
 
+class TestEvaluateOrphanedSummary:
+    """Regression guard for #4177 — when the StreakLog row for yesterday is
+    missing but ``summary.last_checkin_date`` happens to equal yesterday,
+    the evaluator must still break the streak (StreakLog is the source of
+    truth, not the aggregate).
+    """
+
+    def test_orphaned_summary_breaks_silently(
+        self, db_session, kid_record, monkeypatch
+    ):
+        from app.models.checkin_streak import CheckinStreakSummary
+        from app.models.xp import StreakLog
+        from app.services import dci_streak_service
+
+        kid = kid_record["student"]
+        kid_user = kid_record["user"]
+
+        # Frozen "today" = Wed Apr 15, "yesterday" = Tue Apr 14 (school day).
+        fake_today = date(2026, 4, 15)
+        real_date = dci_streak_service.date
+
+        class _FrozenDate(real_date):
+            @classmethod
+            def today(cls):
+                return fake_today
+
+        monkeypatch.setattr(dci_streak_service, "date", _FrozenDate)
+
+        # Stale aggregate claiming yesterday was checked in, but NO StreakLog
+        # row exists for that day (simulates a manual delete or migration drift).
+        summary = CheckinStreakSummary(
+            kid_id=kid.id,
+            current_streak=5,
+            longest_streak=5,
+            last_checkin_date=fake_today - timedelta(days=1),  # Tue Apr 14
+        )
+        db_session.add(summary)
+        db_session.commit()
+
+        # Confirm precondition: no StreakLog row for the daily_checkin stream
+        # on yesterday.
+        log_count = (
+            db_session.query(StreakLog)
+            .filter(
+                StreakLog.student_id == kid_user.id,
+                StreakLog.log_date == fake_today - timedelta(days=1),
+                StreakLog.qualifying_action == "daily_checkin",
+            )
+            .count()
+        )
+        assert log_count == 0
+
+        result = dci_streak_service.evaluate_checkin_streak(db_session, kid.id)
+        assert result == "broken"
+
+        db_session.refresh(summary)
+        assert summary.current_streak == 0
+        assert summary.longest_streak == 5  # never-guilt: history preserved
+
+
+class TestPreviousSchoolDayBound:
+    """Regression guard for #4178 — exhausting the 30-day backfill must
+    return a deterministic value (anchor - MAX_BACKFILL_DAYS), not a
+    cursor that drifted past the bound onto a non-school day."""
+
+    def test_pathological_holiday_run_returns_deterministic_anchor(
+        self, db_session, kid_record
+    ):
+        from app.models.holiday import HolidayDate
+        from app.services.dci_streak_service import (
+            MAX_BACKFILL_DAYS,
+            _previous_school_day,
+        )
+
+        anchor = date(2026, 6, 1)  # Monday
+        # Block the entire MAX_BACKFILL_DAYS window with explicit holidays —
+        # combined with weekends, this guarantees no school day is found.
+        added = []
+        for i in range(1, MAX_BACKFILL_DAYS + 5):
+            d = anchor - timedelta(days=i)
+            existing = (
+                db_session.query(HolidayDate)
+                .filter(HolidayDate.date == d)
+                .first()
+            )
+            if existing is None:
+                db_session.add(HolidayDate(date=d, name=f"Test bound {i}"))
+                added.append(d)
+        db_session.commit()
+
+        try:
+            result = _previous_school_day(db_session, anchor)
+            assert result == anchor - timedelta(days=MAX_BACKFILL_DAYS)
+        finally:
+            for d in added:
+                db_session.query(HolidayDate).filter(
+                    HolidayDate.date == d
+                ).delete()
+            db_session.commit()
+
+
 # ── Regression: existing study streak still works after refactor ────
 
 
