@@ -394,7 +394,7 @@ async def submit_checkin(
     voice_uri: Optional[str] = None
 
     if photo_bytes is not None:
-        stored = dci_service.store_artifact_locally(
+        stored = await dci_service.store_artifact_locally(
             kid_id=kid.id,
             artifact_type="photo",
             content=photo_bytes,
@@ -403,7 +403,7 @@ async def submit_checkin(
         photo_uri = stored.uri
 
     if voice_bytes is not None:
-        stored = dci_service.store_artifact_locally(
+        stored = await dci_service.store_artifact_locally(
             kid_id=kid.id,
             artifact_type="voice",
             content=voice_bytes,

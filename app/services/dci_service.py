@@ -19,6 +19,7 @@ service callable in isolation so unit tests can mock the DB layer.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import os
@@ -79,7 +80,13 @@ def _ext_for(content_type: Optional[str], default: str) -> str:
     return mapping.get(ct, default)
 
 
-def store_artifact_locally(
+def _sync_write_artifact(dir_path: Path, file_path: Path, content: bytes) -> None:
+    """Blocking helper: ensure dir exists and write bytes. Runs in a thread."""
+    dir_path.mkdir(parents=True, exist_ok=True)
+    file_path.write_bytes(content)
+
+
+async def store_artifact_locally(
     *,
     kid_id: int,
     artifact_type: str,
@@ -91,6 +98,11 @@ def store_artifact_locally(
     The path mirrors the eventual GCS object key so the cut-over is a
     one-line swap. The dir is created if missing — tests run against
     an isolated tmp DB so this is acceptable.
+
+    The blocking ``mkdir`` + ``write_bytes`` calls are dispatched via
+    ``asyncio.to_thread`` so the async route handler does not stall the
+    event loop on disk I/O (#4188 — to be obsoleted by the GCS swap in
+    the M0-fast-follow per #4149).
     """
     if artifact_type not in {"photo", "voice"}:
         raise ValueError(f"unsupported artifact_type: {artifact_type!r}")
@@ -106,11 +118,10 @@ def store_artifact_locally(
         / f"{now:%m}"
         / f"{now:%d}"
     )
-    dir_path.mkdir(parents=True, exist_ok=True)
 
     file_name = f"{uuid.uuid4().hex}.{ext}"
     file_path = dir_path / file_name
-    file_path.write_bytes(content)
+    await asyncio.to_thread(_sync_write_artifact, dir_path, file_path, content)
 
     return StoredArtifact(
         artifact_type=artifact_type,
