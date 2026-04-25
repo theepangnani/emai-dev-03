@@ -42,10 +42,11 @@
 .bridge-header {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 48px;
-  padding: 28px 0 40px;
+  gap: 32px;
+  padding: 18px 0 18px;
   border-bottom: 1px solid var(--bridge-hair);
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+  align-items: center;
 }
 
 .bridge-kicker {
@@ -58,34 +59,11 @@
 }
 
 .bridge-title {
-  font-size: clamp(44px, 6vw, 72px);
-  line-height: 0.98;
-  margin-top: 14px;
-  letter-spacing: -0.035em;
+  font-size: 28px;
+  line-height: 1.1;
+  margin-top: 6px;
+  letter-spacing: -0.02em;
   color: var(--bridge-ink);
-}
-
-.bridge-title em {
-  font-style: normal;
-  font-weight: 400;
-  color: var(--bridge-rust);
-}
-
-.bridge-arch {
-  display: block;
-  width: min(320px, 80%);
-  height: 38px;
-  color: var(--bridge-rust);
-  margin: 18px 0 0;
-  opacity: 0.85;
-}
-
-.bridge-lede {
-  margin-top: 18px;
-  font-size: 17px;
-  color: var(--bridge-ink-2);
-  max-width: 52ch;
-  line-height: 1.55;
 }
 
 .bridge-stats {
@@ -161,7 +139,6 @@
   gap: 32px;
   align-items: center;
   position: relative;
-  overflow: hidden;
 }
 
 .bridge-hero::before {
@@ -169,6 +146,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
+  border-radius: 22px;
   background:
     radial-gradient(600px 240px at 110% -10%, rgba(176, 74, 44, 0.08), transparent 60%),
     radial-gradient(500px 200px at -10% 120%, rgba(45, 74, 62, 0.06), transparent 60%);
@@ -566,6 +544,36 @@
 
 .bridge-chip-dot--all {
   background: linear-gradient(135deg, var(--bridge-rust), var(--bridge-pine));
+}
+
+.bridge-chip-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bridge-chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bridge-chip-detail {
+  font-size: 12px;
+  color: var(--bridge-muted);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
+.bridge-chip.is-active .bridge-chip-detail {
+  color: rgba(251, 248, 242, 0.78);
 }
 
 .bridge-chip-name {
