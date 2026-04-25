@@ -1,19 +1,21 @@
 /**
- * CB-BRIDGE-HF Stream D — Quick Tools strip (#4130).
+ * CB-BRIDGE-HF Stream D — Quick Tools strip (#4130, #4133).
  *
- * Restores three discoverable per-kid actions that the Bridge re-skin
+ * Restores four discoverable per-kid actions that the Bridge re-skin
  * (PR #4123) removed from the bottom strip:
  *   - Help My Kid    → /ai-tools
+ *   - View Tasks     → /tasks?student_id=<selectedChild>
  *   - Request Study  → opens StudyRequestModal
  *   - Report Cards   → /school-report-cards
  *
  * Rendered between the management grid and the insight grid in the
- * selected-kid branch of MyKidsPage. Bridge-styled, three-column on
+ * selected-kid branch of MyKidsPage. Bridge-styled, four-column on
  * desktop, single column on mobile (≤720px).
  */
 
 interface QuickToolsCardProps {
   onHelpMyKid: () => void;
+  onViewTasks: () => void;
   onRequestStudy: () => void;
   onReportCards: () => void;
 }
@@ -28,6 +30,7 @@ interface Tool {
 
 export function QuickToolsCard({
   onHelpMyKid,
+  onViewTasks,
   onRequestStudy,
   onReportCards,
 }: QuickToolsCardProps) {
@@ -38,6 +41,13 @@ export function QuickToolsCard({
       title: 'Help My Kid',
       description: 'Open the AI study tools to make flashcards, quizzes, and notes.',
       onClick: onHelpMyKid,
+    },
+    {
+      key: 'tasks',
+      icon: '✓',
+      title: 'View Tasks',
+      description: "Open this kid's task list, filtered by them.",
+      onClick: onViewTasks,
     },
     {
       key: 'request',
@@ -59,7 +69,7 @@ export function QuickToolsCard({
     <>
       <div className="bridge-section-head">
         <h2>Quick tools</h2>
-        <span className="bridge-section-meta">3 · shortcuts</span>
+        <span className="bridge-section-meta">4 · shortcuts</span>
       </div>
       <div className="bridge-quicktools">
         {tools.map((t) => (

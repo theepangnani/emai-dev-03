@@ -983,10 +983,10 @@
   flex-direction: column;
 }
 
-/* ---------------- HF Stream D — Quick Tools (#4130) ---------------- */
+/* ---------------- HF Stream D — Quick Tools (#4130, #4133) ---------------- */
 .bridge-quicktools {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 48px;
 }
@@ -1057,6 +1057,12 @@
 .bridge-quicktool:hover .bridge-quicktool-chev {
   color: var(--bridge-rust);
   transform: translateX(3px);
+}
+
+@media (max-width: 960px) {
+  .bridge-quicktools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {

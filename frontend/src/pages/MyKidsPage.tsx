@@ -1032,6 +1032,7 @@ export function MyKidsPage() {
           {/* ── Bridge HF Stream D (#4130) — Quick Tools strip ── */}
           <QuickToolsCard
             onHelpMyKid={() => navigate('/ai-tools')}
+            onViewTasks={() => navigate(`/tasks?student_id=${selectedChild}`)}
             onRequestStudy={() => setShowStudyRequest(true)}
             onReportCards={() => navigate('/school-report-cards')}
           />
