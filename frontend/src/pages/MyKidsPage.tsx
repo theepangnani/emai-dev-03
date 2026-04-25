@@ -940,7 +940,8 @@ export function MyKidsPage() {
                     hasIntegration={hasEmailDigestIntegration}
                     onSetup={() => setShowEmailDigestWizard(true)}
                     onOpenDigest={() => {
-                      const firstName = childName.trim().split(/\s+/)[0] || '';
+                      const child = children.find(c => c.student_id === selectedChild);
+                      const firstName = child?.full_name?.trim().split(/\s+/)[0] || '';
                       navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
                     }}
                     childName={childName}
