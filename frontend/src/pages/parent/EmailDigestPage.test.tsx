@@ -7,6 +7,7 @@ import type {
   ChildProfile,
   MonitoredSender,
 } from '../../api/parentEmailDigest';
+import type { ChildSummary } from '../../api/parent';
 
 const mockListIntegrations = vi.fn();
 const mockGetSettings = vi.fn();
@@ -17,10 +18,13 @@ const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
 const mockListChildProfiles = vi.fn();
+const mockCreateChildProfile = vi.fn();
 const mockAddChildSchoolEmail = vi.fn();
+const mockRemoveChildSchoolEmail = vi.fn();
 const mockListMonitoredSenders = vi.fn();
 const mockAddMonitoredSender = vi.fn();
 const mockRemoveMonitoredSender = vi.fn();
+const mockGetChildren = vi.fn();
 
 vi.mock('../../api/parentEmailDigest', async () => {
   const actual = await vi.importActual<typeof import('../../api/parentEmailDigest')>(
@@ -37,10 +41,25 @@ vi.mock('../../api/parentEmailDigest', async () => {
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
     listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
+    createChildProfile: (...args: unknown[]) => mockCreateChildProfile(...args),
     addChildSchoolEmail: (...args: unknown[]) => mockAddChildSchoolEmail(...args),
+    removeChildSchoolEmail: (...args: unknown[]) => mockRemoveChildSchoolEmail(...args),
     listMonitoredSenders: (...args: unknown[]) => mockListMonitoredSenders(...args),
     addMonitoredSender: (...args: unknown[]) => mockAddMonitoredSender(...args),
     removeMonitoredSender: (...args: unknown[]) => mockRemoveMonitoredSender(...args),
+  };
+});
+
+vi.mock('../../api/parent', async () => {
+  const actual = await vi.importActual<typeof import('../../api/parent')>(
+    '../../api/parent',
+  );
+  return {
+    ...actual,
+    parentApi: {
+      ...actual.parentApi,
+      getChildren: (...args: unknown[]) => mockGetChildren(...args),
+    },
   };
 });
 
@@ -106,6 +125,32 @@ function buildChildProfile(overrides: Partial<ChildProfile> = {}): ChildProfile 
   };
 }
 
+function buildKid(overrides: Partial<ChildSummary> = {}): ChildSummary {
+  return {
+    student_id: 9001,
+    user_id: 500,
+    full_name: 'Thanushan Last',
+    email: 'thanushan@example.com',
+    grade_level: 5,
+    school_name: null,
+    date_of_birth: null,
+    phone: null,
+    address: null,
+    city: null,
+    province: null,
+    postal_code: null,
+    notes: null,
+    interests: [],
+    relationship_type: 'guardian',
+    invite_link: null,
+    course_count: 0,
+    active_task_count: 0,
+    invite_status: 'active',
+    invite_id: null,
+    ...overrides,
+  };
+}
+
 function buildSender(overrides: Partial<MonitoredSender> = {}): MonitoredSender {
   return {
     id: 201,
@@ -142,6 +187,9 @@ beforeEach(() => {
   mockListMonitoredEmails.mockResolvedValue({ data: [] });
   mockListChildProfiles.mockResolvedValue({ data: [] });
   mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  // #4044: default — parent has no kids in the People-API list. Tests that
+  // care about kid rows override this with mockGetChildren.mockResolvedValue.
+  mockGetChildren.mockResolvedValue([]);
 });
 
 describe('EmailDigestPage — WhatsApp section', () => {
@@ -957,5 +1005,337 @@ describe('EmailDigestPage — multi-kid routing (#4007)', () => {
       expect(screen.getByText('for Thanushan')).toBeInTheDocument();
     });
     expect(screen.queryByRole('tab', { name: 'Thanushan' })).not.toBeInTheDocument();
+  });
+});
+
+// #4044: unified Email Digest page must render ALL of the parent's kids in
+// "Your kids" — including kids without a ParentChildProfile row. Adding a
+// school email to a kid that has no profile yet must auto-create the profile
+// first, then add the email.
+describe('EmailDigestPage — unified renders all kids (#4044)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  });
+
+  it('renders all parent kids even when only some have profiles', async () => {
+    // Two kids on the parent's account. Only the first has a profile.
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9001, user_id: 500, full_name: 'Thanushan Last' }),
+      buildKid({ student_id: 9002, user_id: 501, full_name: 'Haashini Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          student_id: 500,
+          first_name: 'Thanushan',
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your kids')).toBeInTheDocument();
+    });
+    // Both kids show up.
+    expect(screen.getByText('Thanushan')).toBeInTheDocument();
+    expect(screen.getByText('Haashini')).toBeInTheDocument();
+    // The kid without a profile shows the "+ Add school email" CTA (note:
+    // 'Add school email' rather than 'Add another school email' because they
+    // have zero school emails configured).
+    expect(
+      screen.getAllByRole('button', { name: '+ Add school email' }).length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('renders a placeholder row for a kid with no profile (and no Profile fetch row)', async () => {
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9002, user_id: 501, full_name: 'Haashini Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({ data: [] });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Haashini')).toBeInTheDocument();
+    });
+    expect(screen.getByText('No school email configured yet.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '+ Add school email' }),
+    ).toBeInTheDocument();
+  });
+
+  it('auto-creates a profile then adds the school email when the kid has no profile', async () => {
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9002, user_id: 501, full_name: 'Haashini Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({ data: [] });
+    mockCreateChildProfile.mockResolvedValue({
+      data: buildChildProfile({ id: 99, student_id: 501, first_name: 'Haashini' }),
+    });
+    mockAddChildSchoolEmail.mockResolvedValue({
+      data: {
+        id: 1,
+        child_profile_id: 99,
+        email_address: 'haashini@ocdsb.ca',
+        forwarding_seen_at: null,
+        created_at: '2026-04-23T00:00:00Z',
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    // Wait for the kid row to render.
+    await waitFor(() => {
+      expect(screen.getByText('Haashini')).toBeInTheDocument();
+    });
+
+    // Click "+ Add school email" to open the inline editor.
+    fireEvent.click(screen.getByRole('button', { name: '+ Add school email' }));
+
+    // Type a valid school email and submit.
+    const input = await screen.findByPlaceholderText('kid@ocdsb.ca');
+    fireEvent.change(input, { target: { value: 'haashini@ocdsb.ca' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    // createChildProfile must be called first with the kid's first_name +
+    // student_id, then addChildSchoolEmail with the returned profile id.
+    await waitFor(() => {
+      expect(mockCreateChildProfile).toHaveBeenCalled();
+    });
+    const [[createPayload]] = mockCreateChildProfile.mock.calls;
+    expect(createPayload).toMatchObject({
+      first_name: 'Haashini',
+      student_id: 501,
+    });
+
+    await waitFor(() => {
+      expect(mockAddChildSchoolEmail).toHaveBeenCalled();
+    });
+    const [[profileId, email]] = mockAddChildSchoolEmail.mock.calls;
+    expect(profileId).toBe(99);
+    expect(email).toBe('haashini@ocdsb.ca');
+  });
+
+  it('does NOT call createChildProfile when adding an email for a kid that already has a profile', async () => {
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9001, user_id: 500, full_name: 'Thanushan Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          student_id: 500,
+          first_name: 'Thanushan',
+        }),
+      ],
+    });
+    mockAddChildSchoolEmail.mockResolvedValue({
+      data: {
+        id: 1,
+        child_profile_id: 11,
+        email_address: 'thanushan@ocdsb.ca',
+        forwarding_seen_at: null,
+        created_at: '2026-04-23T00:00:00Z',
+      },
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Thanushan')).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: '+ Add school email' }),
+    );
+    const input = await screen.findByPlaceholderText('kid@ocdsb.ca');
+    fireEvent.change(input, { target: { value: 'thanushan@ocdsb.ca' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() => {
+      expect(mockAddChildSchoolEmail).toHaveBeenCalled();
+    });
+    expect(mockCreateChildProfile).not.toHaveBeenCalled();
+    const [[profileId, email]] = mockAddChildSchoolEmail.mock.calls;
+    expect(profileId).toBe(11);
+    expect(email).toBe('thanushan@ocdsb.ca');
+  });
+
+  it('merges legacy NULL-student_id profile into the linked kid row by name (#4101)', async () => {
+    // Legacy wizard-created profile: student_id is null, first_name matches
+    // the linked kid. The kid must render exactly once with the legacy
+    // profile's school emails — no duplicate placeholder row.
+    mockGetChildren.mockResolvedValue([
+      buildKid({ student_id: 9001, user_id: 500, full_name: 'Haashini Last' }),
+    ]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          student_id: null, // legacy NULL — Stream 1 backfill missed this row
+          first_name: 'Haashini',
+          school_emails: [
+            {
+              id: 700,
+              child_profile_id: 11,
+              email_address: 'haashini@ocdsb.ca',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Haashini')).toBeInTheDocument();
+    });
+
+    // Exactly one Haashini row.
+    expect(screen.getAllByText('Haashini')).toHaveLength(1);
+
+    // Existing school email is visible (matched via first_name fallback).
+    expect(screen.getByText('haashini@ocdsb.ca')).toBeInTheDocument();
+
+    // The × remove button is present (so it's a profile row, not a placeholder).
+    expect(
+      screen.getByRole('button', { name: 'Remove haashini@ocdsb.ca' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders an orphan profile (no matching parent kid) so legacy data is visible', async () => {
+    // #4100 pass-1 review suggestion 7: a profile whose student_id doesn't
+    // match any kid on the parent's account (e.g., kid was unlinked but the
+    // profile lingered) must still render so school-email management isn't
+    // hidden.
+    mockGetChildren.mockResolvedValue([]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 77,
+          student_id: 99999, // not in mockGetChildren
+          first_name: 'OrphanKid',
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('OrphanKid')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: '+ Add school email' }),
+    ).toBeInTheDocument();
+  });
+});
+
+// #4098: parents must be able to remove school-email rows from the unified
+// digest page (legacy setup wizard sometimes seeded misclassified entries).
+describe('EmailDigestPage — unified remove school email (#4098)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListMonitoredSenders.mockResolvedValue({ data: [] });
+    // No parent kids list set; the profile below renders as an "orphan"
+    // row (kind === 'profile') so the × button still renders per #4098.
+    mockGetChildren.mockResolvedValue([]);
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({
+          id: 11,
+          first_name: 'Thanushan',
+          school_emails: [
+            {
+              id: 501,
+              child_profile_id: 11,
+              email_address: 'no-reply@classroom.google.com',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+            {
+              id: 502,
+              child_profile_id: 11,
+              email_address: 'kid@ocdsb.ca',
+              forwarding_seen_at: null,
+              created_at: '2026-04-01T00:00:00Z',
+            },
+          ],
+        }),
+      ],
+    });
+  });
+
+  it('renders a remove button for each school-email row', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('no-reply@classroom.google.com')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls removeChildSchoolEmail with (profileId, emailId) when confirmed', async () => {
+    confirmResolveValue = true;
+    mockRemoveChildSchoolEmail.mockResolvedValue({ data: {} });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remove no-reply@classroom.google.com' }),
+    );
+
+    await waitFor(() => {
+      expect(mockRemoveChildSchoolEmail).toHaveBeenCalledWith(11, 501);
+    });
+  });
+
+  it('does NOT call API when the confirm modal is cancelled', async () => {
+    confirmResolveValue = false;
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }));
+
+    // Allow the confirm promise + microtasks to resolve.
+    await waitFor(() => {
+      expect(mockRemoveChildSchoolEmail).not.toHaveBeenCalled();
+    });
+  });
+
+  it('shows an error banner when the remove API fails', async () => {
+    confirmResolveValue = true;
+    mockRemoveChildSchoolEmail.mockRejectedValue({
+      response: { data: { detail: 'School email is in use.' } },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove kid@ocdsb.ca' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('School email is in use.')).toBeInTheDocument();
+    });
   });
 });

@@ -2088,8 +2088,19 @@ For each ingested email:
 - After one release with no regressions: drop legacy `ParentDigestMonitoredEmail` reads and retire dual-write.
 
 #### Known follow-ups (not blocking)
-- **#4044** — Add `POST /api/parent/child-profiles` so the wizard can create profiles for brand-new parents (no pre-existing Gmail integration). Currently the wizard catches the 404 with a friendly error message; profiles for existing integrations were seeded by the Stream 1 backfill.
+- ~~**#4044** — Add `POST /api/parent/child-profiles` so the wizard can create profiles for brand-new parents (no pre-existing Gmail integration). Currently the wizard catches the 404 with a friendly error message; profiles for existing integrations were seeded by the Stream 1 backfill.~~ **Shipped via PR #4100 (2026-04-24).**
 - **#4056** — Decide whether to preserve "Send Digest Now" / "Sync Now" / "Digest History" features in the unified page (legacy parity question). Currently dropped from the unified path; needs product input before `on_for_all` ramp.
+
+#### Post-launch defect batch — PR #4100 (2026-04-24)
+
+Two production defects reported the same day the epic shipped. Both fixed via integration PR #4100 (2 parallel streams + 2 rounds of `/pr-review`):
+
+- **#4044 (closed)** — unified page now renders ALL of the parent's kids in "Your kids", not just kids with existing `ParentChildProfile` rows. Adding a school email to a kid without a profile auto-creates the profile via the new `POST /api/parent/child-profiles` endpoint (idempotent dedupe on `(parent_id, student_id)` or `(parent_id, LOWER(first_name))`; race-safe via `IntegrityError` re-fetch).
+- **#4098 (closed)** — each school-email row now has a × remove button + confirm modal + dismissable error banner. Closes the gap where parents were stuck with misclassified entries (e.g., `no-reply@classroom.google.com`) seeded by the legacy setup wizard or Stream 1 backfill.
+
+**Quality gates:** `npm run build` clean · `npm run lint` 0 errors · 46/46 frontend tests · 29/29 backend tests for the new POST endpoint · 2 rounds of `/pr-review` (pass 1: 0 Critical + 4 Important + 7 Suggestions, all addressed inline in commit `98642238`; pass 2: APPROVE, no new findings).
+
+**Follow-up #4099** filed (deferred per Option A) for one-time data scrub of misclassified school-email rows; users can self-clean now that the × button ships.
 
 
 #### 6.142.3 Phase 1 round-3 + pass-4 review (2026-04-24 evening)

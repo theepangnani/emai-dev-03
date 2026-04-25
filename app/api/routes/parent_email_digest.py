@@ -16,6 +16,8 @@ import requests as _requests
 from jose import jwt, JWTError
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_user, require_role
@@ -1167,6 +1169,127 @@ def list_child_profiles(
         .all()
     )
     return profiles
+
+
+class ChildProfileCreate(BaseModel):
+    first_name: str
+    student_id: int | None = None
+
+
+@profiles_router.post("", response_model=ChildProfileResponse, status_code=201)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def create_child_profile(
+    request: Request,
+    body: ChildProfileCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Create a child profile (#4044).
+
+    Idempotent dedupe:
+    - When `student_id` is provided, verify the caller is linked to that
+      student and dedupe on (parent_id, student_id).
+    - Otherwise, dedupe on (parent_id, LOWER(first_name)) — matches the
+      functional unique index used by the v2 dual-write path.
+    """
+    from sqlalchemy import func as sa_func
+
+    first_name = body.first_name.strip()
+    if not first_name:
+        raise HTTPException(status_code=422, detail="first_name is required")
+
+    # Dedupe path 1: by student_id (when provided).
+    if body.student_id is not None:
+        from app.models.student import parent_students, Student
+
+        link = db.execute(
+            parent_students.select()
+            .join(Student, Student.id == parent_students.c.student_id)
+            .where(
+                parent_students.c.parent_id == current_user.id,
+                Student.user_id == body.student_id,
+            )
+        ).first()
+        if link is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Student not found or not linked to this parent",
+            )
+
+        existing = (
+            db.query(ParentChildProfile)
+            .options(selectinload(ParentChildProfile.school_emails))
+            .filter(
+                ParentChildProfile.parent_id == current_user.id,
+                ParentChildProfile.student_id == body.student_id,
+            )
+            .first()
+        )
+        if existing:
+            return existing
+
+    # Dedupe path 2: by (parent_id, LOWER(first_name)).
+    existing = (
+        db.query(ParentChildProfile)
+        .options(selectinload(ParentChildProfile.school_emails))
+        .filter(
+            ParentChildProfile.parent_id == current_user.id,
+            sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    profile = ParentChildProfile(
+        parent_id=current_user.id,
+        student_id=body.student_id,
+        first_name=first_name,
+    )
+    db.add(profile)
+    # #4100 pass-1 review:
+    # - Catch IntegrityError so a race between two concurrent POSTs (or
+    #   between this and the unified worker's auto-create path) doesn't
+    #   500 the second caller. The functional unique index on
+    #   (parent_id, LOWER(first_name)) and the unique constraint on
+    #   (parent_id, student_id) both guarantee at most one row exists;
+    #   on collision we re-fetch and return the winner.
+    # - Eager-load school_emails so the Pydantic response serializer
+    #   doesn't issue a lazy SELECT after refresh.
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        winner = (
+            db.query(ParentChildProfile)
+            .options(selectinload(ParentChildProfile.school_emails))
+            .filter(
+                ParentChildProfile.parent_id == current_user.id,
+                or_(
+                    sa_func.lower(ParentChildProfile.first_name) == first_name.lower(),
+                    *(
+                        [ParentChildProfile.student_id == body.student_id]
+                        if body.student_id is not None
+                        else []
+                    ),
+                ),
+            )
+            .first()
+        )
+        if winner is None:
+            # Should be unreachable — unique constraint fired but no row
+            # matches our dedupe predicates. Surface for ops visibility.
+            raise HTTPException(
+                status_code=500,
+                detail="Profile create raced with a concurrent insert that could not be reconciled.",
+            )
+        return winner
+
+    db.refresh(profile)
+    # Initialize the empty relationship explicitly so Pydantic
+    # `from_attributes=True` doesn't lazy-load (matches dedupe paths).
+    profile.school_emails = []
+    return profile
 
 
 @profiles_router.post(

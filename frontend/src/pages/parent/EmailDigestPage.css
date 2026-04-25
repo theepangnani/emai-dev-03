@@ -571,6 +571,30 @@
   cursor: not-allowed;
 }
 
+/* #4098: per-row remove icon button (school-email rows). Mirrors
+   .ed-monitored-remove styling for visual consistency. */
+.ed-icon-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #9ca3af);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ed-icon-btn:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ed-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .ed-add-email-row {
   display: flex;
   gap: 8px;

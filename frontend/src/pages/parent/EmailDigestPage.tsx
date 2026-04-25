@@ -19,7 +19,9 @@ import {
   verifyWhatsAppOTP,
   disconnectWhatsApp,
   listChildProfiles,
+  createChildProfile,
   addChildSchoolEmail,
+  removeChildSchoolEmail,
   listMonitoredSenders,
   addMonitoredSender,
   removeMonitoredSender,
@@ -32,6 +34,7 @@ import {
   type MonitoredSenderAssignment,
   type SenderKidSelection,
 } from '../../api/parentEmailDigest';
+import { parentApi, type ChildSummary } from '../../api/parent';
 import { useConfirm } from '../../components/ConfirmModal';
 import { useFeatureFlagEnabled } from '../../hooks/useFeatureToggle';
 import './EmailDigestPage.css';
@@ -1100,6 +1103,8 @@ function EmailDigestPageUnified() {
   >({});
   // #4053: dismissable banner for removeSenderMutation failures.
   const [removeSenderError, setRemoveSenderError] = useState<string | null>(null);
+  // #4098: dismissable banner for removeSchoolEmailMutation failures.
+  const [removeSchoolEmailError, setRemoveSchoolEmailError] = useState<string | null>(null);
   // #4055: restore focus to the "+ Add sender" trigger when modal closes.
   const addSenderTriggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -1123,11 +1128,97 @@ function EmailDigestPageUnified() {
     // Always fetch — these are parent-scoped, not integration-scoped (#4048).
   });
 
+  // #4044: also fetch the parent's actual kids so that kids without a
+  // ParentChildProfile row still show up in "Your kids".
+  const { data: parentKids = [] } = useQuery<ChildSummary[]>({
+    queryKey: ['parent', 'children'],
+    queryFn: () => parentApi.getChildren(),
+  });
+
   const { data: senders = [] } = useQuery<MonitoredSender[]>({
     queryKey: ['parent', 'monitored-senders'],
     queryFn: () => listMonitoredSenders().then((r) => r.data),
     // Always fetch — parent-scoped (#4048).
   });
+
+  // #4044: derive a unified list of "rows" to render. Every linked kid gets
+  // a row; if a ParentChildProfile already exists for that kid (matched by
+  // student_id == ChildSummary.user_id) we use it; otherwise we render a
+  // placeholder row with empty school_emails and a "+ Add school email" CTA.
+  // We also append any orphan profiles (no matching kid in parentKids) so
+  // pre-existing data is never hidden.
+  type KidRow =
+    | { kind: 'profile'; profile: ChildProfile; firstName: string; userId: number | null }
+    | { kind: 'placeholder'; userId: number; firstName: string };
+
+  const profilesByUserId = new Map<number, ChildProfile>();
+  // #4101 / I1: also build a case-insensitive first_name lookup so that
+  // legacy wizard-created profiles whose student_id was never populated
+  // by the Stream 1 backfill still merge into the linked-kid row instead
+  // of rendering as a duplicate orphan row.
+  const profilesByLowerName = new Map<string, ChildProfile>();
+  for (const p of childProfiles) {
+    if (p.student_id != null) {
+      profilesByUserId.set(p.student_id, p);
+    }
+    if (p.first_name) {
+      profilesByLowerName.set(p.first_name.toLowerCase(), p);
+    }
+  }
+
+  const deriveFirstName = (fullName: string): string => {
+    const trimmed = (fullName || '').trim();
+    if (!trimmed) return 'Kid';
+    return trimmed.split(/\s+/)[0];
+  };
+
+  const linkedProfileIds = new Set<number>();
+  const kidRows: KidRow[] = [];
+  for (const kid of parentKids) {
+    const firstName = deriveFirstName(kid.full_name);
+    // Prefer student_id match; fall back to case-insensitive first_name
+    // match for legacy profiles whose student_id was never populated by
+    // the Stream 1 backfill (#4101 / I1).
+    //
+    // #4100 pass-4 review (N1): a profile must not bind to TWO kids in
+    // the same render. If the fallback returns a profile we've already
+    // linked (because its student_id matched an earlier kid AND its
+    // first_name now matches this kid), skip the fallback so the second
+    // kid renders as a placeholder rather than aliasing onto a profile
+    // that's already in use.
+    const idMatch = profilesByUserId.get(kid.user_id);
+    const nameMatch = profilesByLowerName.get(firstName.toLowerCase());
+    const linked =
+      idMatch ??
+      (nameMatch && !linkedProfileIds.has(nameMatch.id) ? nameMatch : undefined);
+    if (linked) {
+      linkedProfileIds.add(linked.id);
+      kidRows.push({
+        kind: 'profile',
+        profile: linked,
+        firstName: linked.first_name,
+        userId: kid.user_id,
+      });
+    } else {
+      kidRows.push({
+        kind: 'placeholder',
+        userId: kid.user_id,
+        firstName,
+      });
+    }
+  }
+  // Append true orphan profiles (no matching kid in parentKids by either
+  // student_id or first_name — e.g., wizard pre-creation or an unlinked kid).
+  for (const p of childProfiles) {
+    if (!linkedProfileIds.has(p.id)) {
+      kidRows.push({
+        kind: 'profile',
+        profile: p,
+        firstName: p.first_name,
+        userId: p.student_id,
+      });
+    }
+  }
 
   const settingsMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<EmailDigestSettings> }) =>
@@ -1137,26 +1228,62 @@ function EmailDigestPageUnified() {
     },
   });
 
+  // #4044: When adding a school email to a kid that doesn't have a
+  // ParentChildProfile yet, auto-create the profile first, then add the
+  // school email to it. The mutation now accepts EITHER an existing profileId
+  // OR a (userId, firstName) pair; the dedupe key is the per-row reactive key
+  // — for placeholders we use the user_id, for existing profiles the
+  // profile.id. ApplicableErrorKey is what we surface inline-error against.
+  type AddSchoolEmailVars =
+    | { kind: 'existing'; profileId: number; errorKey: number; email: string }
+    | { kind: 'create'; userId: number; firstName: string; errorKey: number; email: string };
+
   const addSchoolEmailMutation = useMutation({
-    mutationFn: ({ profileId, email }: { profileId: number; email: string }) =>
-      addChildSchoolEmail(profileId, email),
+    mutationFn: async (vars: AddSchoolEmailVars) => {
+      let profileId: number;
+      if (vars.kind === 'existing') {
+        profileId = vars.profileId;
+      } else {
+        const created = await createChildProfile({
+          first_name: vars.firstName,
+          student_id: vars.userId,
+        });
+        profileId = created.data.id;
+      }
+      return addChildSchoolEmail(profileId, vars.email);
+    },
     onSuccess: (_d, vars) => {
       queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
       setAddSchoolEmailFor(null);
       setNewSchoolEmail('');
       setAddEmailErrorByProfile((prev) => {
         const next = { ...prev };
-        delete next[vars.profileId];
+        delete next[vars.errorKey];
         return next;
       });
     },
-    // #4053: surface user-friendly error inline per-profile.
+    // #4053: surface user-friendly error inline per-row.
     onError: (err: unknown, vars) => {
       const msg = getApiErrorMessage(
         err,
         "Couldn't add school email. Please try again.",
       );
-      setAddEmailErrorByProfile((prev) => ({ ...prev, [vars.profileId]: msg }));
+      setAddEmailErrorByProfile((prev) => ({ ...prev, [vars.errorKey]: msg }));
+    },
+  });
+
+  // #4098: remove a misclassified/legacy school email from a kid profile.
+  const removeSchoolEmailMutation = useMutation({
+    mutationFn: ({ profileId, emailId }: { profileId: number; emailId: number }) =>
+      removeChildSchoolEmail(profileId, emailId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
+      setRemoveSchoolEmailError(null);
+    },
+    onError: (err: unknown) => {
+      setRemoveSchoolEmailError(
+        getApiErrorMessage(err, 'Could not remove school email. Please try again.'),
+      );
     },
   });
 
@@ -1341,15 +1468,53 @@ function EmailDigestPageUnified() {
     removeSenderMutation.mutate(sender.id);
   };
 
-  const handleAddSchoolEmail = (profileId: number) => {
+  const handleAddSchoolEmail = (row: KidRow) => {
     const trimmed = newSchoolEmail.trim().toLowerCase();
     if (!isValidEmail(trimmed)) return;
+    // #4100 pass-1 review: negate userId for placeholder rows so
+    // ChildSummary.user_id can never collide with a different kid's
+    // ParentChildProfile.id (different tables, IDs CAN coincide).
+    const errorKey =
+      row.kind === 'profile' ? row.profile.id : -row.userId;
     setAddEmailErrorByProfile((prev) => {
       const next = { ...prev };
-      delete next[profileId];
+      delete next[errorKey];
       return next;
     });
-    addSchoolEmailMutation.mutate({ profileId, email: trimmed });
+    if (row.kind === 'profile') {
+      addSchoolEmailMutation.mutate({
+        kind: 'existing',
+        profileId: row.profile.id,
+        errorKey,
+        email: trimmed,
+      });
+    } else {
+      // #4044: kid has no profile yet — auto-create then add the email.
+      addSchoolEmailMutation.mutate({
+        kind: 'create',
+        userId: row.userId,
+        firstName: row.firstName,
+        errorKey,
+        email: trimmed,
+      });
+    }
+  };
+
+  // #4098: confirm + remove a school email row (parents must be able to clear
+  // misclassified entries left behind by the legacy setup wizard).
+  const handleRemoveSchoolEmail = async (
+    profileId: number,
+    emailId: number,
+    addr: string,
+  ) => {
+    const confirmed = await confirm({
+      title: 'Remove school email',
+      message: `Remove "${addr}" from this kid? Future digests will no longer attribute messages from this address to this kid.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    removeSchoolEmailMutation.mutate({ profileId, emailId });
   };
 
   if (intLoading) {
@@ -1570,92 +1735,158 @@ function EmailDigestPageUnified() {
             School email is the board-issued address where teachers email your kid
             (e.g., @ocdsb.ca). Different from the ClassBridge login email.
           </p>
-          {childProfiles.length === 0 && (
+          {removeSchoolEmailError && (
+            <div className="ed-remove-sender-error" role="alert">
+              <span>{removeSchoolEmailError}</span>
+              <button
+                type="button"
+                className="ed-remove-sender-error__dismiss"
+                onClick={() => setRemoveSchoolEmailError(null)}
+                aria-label="Dismiss error"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+          {kidRows.length === 0 && (
             <p className="ed-empty-history">No kids on your account yet.</p>
           )}
-          {childProfiles.map((profile) => (
-            <div key={profile.id} className="ed-kid-row">
-              <div className="ed-kid-row__header">
-                <span className="ed-kid-row__name">{profile.first_name}</span>
-                {profile.student_id != null && (
-                  <span className="ed-kid-row__student-id">
-                    student #{profile.student_id}
-                  </span>
-                )}
-              </div>
-              <div className="ed-school-email-list">
-                {profile.school_emails.length === 0 && (
-                  <p className="ed-empty-history ed-empty-history--inline">
-                    No school email configured yet.
-                  </p>
-                )}
-                {profile.school_emails.map((se) => {
-                  const badge = forwardingState(se.forwarding_seen_at);
-                  return (
-                    <div key={se.id} className="ed-school-email-item">
-                      <span className="ed-school-email-addr">{se.email_address}</span>
-                      <span className={badge.className}>{badge.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {addSchoolEmailFor === profile.id ? (
-                <>
-                  <div className="ed-add-email-row">
-                    <input
-                      type="email"
-                      className="ed-input"
-                      placeholder="kid@ocdsb.ca"
-                      value={newSchoolEmail}
-                      onChange={(e) => setNewSchoolEmail(e.target.value)}
-                      autoFocus
-                    />
-                    <button
-                      className="ed-primary-btn"
-                      onClick={() => handleAddSchoolEmail(profile.id)}
-                      disabled={
-                        addSchoolEmailMutation.isPending ||
-                        !isValidEmail(newSchoolEmail)
-                      }
-                    >
-                      {addSchoolEmailMutation.isPending ? 'Adding...' : 'Add'}
-                    </button>
-                    <button
-                      className="ed-sync-btn"
-                      onClick={() => {
-                        setAddSchoolEmailFor(null);
-                        setNewSchoolEmail('');
-                        setAddEmailErrorByProfile((prev) => {
-                          const next = { ...prev };
-                          delete next[profile.id];
-                          return next;
-                        });
-                      }}
-                      disabled={addSchoolEmailMutation.isPending}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {addEmailErrorByProfile[profile.id] && (
-                    <p className="ed-error-text" role="alert">
-                      {addEmailErrorByProfile[profile.id]}
+          {/* #4044: render every linked kid (with or without a
+              ParentChildProfile). Profiles get their school_emails;
+              placeholders get a "+ Add school email" CTA that auto-creates
+              the profile when the parent submits the first email.
+              #4098: each existing school-email row gets a × remove button
+              wired to handleRemoveSchoolEmail. */}
+          {kidRows.map((row) => {
+            // Stable per-row identity: profile.id when present, else negative
+            // user_id sentinel so placeholder rows can't collide with profile
+            // IDs in the keyed list / focus-target state.
+            const rowKey =
+              row.kind === 'profile' ? row.profile.id : -row.userId;
+            // #4100 pass-1 review: use the negative-userId trick (same as
+            // editTargetKey + rowKey) for placeholder errorKey so a profile
+            // and a placeholder can never collide on errorKey when their
+            // ids share a value (profile.id and ChildSummary.user_id come
+            // from different tables and CAN coincide).
+            const errorKey =
+              row.kind === 'profile' ? row.profile.id : -row.userId;
+            const editTargetKey =
+              row.kind === 'profile' ? row.profile.id : -row.userId;
+            const schoolEmails =
+              row.kind === 'profile' ? row.profile.school_emails : [];
+            const studentBadgeId =
+              row.kind === 'profile'
+                ? row.profile.student_id
+                : row.userId;
+            const addCtaLabel =
+              schoolEmails.length === 0
+                ? '+ Add school email'
+                : '+ Add another school email';
+            return (
+              <div key={rowKey} className="ed-kid-row">
+                <div className="ed-kid-row__header">
+                  <span className="ed-kid-row__name">{row.firstName}</span>
+                  {studentBadgeId != null && (
+                    <span className="ed-kid-row__student-id">
+                      student #{studentBadgeId}
+                    </span>
+                  )}
+                </div>
+                <div className="ed-school-email-list">
+                  {schoolEmails.length === 0 && (
+                    <p className="ed-empty-history ed-empty-history--inline">
+                      No school email configured yet.
                     </p>
                   )}
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="ed-link-btn"
-                  onClick={() => {
-                    setAddSchoolEmailFor(profile.id);
-                    setNewSchoolEmail('');
-                  }}
-                >
-                  + Add another school email
-                </button>
-              )}
-            </div>
-          ))}
+                  {schoolEmails.map((se) => {
+                    const badge = forwardingState(se.forwarding_seen_at);
+                    // #4098: profile.id is guaranteed when school_emails is
+                    // non-empty (placeholders have schoolEmails=[] above).
+                    const ownerProfileId =
+                      row.kind === 'profile' ? row.profile.id : null;
+                    return (
+                      <div key={se.id} className="ed-school-email-item">
+                        <span className="ed-school-email-addr">{se.email_address}</span>
+                        <span className={badge.className}>{badge.label}</span>
+                        {ownerProfileId != null && (
+                          <button
+                            type="button"
+                            className="ed-icon-btn"
+                            aria-label={`Remove ${se.email_address}`}
+                            onClick={() =>
+                              handleRemoveSchoolEmail(
+                                ownerProfileId,
+                                se.id,
+                                se.email_address,
+                              )
+                            }
+                            disabled={removeSchoolEmailMutation.isPending}
+                          >
+                            &times;
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {addSchoolEmailFor === editTargetKey ? (
+                  <>
+                    <div className="ed-add-email-row">
+                      <input
+                        type="email"
+                        className="ed-input"
+                        placeholder="kid@ocdsb.ca"
+                        value={newSchoolEmail}
+                        onChange={(e) => setNewSchoolEmail(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        className="ed-primary-btn"
+                        onClick={() => handleAddSchoolEmail(row)}
+                        disabled={
+                          addSchoolEmailMutation.isPending ||
+                          !isValidEmail(newSchoolEmail)
+                        }
+                      >
+                        {addSchoolEmailMutation.isPending ? 'Adding...' : 'Add'}
+                      </button>
+                      <button
+                        className="ed-sync-btn"
+                        onClick={() => {
+                          setAddSchoolEmailFor(null);
+                          setNewSchoolEmail('');
+                          setAddEmailErrorByProfile((prev) => {
+                            const next = { ...prev };
+                            delete next[errorKey];
+                            return next;
+                          });
+                        }}
+                        disabled={addSchoolEmailMutation.isPending}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    {addEmailErrorByProfile[errorKey] && (
+                      <p className="ed-error-text" role="alert">
+                        {addEmailErrorByProfile[errorKey]}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="ed-link-btn"
+                    onClick={() => {
+                      setAddSchoolEmailFor(editTargetKey);
+                      setNewSchoolEmail('');
+                    }}
+                  >
+                    {addCtaLabel}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* 3. Monitored senders */}
