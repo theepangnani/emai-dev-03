@@ -11,20 +11,26 @@ interface KidActionsMenuProps {
   onEdit: () => void;
   onExport: () => void;
   onResetPassword?: () => void;
+  onAwardXp?: () => void;
   onResendInvite?: () => void;
+  onCopyInviteLink?: () => void;
   onRemove: () => void;
   resending?: boolean;
   resendSuccess?: boolean;
+  copyInviteSuccess?: boolean;
 }
 
 export function KidActionsMenu({
   onEdit,
   onExport,
   onResetPassword,
+  onAwardXp,
   onResendInvite,
+  onCopyInviteLink,
   onRemove,
   resending,
   resendSuccess,
+  copyInviteSuccess,
 }: KidActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -91,6 +97,14 @@ export function KidActionsMenu({
               Reset password
             </button>
           )}
+          {onAwardXp && (
+            <button type="button" role="menuitem" onClick={choose(onAwardXp)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <polygon points="12 2 15 8.5 22 9.3 17 14 18.2 21 12 17.8 5.8 21 7 14 2 9.3 9 8.5 12 2" />
+              </svg>
+              Award XP
+            </button>
+          )}
           {onResendInvite && (
             <button
               type="button"
@@ -103,6 +117,15 @@ export function KidActionsMenu({
                 <rect x="3" y="5" width="18" height="14" rx="2" />
               </svg>
               {resending ? 'Sending…' : resendSuccess ? '✓ Sent' : 'Resend invite'}
+            </button>
+          )}
+          {onCopyInviteLink && (
+            <button type="button" role="menuitem" onClick={choose(onCopyInviteLink)}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+              </svg>
+              {copyInviteSuccess ? '✓ Copied' : 'Copy invite link'}
             </button>
           )}
           <div className="bridge-overflow-divider" role="separator" />
