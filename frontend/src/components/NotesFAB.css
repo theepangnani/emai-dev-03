@@ -4,15 +4,15 @@
   right: 24px;
   width: 52px;
   height: 52px;
-  border-radius: 50%;
+  border-radius: 999px;
   border: none;
-  background: var(--color-accent-strong, #2a9fa8);
-  color: #fff;
+  background: var(--color-ink);
+  color: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(42, 159, 168, 0.35);
+  box-shadow: var(--shadow-lift);
   z-index: var(--z-fab, 900);
   transition: transform 0.2s, box-shadow 0.2s, background 0.2s, bottom 0.3s ease;
   animation: fab-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -25,7 +25,7 @@
 
 .notes-fab:hover {
   transform: scale(1.08);
-  box-shadow: 0 6px 20px rgba(42, 159, 168, 0.45);
+  box-shadow: var(--shadow-lg);
 }
 
 .notes-fab:active {
@@ -33,12 +33,12 @@
 }
 
 .notes-fab--open {
-  background: var(--color-ink-muted, #64748b);
-  box-shadow: 0 4px 16px rgba(100, 116, 139, 0.3);
+  background: var(--color-ink-muted);
+  box-shadow: var(--shadow-lift);
 }
 
 .notes-fab--open:hover {
-  box-shadow: 0 6px 20px rgba(100, 116, 139, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .notes-fab-badge {
@@ -48,8 +48,8 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #ef4444;
-  border: 2px solid #fff;
+  background: var(--color-danger);
+  border: 2px solid var(--color-surface);
 }
 
 /* When Help Chatbot FAB is present — shift NotesFAB up to make room */
@@ -60,15 +60,6 @@
 /* When the chatbot panel is open — shift NotesFAB further up to avoid overlap */
 .notes-fab.chatbot-panel-open {
   bottom: 440px;
-}
-
-/* Dark mode */
-[data-theme="dark"] .notes-fab {
-  box-shadow: 0 4px 16px rgba(42, 159, 168, 0.25);
-}
-
-[data-theme="dark"] .notes-fab-badge {
-  border-color: var(--color-surface, #1e1e1e);
 }
 
 /* Tablet and below: smaller FAB, safe-area padding */
