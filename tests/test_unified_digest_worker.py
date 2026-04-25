@@ -810,7 +810,8 @@ async def test_unified_digest_sends_v1_whatsapp_when_v2_sid_unset(db_session):
     assert call_args[0][0] == "+15555550100"
     assert call_args[0][1] == "HXv1sid"
     variables = call_args[0][2]
-    assert variables["1"] == "Unified"  # first name from "Unified WA Parent"
+    expected_first_name = parent.full_name.split()[0]
+    assert variables["1"] == expected_first_name
     assert "Yearbook" in variables["2"]
     # V2 + freeform NOT used.
     mock_v2.assert_not_called()
@@ -866,9 +867,12 @@ async def test_unified_digest_sends_v2_whatsapp_when_v2_sid_set(db_session):
 
     assert result["status"] == "delivered"
     # V2 path used.
-    mock_v2.assert_called_once_with(
-        "+15555550100", "HXv2sid", "Unified", sectioned_payload
-    )
+    mock_v2.assert_called_once()
+    v2_call_args = mock_v2.call_args[0]
+    assert v2_call_args[0] == "+15555550100"
+    assert v2_call_args[1] == "HXv2sid"
+    assert v2_call_args[2] == parent.full_name.split()[0]
+    assert v2_call_args[3] == sectioned_payload
     # V1 + freeform NOT used.
     mock_v1.assert_not_called()
     mock_freeform.assert_not_called()
@@ -1178,3 +1182,64 @@ async def test_unified_digest_multi_kid_subject_keeps_plural(db_session):
     assert "kids" in title.lower()
     assert "Kid0" not in title
     assert "Kid1" not in title
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_whatsapp_ai_failure_partial_not_full_failure(db_session):
+    """#4107 — when generate_sectioned_digest raises (Anthropic outage etc.),
+    in_app + email still deliver and overall status is 'partial', not 'failed'.
+    The whatsapp_delivery_status is 'failed' on the persisted log."""
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "unified_wa_aifail@test.com"
+    )
+
+    mock_v1 = MagicMock()
+    mock_v2 = MagicMock()
+    mock_freeform = MagicMock()
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(side_effect=RuntimeError("anthropic timeout")),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", ""
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    # in_app + email succeeded but WhatsApp's AI step raised → partial.
+    assert result["status"] == "partial"
+
+    # No WhatsApp helper called (the exception was raised before any send).
+    mock_v1.assert_not_called()
+    mock_v2.assert_not_called()
+    mock_freeform.assert_not_called()
+
+    # Log persists the failed WhatsApp status alongside the successful email.
+    log = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .first()
+    )
+    assert log is not None
+    assert log.whatsapp_delivery_status == "failed"
+    assert log.email_delivery_status == "sent"
