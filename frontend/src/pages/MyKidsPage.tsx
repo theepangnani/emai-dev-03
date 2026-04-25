@@ -26,6 +26,7 @@ import { KidHero } from '../components/bridge/KidHero';
 import { KidRail } from '../components/bridge/KidRail';
 import { ListCard } from '../components/bridge/ListCard';
 import { EmailDigestCard } from '../components/bridge/EmailDigestCard';
+import { QuickToolsCard } from '../components/bridge/QuickToolsCard';
 import { useBridgeFonts } from '../components/bridge/fonts';
 import './BridgePage.css';
 import './DashboardGrid.css';
@@ -1014,6 +1015,13 @@ export function MyKidsPage() {
               </>
             );
           })()}
+
+          {/* ── Bridge HF Stream D (#4130) — Quick Tools strip ── */}
+          <QuickToolsCard
+            onHelpMyKid={() => navigate('/ai-tools')}
+            onRequestStudy={() => setShowStudyRequest(true)}
+            onReportCards={() => navigate('/school-report-cards')}
+          />
 
           {/* ── Bridge insight grid (PR 5 / #4119) — additive; legacy SectionPanels removed in PR 6 ── */}
           {selectedChild != null && (() => {
