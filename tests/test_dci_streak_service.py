@@ -28,6 +28,76 @@ def _hex():
 # ── Fixtures ────────────────────────────────────────────────────────
 
 
+# Track every User+Student pair created by ``kid_record`` / ``linked_family``
+# in the current test so the autouse cleanup fixture can wipe them at teardown
+# (#4181 — keep the session-scoped DB from growing unboundedly across the
+# full smoke run).
+_CREATED_USERS: list[int] = []
+_CREATED_STUDENTS: list[int] = []
+
+
+@pytest.fixture(autouse=True)
+def cleanup_test_kids(db_session):
+    """Autouse teardown: delete every User+Student row (and its dependent
+    CheckinStreakSummary / StreakLog / parent_students rows) created by the
+    DCI fixtures during this test. Keeps the session-scoped SQLite DB
+    bounded across the full smoke run (#4181)."""
+    _CREATED_USERS.clear()
+    _CREATED_STUDENTS.clear()
+
+    yield
+
+    if not _CREATED_USERS and not _CREATED_STUDENTS:
+        return
+
+    from sqlalchemy import delete
+
+    from app.models.checkin_streak import CheckinStreakSummary
+    from app.models.student import Student, parent_students
+    from app.models.user import User
+    from app.models.xp import StreakLog, XpSummary
+
+    try:
+        if _CREATED_STUDENTS:
+            db_session.query(CheckinStreakSummary).filter(
+                CheckinStreakSummary.kid_id.in_(_CREATED_STUDENTS)
+            ).delete(synchronize_session=False)
+            db_session.execute(
+                delete(parent_students).where(
+                    parent_students.c.student_id.in_(_CREATED_STUDENTS)
+                )
+            )
+
+        if _CREATED_USERS:
+            db_session.query(StreakLog).filter(
+                StreakLog.student_id.in_(_CREATED_USERS)
+            ).delete(synchronize_session=False)
+            db_session.query(XpSummary).filter(
+                XpSummary.student_id.in_(_CREATED_USERS)
+            ).delete(synchronize_session=False)
+            db_session.execute(
+                delete(parent_students).where(
+                    parent_students.c.parent_id.in_(_CREATED_USERS)
+                )
+            )
+
+        if _CREATED_STUDENTS:
+            db_session.query(Student).filter(
+                Student.id.in_(_CREATED_STUDENTS)
+            ).delete(synchronize_session=False)
+        if _CREATED_USERS:
+            db_session.query(User).filter(
+                User.id.in_(_CREATED_USERS)
+            ).delete(synchronize_session=False)
+
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+    finally:
+        _CREATED_USERS.clear()
+        _CREATED_STUDENTS.clear()
+
+
 @pytest.fixture()
 def kid_record(db_session):
     """Create a fresh User+Student row pair per test (no cross-test bleed)."""
@@ -55,19 +125,10 @@ def kid_record(db_session):
     db_session.add(student)
     db_session.commit()
 
+    _CREATED_USERS.append(kid_user.id)
+    _CREATED_STUDENTS.append(student.id)
+
     yield {"user": kid_user, "student": student}
-
-    # Clean up rows so the session-scoped DB stays predictable.
-    from app.models.checkin_streak import CheckinStreakSummary
-    from app.models.xp import StreakLog
-
-    db_session.query(CheckinStreakSummary).filter(
-        CheckinStreakSummary.kid_id == student.id
-    ).delete()
-    db_session.query(StreakLog).filter(
-        StreakLog.student_id == kid_user.id
-    ).delete()
-    db_session.commit()
 
 
 @pytest.fixture()
@@ -127,6 +188,9 @@ def linked_family(db_session):
         )
     )
     db_session.commit()
+
+    _CREATED_USERS.extend([parent.id, kid_user.id, outsider.id])
+    _CREATED_STUDENTS.append(student.id)
 
     return {
         "parent": parent,

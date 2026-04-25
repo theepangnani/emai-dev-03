@@ -222,18 +222,35 @@ def record_checkin(
     return summary
 
 
-def evaluate_checkin_streak(db: Session, kid_id: int) -> str:
+def evaluate_checkin_streak(
+    db: Session,
+    kid_id: int,
+    *,
+    _summary: Optional[CheckinStreakSummary] = None,
+    _yesterday_is_school_day: Optional[bool] = None,
+    _checked_in_yesterday: Optional[bool] = None,
+) -> str:
     """Nightly cron hook: decide whether yesterday's missed check-in should
     break the streak.
 
     Returns one of ``'active'``, ``'skip'`` (weekend / holiday / PD),
     ``'broken'``.
+
+    The keyword-only ``_summary`` / ``_yesterday_is_school_day`` /
+    ``_checked_in_yesterday`` overrides exist so the nightly batch job
+    (#4179) can pre-fetch all three pieces of state in a small fixed
+    number of queries and skip the per-kid SELECTs. Single-kid callers
+    omit them and get the original 1-summary + 1-holiday + 1-student +
+    1-streaklog behaviour.
     """
-    summary = (
-        db.query(CheckinStreakSummary)
-        .filter(CheckinStreakSummary.kid_id == kid_id)
-        .first()
-    )
+    if _summary is not None:
+        summary = _summary
+    else:
+        summary = (
+            db.query(CheckinStreakSummary)
+            .filter(CheckinStreakSummary.kid_id == kid_id)
+            .first()
+        )
     if summary is None or summary.current_streak == 0:
         return "active"  # nothing to evaluate
 
@@ -242,25 +259,35 @@ def evaluate_checkin_streak(db: Session, kid_id: int) -> str:
     # Weekend / holiday / PD — never breaks. We don't bump
     # ``last_checkin_date`` either; the next real check-in will compare
     # against the previous school day via ``_previous_school_day``.
-    if not is_school_day(db, yesterday):
+    if _yesterday_is_school_day is None:
+        yesterday_is_school_day = is_school_day(db, yesterday)
+    else:
+        yesterday_is_school_day = _yesterday_is_school_day
+    if not yesterday_is_school_day:
         return "skip"
 
     # School day — was there a check-in? ``StreakLog`` is the single source
     # of truth for "did this kid actually check in yesterday" — the summary
     # aggregate is derived state and must NOT short-circuit this decision.
-    user_id = _resolve_user_id(db, kid_id)
-    if user_id is not None:
-        log = (
-            db.query(StreakLog)
-            .filter(
-                StreakLog.student_id == user_id,
-                StreakLog.log_date == yesterday,
-                StreakLog.qualifying_action == ACTION_TYPE_DAILY_CHECKIN,
+    if _checked_in_yesterday is None:
+        user_id = _resolve_user_id(db, kid_id)
+        checked_in_yesterday = False
+        if user_id is not None:
+            log = (
+                db.query(StreakLog)
+                .filter(
+                    StreakLog.student_id == user_id,
+                    StreakLog.log_date == yesterday,
+                    StreakLog.qualifying_action == ACTION_TYPE_DAILY_CHECKIN,
+                )
+                .first()
             )
-            .first()
-        )
-        if log is not None:
-            return "active"
+            checked_in_yesterday = log is not None
+    else:
+        checked_in_yesterday = _checked_in_yesterday
+
+    if checked_in_yesterday:
+        return "active"
 
     # Missed school day → break (silently — never surface to the kid).
     logger.info(
