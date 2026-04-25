@@ -23,6 +23,12 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 
+# #4103 — placeholder passed to generate_sectioned_digest when the unified
+# path delivers WhatsApp across all of a parent's kids. The AI uses this
+# literal in greeting text where specific kid attribution isn't available.
+UNIFIED_CHILD_NAME_PLACEHOLDER = "your kids"
+
+
 def _notify_digest_task_created(
     db: Session,
     task: Task,
@@ -1081,10 +1087,21 @@ async def send_unified_digest_for_parent(
     digest_html = _render_unified_digest_sections(sections)
     parent_name = _parent_first_name(parent)
 
-    # Delivery: in_app + email only for the v2 MVP. WhatsApp is still
-    # scoped to the legacy per-integration templates (Stream 5 handles
-    # the v2 WhatsApp rollout). We reuse the primary integration's
-    # ``delivery_channels`` setting to respect parent preferences.
+    # #4109 — personalize subject when the parent has exactly one kid.
+    # ``per_kid_names`` was populated above from ParentChildProfile rows
+    # referenced in ``sections["per_kid"]``. Fall back to the multi-kid
+    # phrasing when zero or multiple distinct names exist.
+    unique_kid_names: list[str] = sorted(
+        {n for n in per_kid_names.values() if n}
+    )
+    if len(unique_kid_names) == 1:
+        digest_title: str = f"Email Digest for {unique_kid_names[0]}"
+    else:
+        digest_title = "Email Digest for your kids"
+
+    # Delivery channels — reuse the primary integration's ``delivery_channels``
+    # setting so the unified path honors the same parent preferences as the
+    # legacy per-integration path.
     channels_setting = (
         primary_settings.delivery_channels
         if primary_settings and primary_settings.delivery_channels
@@ -1110,7 +1127,7 @@ async def send_unified_digest_for_parent(
             db=db,
             recipient=parent,
             sender=None,
-            title="Email Digest for your kids",
+            title=digest_title,
             content=digest_html,
             notification_type=NotificationType.PARENT_EMAIL_DIGEST,
             link="/email-digest",
@@ -1123,11 +1140,148 @@ async def send_unified_digest_for_parent(
         if "email" in channels:
             email_ok = delivery_result.get("email")
 
+    # #4103 — WhatsApp delivery in the unified path: V2 sectioned template
+    # if its env var is set, else V1 single-variable template, else freeform
+    # body fallback. Always one message per parent (no per-kid loop). When
+    # Meta approves the V2 template, flipping the env var swaps the rendering
+    # with no further code changes.
+    whatsapp_status: str | None = None
+    whatsapp_ok: bool | None = None
+    if "whatsapp" in channels:
+        wa_integration = next(
+            (
+                i
+                for i in integrations
+                if i.whatsapp_verified and i.whatsapp_phone
+            ),
+            None,
+        )
+        if wa_integration is None:
+            # WhatsApp selected but no integration has a verified phone →
+            # not applicable (None), NOT a failure (#3887 semantics).
+            whatsapp_ok = None
+        else:
+            try:
+                from app.services.parent_digest_ai_service import (
+                    generate_sectioned_digest,
+                )
+                from app.services.whatsapp_service import (
+                    send_whatsapp_message,
+                    send_whatsapp_template,
+                )
+
+                wa_emails = [pair[0] for pair in attributed_pairs]
+                sectioned_for_wa = await generate_sectioned_digest(
+                    wa_emails, UNIFIED_CHILD_NAME_PLACEHOLDER, parent_name
+                )
+
+                v2_sid = app_settings.twilio_whatsapp_digest_content_sid_v2
+                v1_sid = app_settings.twilio_whatsapp_digest_content_sid
+
+                # #4106 — empty-digest WA short-circuit. When notify_on_empty
+                # is true and no emails came through, generate_sectioned_digest
+                # returns all-empty sections; flattening yields ``""``, which
+                # Twilio's V1 template may reject or render blank. Detect this
+                # case BEFORE branching to V2/V1/freeform and substitute a
+                # fixed message. Skipped when the legacy_blob fallback path
+                # produced its own (non-empty) HTML body.
+                empty_sectioned = (
+                    not sectioned_for_wa.get("legacy_blob")
+                    and not sectioned_for_wa.get("urgent")
+                    and not sectioned_for_wa.get("announcements")
+                    and not sectioned_for_wa.get("action_items")
+                )
+                if empty_sectioned:
+                    fallback_text: str = "No new school emails today."
+                    sanitised_parent_name = re.sub(
+                        r'[\x00-\x1f]', ' ', parent_name
+                    ).strip()
+                    if v1_sid:
+                        wa_success = send_whatsapp_template(
+                            wa_integration.whatsapp_phone,
+                            v1_sid,
+                            {
+                                "1": sanitised_parent_name,
+                                "2": fallback_text,
+                            },
+                        )
+                    else:
+                        wa_success = send_whatsapp_message(
+                            wa_integration.whatsapp_phone,
+                            f"Hi {parent_name}, {fallback_text}",
+                        )
+                elif v2_sid and not sectioned_for_wa.get("legacy_blob"):
+                    wa_success = _send_sectioned_whatsapp_v2(
+                        wa_integration.whatsapp_phone,
+                        v2_sid,
+                        parent_name,
+                        sectioned_for_wa,
+                    )
+                elif v1_sid:
+                    if sectioned_for_wa.get("legacy_blob"):
+                        plain_text = re.sub(
+                            r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
+                        )
+                        sanitised_text = _sanitise_whatsapp_var(plain_text)
+                    else:
+                        sanitised_text = _sanitise_whatsapp_var(
+                            _flatten_sectioned_to_bullets(sectioned_for_wa)
+                        )
+                    sanitised_parent_name = re.sub(
+                        r'[\x00-\x1f]', ' ', parent_name
+                    ).strip()
+                    wa_success = send_whatsapp_template(
+                        wa_integration.whatsapp_phone,
+                        v1_sid,
+                        {
+                            "1": sanitised_parent_name,
+                            "2": sanitised_text,
+                        },
+                    )
+                else:
+                    if sectioned_for_wa.get("legacy_blob"):
+                        plain_text = re.sub(
+                            r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
+                        )
+                    else:
+                        plain_text = _flatten_sectioned_to_bullets(
+                            sectioned_for_wa
+                        )
+                    header = (
+                        f"Hi {parent_name}, here's your kids' daily school "
+                        f"email summary:\n\n"
+                    )
+                    footer = (
+                        "\n\nView full digest at "
+                        "https://www.classbridge.ca/email-digest"
+                    )
+                    max_content_len = 1600 - len(header) - len(footer)
+                    body = (
+                        plain_text[: max_content_len - 3] + "..."
+                        if len(plain_text) > max_content_len
+                        else plain_text
+                    )
+                    wa_success = send_whatsapp_message(
+                        wa_integration.whatsapp_phone,
+                        f"{header}{body}{footer}",
+                    )
+                whatsapp_status = "sent" if wa_success else "failed"
+                whatsapp_ok = bool(wa_success)
+            except Exception as e:
+                whatsapp_status = "failed"
+                whatsapp_ok = False
+                logger.warning(
+                    "Unified WhatsApp delivery failed | parent_id=%s | error=%s",
+                    parent_id,
+                    e,
+                )
+
     outcomes = [
         x
         for x in (
             in_app_ok if "in_app" in channels else None,
             email_ok if "email" in channels else None,
+            whatsapp_ok if "whatsapp" in channels else None,
         )
         if x is not None
     ]
@@ -1160,6 +1314,7 @@ async def send_unified_digest_for_parent(
         channels_used=channels_setting,
         status=overall_status,
         email_delivery_status=email_delivery_status,
+        whatsapp_delivery_status=whatsapp_status,
     )
     db.add(log_entry)
     # #4058 — advance last_synced_at atomically with the delivery-log
