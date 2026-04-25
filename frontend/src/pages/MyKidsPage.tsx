@@ -124,9 +124,6 @@ export function MyKidsPage() {
     }).catch(() => {});
   }, []);
 
-  // Study times child selector (#3495)
-  const [studyTimesChildId, setStudyTimesChildId] = useState<number | null>(null);
-
   // Auto-trigger action from query params (#3504)
   useEffect(() => {
     const action = searchParams.get('action');
@@ -665,11 +662,6 @@ export function MyKidsPage() {
     );
   }
 
-  // Derived study-times child: falls back if the selected child was removed (#3508)
-  const activeStudyChild = (studyTimesChildId && children.find(c => c.student_id === studyTimesChildId))
-    ? studyTimesChildId
-    : children[0]?.student_id;
-
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       <div className="bridge-page">
@@ -808,26 +800,13 @@ export function MyKidsPage() {
                 )}
               </article>
 
-              {/* ── Best Study Times ───────── */}
-              {children.length > 0 && (
-                <div className="mykids-study-times-wrap">
-                  {children.length > 1 && (
-                    <div className="mykids-study-times-switcher">
-                      <select
-                        aria-label="Select child for study times"
-                        value={activeStudyChild}
-                        onChange={e => setStudyTimesChildId(Number(e.target.value))}
-                        className="mykids-child-select"
-                      >
-                        {children.map(c => (
-                          <option key={c.student_id} value={c.student_id}>{c.full_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  <StudyTimeSuggestions studentId={activeStudyChild} />
-                </div>
-              )}
+              <EmailDigestCard
+                hasIntegration={hasEmailDigestIntegration}
+                onSetup={() => setShowEmailDigestWizard(true)}
+                onOpenDigest={() => navigate('/email-digest')}
+                childName="all kids"
+              />
+
 
               {/* ── Unassigned Classes ─────────────────── */}
               {unassignedCourses.length > 0 && (
