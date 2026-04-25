@@ -62,6 +62,20 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-6"
 
+    # CB-DCI-001 M0-6 — single-flag override for the daily check-in summary
+    # generator (`dci_summary_service`). When unset (default) the service
+    # uses Sonnet 4.6 with prompt caching. Set to `claude-opus-4-7` to flip
+    # the entire pipeline to Opus 4.7 if blind eval misses the quality bar
+    # — no code branching, just an env var.
+    dci_summary_model_override: str | None = None
+
+    # CB-DCI-001 M0-6 — per-call cost guardrails for the daily summary
+    # generator. Promoted from hard-coded constants (#4204) so ops can tune
+    # per-environment without a deploy. Defaults match the design doc:
+    # target $0.02/family/day, alert above $0.05/family/day.
+    dci_cost_target_usd: float = 0.02
+    dci_cost_alert_usd: float = 0.05
+
     # OpenAI (used for embeddings in help chatbot RAG pipeline)
     openai_api_key: str = ""
 
