@@ -52,12 +52,59 @@ VoiceInput = Union[str, os.PathLike, bytes, bytearray, memoryview]
 # Cache (in-memory primary + disk-backed for cross-process reuse in dev)
 # ---------------------------------------------------------------------------
 
-_memory_cache: dict[str, dict] = {}
+# OrderedDict gives us O(1) LRU semantics: ``move_to_end`` on access and
+# ``popitem(last=False)`` to evict the oldest entry when we go over the cap
+# (see ``_evict_oldest_if_over_limit``).
+from collections import OrderedDict
+
+_memory_cache: "OrderedDict[str, dict]" = OrderedDict()
 
 
 def _cache_path_for(content_hash: str) -> Path:
     cache_dir = Path(settings.dci_voice_cache_dir)
     return cache_dir / f"{content_hash}.json"
+
+
+def _evict_oldest_if_over_limit() -> None:
+    """Bound both the in-memory cache and the disk cache directory (#4168).
+
+    The in-memory cache is an ``OrderedDict`` so eviction is O(1) on the
+    least-recently-inserted/accessed entry. The disk cache is a plain
+    directory of ``<hash>.json`` files; we bound it by total file count and
+    delete the oldest by mtime when over the cap. Both share the same
+    ``settings.dci_voice_cache_max_entries`` cap so behaviour stays simple.
+    """
+    max_entries = settings.dci_voice_cache_max_entries
+    if max_entries <= 0:
+        return  # 0 / negative disables the bound (e.g., tests)
+
+    # In-memory bound — pop oldest until we are under the cap.
+    while len(_memory_cache) > max_entries:
+        _memory_cache.popitem(last=False)
+
+    # Disk bound — best-effort. We tolerate concurrent writers (file may be
+    # gone by the time we try to unlink it) and missing dirs (fresh deploy).
+    cache_dir = Path(settings.dci_voice_cache_dir)
+    if not cache_dir.exists():
+        return
+    try:
+        files = [p for p in cache_dir.glob("*.json") if p.is_file()]
+    except OSError as e:
+        logger.warning("DCI voice cache disk-bound list failed: %s", e)
+        return
+    if len(files) <= max_entries:
+        return
+    # Sort oldest-first by mtime; break ties by name for determinism.
+    try:
+        files.sort(key=lambda p: (p.stat().st_mtime, p.name))
+    except OSError:
+        return
+    overflow = len(files) - max_entries
+    for path in files[:overflow]:
+        try:
+            path.unlink()
+        except OSError:
+            continue
 
 
 def _load_from_cache(content_hash: str) -> dict | None:
@@ -67,6 +114,9 @@ def _load_from_cache(content_hash: str) -> dict | None:
     entry = _memory_cache.get(content_hash)
     if entry is not None:
         if time.time() - entry["_cached_at"] <= ttl_seconds:
+            # LRU touch — refresh recency so this entry is *not* the next
+            # eviction candidate.
+            _memory_cache.move_to_end(content_hash)
             return _strip_meta(entry)
         _memory_cache.pop(content_hash, None)
 
@@ -90,12 +140,15 @@ def _load_from_cache(content_hash: str) -> dict | None:
         return None
 
     _memory_cache[content_hash] = entry
+    _memory_cache.move_to_end(content_hash)
+    _evict_oldest_if_over_limit()
     return _strip_meta(entry)
 
 
 def _save_to_cache(content_hash: str, payload: dict) -> None:
     entry = {**payload, "_cached_at": time.time()}
     _memory_cache[content_hash] = entry
+    _memory_cache.move_to_end(content_hash)
 
     cache_dir = Path(settings.dci_voice_cache_dir)
     try:
@@ -106,6 +159,10 @@ def _save_to_cache(content_hash: str, payload: dict) -> None:
         # Disk cache is best-effort; the in-memory cache still serves the
         # current process. Log once per failure but don't propagate.
         logger.warning("DCI voice cache write failed for %s: %s", content_hash, e)
+
+    # Bound both layers AFTER write so we never exceed the cap by more than
+    # a single entry between calls.
+    _evict_oldest_if_over_limit()
 
 
 def _strip_meta(entry: dict) -> dict:
@@ -250,12 +307,15 @@ _SENTIMENT_SYSTEM_PROMPT = (
 )
 
 
-async def _score_sentiment(transcript: str) -> float:
+async def _score_sentiment(transcript: str) -> float | None:
     """Single Haiku 4.5 call returning a clamped score in [-1, 1].
 
-    Returns ``0.0`` (neutral) on any error or empty transcript so a sentiment
-    failure never breaks the transcription pipeline — callers can still rely
-    on the transcript text.
+    Returns ``None`` on any scoring failure (Anthropic error, missing
+    ``tool_use`` block, unparseable score) so the caller can distinguish a
+    *genuinely neutral* recap (``0.0``) from an *unscored* one (``None``)
+    and surface a ``sentiment_unavailable`` flag in the response payload
+    (#4167). Empty / whitespace-only transcripts return ``0.0`` because
+    that *is* a meaningful neutral — there is nothing emotional to score.
     """
     if not transcript or not transcript.strip():
         return 0.0
@@ -299,11 +359,11 @@ async def _score_sentiment(transcript: str) -> float:
                 # Clamp defensively — the schema says [-1, 1] but the model can
                 # still emit out-of-range numbers occasionally.
                 return max(-1.0, min(1.0, score))
-        logger.warning("Sentiment response missing score tool_use block; defaulting to 0.0")
-        return 0.0
+        logger.warning("Sentiment response missing score tool_use block; marking unavailable")
+        return None
     except Exception as e:
-        logger.warning("Sentiment scoring failed (defaulting to 0.0): %s", e)
-        return 0.0
+        logger.warning("Sentiment scoring failed (marking unavailable): %s", e)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -326,10 +386,16 @@ async def transcribe(voice_file_path_or_bytes: VoiceInput) -> dict:
             {
                 "transcript": "...",
                 "sentiment_score": 0.42,
+                "sentiment_unavailable": False,  # True if Haiku call failed
                 "language": "en",
                 "duration_s": 12.3,
                 "model_version": "whisper-1+claude-haiku-4-5-20251001",
             }
+
+        ``sentiment_unavailable=True`` means the transcript is valid but
+        Anthropic refused / errored — downstream UI should render a
+        "couldn't score" state instead of showing the fallback ``0.0`` as a
+        genuine neutral recap (#4167).
 
         Cost-cap exceeded (Whisper NEVER called)::
 
@@ -380,14 +446,21 @@ async def transcribe(voice_file_path_or_bytes: VoiceInput) -> dict:
 
     start = time.time()
     transcript, language, api_duration = await _call_whisper(content, filename)
-    sentiment_score = await _score_sentiment(transcript)
+    raw_sentiment = await _score_sentiment(transcript)
     elapsed_ms = (time.time() - start) * 1000
+
+    # ``None`` means the Haiku call failed — surface that to callers via
+    # ``sentiment_unavailable`` so a neutral icon means "we scored 0" and
+    # not "we couldn't score this" (#4167).
+    sentiment_unavailable = raw_sentiment is None
+    sentiment_score = 0.0 if sentiment_unavailable else raw_sentiment
 
     duration_s = api_duration if api_duration is not None else estimated_duration
 
     payload = {
         "transcript": transcript,
         "sentiment_score": sentiment_score,
+        "sentiment_unavailable": sentiment_unavailable,
         "language": language or "unknown",
         "duration_s": round(float(duration_s), 3),
         "model_version": f"{WHISPER_MODEL}+{SENTIMENT_MODEL}",
@@ -395,9 +468,10 @@ async def transcribe(voice_file_path_or_bytes: VoiceInput) -> dict:
 
     logger.info(
         "DCI voice transcription complete | duration_s=%.2f | sentiment=%.2f | "
-        "lang=%s | elapsed_ms=%.0f | hash=%s",
+        "sentiment_unavailable=%s | lang=%s | elapsed_ms=%.0f | hash=%s",
         payload["duration_s"],
         sentiment_score,
+        sentiment_unavailable,
         payload["language"],
         elapsed_ms,
         content_hash[:12],

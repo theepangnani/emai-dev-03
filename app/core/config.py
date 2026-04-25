@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     dci_voice_whisper_price_per_minute_usd: float = 0.006  # OpenAI Whisper-1 list price
     dci_voice_cache_ttl_days: int = 30  # SHA256(content) cache TTL
     dci_voice_cache_dir: str = "./data/dci_voice_cache"  # Disk cache for M0 dev
+    dci_voice_cache_max_entries: int = 1000  # LRU bound on both in-memory + disk cache (#4168)
 
     # Storage limits per tier (#1007)
     free_storage_limit_bytes: int = 104857600

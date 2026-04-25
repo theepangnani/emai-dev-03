@@ -95,6 +95,7 @@ async def test_transcribe_happy_path(voice_service):
     assert result == {
         "transcript": "I had a great day at school",
         "sentiment_score": 0.75,
+        "sentiment_unavailable": False,
         "language": "en",
         "duration_s": 2.0,
         "model_version": "whisper-1+claude-haiku-4-5-20251001",
@@ -280,6 +281,9 @@ async def test_score_sentiment_empty_transcript_returns_zero(voice_service):
 
 @pytest.mark.asyncio
 async def test_score_sentiment_swallows_errors(voice_service):
+    """On Anthropic error we now return ``None`` so the caller can flag the
+    payload as ``sentiment_unavailable=True`` rather than masquerading as a
+    real neutral 0.0 (#4167)."""
     def boom(**_):
         raise RuntimeError("anthropic down")
 
@@ -288,4 +292,86 @@ async def test_score_sentiment_swallows_errors(voice_service):
         "app.services.ai_service.get_anthropic_client", return_value=fake_client
     ):
         score = await voice_service._score_sentiment("hello")
-    assert score == 0.0
+    assert score is None
+
+
+# ---------------------------------------------------------------------------
+# sentiment_unavailable signal (#4167)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_transcribe_sets_sentiment_unavailable_on_scoring_failure(voice_service):
+    """When Haiku errors, payload should report ``sentiment_unavailable=True``
+    and fall the surfaced ``sentiment_score`` back to 0.0 (#4167)."""
+    audio = _make_wav_bytes(seconds=1.0)
+
+    with patch.object(
+        voice_service,
+        "_call_whisper",
+        new=AsyncMock(return_value=("transcript ok", "en", 1.0)),
+    ), patch.object(
+        voice_service, "_score_sentiment", new=AsyncMock(return_value=None)
+    ):
+        result = await voice_service.transcribe(audio)
+
+    assert result["transcript"] == "transcript ok"
+    assert result["sentiment_unavailable"] is True
+    assert result["sentiment_score"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_transcribe_sentiment_available_on_success(voice_service):
+    """A successful Haiku call must keep ``sentiment_unavailable=False``
+    even when the score IS genuinely 0.0 — the flag distinguishes
+    "we scored neutral" from "we couldn't score" (#4167)."""
+    audio = _make_wav_bytes(seconds=1.0)
+
+    with patch.object(
+        voice_service,
+        "_call_whisper",
+        new=AsyncMock(return_value=("matter of fact recap", "en", 1.0)),
+    ), patch.object(
+        voice_service, "_score_sentiment", new=AsyncMock(return_value=0.0)
+    ):
+        result = await voice_service.transcribe(audio)
+
+    assert result["sentiment_score"] == 0.0
+    assert result["sentiment_unavailable"] is False
+
+
+# ---------------------------------------------------------------------------
+# Bounded cache (#4168)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cache_evicts_oldest_when_over_limit(voice_service, monkeypatch):
+    """Setting ``dci_voice_cache_max_entries=2`` should keep the in-memory
+    dict bounded AND prune older files from the disk cache directory (#4168)."""
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "dci_voice_cache_max_entries", 2, raising=True)
+
+    # Three distinct audio clips → three distinct content hashes → three
+    # distinct cache keys. After all three are written, both layers must
+    # hold at most 2 entries (the most-recent two).
+    clips = [_make_wav_bytes(seconds=1.0 + i * 0.25) for i in range(3)]
+
+    with patch.object(
+        voice_service,
+        "_call_whisper",
+        new=AsyncMock(return_value=("text", "en", 1.0)),
+    ), patch.object(
+        voice_service, "_score_sentiment", new=AsyncMock(return_value=0.1)
+    ):
+        for clip in clips:
+            await voice_service.transcribe(clip)
+
+    # In-memory layer bounded to 2.
+    assert len(voice_service._memory_cache) == 2
+
+    # Disk layer also bounded to 2 — the helper sweeps overflow files.
+    from pathlib import Path as _Path
+    cache_files = list(_Path(config.settings.dci_voice_cache_dir).glob("*.json"))
+    assert len(cache_files) == 2
