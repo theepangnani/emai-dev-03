@@ -654,6 +654,11 @@
   margin-bottom: 48px;
 }
 
+/* HF Stream C — insight grid 3-up (Grades + Study Times + Dinner Table Talk) */
+.bridge-grid--insight {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
 .bridge-card {
   background: var(--bridge-card);
   border: 1px solid var(--bridge-hair);

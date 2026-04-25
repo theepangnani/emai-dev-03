@@ -21,6 +21,8 @@ import { AwardXpModal } from '../components/AwardXpModal';
 import { StudyTimeSuggestions } from '../components/StudyTimeSuggestions';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { EmailDigestSetupWizard } from '../components/EmailDigestSetupWizard';
+import { ConversationStartersCard } from '../components/briefing/ConversationStartersCard';
+import { GoogleClassroomPrompt } from '../components/GoogleClassroomPrompt';
 import { BridgeHeader } from '../components/bridge/BridgeHeader';
 import { KidHero } from '../components/bridge/KidHero';
 import { KidRail } from '../components/bridge/KidRail';
@@ -81,8 +83,7 @@ export function MyKidsPage() {
   const [sectionLoading, setSectionLoading] = useState(false);
 
 
-  // Collapsible sections (showMaterials still drives the all-kids view; others removed in PR 6 / #4121)
-  const [showMaterials, setShowMaterials] = useState(false);
+  // Collapsible sections (legacy SectionPanels for unassigned-only after #4129 HF Stream C)
 
   // Reassign class material to course
   const [reassignContent, setReassignContent] = useState<CourseContentItem | null>(null);
@@ -770,40 +771,42 @@ export function MyKidsPage() {
             <PageSkeleton />
           ) : (
             <div className="dashboard-redesign">
-              {/* ── Class Materials (all children) ───────── */}
-              <SectionPanel
-                title="Class Materials"
-                icon="&#128196;"
-                count={materials.length}
-                collapsed={!showMaterials}
-                onToggle={() => setShowMaterials(p => !p)}
-                headerRight={
-                  materials.length > 0 ? (
-                    <button
-                      className="section-panel__view-all"
-                      onClick={(e) => { e.stopPropagation(); navigate('/course-materials'); }}
-                    >
-                      View All
+              {/* ── Class Materials (all children) — always-expanded bridge card (#4129 S3) ───────── */}
+              <article className="bridge-card">
+                <header className="bridge-card-head">
+                  <div className="bridge-card-title-wrap">
+                    <h3>
+                      Class Materials
+                      <span className="bridge-card-count">{materials.length}</span>
+                    </h3>
+                  </div>
+                </header>
+                {materials.length === 0 ? (
+                  <div className="bridge-empty-hint">No class materials yet.</div>
+                ) : (
+                  <ul className="bridge-item-list" role="list">
+                    {recentMaterials.slice(0, 5).map(m => (
+                      <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
+                        <div>
+                          <div className="bridge-item-title">{m.title}</div>
+                          <div className="bridge-item-meta">
+                            {m.content_type}
+                            {m.course_name && <> · {m.course_name}</>}
+                          </div>
+                        </div>
+                        <span className="bridge-item-chev" aria-hidden="true">›</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {materials.length > 0 && (
+                  <footer className="bridge-card-foot">
+                    <button type="button" className="bridge-head-action" onClick={() => navigate('/course-materials')}>
+                      View all →
                     </button>
-                  ) : undefined
-                }
-              >
-                <div className="mykids-list">
-                  {materials.length === 0 ? (
-                    <p className="dash-empty-hint">No class materials yet.</p>
-                  ) : recentMaterials.map(m => (
-                    <div key={m.id} className="mykids-list-row" onClick={() => navigate(`/course-materials/${m.id}`)} onKeyDown={(e) => handleKeyDown(e, () => navigate(`/course-materials/${m.id}`))} role="button" tabIndex={0}>
-                      <div className="mykids-list-body">
-                        <span className="mykids-list-title">{m.title}</span>
-                        <span className="mykids-list-meta">
-                          <span className="mykids-badge">{m.content_type}</span>
-                          {m.course_name && <span> &middot; {m.course_name}</span>}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </SectionPanel>
+                  </footer>
+                )}
+              </article>
 
               {/* ── Best Study Times ───────── */}
               {children.length > 0 && (
@@ -949,7 +952,13 @@ export function MyKidsPage() {
                     description={`Synced courses for ${childName}.`}
                     headAction={{ label: '+ Add class', onClick: () => setShowAddCourseModal(true) }}
                     footAction={courses.length > 0 ? { label: 'View all classes →', onClick: () => navigate('/courses') } : undefined}
-                    emptyState={courses.length === 0 ? `No classes for ${childName} yet.` : undefined}
+                    emptyState={courses.length === 0 ? (
+                      <GoogleClassroomPrompt
+                        childName={childName}
+                        childStudentId={selectedChild}
+                        onAddManually={() => setShowAddCourseModal(true)}
+                      />
+                    ) : undefined}
                   >
                     {courses.slice(0, 4).map(c => (
                       // TODO(#4117): per-course swatch colour — derive a stable hue from c.id once palette is finalised (PR 6 polish)
@@ -1035,7 +1044,7 @@ export function MyKidsPage() {
                 <div className="bridge-section-head">
                   <h2>How {childName} is doing</h2>
                 </div>
-                <div className="bridge-grid">
+                <div className="bridge-grid bridge-grid--insight">
                   <article className="bridge-card bridge-card--muted">
                     <header className="bridge-card-head">
                       <div className="bridge-card-title-wrap">
@@ -1059,6 +1068,17 @@ export function MyKidsPage() {
                     </header>
                     <div className="bridge-card-body">
                       <StudyTimeSuggestions studentId={selectedChild} />
+                    </div>
+                  </article>
+                  <article className="bridge-card bridge-card--muted">
+                    <header className="bridge-card-head">
+                      <div className="bridge-card-title-wrap">
+                        <span className="bridge-card-kicker">Conversation</span>
+                        <h3>Dinner Table Talk</h3>
+                      </div>
+                    </header>
+                    <div className="bridge-card-body">
+                      <ConversationStartersCard studentId={selectedChild} />
                     </div>
                   </article>
                 </div>
