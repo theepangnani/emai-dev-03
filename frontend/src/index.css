@@ -338,6 +338,131 @@ body:has(.modal-overlay) {
   --skeleton-mid: rgba(240, 236, 230, 0.6);
 }
 
+/* ========================================
+   Bridge Theme (warm ivory + serif headings)
+   See: requirements/features-part7.md §6.144
+   ======================================== */
+[data-theme="bridge"] {
+  /* Bridge-native tokens (new) */
+  --color-ivory: #f5f1ea;
+  --color-paper: #fbf8f2;
+  --color-card: #ffffff;
+  --color-hair: #e5ddd1;
+  --color-rail: #ece4d6;
+  --color-rust: #b04a2c;
+  --color-rust-ink: #7a2f18;
+  --color-pine: #2d4a3e;
+  --color-amber: #d4a24b;
+  --color-sky: #3b6a8f;
+  --color-rose: #c25b6f;
+  --color-on-track-bg: #e6efe8;
+  --color-on-track-ink: #23523f;
+  --color-pending-bg: #f6ead3;
+  --color-pending-ink: #7a5a1a;
+
+  /* Map existing token names to bridge values so legacy CSS auto-inherits */
+  --color-ink: #1c1a16;
+  --color-ink-muted: #6b645b;
+  --color-surface: #ffffff;
+  --color-surface-alt: #fbf8f2;
+  --color-surface-bg: #f5f1ea;
+  --color-surface-header: rgba(245, 241, 234, 0.92);
+  --color-border: #e5ddd1;
+
+  --color-accent: #b04a2c;
+  --color-accent-strong: #7a2f18;
+  --color-accent-warm: #d4a24b;
+  --color-accent-light: rgba(176, 74, 44, 0.12);
+  --color-accent-subtle: rgba(176, 74, 44, 0.08);
+  --color-focus-ring: rgba(176, 74, 44, 0.20);
+
+  --color-purple: #6b4a7a;
+  --color-purple-strong: #4f3a5e;
+  --color-purple-light: #f0eaf3;
+  --color-purple-bg: #e6dcec;
+
+  --color-blue: #3b6a8f;
+  --color-blue-dark: #2d5475;
+  --color-danger: #c25b6f;
+  --color-danger-light: rgba(194, 91, 111, 0.10);
+  --color-warning: #d4a24b;
+  --color-warning-light: rgba(212, 162, 75, 0.14);
+  --color-warning-text: #7a5a1a;
+  --color-success: #2d4a3e;
+  --color-success-light: rgba(45, 74, 62, 0.12);
+
+  --priority-high: #c25b6f;
+  --priority-high-light: rgba(194, 91, 111, 0.10);
+  --priority-medium: #d4a24b;
+  --priority-medium-light: rgba(212, 162, 75, 0.14);
+  --priority-low: #2d4a3e;
+  --priority-low-light: rgba(45, 74, 62, 0.10);
+
+  --brand-google: #3b6a8f;
+  --brand-google-light: rgba(59, 106, 143, 0.12);
+
+  --badge-syllabus: #6b4a7a;
+  --badge-labs: #d4a24b;
+  --badge-readings: #3b6a8f;
+  --badge-resources: #2d4a3e;
+  --badge-assignments: #b04a2c;
+
+  --role-parent: #b04a2c;
+  --role-teacher: #2d4a3e;
+  --role-admin: #7a5a1a;
+
+  --color-accent-dark: #7a2f18;
+  --color-accent-warm-strong: #a87a3a;
+  --color-success-dark: #1c3329;
+  --color-inactive: #c5beb5;
+
+  --color-overlay: rgba(28, 26, 22, 0.50);
+  --color-overlay-light: rgba(28, 26, 22, 0.30);
+
+  --color-muted: #6b645b;
+  --color-muted-light: #8a8480;
+  --color-muted-border: #d4cdc1;
+
+  --color-success-bg: #e6efe8;
+  --color-success-border: rgba(45, 74, 62, 0.20);
+  --color-warning-bg: #f6ead3;
+  --color-warning-border: rgba(212, 162, 75, 0.30);
+  --color-info: #3b6a8f;
+  --color-info-bg: rgba(59, 106, 143, 0.10);
+  --color-info-border: rgba(59, 106, 143, 0.20);
+
+  --shadow-xs: 0 1px 2px rgba(28, 26, 22, 0.04);
+  --shadow-sm: 0 2px 8px rgba(28, 26, 22, 0.06);
+  --shadow-soft: 0 1px 2px rgba(28, 26, 22, 0.04), 0 12px 30px -18px rgba(28, 26, 22, 0.18);
+  --shadow-md: 0 4px 16px rgba(28, 26, 22, 0.08);
+  --shadow-lg: 0 8px 30px rgba(28, 26, 22, 0.12);
+  --shadow-lift: 0 1px 2px rgba(28, 26, 22, 0.05), 0 24px 48px -24px rgba(28, 26, 22, 0.22);
+  --shadow-xl: 0 20px 40px rgba(28, 26, 22, 0.18);
+
+  --bg-dot-color: rgba(28, 26, 22, 0.04);
+  --bg-dot-opacity: 0.30;
+  --skeleton-from: rgba(229, 221, 209, 0.6);
+  --skeleton-mid: rgba(245, 241, 234, 0.6);
+
+  /* Override base typography so legacy CSS auto-inherits bridge fonts */
+  --font-sans: 'DM Sans', 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', 'Space Grotesk', Georgia, serif;
+
+  /* Override base radii so legacy CSS auto-inherits bridge corners */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  /* Typography (new tokens) */
+  --font-display-serif: 'Fraunces', Georgia, serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+
+  /* Bridge-native radii (new) */
+  --radius-bridge-sm: 8px;
+  --radius-bridge-md: 14px;
+  --radius-bridge-lg: 22px;
+}
+
 body {
   margin: 0;
   min-width: 320px;
