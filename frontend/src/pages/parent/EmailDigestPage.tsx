@@ -1228,6 +1228,21 @@ function EmailDigestPageUnified() {
     },
   });
 
+  // #4056: Sync Now + Send Digest Now — mirrors legacy declarations.
+  const syncMutation = useMutation({
+    mutationFn: (id: number) => triggerSync(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+    },
+  });
+
+  const sendDigestMutation = useMutation({
+    mutationFn: (id: number) => sendDigestNow(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-digest'] });
+    },
+  });
+
   // #4044: When adding a school email to a kid that doesn't have a
   // ParentChildProfile yet, auto-create the profile first, then add the
   // school email to it. The mutation now accepts EITHER an existing profileId
@@ -1726,6 +1741,110 @@ function EmailDigestPageUnified() {
             <p className="ed-success-text ed-whatsapp-message">{whatsappSuccess}</p>
           )}
         </div>
+        )}
+
+        {/* Sync & Send (#4056) — port of legacy Sync Now + Send Digest Now. */}
+        {activeIntegration && (
+          <div className="ed-settings-card">
+            <h2 className="ed-section-title">Sync & Send</h2>
+            <p className="ed-help-text">
+              Pull the latest emails from Gmail or send your digest now without waiting for the next scheduled run.
+            </p>
+            <div className="ed-settings-actions">
+              <button
+                type="button"
+                className="ed-sync-btn"
+                onClick={() => syncMutation.mutate(activeIntegration.id)}
+                disabled={syncMutation.isPending || !activeIntegration.is_active}
+              >
+                {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
+              </button>
+              <button
+                type="button"
+                className="ed-primary-btn"
+                onClick={() => {
+                  sendDigestMutation.reset();
+                  sendDigestMutation.mutate(activeIntegration.id);
+                }}
+                disabled={sendDigestMutation.isPending || !activeIntegration.is_active}
+              >
+                {sendDigestMutation.isPending ? 'Sending...' : 'Send Digest Now'}
+              </button>
+              {syncMutation.isError && (
+                <span className="ed-error-text">Sync failed. Please try again.</span>
+              )}
+              {syncMutation.isSuccess && (
+                <span className="ed-success-text">Sync complete!</span>
+              )}
+              {sendDigestMutation.isError && (
+                <span className="ed-error-text">
+                  {(sendDigestMutation.error as ApiErrorResponse)?.response?.data?.detail || 'Failed to send digest. Please try again.'}
+                </span>
+              )}
+              {sendDigestMutation.isSuccess && (() => {
+                // #3880 + #3887: render per-channel digest status with four
+                // variants: delivered / partial / failed / skipped.
+                const payload = sendDigestMutation.data?.data;
+                const status = payload?.status ?? 'delivered';
+                const message = payload?.message ?? 'Digest sent!';
+                const variant =
+                  status === 'delivered'
+                    ? 'ed-digest-status--delivered'
+                    : status === 'partial'
+                    ? 'ed-digest-status--partial'
+                    : status === 'failed'
+                    ? 'ed-digest-status--failed'
+                    : status === 'skipped'
+                    ? 'ed-digest-status--skipped'
+                    : 'ed-digest-status--delivered';
+                const icon =
+                  status === 'delivered'
+                    ? '✓'
+                    : status === 'partial'
+                    ? '⚠'
+                    : status === 'failed'
+                    ? '✕'
+                    : status === 'skipped'
+                    ? 'ℹ'
+                    : '✓';
+                return (
+                  <div
+                    className={`ed-digest-status ${variant}`}
+                    role={status === 'failed' ? 'alert' : 'status'}
+                    data-status={status}
+                  >
+                    <div className="ed-digest-status__row">
+                      <span className="ed-digest-status__icon" aria-hidden="true">
+                        {icon}
+                      </span>
+                      <span>{message}</span>
+                    </div>
+                    {status === 'failed' && (
+                      <button
+                        type="button"
+                        className="ed-digest-status__retry"
+                        onClick={() => {
+                          sendDigestMutation.reset();
+                          sendDigestMutation.mutate(activeIntegration.id);
+                        }}
+                        disabled={sendDigestMutation.isPending}
+                      >
+                        Try again
+                      </button>
+                    )}
+                    {status === 'skipped' && payload?.reason === 'no_eligible_channels' && (
+                      <Link
+                        to="/settings/notifications"
+                        className="ed-digest-status__prefs-link"
+                      >
+                        Open preferences
+                      </Link>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         )}
 
         {/* 2. Your kids */}
