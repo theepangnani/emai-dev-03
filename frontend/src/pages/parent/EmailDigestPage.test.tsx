@@ -17,6 +17,7 @@ const mockSendWhatsAppOTP = vi.fn();
 const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
+const mockTriggerSync = vi.fn();
 const mockListChildProfiles = vi.fn();
 const mockCreateChildProfile = vi.fn();
 const mockAddChildSchoolEmail = vi.fn();
@@ -40,6 +41,7 @@ vi.mock('../../api/parentEmailDigest', async () => {
     verifyWhatsAppOTP: (...args: unknown[]) => mockVerifyWhatsAppOTP(...args),
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
+    triggerSync: (...args: unknown[]) => mockTriggerSync(...args),
     listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
     createChildProfile: (...args: unknown[]) => mockCreateChildProfile(...args),
     addChildSchoolEmail: (...args: unknown[]) => mockAddChildSchoolEmail(...args),
@@ -1337,5 +1339,94 @@ describe('EmailDigestPage — unified remove school email (#4098)', () => {
     await waitFor(() => {
       expect(screen.getByText('School email is in use.')).toBeInTheDocument();
     });
+  });
+});
+
+describe('unified Sync + Send Digest (#4056)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockTriggerSync.mockResolvedValue({ data: buildIntegration() });
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'delivered', email_count: 3, message: 'Digest sent!' },
+    });
+  });
+
+  it('renders the Sync Now button when activeIntegration is active', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sync Now' })).toBeInTheDocument();
+    });
+  });
+
+  it('clicking Sync Now calls triggerSync(integrationId)', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sync Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync Now' }));
+
+    await waitFor(() => {
+      expect(mockTriggerSync).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('renders the Send Digest Now button', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+  });
+
+  it('clicking Send Digest Now calls sendDigestNow(integrationId)', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(mockSendDigestNow).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it('renders the per-channel status banner with delivered status (no retry button)', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'delivered', email_count: 5, message: 'Digest sent to 5 messages.' },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      const banner = screen.getByText('Digest sent to 5 messages.').closest('.ed-digest-status');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('data-status', 'delivered');
+    });
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+
+  it('renders the per-channel status banner with failed status (shows Try again button)', async () => {
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'failed', email_count: 0, message: 'Failed to deliver digest.' },
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      const banner = screen.getByText('Failed to deliver digest.').closest('.ed-digest-status');
+      expect(banner).toBeInTheDocument();
+      expect(banner).toHaveAttribute('data-status', 'failed');
+    });
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });
