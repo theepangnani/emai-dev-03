@@ -93,19 +93,33 @@ def _isolate_task_sync_flag(app):
 
     from app.db.database import SessionLocal
 
+    # Default-OFF flags whose ON state must not leak between tests under
+    # the session-scoped DB fixture. Add new entries here when introducing
+    # a new default-OFF flag that any test toggles ON. Default-ON flags
+    # (e.g. ``parent.unified_digest_v2``) are intentionally excluded — the
+    # leak direction is harmless.
+    keys_to_reset = (
+        "task_sync_enabled",
+        "dci_v1_enabled",  # CB-DCI-001 M0-3 (#4141)
+    )
+
     db = SessionLocal()
     try:
         from app.models.feature_flag import FeatureFlag
 
-        flag = (
+        flags = (
             db.query(FeatureFlag)
-            .filter(FeatureFlag.key == "task_sync_enabled")
-            .first()
+            .filter(FeatureFlag.key.in_(keys_to_reset))
+            .all()
         )
-        if flag is not None and flag.enabled:
-            flag.enabled = False
+        dirty = False
+        for flag in flags:
+            if flag.enabled:
+                flag.enabled = False
+                dirty = True
+        if dirty:
             db.commit()
-        # When the row is missing (earliest startup-smoke tests, or a test
+        # When a row is missing (earliest startup-smoke tests, or a test
         # that hasn't yet triggered seed_features) there is nothing to
         # reset — the default-OFF contract is already satisfied.
     except SQLAlchemyError:
@@ -115,7 +129,7 @@ def _isolate_task_sync_flag(app):
         # flake.
         db.rollback()
         logging.getLogger(__name__).warning(
-            "task_sync_enabled reset failed", exc_info=True
+            "feature-flag reset failed", exc_info=True
         )
     finally:
         db.close()
