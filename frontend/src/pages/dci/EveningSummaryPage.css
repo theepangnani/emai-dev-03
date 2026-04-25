@@ -24,13 +24,6 @@
   gap: 8px;
 }
 
-.dci-evening-page__pattern-stub {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  color: var(--color-ink-muted, #5b6274);
-  font-style: italic;
-}
-
 /* ── Conversation Starter card ── */
 .dci-conv-starter {
   position: relative;

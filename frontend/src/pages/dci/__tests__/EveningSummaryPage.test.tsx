@@ -251,4 +251,20 @@ describe('EveningSummaryPage', () => {
     // Summary endpoint must not have been called when there are no kids.
     expect(mockGetSummary).not.toHaveBeenCalled();
   });
+
+  it('shows a distinct error state when getChildren fails', async () => {
+    mockGetChildren.mockRejectedValue(new Error('network'));
+
+    renderWithProviders(<EveningSummaryPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/We couldn't load your kids/),
+      ).toBeInTheDocument();
+    });
+    // Should NOT show the "no kids linked" copy — that's misleading on a
+    // network failure.
+    expect(screen.queryByText(/No kids linked yet/)).not.toBeInTheDocument();
+    expect(mockGetSummary).not.toHaveBeenCalled();
+  });
 });

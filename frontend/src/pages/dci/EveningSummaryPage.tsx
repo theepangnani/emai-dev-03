@@ -11,6 +11,7 @@ import {
 } from '../../hooks/useDciSummary';
 import type { DciArtifact } from '../../api/dciSummary';
 import { trackDciTelemetry } from '../../utils/dciTelemetry';
+import { logger } from '../../utils/logger';
 import './EveningSummaryPage.css';
 
 /**
@@ -28,6 +29,7 @@ export function EveningSummaryPage() {
   const [children, setChildren] = useState<ChildSummary[]>([]);
   const [selectedKidId, setSelectedKidId] = useState<number | null>(null);
   const [childrenLoading, setChildrenLoading] = useState(true);
+  const [childrenError, setChildrenError] = useState(false);
 
   // Today, in local time, formatted yyyy-mm-dd. M0 only renders today —
   // historical days are a fast-follow.
@@ -51,7 +53,10 @@ export function EveningSummaryPage() {
         }
       })
       .catch(() => {
-        // Empty children list will surface the empty state below.
+        // I-3: distinguish "no kids linked" (empty list) from "load failed"
+        // so the parent sees an actionable error state instead of being
+        // told they have no children.
+        if (!cancelled) setChildrenError(true);
       })
       .finally(() => {
         if (!cancelled) setChildrenLoading(false);
@@ -66,6 +71,20 @@ export function EveningSummaryPage() {
 
   const summary = summaryQuery.data?.summary ?? null;
   const state = summaryQuery.data?.state ?? null;
+
+  // I-2: log when the backend returns a `(state, summary)` pair we don't
+  // expect — e.g. state='ready' with a null summary. Helps catch contract
+  // drift during the M0 ramp without breaking the page.
+  useEffect(() => {
+    if (!summaryQuery.data) return;
+    const expectsSummary = state === 'ready';
+    if (expectsSummary && !summary) {
+      logger.warn('dci.summary.state_mismatch', {
+        state,
+        hasSummary: !!summary,
+      });
+    }
+  }, [summaryQuery.data, state, summary]);
 
   // Fire summary_viewed once per (kidId, date) when a real summary loads.
   // useRef avoids the cascading-render lint rule that bans setState in
@@ -144,6 +163,11 @@ export function EveningSummaryPage() {
 
         {childrenLoading ? (
           <SummaryShimmer />
+        ) : childrenError ? (
+          <EmptyState
+            title="We couldn't load your kids"
+            body="Try refreshing in a moment. If this keeps happening, please contact support."
+          />
         ) : children.length === 0 ? (
           <EmptyState
             title="No kids linked yet"
@@ -202,12 +226,6 @@ export function EveningSummaryPage() {
               artifacts={summary.artifacts}
               onOpen={handleArtifactOpen}
             />
-
-            {/* First-30-days pattern stub at the bottom (single line) */}
-            <p className="dci-evening-page__pattern-stub">
-              We&rsquo;re learning about {summary.kid_name}. Check back in 30 days
-              for your first insight.
-            </p>
           </>
         ) : (
           <EmptyState
