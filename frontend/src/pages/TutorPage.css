@@ -7,7 +7,7 @@
   padding: var(--space-lg) var(--space-md) var(--space-2xl);
   background:
     radial-gradient(circle at 12% -8%, var(--color-accent-subtle) 0%, transparent 55%),
-    radial-gradient(circle at 92% 0%, rgba(244, 128, 31, 0.10) 0%, transparent 50%),
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--color-accent-warm) 10%, transparent) 0%, transparent 50%),
     transparent;
 }
 
@@ -101,7 +101,7 @@
 }
 .ask-arc-error__retry {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: var(--radius-sm);
   padding: 6px 14px;
@@ -292,18 +292,18 @@
   margin-left: auto;
   padding: 10px 18px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 999px;
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(74, 144, 217, 0.30);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
   transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s ease;
 }
 .ask-arc-send:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(74, 144, 217, 0.36);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-accent) 36%, transparent);
   filter: brightness(1.04);
 }
 .ask-arc-send:disabled {
@@ -313,7 +313,7 @@
 }
 .ask-arc-send:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-focus-ring), 0 4px 14px rgba(74, 144, 217, 0.30);
+  box-shadow: 0 0 0 3px var(--color-focus-ring), 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 
 .ask-arc-hint {
@@ -405,18 +405,18 @@
   gap: 8px;
   padding: 12px 24px;
   background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 999px;
   font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(74, 144, 217, 0.30);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-accent) 30%, transparent);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
 .ask-arc-continue:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(74, 144, 217, 0.36);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-accent) 36%, transparent);
 }
 
 .ask-arc-linkbtn {
@@ -473,7 +473,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 0%, rgba(244, 128, 31, 0.14) 0%, transparent 60%);
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-accent-warm) 14%, transparent) 0%, transparent 60%);
   pointer-events: none;
 }
 .ask-arc-results__ring {
@@ -674,7 +674,7 @@
   transition: all 0.18s ease;
 }
 .tutor-drill__surprise:hover {
-  background: rgba(244, 128, 31, 0.08);
+  background: var(--color-warning-light);
   border-style: solid;
 }
 .tutor-drill__grid {
@@ -715,7 +715,7 @@
   height: 8px;
   border-radius: 50%;
   background: var(--color-accent-warm);
-  box-shadow: 0 0 0 3px rgba(244, 128, 31, 0.18);
+  box-shadow: 0 0 0 3px var(--color-warning-light);
 }
 .tutor-drill__topic-subject {
   font-size: var(--text-xs);
@@ -850,7 +850,7 @@
 .tutor-drill__pill--active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 .tutor-drill__start {
   align-self: center;

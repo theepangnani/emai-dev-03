@@ -30,7 +30,7 @@
 .tasks-child-selector .pd-child-tab {
   padding: 10px 20px;
   border: 2px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   cursor: pointer;
   font-size: 14px;
@@ -50,13 +50,13 @@
 .tasks-child-selector .pd-child-tab.active {
   border-color: var(--color-accent);
   background: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
   box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
 .tasks-child-selector .pd-child-tab.active .pd-grade-badge {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+  background: color-mix(in srgb, var(--color-surface) 20%, transparent);
+  color: var(--color-surface);
 }
 
 .tasks-child-selector .pd-child-color-dot {
@@ -69,7 +69,7 @@
 }
 
 .tasks-child-selector .pd-child-tab.active .pd-child-color-dot {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-surface) 50%, transparent);
 }
 
 .tasks-child-selector .pd-grade-badge {
@@ -89,7 +89,7 @@
 .tasks-child-selector .pd-child-tab-all.active {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
   box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
@@ -200,12 +200,12 @@
 
 .tasks-filter-toggle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .tasks-filter-toggle.expanded {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
   box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
@@ -223,14 +223,14 @@
   padding: 0 5px;
   border-radius: 9px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
 }
 
 .tasks-filter-toggle.expanded .tasks-filter-count {
-  background: rgba(255, 255, 255, 0.25);
+  background: color-mix(in srgb, var(--color-surface) 25%, transparent);
 }
 
 /* Collapsible filter panel */
@@ -284,12 +284,12 @@
 
 .tasks-chip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .tasks-chip.active {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
   box-shadow: 0 2px 8px var(--color-focus-ring);
 }
 
@@ -327,7 +327,7 @@
 }
 
 .task-row:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
@@ -370,9 +370,9 @@
   flex-shrink: 0;
   align-self: center;
   cursor: pointer;
-  border: 2px solid var(--color-muted-border, #c5c5c5);
-  border-radius: 4px;
-  background: var(--color-surface, #fff);
+  border: 2px solid var(--color-muted-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
   position: relative;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -389,7 +389,7 @@
   top: 1px;
   width: 5px;
   height: 9px;
-  border: solid white;
+  border: solid var(--color-surface);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -643,9 +643,9 @@
 }
 
 .task-row-btn.remind:not(.reminded):hover {
-  border-color: #f59e0b;
-  color: #f59e0b;
-  background: #fffbeb;
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
 }
 
 .task-row-btn.remind.reminded {
@@ -663,9 +663,9 @@
 }
 
 .task-row-btn.request-completion:hover {
-  border-color: var(--primary-color, #4f46e5);
-  color: var(--primary-color, #4f46e5);
-  background: #eef2ff;
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  background: var(--color-accent-subtle);
 }
 
 /* Archived row */
@@ -812,7 +812,7 @@ textarea.form-input {
 .task-modal-archive-btn:hover {
   border-color: var(--color-warning-text);
   color: var(--color-warning-text);
-  background: rgba(251, 140, 0, 0.06);
+  background: var(--color-warning-light);
 }
 
 .task-modal-delete-btn {
@@ -824,7 +824,7 @@ textarea.form-input {
 .task-modal-delete-btn:hover {
   border-color: var(--color-danger);
   color: var(--color-danger);
-  background: rgba(229, 57, 53, 0.06);
+  background: var(--color-danger-light);
 }
 
 /* Inline button spinner */
@@ -891,21 +891,21 @@ textarea.form-input {
 }
 
 .task-group-overdue {
-  color: var(--color-danger, #dc2626);
+  color: var(--color-danger);
 }
 
 .task-group-overdue .task-group-count {
-  background: #FEE2E2;
-  color: #DC2626;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 .task-group-today {
-  color: var(--color-warning, #d97706);
+  color: var(--color-warning-text);
 }
 
 .task-group-today .task-group-count {
-  background: #FEF3C7;
-  color: #D97706;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .task-group-week {
@@ -913,8 +913,8 @@ textarea.form-input {
 }
 
 .task-group-week .task-group-count {
-  background: #DBEAFE;
-  color: #2563EB;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .task-group-later {
@@ -927,11 +927,11 @@ textarea.form-input {
 }
 
 .task-group-completed {
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
 }
 
 .task-group-completed .task-group-count {
-  background: rgba(34, 197, 94, 0.12);
+  background: var(--color-success-light);
   color: var(--color-success);
 }
 

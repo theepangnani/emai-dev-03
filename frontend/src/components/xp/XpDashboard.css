@@ -13,7 +13,7 @@
   padding: 20px 24px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg, 16px);
+  border-radius: var(--radius-lg);
   margin-bottom: 24px;
 }
 
@@ -45,25 +45,25 @@
 }
 
 .xp-streak--tier-cold .xp-streak-flame {
-  --streak-color: #9ca3af;
+  --streak-color: var(--color-muted);
   filter: grayscale(0.8) opacity(0.6);
 }
 
 .xp-streak--tier-warm .xp-streak-flame {
-  --streak-color: #f97316;
+  --streak-color: var(--color-accent-warm);
 }
 
 .xp-streak--tier-hot .xp-streak-flame {
-  --streak-color: #ef4444;
+  --streak-color: var(--color-danger);
 }
 
 .xp-streak--tier-blazing .xp-streak-flame {
-  --streak-color: #ef4444;
+  --streak-color: var(--color-danger);
   animation: streak-glow 2s ease-in-out infinite;
 }
 
 .xp-streak--tier-legendary .xp-streak-flame {
-  --streak-color: #eab308;
+  --streak-color: var(--color-warning);
   animation: streak-glow 2s ease-in-out infinite, streak-pulse 2s ease-in-out infinite;
 }
 
@@ -115,15 +115,15 @@
 
 .xp-level-progress-track {
   height: 8px;
-  background: var(--color-surface-alt, #f3f4f6);
-  border-radius: 4px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
 .xp-level-progress-fill {
   height: 100%;
   background: var(--color-accent);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: width 0.6s ease;
   min-width: 2px;
 }
@@ -154,7 +154,7 @@
 .xp-today-bar-track {
   width: 48px;
   height: 4px;
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -183,15 +183,15 @@
   gap: 4px;
   height: 32px;
   padding: 0 10px;
-  border-radius: 16px;
-  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.08));
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-subtle);
   font-size: 16px;
   line-height: 1;
   flex-shrink: 0;
 }
 
 .xp-badge-chip--locked {
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
   filter: grayscale(1) opacity(0.4);
 }
 
