@@ -444,6 +444,15 @@ body:has(.modal-overlay) {
   --skeleton-from: rgba(229, 221, 209, 0.6);
   --skeleton-mid: rgba(245, 241, 234, 0.6);
 
+  /* Override base typography so legacy CSS auto-inherits bridge fonts */
+  --font-sans: 'DM Sans', 'Source Sans 3', 'Segoe UI', sans-serif;
+  --font-display: 'Fraunces', 'Space Grotesk', Georgia, serif;
+
+  /* Override base radii so legacy CSS auto-inherits bridge corners */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
   /* Typography (new tokens) */
   --font-display-serif: 'Fraunces', Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Consolas', monospace;

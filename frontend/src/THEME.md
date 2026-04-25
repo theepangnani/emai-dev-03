@@ -100,6 +100,9 @@ bridge block just rebinds them so legacy CSS auto-inherits.
 | Patterns     | `--bg-dot-color`       | `rgba(28, 26, 22, 0.04)`    |
 | Skeleton     | `--skeleton-from`      | `rgba(229, 221, 209, 0.6)`  |
 | Skeleton     | `--skeleton-mid`       | `rgba(245, 241, 234, 0.6)`  |
+| Typography   | `--font-sans`          | `'DM Sans', ...`             |
+| Typography   | `--font-display`       | `'Fraunces', ...`            |
+| Radii        | `--radius-sm` / `--radius-md` / `--radius-lg` | `8px / 14px / 22px` |
 
 Shadows are also remapped to a softer warm-shadow stack (`shadow-soft` /
 `shadow-lift` use the prototype's two-stop drop-shadow recipe).
@@ -133,6 +136,22 @@ The flag uses the standard variant ladder:
 
 Hard kill-switch semantics from #3930 still apply: setting `enabled=false`
 forces the variant to `off` regardless of the stored variant value.
+
+### Known limitation — Flash of Wrong Theme (FOWT)
+
+`useFeatureFlagEnabled` resolves the flag asynchronously via TanStack Query
+after first paint. Users in the rollout cohort will see the page render in
+their previous theme momentarily before flipping to bridge — visible flash on
+every cold-load.
+
+This will be addressed in a follow-up by either:
+
+1. Caching the resolved flag value in `localStorage` and applying it
+   synchronously on next mount, OR
+2. Adding a `<script>` boot block in `index.html` that reads a backend-set
+   cookie and applies `data-theme` before React mounts.
+
+Tracked under #4213.
 
 ## Adding a new theme
 
