@@ -1,61 +1,62 @@
 /**
- * CB-BRIDGE-004 — Email Digest management card (#4117).
+ * CB-BRIDGE-HF Stream B (#4128) — Thin Email Digest summary card.
  *
- * Decision (locked in plan): toggles are read-only summaries for now.
- * Editing routes to the existing EmailDigestSetupWizard so we do not
- * block on a per-channel PATCH endpoint.
+ * The unified `/email-digest` page (per #4102 / #4103) is the correct home
+ * for per-kid email digest management (Send Now, Sync Now, Digest History,
+ * school email visibility). This card is now a thin summary whose primary
+ * action navigates to that hub. When no integration exists, the action
+ * routes to the existing setup wizard instead.
  */
 interface EmailDigestCardProps {
   hasIntegration: boolean;
   onSetup: () => void;
+  onOpenDigest: () => void;
   childName: string;
 }
 
-const TOPICS = [
-  { title: 'Classroom updates', meta: 'Announcements, new assignments, grades posted' },
-  { title: 'Teacher emails', meta: 'Auto-summarised from linked teachers' },
-  { title: 'Weekly progress', meta: 'XP earned, study streaks, weak spots' },
-  { title: 'Dinner-table talk', meta: 'AI-picked conversation starters from the week' },
-];
-
-export function EmailDigestCard({ hasIntegration, onSetup, childName }: EmailDigestCardProps) {
+export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, childName }: EmailDigestCardProps) {
   return (
     <article className="bridge-card bridge-card--digest">
       <header className="bridge-card-head">
         <div className="bridge-card-title-wrap">
           <span className="bridge-digest-meta">
-            <span className="bridge-digest-live-dot" aria-hidden="true" />
-            DAILY · 7:30 AM
+            {hasIntegration ? (
+              <>
+                <span className="bridge-digest-live-dot" aria-hidden="true" />
+                DAILY · 7:30 AM
+              </>
+            ) : (
+              'SETUP NEEDED'
+            )}
           </span>
           <h3>Email Digest</h3>
           <p className="bridge-card-desc">
             What lands in your inbox each morning — tuned for {childName}.
           </p>
         </div>
-        <button type="button" className="bridge-head-action" onClick={onSetup}>
-          {hasIntegration ? 'Edit setup' : 'Set up'}
-        </button>
       </header>
 
       {hasIntegration ? (
-        <ul className="bridge-digest-list" role="list">
-          {TOPICS.map(t => (
-            <li key={t.title}>
-              <div className="bridge-digest-row-text">
-                <div className="bridge-digest-row-title">{t.title}</div>
-                <div className="bridge-digest-row-meta">{t.meta}</div>
-              </div>
-              <span className="bridge-digest-status" aria-label="Enabled">
-                ● On
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="bridge-empty-hint">
+          Daily digest for {childName} — open the digest hub to manage delivery, school email, and recent sends.
+        </div>
       ) : (
         <div className="bridge-empty-hint">
-          Daily digest is not set up yet for {childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.
+          Not set up yet for {childName}. Set up to get classroom updates, teacher emails, and weekly progress in one inbox-friendly summary.
         </div>
       )}
+
+      <footer className="bridge-card-foot">
+        {hasIntegration ? (
+          <button type="button" className="bridge-head-action" onClick={onOpenDigest}>
+            Open digest →
+          </button>
+        ) : (
+          <button type="button" className="bridge-head-action" onClick={onSetup}>
+            Set up →
+          </button>
+        )}
+      </footer>
     </article>
   );
 }
