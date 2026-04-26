@@ -15,12 +15,29 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 const STORAGE_KEY = 'classbridge-theme';
+// CB-THEME-001 #4213: cached resolved value of the `theme.bridge_default`
+// feature flag. Written by `<BridgeDefaultApplier>` after TanStack Query
+// resolves the flag, read synchronously here on the next mount so cold
+// paint already shows `bridge` for users in the rollout cohort. This
+// eliminates the 100-500ms FOWT (Flash of Wrong Theme) that otherwise
+// occurs while the flag query hydrates.
+//
+// Kill-switch contract: `<BridgeDefaultApplier>` clears this key whenever
+// the flag resolves to false on a future mount, so flipping the flag OFF
+// in production stops force-applying bridge on the cycle after that.
+export const BRIDGE_DEFAULT_CACHE_KEY = 'classbridge-theme-bridge-default-cached';
 const THEMES: Theme[] = ['light', 'dark', 'focus', 'bridge'];
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && THEMES.includes(stored as Theme)) {
     return stored as Theme;
+  }
+  // CB-THEME-001 #4213: no explicit pick — fall back to the cached
+  // bridge-default flag value if present so we paint `bridge` synchronously
+  // on cold load instead of flashing `light` while the flag query resolves.
+  if (localStorage.getItem(BRIDGE_DEFAULT_CACHE_KEY) === 'true') {
+    return 'bridge';
   }
   return 'light';
 }
