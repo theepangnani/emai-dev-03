@@ -35,6 +35,9 @@ body:has(.modal-overlay) {
   --color-surface-bg: #eef1f5;
   --color-surface-header: rgba(255, 255, 255, 0.9);
   --color-border: #e3e6ee;
+  /* Affordance-bearing border (form inputs, button outlines, focusable cards).
+     Clears WCAG 1.4.11 3:1 against all light surfaces (#fff 3.71, #f5f6f9 3.43, #eef1f5 3.27). */
+  --color-border-strong: #7f8590;
 
   /* Accent — contrast ratios on white (#fff):
      --color-accent:        #4a90d9 ~3.1:1  (AA-large only, NOT for small text)
@@ -173,6 +176,9 @@ body:has(.modal-overlay) {
   --color-surface-bg: #141414;
   --color-surface-header: rgba(30, 30, 30, 0.94);
   --color-border: #3f3f46;
+  /* Affordance-bearing border. Clears WCAG 1.4.11 3:1 against all dark surfaces
+     (#1e1e1e 4.03, #2a2a2a 3.47, #141414 4.45). */
+  --color-border-strong: #7c7c84;
 
   --color-accent: #a78bfa;
   --color-accent-strong: #8b5cf6;
@@ -261,6 +267,9 @@ body:has(.modal-overlay) {
   --color-surface-bg: #faf8f5;
   --color-surface-header: rgba(250, 248, 245, 0.92);
   --color-border: #ddd6cc;
+  /* Affordance-bearing border. Clears WCAG 1.4.11 3:1 against all focus surfaces
+     (#fefdfb 3.43, #f5f0ea 3.08, #faf8f5 3.29). */
+  --color-border-strong: #928879;
 
   --color-accent: #5a8fb5;
   --color-accent-strong: #4a7fa5;
@@ -368,6 +377,11 @@ body:has(.modal-overlay) {
   --color-surface-bg: #f5f1ea;
   --color-surface-header: rgba(245, 241, 234, 0.92);
   --color-border: #e5ddd1;
+  /* Affordance-bearing border. S8 audit (#4164) flagged --color-border at 1.2:1
+     on bridge surfaces (fails WCAG 1.4.11). --color-border-strong clears 3:1
+     against all bridge surfaces (#fff 3.42, #fbf8f2 3.22, #f5f1ea 3.03).
+     --color-border kept as the decorative hairline. See #4224. */
+  --color-border-strong: #938a78;
 
   --color-accent: #b04a2c;
   --color-accent-strong: #7a2f18;

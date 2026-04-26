@@ -80,7 +80,8 @@ bridge block just rebinds them so legacy CSS auto-inherits.
 | Surface      | `--color-surface`      | `#ffffff`                   |
 | Surface      | `--color-surface-alt`  | `#fbf8f2`                   |
 | Surface      | `--color-surface-bg`   | `#f5f1ea`                   |
-| Surface      | `--color-border`       | `#e5ddd1`                   |
+| Surface      | `--color-border`       | `#e5ddd1` (decorative hairline; ~1.2:1 — not for affordance UI) |
+| Surface      | `--color-border-strong`| `#938a78` (≥3:1 on bridge surfaces — use for inputs / button outlines / focusable cards) |
 | Accent       | `--color-accent`       | `#b04a2c` (rust)            |
 | Accent       | `--color-accent-strong`| `#7a2f18` (rust-ink)        |
 | Accent       | `--color-accent-warm`  | `#d4a24b` (amber)           |
@@ -109,6 +110,30 @@ Shadows are also remapped to a softer warm-shadow stack (`shadow-soft` /
 
 See `docs/design/my-bridge-to-bridge-prototype.html` for the source-of-truth
 prototype and `requirements/features-part7.md §6.144` for the feature brief.
+
+## `--color-border` vs `--color-border-strong` (WCAG 1.4.11)
+
+`--color-border` is a **decorative hairline** — it sits below the WCAG 1.4.11
+3:1 non-text-contrast threshold by design (e.g. bridge surfaces are ~1.2:1).
+Use it only for visual structure: section dividers, card hairlines, separator
+lines.
+
+`--color-border-strong` was added in #4224 for **affordance-bearing UI**
+(form inputs, button outlines, focusable cards). It is defined per theme to
+clear ≥3:1 against every surface in that theme:
+
+| Theme  | `--color-border-strong` | Min contrast on theme surfaces |
+|--------|--------------------------|---------------------------------|
+| light  | `#7f8590`                | 3.27:1 (on `#eef1f5`)           |
+| dark   | `#7c7c84`                | 3.47:1 (on `#2a2a2a`)           |
+| focus  | `#928879`                | 3.08:1 (on `#f5f0ea`)           |
+| bridge | `#938a78`                | 3.03:1 (on `#f5f1ea`)           |
+
+When adding a new component, pick the variant that matches the role:
+
+- **Decorative line / divider** → `var(--color-border)`
+- **Outline of an interactive control** (input, button, focusable card,
+  selectable chip) → `var(--color-border-strong)`
 
 ## Force-apply via the `theme.bridge_default` feature flag
 
