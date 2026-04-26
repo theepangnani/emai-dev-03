@@ -9,7 +9,7 @@
 // /parent/today) is owned by M0-9 / M0-10. This component exposes a
 // single self-contained screen the route gates can render.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -350,6 +350,21 @@ export function ConsentScreen({
     [kids, activeKidId],
   );
 
+  // #4269 cleanup: track the post-save navigate timer so an unmount
+  // (parent taps Cancel during the 600ms saved-flash window, route swap,
+  // etc.) cancels the pending navigation instead of firing it after
+  // unmount and tripping React's "navigate after unmount" warning.
+  const navTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (navTimerRef.current != null) {
+        window.clearTimeout(navTimerRef.current);
+        navTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
   function handleCancel() {
     if (onCancel) {
       onCancel();
@@ -445,9 +460,12 @@ export function ConsentScreen({
             // #4269: defer the bounce by 600ms so the green "Saved." status
             // is actually visible before the editor unmounts. Editor's own
             // `isPending → isSuccess` flip already disables the save button
-            // for this window so a double-tap can't fire.
+            // for this window so a double-tap can't fire. Timer id is
+            // tracked in `navTimerRef` so the unmount cleanup above can
+            // cancel a pending navigate (parent taps Cancel within 600ms).
             if (!onComplete) {
-              window.setTimeout(() => {
+              navTimerRef.current = window.setTimeout(() => {
+                navTimerRef.current = null;
                 navigate(returnTo ?? '/', { replace: true });
               }, 600);
             }
