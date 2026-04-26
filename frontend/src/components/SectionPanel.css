@@ -60,7 +60,7 @@
   padding: 0 7px;
   border-radius: 11px;
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-surface);
   font-size: 12px;
   font-weight: 600;
   line-height: 1;

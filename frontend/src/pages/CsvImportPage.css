@@ -35,12 +35,12 @@
 
 .csv-import-step.active {
   background: var(--primary, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .csv-import-step.done {
   background: var(--success, #22c55e);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* Template selection */
@@ -116,7 +116,7 @@
   display: inline-block;
   padding: 0.5rem 1.5rem;
   background: var(--primary, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 0.5rem;
   cursor: pointer;
@@ -239,7 +239,7 @@
 
 .csv-import-actions .primary {
   background: var(--primary, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
   border-color: var(--primary, #4f46e5);
 }
 

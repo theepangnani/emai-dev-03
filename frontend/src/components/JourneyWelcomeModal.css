@@ -132,7 +132,7 @@
 
 .journey-btn-show {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .journey-btn-show:hover {
@@ -165,7 +165,7 @@
   border-radius: 8px;
   border: none;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s ease;

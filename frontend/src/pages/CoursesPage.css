@@ -1037,7 +1037,7 @@
 
 .cp-wizard-step-number.reached {
   background: #6366f1;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .cp-wizard-step-number:not(.reached) {
@@ -1046,7 +1046,7 @@
 }
 
 .cp-wizard-step-divider {
-  color: #d1d5db;
+  color: var(--color-muted-border);
   margin: 0 2px;
 }
 

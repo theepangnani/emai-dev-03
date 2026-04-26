@@ -33,7 +33,7 @@
 
 .rc-btn--primary {
   background: var(--color-accent, #4a90d9);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .rc-btn--secondary {
@@ -53,7 +53,7 @@
   text-align: center;
   padding: 2rem 1.5rem 1.5rem;
   background: linear-gradient(135deg, var(--color-accent, #4a90d9) 0%, #6c3eb8 100%);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .rc-logo {

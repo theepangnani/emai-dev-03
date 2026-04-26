@@ -25,20 +25,20 @@
 
 /* --- Got it (green) --- */
 .asgf-comprehension-signal__btn--got-it {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
   border-color: #a5d6a7;
 }
 
 .asgf-comprehension-signal__btn--got-it:hover:not(:disabled):not(.asgf-comprehension-signal__btn--selected) {
-  background-color: #c8e6c9;
+  background-color: var(--color-success-border);
   border-color: #66bb6a;
 }
 
 .asgf-comprehension-signal__btn--got-it.asgf-comprehension-signal__btn--selected {
-  background-color: #2e7d32;
-  color: #fff;
-  border-color: #2e7d32;
+  background-color: var(--color-success);
+  color: var(--color-surface);
+  border-color: var(--color-success);
 }
 
 /* --- Still confused (amber) --- */
@@ -55,7 +55,7 @@
 
 .asgf-comprehension-signal__btn--confused.asgf-comprehension-signal__btn--selected {
   background-color: #e65100;
-  color: #fff;
+  color: var(--color-surface);
   border-color: #e65100;
 }
 
@@ -115,9 +115,9 @@
 }
 
 [data-theme='dark'] .asgf-comprehension-signal__btn--got-it.asgf-comprehension-signal__btn--selected {
-  background-color: #2e7d32;
-  color: #fff;
-  border-color: #2e7d32;
+  background-color: var(--color-success);
+  color: var(--color-surface);
+  border-color: var(--color-success);
 }
 
 [data-theme='dark'] .asgf-comprehension-signal__btn--confused {
@@ -133,6 +133,6 @@
 
 [data-theme='dark'] .asgf-comprehension-signal__btn--confused.asgf-comprehension-signal__btn--selected {
   background-color: #e65100;
-  color: #fff;
+  color: var(--color-surface);
   border-color: #e65100;
 }

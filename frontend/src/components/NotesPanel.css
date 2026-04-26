@@ -73,7 +73,7 @@
   border-radius: 6px;
   border: 1px solid var(--color-accent, #2a9fa8);
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   cursor: pointer;
   font-weight: 500;
   transition: opacity 0.15s;
@@ -162,7 +162,7 @@
 
 .notes-tb-btn.active {
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .notes-tb-btn:disabled {
@@ -255,7 +255,7 @@
   border: none;
   border-radius: 4px;
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.78rem;
   cursor: pointer;
   white-space: nowrap;
@@ -439,7 +439,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--color-ink, #1e293b);
-  color: #fff;
+  color: var(--color-surface);
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -549,7 +549,7 @@
 
 .note-task-submit-btn {
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .note-task-submit-btn:disabled {
@@ -698,7 +698,7 @@
   border-radius: 6px;
   border: 1px solid var(--color-accent, #2a9fa8);
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;

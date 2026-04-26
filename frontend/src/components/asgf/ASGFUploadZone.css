@@ -100,7 +100,7 @@
   transform: translateX(-50%);
   margin-top: 6px;
   background: var(--color-ink, #1a202c);
-  color: #fff;
+  color: var(--color-surface);
   padding: 8px 12px;
   border-radius: var(--radius-sm, 6px);
   font-size: 0.8rem;
@@ -164,7 +164,7 @@
 
 .asgf-browse-btn:hover {
   background: var(--color-accent, #4a90d9);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* ===== File list ===== */
@@ -303,7 +303,7 @@
   padding: 8px 20px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-surface);
   background: var(--color-accent, #4a90d9);
   border: none;
   border-radius: var(--radius-sm, 6px);

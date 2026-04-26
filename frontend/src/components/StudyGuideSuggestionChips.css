@@ -42,7 +42,7 @@
 
 .sg-suggestion-chip:hover:not(:disabled) {
   background: var(--primary-color, #3b82f6);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .sg-suggestion-chip:disabled {
@@ -82,7 +82,7 @@
 
 .sg-suggestion-chip--ask-bot:hover:not(:disabled) {
   background: var(--color-success, #10b981);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* ── Full Study Guide chip ──────────────── */
@@ -94,7 +94,7 @@
 
 .sg-suggestion-chip--full-guide:hover:not(:disabled) {
   background: var(--color-warning, #f59e0b);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* ── Dark Mode ───────────────────────────── */
@@ -135,5 +135,5 @@
 
 [data-theme="dark"] .sg-suggestion-chip--ask-bot:hover:not(:disabled) {
   background: var(--color-success, #10b981);
-  color: #fff;
+  color: var(--color-surface);
 }

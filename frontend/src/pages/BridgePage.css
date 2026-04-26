@@ -9,7 +9,7 @@
 .bridge-page {
   --bridge-ivory: #f5f1ea;
   --bridge-paper: #fbf8f2;
-  --bridge-card: #ffffff;
+  --bridge-card: var(--color-surface);
   --bridge-ink: #1c1a16;
   --bridge-ink-2: #3a3630;
   --bridge-muted: #6b645b;
@@ -169,7 +169,7 @@
   font-family: "Fraunces", serif;
   font-size: 34px;
   font-weight: 400;
-  color: #fff;
+  color: var(--color-surface);
   position: relative;
   flex-shrink: 0;
 }
@@ -537,7 +537,7 @@
   place-items: center;
   font-size: 11px;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-surface);
   font-family: "DM Sans", system-ui, sans-serif;
   flex-shrink: 0;
 }
@@ -888,7 +888,7 @@
 
 /* Email Digest specialised card */
 .bridge-card--digest {
-  background: linear-gradient(180deg, #fff 0%, #fdfaf3 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, #fdfaf3 100%);
   border-color: #ece2cb;
 }
 
