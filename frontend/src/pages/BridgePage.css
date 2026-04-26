@@ -520,7 +520,7 @@
 }
 
 .bridge-chip.is-active .bridge-chip-grade {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-surface-translucent-mid);
   color: var(--bridge-paper);
 }
 
@@ -610,7 +610,7 @@
 
 .bridge-chip.is-active .bridge-chip-status--pending,
 .bridge-chip.is-active .bridge-chip-status--unverified {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-surface-translucent-mid);
   color: var(--bridge-paper);
 }
 

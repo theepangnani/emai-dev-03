@@ -451,7 +451,7 @@
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-surface-translucent-high);
   font-weight: 700;
 }
 

@@ -90,7 +90,7 @@
 }
 
 [data-theme="dark"] .sg-toc-count {
-  background: var(--color-surface-alt, rgba(255,255,255,0.08));
+  background: var(--color-surface-alt, var(--color-surface-translucent-low));
   color: var(--color-text-muted, var(--color-ink-muted));
 }
 

@@ -36,6 +36,16 @@ body:has(.modal-overlay) {
   --color-surface-header: rgba(255, 255, 255, 0.9);
   --color-border: #e3e6ee;
 
+  /* Translucent surface overlays — auto-flip per theme.
+     Use for glass-morphism, pill backgrounds on coloured buttons,
+     hover states, and other "soft white" overlays. Base hue matches
+     each theme so contrast stays balanced (light themes use white,
+     dark theme uses ink-light, focus uses warm paper, bridge uses
+     ivory paper). */
+  --color-surface-translucent-low: rgba(255, 255, 255, 0.08);
+  --color-surface-translucent-mid: rgba(255, 255, 255, 0.15);
+  --color-surface-translucent-high: rgba(255, 255, 255, 0.25);
+
   /* Accent — contrast ratios on white (#fff):
      --color-accent:        #4a90d9 ~3.1:1  (AA-large only, NOT for small text)
      --color-accent-strong: #2d6eb5 ~4.6:1  (AA for all text sizes) */
@@ -248,6 +258,12 @@ body:has(.modal-overlay) {
   --bg-dot-opacity: 0.2;
   --skeleton-from: rgba(63, 63, 70, 0.9);
   --skeleton-mid: rgba(82, 82, 91, 0.9);
+
+  /* Translucent overlays — ink-light base so they read as a soft
+     highlight over dark surfaces rather than a harsh white. */
+  --color-surface-translucent-low: rgba(228, 228, 231, 0.06);
+  --color-surface-translucent-mid: rgba(228, 228, 231, 0.14);
+  --color-surface-translucent-high: rgba(228, 228, 231, 0.22);
 }
 
 /* ========================================
@@ -336,6 +352,12 @@ body:has(.modal-overlay) {
   --bg-dot-opacity: 0.25;
   --skeleton-from: rgba(221, 214, 204, 0.6);
   --skeleton-mid: rgba(240, 236, 230, 0.6);
+
+  /* Translucent overlays — warm paper base so glass surfaces stay
+     within the focus palette instead of looking cold. */
+  --color-surface-translucent-low: rgba(254, 253, 251, 0.10);
+  --color-surface-translucent-mid: rgba(254, 253, 251, 0.22);
+  --color-surface-translucent-high: rgba(254, 253, 251, 0.32);
 }
 
 /* ========================================
@@ -465,6 +487,12 @@ body:has(.modal-overlay) {
   --radius-bridge-sm: 8px;
   --radius-bridge-md: 14px;
   --radius-bridge-lg: 22px;
+
+  /* Translucent overlays — ivory paper base so soft surfaces stay
+     in the bridge palette without going stark white. */
+  --color-surface-translucent-low: rgba(251, 248, 242, 0.10);
+  --color-surface-translucent-mid: rgba(251, 248, 242, 0.22);
+  --color-surface-translucent-high: rgba(251, 248, 242, 0.32);
 }
 
 body {
