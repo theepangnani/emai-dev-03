@@ -531,7 +531,7 @@ export function MyKidsPage() {
                       An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
                     </p>
                   )}
-                  <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-ink-muted)' }}>
                     You can also share this link directly:
                   </p>
                   <div className="invite-link-container">
@@ -591,7 +591,7 @@ export function MyKidsPage() {
                   <p style={{ margin: '0 0 8px', fontSize: 14 }}>
                     An invitation email has been sent to <strong>{addChildEmail.trim()}</strong>. Your child needs to check their email and click the link to set up their account.
                   </p>
-                  <p style={{ margin: '0 0 8px', fontSize: 14, color: '#64748b' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 14, color: 'var(--color-ink-muted)' }}>
                     You can also share this link directly:
                   </p>
                   <div className="invite-link-container">

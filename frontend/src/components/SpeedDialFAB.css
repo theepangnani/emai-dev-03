@@ -193,7 +193,7 @@
 }
 
 [data-theme="dark"] .speed-dial-action-label {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px var(--color-overlay-light);
 }
 
 [data-theme="dark"] .speed-dial-action-badge {

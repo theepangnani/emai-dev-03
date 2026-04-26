@@ -7,7 +7,7 @@
 }
 
 .ai-usage-header h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-display-serif, var(--font-display));
   font-size: 22px;
   margin: 8px 0 4px 0;
   color: var(--color-ink);
@@ -49,7 +49,7 @@
   font-size: 28px;
   font-weight: 700;
   color: var(--color-ink);
-  font-family: var(--font-display);
+  font-family: var(--font-display-serif, var(--font-display));
 }
 
 .ai-usage-top-list {
@@ -132,7 +132,7 @@
 }
 
 .ai-usage-table thead {
-  background: var(--color-surface-alt, #f8f8f8);
+  background: var(--color-surface-alt);
 }
 
 .ai-usage-table th {
@@ -166,7 +166,7 @@
 }
 
 .ai-usage-table tbody tr:hover {
-  background: var(--color-surface-alt, #fafafa);
+  background: var(--color-surface-alt);
 }
 
 .ai-usage-empty {
@@ -185,8 +185,8 @@
 .ai-usage-progress-bar {
   flex: 1;
   height: 8px;
-  background: var(--color-surface-alt, #e8e8e8);
-  border-radius: 4px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-xs);
   overflow: hidden;
   min-width: 80px;
   max-width: 140px;
@@ -194,17 +194,17 @@
 
 .ai-usage-progress-fill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   transition: width 0.3s;
   background: var(--color-accent-strong);
 }
 
 .ai-usage-progress-fill.warning {
-  background: #e65100;
+  background: var(--color-warning);
 }
 
 .ai-usage-progress-fill.danger {
-  background: #c62828;
+  background: var(--color-danger);
 }
 
 .ai-usage-progress-label {
@@ -217,11 +217,11 @@
 .ai-usage-role {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
-  background: var(--color-surface-alt, #f0f0f0);
+  background: var(--color-surface-alt);
   color: var(--color-ink-muted);
 }
 
@@ -250,45 +250,45 @@
 }
 
 .ai-usage-btn.approve {
-  border-color: #2e7d32;
-  color: #2e7d32;
+  border-color: var(--color-success);
+  color: var(--color-success);
 }
 
 .ai-usage-btn.approve:hover:not(:disabled) {
-  background: #2e7d32;
-  color: #fff;
+  background: var(--color-success);
+  color: var(--color-surface);
 }
 
 .ai-usage-btn.decline {
-  border-color: #c62828;
-  color: #c62828;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .ai-usage-btn.decline:hover:not(:disabled) {
-  background: #c62828;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-surface);
 }
 
 .ai-usage-btn.reset {
-  border-color: #e65100;
-  color: #e65100;
+  border-color: var(--color-warning);
+  color: var(--color-warning-text);
 }
 
 .ai-usage-btn.reset:hover:not(:disabled) {
-  background: #e65100;
-  color: #fff;
+  background: var(--color-warning);
+  color: var(--color-surface);
 }
 
 .ai-usage-btn.primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .ai-usage-btn.primary:hover:not(:disabled) {
   opacity: 0.9;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .ai-usage-btn:disabled {
@@ -315,11 +315,11 @@
 .ai-usage-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 
 .ai-usage-modal {
@@ -328,12 +328,12 @@
   padding: 24px;
   min-width: 320px;
   max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-lg);
 }
 
 .ai-usage-modal h3 {
   margin: 0 0 16px 0;
-  font-family: var(--font-display);
+  font-family: var(--font-display-serif, var(--font-display));
   font-size: 18px;
   color: var(--color-ink);
 }
@@ -375,7 +375,7 @@
 
 .ai-usage-modal-btn.primary {
   background: var(--color-accent-strong);
-  color: #fff;
+  color: var(--color-surface);
   border-color: var(--color-accent-strong);
 }
 
@@ -492,63 +492,63 @@
 .ai-usage-type-badge {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
-  background: var(--color-surface-alt, #f0f0f0);
+  background: var(--color-surface-alt);
   color: var(--color-ink-muted);
 }
 
 .ai-usage-type-badge.study_guide {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-bg);
+  color: var(--color-info);
 }
 
 .ai-usage-type-badge.quiz {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: var(--color-purple-bg);
+  color: var(--color-purple-strong);
 }
 
 .ai-usage-type-badge.flashcards {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 /* Status badges */
 .ai-usage-status-badge {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
   text-transform: capitalize;
 }
 
 .ai-usage-status-badge.pending {
-  background: #fff3e0;
-  color: #e65100;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .ai-usage-status-badge.approved {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .ai-usage-status-badge.declined {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Regeneration badge (#1651) */
 .ai-usage-regen-badge {
   display: inline-block;
   padding: 1px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 10px;
   font-weight: 600;
-  background: #e3f2fd;
-  color: #1565c0;
+  background: var(--color-info-bg);
+  color: var(--color-info);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -643,60 +643,7 @@
   }
 }
 
-/* ── Dark mode ── */
-[data-theme="dark"] .ai-usage-btn.approve {
-  border-color: #6ee7b7;
-  color: #6ee7b7;
-}
-
-[data-theme="dark"] .ai-usage-btn.approve:hover:not(:disabled) {
-  background: #6ee7b7;
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-btn.decline:hover:not(:disabled) {
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-btn.reset:hover:not(:disabled) {
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-btn.primary {
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-btn.primary:hover:not(:disabled) {
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-modal-btn.primary {
-  color: var(--color-surface);
-}
-
-[data-theme="dark"] .ai-usage-type-badge.study_guide {
-  background: rgba(125, 211, 252, 0.12);
-  color: #7dd3fc;
-}
-
-[data-theme="dark"] .ai-usage-type-badge.flashcards {
-  background: rgba(110, 231, 183, 0.12);
-  color: #6ee7b7;
-}
-
-[data-theme="dark"] .ai-usage-status-badge.pending {
-  background: rgba(253, 230, 138, 0.12);
-}
-
-[data-theme="dark"] .ai-usage-status-badge.approved {
-  background: rgba(110, 231, 183, 0.12);
-  color: #6ee7b7;
-}
-
-[data-theme="dark"] .ai-usage-regen-badge {
-  background: rgba(125, 211, 252, 0.12);
-  color: #7dd3fc;
-}
+/* Status/type badges and action buttons use semantic tokens — no per-theme overrides needed */
 
 @media (max-width: 480px) {
   .ai-usage-header h2 {

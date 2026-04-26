@@ -24,6 +24,7 @@
   opacity: 0.5;
   font-size: 11px;
   margin: 0 2px;
+  font-family: var(--font-mono, var(--font-sans));
 }
 
 .breadcrumb-current {

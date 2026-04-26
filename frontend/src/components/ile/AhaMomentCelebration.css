@@ -82,18 +82,18 @@
 .aha-title {
   font-size: 2.5rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--color-surface);
   margin: 0 0 0.5rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 8px var(--color-overlay-light);
 }
 
 .aha-message {
   font-size: 1.2rem;
   color: #e8e8ff;
   margin: 0;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 4px var(--color-overlay-light);
 }
 
 .aha-message strong {
-  color: #fff;
+  color: var(--color-surface);
 }

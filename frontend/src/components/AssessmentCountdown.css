@@ -41,7 +41,7 @@
   font-weight: 700;
   font-size: 1.25rem;
   line-height: 1;
-  color: #fff;
+  color: var(--color-surface);
   flex-shrink: 0;
 }
 

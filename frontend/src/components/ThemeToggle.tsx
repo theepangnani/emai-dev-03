@@ -5,6 +5,9 @@ const THEME_META: Record<Theme, { icon: string; label: string }> = {
   light: { icon: '\u2600', label: 'Light' },
   dark: { icon: '\uD83C\uDF19', label: 'Dark' },
   focus: { icon: '\uD83C\uDF3F', label: 'Focus' },
+  // CB-THEME-001: bridge theme - open-book glyph evokes the warm-paper /
+  // serif-headings palette without overlapping existing icons.
+  bridge: { icon: '\uD83D\uDCD6', label: 'Bridge' },
 };
 
 export function ThemeToggle() {

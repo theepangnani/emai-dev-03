@@ -115,6 +115,18 @@ def seed_features(db: Session) -> int:
             "enabled": True,
             "variant": "on_100",
         },
+        {
+            "key": "theme.bridge_default",
+            "name": "Bridge Theme (Force-Apply Default)",
+            "description": (
+                "CB-THEME-001 #4156: when ON for the current user, ThemeProvider "
+                "force-applies the bridge theme on first mount (only when no "
+                "explicit theme is stored in localStorage). Subsequent ThemeToggle "
+                "flips remain sticky. Variants: off / on_5 / on_25 / on_50 / on_100 / on_for_all."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
     ]
 
     for seed in per_key_seeds:

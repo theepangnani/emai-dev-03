@@ -89,7 +89,7 @@
   padding: 0 5px;
   border-radius: 9px;
   background: var(--color-error, #e74c3c);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;

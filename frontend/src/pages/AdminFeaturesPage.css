@@ -203,7 +203,7 @@
   padding: 2px 8px;
   border-radius: 4px;
   border: 1px solid #b45309;
-  background: #fff;
+  background: var(--color-surface);
   color: #b45309;
   font-size: 0.72rem;
   font-weight: 600;
@@ -213,7 +213,7 @@
 
 .admin-feature-mismatch-fix:hover:not(:disabled) {
   background: #b45309;
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .admin-feature-mismatch-fix:disabled {

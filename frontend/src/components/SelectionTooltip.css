@@ -24,7 +24,7 @@
   border: none;
   border-radius: 8px;
   background: linear-gradient(135deg, #f59e0b, #d97706);
-  color: #fff;
+  color: var(--color-surface);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -75,7 +75,7 @@
 }
 
 .selection-tooltip-btn-session {
-  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  background: linear-gradient(135deg, #8b5cf6, var(--color-purple));
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
 }
 
@@ -84,6 +84,6 @@
 }
 
 [data-theme="dark"] .selection-tooltip-btn-session {
-  background: linear-gradient(135deg, #6d28d9, #5b21b6);
+  background: linear-gradient(135deg, var(--color-purple-strong), #5b21b6);
   box-shadow: 0 2px 8px rgba(109, 40, 217, 0.4);
 }

@@ -80,7 +80,7 @@
 
 .format-card.selected .format-card-icon {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .format-card-label {
@@ -105,7 +105,7 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
   background: var(--color-accent, #2a9fa8);
-  color: #fff;
+  color: var(--color-surface);
   border-radius: 8px;
 }
 

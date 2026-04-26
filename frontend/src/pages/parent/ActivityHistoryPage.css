@@ -17,16 +17,16 @@
   gap: 4px;
   background: none;
   border: none;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   font-size: 0.875rem;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   transition: background 0.15s, color 0.15s;
 }
 .ah-back-btn:hover {
-  background: var(--color-bg-hover, #f3f4f6);
-  color: var(--color-text-primary, #111827);
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
 }
 .ah-back-btn svg {
   width: 16px;
@@ -36,7 +36,7 @@
 .ah-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: var(--color-text-primary, #111827);
+  color: var(--color-ink);
   margin: 0;
 }
 
@@ -49,10 +49,10 @@
 
 .ah-chip {
   padding: 4px 12px;
-  border-radius: 20px;
-  border: 1.5px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--color-border);
   background: none;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
@@ -60,13 +60,13 @@
   white-space: nowrap;
 }
 .ah-chip:hover {
-  border-color: var(--color-primary, #6366f1);
-  color: var(--color-primary, #6366f1);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 .ah-chip-active {
-  background: var(--color-primary, #6366f1);
-  border-color: var(--color-primary, #6366f1);
-  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-surface);
 }
 
 .ah-list {
@@ -78,25 +78,25 @@
 
 .ah-state-msg {
   text-align: center;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   padding: 32px 0;
   font-size: 0.9rem;
 }
-.ah-error { color: var(--color-error, #ef4444); }
+.ah-error { color: var(--color-danger); }
 
 .ah-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.12s;
 }
 .ah-row-clickable {
   cursor: pointer;
 }
 .ah-row-clickable:hover {
-  background: var(--color-bg-hover, #f9fafb);
+  background: var(--color-surface-alt);
 }
 
 .ah-icon-circle {
@@ -122,7 +122,7 @@
 .ah-row-title {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--color-text-primary, #111827);
+  color: var(--color-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -130,7 +130,7 @@
 
 .ah-row-time {
   font-size: 0.75rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -145,7 +145,7 @@
 
 .ah-row-desc {
   font-size: 0.8rem;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -156,16 +156,16 @@
 .ah-child-badge {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-surface);
   padding: 1px 7px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
 .ah-type-label {
   font-size: 0.7rem;
-  color: var(--color-text-tertiary, #9ca3af);
+  color: var(--color-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -174,71 +174,71 @@
   margin: 16px auto 0;
   display: block;
   background: none;
-  border: 1.5px solid var(--color-border, #e5e7eb);
-  color: var(--color-text-secondary, #6b7280);
+  border: 1.5px solid var(--color-border);
+  color: var(--color-ink-muted);
   font-size: 0.875rem;
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.15s;
 }
 .ah-load-more-btn:hover {
-  border-color: var(--color-primary, #6366f1);
-  color: var(--color-primary, #6366f1);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
-/* ── Dark mode ── */
+/* ── Dark mode overrides — kept for backward compat; tokens above already auto-theme. ── */
 [data-theme="dark"] .ah-back-btn {
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-back-btn:hover {
-  background: var(--color-bg-hover, var(--color-surface-alt));
-  color: var(--color-text-primary, var(--color-ink));
+  background: var(--color-surface-alt);
+  color: var(--color-ink);
 }
 
 [data-theme="dark"] .ah-title {
-  color: var(--color-text-primary, var(--color-ink));
+  color: var(--color-ink);
 }
 
 [data-theme="dark"] .ah-chip {
   border: 1.5px solid var(--color-border);
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-chip:hover {
-  border-color: var(--color-primary, #a5b4fc);
-  color: var(--color-primary, #a5b4fc);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 [data-theme="dark"] .ah-chip-active {
-  background: var(--color-primary, #a5b4fc);
-  border-color: var(--color-primary, #a5b4fc);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
   color: var(--color-surface);
 }
 
 [data-theme="dark"] .ah-state-msg {
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-error {
-  color: var(--color-error, #fca5a5);
+  color: var(--color-danger);
 }
 
 [data-theme="dark"] .ah-row-clickable:hover {
-  background: var(--color-bg-hover, var(--color-surface-alt));
+  background: var(--color-surface-alt);
 }
 
 [data-theme="dark"] .ah-row-title {
-  color: var(--color-text-primary, var(--color-ink));
+  color: var(--color-ink);
 }
 
 [data-theme="dark"] .ah-row-time {
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-row-desc {
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-child-badge {
@@ -246,17 +246,17 @@
 }
 
 [data-theme="dark"] .ah-type-label {
-  color: var(--color-text-tertiary, var(--color-muted));
+  color: var(--color-muted);
 }
 
 [data-theme="dark"] .ah-load-more-btn {
   border: 1.5px solid var(--color-border);
-  color: var(--color-text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .ah-load-more-btn:hover {
-  border-color: var(--color-primary, #a5b4fc);
-  color: var(--color-primary, #a5b4fc);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 @media (max-width: 600px) {

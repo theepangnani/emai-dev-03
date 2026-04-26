@@ -56,7 +56,7 @@
 .admin-contacts-stat-card.lead .stat-value { color: #2563eb; }
 .admin-contacts-stat-card.contacted .stat-value { color: #d97706; }
 .admin-contacts-stat-card.interested .stat-value { color: #059669; }
-.admin-contacts-stat-card.converted .stat-value { color: #7c3aed; }
+.admin-contacts-stat-card.converted .stat-value { color: var(--color-purple); }
 .admin-contacts-stat-card.warning .stat-value { color: var(--color-danger); }
 
 /* Filters */
@@ -218,7 +218,7 @@
 .contact-status-badge.lead { background: #dbeafe; color: #1e40af; }
 .contact-status-badge.contacted { background: #fef3c7; color: #92400e; }
 .contact-status-badge.interested { background: #d1fae5; color: #065f46; }
-.contact-status-badge.converted { background: #ede9fe; color: #5b21b6; }
+.contact-status-badge.converted { background: var(--color-purple-bg); color: #5b21b6; }
 .contact-status-badge.archived { background: #f3f4f6; color: #6b7280; }
 .contact-status-badge.unresponsive { background: #fee2e2; color: #991b1b; }
 
@@ -293,7 +293,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--color-overlay-light);
   z-index: 1000;
   opacity: 0;
   transition: opacity 0.2s;
@@ -466,7 +466,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -669,7 +669,7 @@
 [data-theme="dark"] .contact-status-badge.contacted { background: #78350f; color: #fde68a; }
 [data-theme="dark"] .contact-status-badge.interested { background: #064e3b; color: #a7f3d0; }
 [data-theme="dark"] .contact-status-badge.converted { background: #4c1d95; color: #ddd6fe; }
-[data-theme="dark"] .contact-status-badge.archived { background: #374151; color: #d1d5db; }
+[data-theme="dark"] .contact-status-badge.archived { background: #374151; color: var(--color-muted-border); }
 [data-theme="dark"] .contact-status-badge.unresponsive { background: #7f1d1d; color: #fecaca; }
 [data-theme="dark"] .admin-contacts-consent-warning { background: #78350f; border-color: #d97706; color: #fde68a; }
 

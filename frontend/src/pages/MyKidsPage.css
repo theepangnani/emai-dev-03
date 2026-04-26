@@ -35,7 +35,8 @@
   margin-top: 2px;
 }
 .pd-child-tab.active .child-tab-detail {
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--color-surface);
+  opacity: 0.75;
 }
 
 /* ── Child avatar (used in assign-course modal) ─ */
@@ -57,12 +58,12 @@
 .mykids-progress-summary {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-xs);
 }
 .mykids-progress-info {
   display: flex;
@@ -92,12 +93,12 @@
   flex: 1;
   height: 8px;
   background: var(--color-surface-alt);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 .mykids-progress-fill {
   height: 100%;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--color-accent);
   transition: width 0.4s ease;
   min-width: 2px;
@@ -122,7 +123,7 @@
   gap: 12px;
   padding: 10px 12px;
   margin-bottom: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -155,7 +156,7 @@
   flex-shrink: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   min-width: 36px;
   min-height: 36px;
   display: flex;
@@ -180,7 +181,7 @@
 .mykids-badge {
   display: inline-block;
   padding: 1px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--color-success-light);
   color: var(--color-accent-strong);
   font-size: 11px;
@@ -196,7 +197,7 @@
   background: var(--color-accent);
   color: var(--color-surface);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-weight: 500;
 }
@@ -209,7 +210,7 @@
   justify-content: space-between;
   padding: 10px 12px;
   margin-bottom: 2px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   transition: background 0.15s;
 }
 .mykids-teacher-row:last-child {
@@ -237,7 +238,7 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-accent);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-accent-strong);
   font-weight: 500;
@@ -251,7 +252,7 @@
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--color-ink-muted);
 }
@@ -268,7 +269,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -276,11 +277,11 @@
 }
 .mykids-modal {
   background: var(--color-surface);
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   padding: 24px;
   width: 90%;
   max-width: 420px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 .mykids-modal h3 {
   margin: 0 0 16px 0;
@@ -299,7 +300,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   margin-bottom: 12px;
   background: var(--color-surface);
@@ -314,7 +315,7 @@
 }
 .mykids-modal-actions button {
   padding: 8px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -353,7 +354,7 @@
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-ink);
   font-size: 14px;
@@ -390,34 +391,34 @@
   font-size: 10px;
   font-weight: 600;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   white-space: nowrap;
 }
 .invite-status-active {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 .pd-child-tab.active .invite-status-active {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--color-accent-light);
+  color: var(--color-surface);
 }
 .invite-status-pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 .pd-child-tab.active .invite-status-pending {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--color-accent-light);
+  color: var(--color-surface);
 }
 .invite-status-email_unverified {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--color-surface-alt);
+  color: var(--color-ink-muted);
 }
 .pd-child-tab.active .invite-status-email_unverified {
-  background: rgba(255, 255, 255, 0.25);
-  color: #fff;
+  background: var(--color-accent-light);
+  color: var(--color-surface);
 }
 
 /* ── Invite Context Menu ─────────────────────── */
@@ -430,7 +431,7 @@
 .invite-menu-trigger {
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
@@ -450,8 +451,8 @@
   right: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
   min-width: 160px;
   overflow: hidden;
   z-index: 30;
@@ -481,14 +482,14 @@
   border-top: 1px solid var(--color-border);
 }
 .invite-menu-item--danger {
-  color: var(--color-danger, #ef4444);
+  color: var(--color-danger);
 }
 
 /* ── Responsive ─────────────────────────────── */
 
 /* ── Dark mode ── */
 [data-theme="dark"] .invite-status-active {
-  background: rgba(110, 231, 183, 0.14);
+  background: var(--color-success-light);
 }
 
 [data-theme="dark"] .pd-child-tab.active .invite-status-active {
@@ -496,7 +497,7 @@
 }
 
 [data-theme="dark"] .invite-status-pending {
-  background: rgba(253, 230, 138, 0.14);
+  background: var(--color-warning-light);
 }
 
 [data-theme="dark"] .pd-child-tab.active .invite-status-pending {
@@ -513,7 +514,7 @@
 }
 
 [data-theme="dark"] .invite-menu-item--danger {
-  color: var(--color-danger, #fca5a5);
+  color: var(--color-danger);
 }
 
 @media (max-width: 480px) {
@@ -536,7 +537,7 @@
   padding: 4px 8px;
   font-size: 12px;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--color-surface);
   color: var(--color-ink);
   cursor: pointer;

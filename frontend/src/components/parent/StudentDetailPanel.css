@@ -90,8 +90,8 @@
   height: 20px;
   padding: 0 6px;
   background: var(--color-accent);
-  color: white;
-  border-radius: 10px;
+  color: var(--color-surface);
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 700;
   align-items: center;
@@ -106,7 +106,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s, box-shadow 0.2s, transform 0.15s;
@@ -114,7 +114,7 @@
 
 .sdp-material-item:hover {
   background: var(--color-surface-alt);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-xs);
   transform: translateY(-1px);
 }
 
@@ -134,7 +134,7 @@
 .sdp-material-type-badge {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--color-accent-light);
   color: var(--color-accent-strong);
   white-space: nowrap;
@@ -146,7 +146,7 @@
 .sdp-urgency-group {
   margin-bottom: 8px;
   transition: box-shadow 0.3s;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 }
 
 .sdp-urgency-highlight {
@@ -169,7 +169,7 @@
   letter-spacing: 0.05em;
   margin-bottom: 4px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border-left: 3px solid transparent;
 }
 
@@ -198,18 +198,18 @@
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   border-left: 2px solid transparent;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .sdp-urgency-group[data-urgency="overdue"] .sdp-task-item {
-  border-left-color: rgba(239, 83, 80, 0.35);
+  border-left-color: var(--priority-high);
 }
 
 .sdp-urgency-group[data-urgency="today"] .sdp-task-item {
-  border-left-color: rgba(255, 152, 0, 0.35);
+  border-left-color: var(--priority-medium);
 }
 
 .sdp-urgency-group[data-urgency="upcoming"] .sdp-task-item {
@@ -234,9 +234,9 @@
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--color-muted-border, #c5c5c5);
-  border-radius: 4px;
-  background: var(--color-surface, #fff);
+  border: 2px solid var(--color-muted-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
   cursor: pointer;
   flex-shrink: 0;
   position: relative;
@@ -255,7 +255,7 @@
   top: 0px;
   width: 5px;
   height: 9px;
-  border: solid white;
+  border: solid var(--color-surface);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -279,7 +279,7 @@
 .sdp-task-badge {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   white-space: nowrap;
 }

@@ -39,13 +39,13 @@
 .child-inline-pill--selected {
   background: var(--primary-color, #4f46e5);
   border-color: var(--primary-color, #4f46e5);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .child-inline-pill--selected:hover {
   background: var(--primary-hover, #4338ca);
   border-color: var(--primary-hover, #4338ca);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .child-inline-pill--suggested {

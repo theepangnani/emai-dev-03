@@ -10,6 +10,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
+import { BridgeDefaultApplier } from './components/BridgeDefaultApplier';
 import { useVariantBucket } from './hooks/useVariantBucket';
 import { useFeatureFlagState } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
@@ -146,6 +147,10 @@ function App() {
   return (
     <ThemeProvider>
     <QueryClientProvider client={queryClient}>
+      {/* CB-THEME-001: must live INSIDE QueryClientProvider so it can read
+          the `theme.bridge_default` feature flag, and INSIDE ThemeProvider
+          so it can call applyBridgeDefaultIfUnset(). Renders nothing. */}
+      <BridgeDefaultApplier />
       <AuthProvider>
         <ToastProvider>
         <BrowserRouter>

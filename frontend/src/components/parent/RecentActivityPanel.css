@@ -19,7 +19,7 @@
 }
 
 .pd-activity-header:hover {
-  background: var(--color-surface-hover, #f9fafb);
+  background: var(--color-surface-alt);
 }
 
 .pd-activity-header-left {
@@ -31,9 +31,9 @@
 .pd-activity-heading {
   font-size: 16px;
   font-weight: 700;
-  color: var(--color-ink, #1a1a2e);
+  color: var(--color-ink);
   margin: 0;
-  font-family: var(--font-display, inherit);
+  font-family: var(--font-display);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -43,17 +43,17 @@
   margin-left: auto;
   background: none;
   border: none;
-  color: var(--color-primary, #6366f1);
+  color: var(--color-accent);
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   text-decoration: none;
   transition: background 0.15s;
 }
 .pd-activity-view-all-btn:hover {
-  background: var(--color-primary-alpha, rgba(99,102,241,0.08));
+  background: var(--color-accent-subtle);
 }
 
 .pd-activity-count-badge {
@@ -63,9 +63,9 @@
   min-width: 22px;
   height: 22px;
   padding: 0 7px;
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: #ffffff;
+  color: var(--color-surface);
   font-size: 12px;
   font-weight: 600;
   line-height: 1;
@@ -74,7 +74,7 @@
 .pd-activity-chevron {
   width: 20px;
   height: 20px;
-  color: var(--color-ink-muted, #6B7280);
+  color: var(--color-ink-muted);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
@@ -112,13 +112,13 @@
   align-items: flex-start;
   gap: 12px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm, 8px);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.15s ease;
 }
 
 .pd-activity-row:hover {
-  background: var(--color-surface-hover, #f3f4f6);
+  background: var(--color-surface-alt);
 }
 
 .pd-activity-row.pd-activity-row-no-click {
@@ -145,7 +145,7 @@
 .pd-activity-icon-circle svg {
   width: 18px;
   height: 18px;
-  color: #ffffff;
+  color: var(--color-surface);
 }
 
 /* ── Content ────────────────────────────────── */
@@ -168,7 +168,7 @@
 .pd-activity-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--color-ink, #1a1a2e);
+  color: var(--color-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -176,7 +176,7 @@
 
 .pd-activity-time {
   font-size: 12px;
-  color: #9CA3AF;
+  color: var(--color-muted);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -189,7 +189,7 @@
 
 .pd-activity-description {
   font-size: 13px;
-  color: #6B7280;
+  color: var(--color-ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -199,10 +199,10 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-surface);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -212,14 +212,14 @@
 .pd-activity-empty {
   text-align: center;
   padding: 24px 16px;
-  color: #6B7280;
+  color: var(--color-ink-muted);
   font-size: 14px;
 }
 
 .pd-activity-error {
   text-align: center;
   padding: 24px 16px;
-  color: var(--color-danger, #EF4444);
+  color: var(--color-danger);
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -229,10 +229,10 @@
 
 .pd-activity-retry-btn {
   padding: 6px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  background: var(--color-surface, #ffffff);
-  color: var(--color-ink, #1a1a2e);
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-ink);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -240,7 +240,7 @@
 }
 
 .pd-activity-retry-btn:hover {
-  background: var(--color-surface-hover, #f3f4f6);
+  background: var(--color-surface-alt);
 }
 
 /* ── Skeleton ───────────────────────────────── */
@@ -257,7 +257,7 @@
   height: 36px;
   min-width: 36px;
   border-radius: 50%;
-  background: #e5e7eb;
+  background: var(--color-border);
   animation: pd-activity-pulse 1.5s ease-in-out infinite;
 }
 
@@ -270,8 +270,8 @@
 
 .pd-activity-skeleton-line {
   height: 12px;
-  border-radius: 4px;
-  background: #e5e7eb;
+  border-radius: var(--radius-xs);
+  background: var(--color-border);
   animation: pd-activity-pulse 1.5s ease-in-out infinite;
 }
 
@@ -358,13 +358,13 @@
   }
 }
 
-/* ── Dark mode ── */
+/* ── Dark mode overrides — kept for backward compat; tokens above already auto-theme. ── */
 [data-theme="dark"] .pd-activity-header:hover {
-  background: var(--color-surface-hover, var(--color-surface-alt));
+  background: var(--color-surface-alt);
 }
 
 [data-theme="dark"] .pd-activity-view-all-btn {
-  color: var(--color-primary, #a5b4fc);
+  color: var(--color-accent);
 }
 
 [data-theme="dark"] .pd-activity-count-badge {
@@ -372,7 +372,7 @@
 }
 
 [data-theme="dark"] .pd-activity-row:hover {
-  background: var(--color-surface-hover, var(--color-surface-alt));
+  background: var(--color-surface-alt);
 }
 
 [data-theme="dark"] .pd-activity-icon-circle svg {
@@ -396,7 +396,7 @@
 }
 
 [data-theme="dark"] .pd-activity-error {
-  color: var(--color-danger, #fca5a5);
+  color: var(--color-danger);
 }
 
 [data-theme="dark"] .pd-activity-retry-btn {
@@ -404,7 +404,7 @@
 }
 
 [data-theme="dark"] .pd-activity-retry-btn:hover {
-  background: var(--color-surface-hover, var(--color-surface-alt));
+  background: var(--color-surface-alt);
 }
 
 [data-theme="dark"] .pd-activity-skeleton-circle {

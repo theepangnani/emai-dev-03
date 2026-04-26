@@ -40,7 +40,7 @@
   font-size: 0.875rem;
   font-weight: 600;
   background: var(--primary-color, #3b82f6);
-  color: #fff;
+  color: var(--color-surface);
   border: 2px solid var(--primary-color, #3b82f6);
 }
 
@@ -61,7 +61,7 @@
 
 .mt-chip--secondary:hover:not(:disabled) {
   background: var(--primary-color, #3b82f6);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 /* ── Subtle variant (text link) ─────────────── */
@@ -145,7 +145,7 @@
 [data-theme="dark"] .mt-chip--primary {
   background: var(--color-accent, #3b82f6);
   border-color: var(--color-accent, #3b82f6);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 [data-theme="dark"] .mt-chip--primary:hover:not(:disabled) {

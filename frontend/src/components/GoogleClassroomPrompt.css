@@ -48,7 +48,7 @@
 
 .gc-prompt-btn-primary {
   background: #1a73e8;
-  color: #fff;
+  color: var(--color-surface);
 }
 .gc-prompt-btn-primary:hover:not(:disabled) {
   background: #1557b0;
@@ -59,9 +59,9 @@
 }
 
 .gc-prompt-btn-secondary {
-  background: #fff;
+  background: var(--color-surface);
   color: #374151;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-muted-border);
 }
 .gc-prompt-btn-secondary:hover {
   background: #f9fafb;

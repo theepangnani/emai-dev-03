@@ -197,7 +197,7 @@
 
 .auth-button--primary {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-surface);
 }
 
 .auth-button--primary:hover {

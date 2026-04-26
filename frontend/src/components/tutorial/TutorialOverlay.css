@@ -79,7 +79,7 @@
 
 .tutorial-next-btn {
   background: var(--primary, #6c63ff);
-  color: #fff;
+  color: var(--color-surface);
   border: none;
   border-radius: 6px;
   padding: 6px 16px;
