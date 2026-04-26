@@ -151,6 +151,15 @@ body:has(.modal-overlay) {
   --skeleton-from: rgba(230, 233, 240, 0.9);
   --skeleton-mid: rgba(245, 247, 251, 0.9);
 
+  /* Data-viz palette (recharts series — admin charts).
+     Saturated palette: sky / pine / amber / orange / purple / rose. */
+  --chart-series-1: #4a90d9;
+  --chart-series-2: #2e7d32;
+  --chart-series-3: #f3b04c;
+  --chart-series-4: #f4801f;
+  --chart-series-5: #7c3aed;
+  --chart-series-6: #d64545;
+
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
@@ -248,6 +257,15 @@ body:has(.modal-overlay) {
   --bg-dot-opacity: 0.2;
   --skeleton-from: rgba(63, 63, 70, 0.9);
   --skeleton-mid: rgba(82, 82, 91, 0.9);
+
+  /* Data-viz palette (recharts series — admin charts).
+     Lighter, less-saturated variants for legibility on charcoal surfaces. */
+  --chart-series-1: #a78bfa;
+  --chart-series-2: #6ee7b7;
+  --chart-series-3: #fde68a;
+  --chart-series-4: #7dd3fc;
+  --chart-series-5: #c4b5fd;
+  --chart-series-6: #fca5a5;
 }
 
 /* ========================================
@@ -336,6 +354,15 @@ body:has(.modal-overlay) {
   --bg-dot-opacity: 0.25;
   --skeleton-from: rgba(221, 214, 204, 0.6);
   --skeleton-mid: rgba(240, 236, 230, 0.6);
+
+  /* Data-viz palette (recharts series — admin charts).
+     Muted earthtones — softened blues, greens, ambers, plums for focus surfaces. */
+  --chart-series-1: #5a8fb5;
+  --chart-series-2: #4a8a4a;
+  --chart-series-3: #c9943a;
+  --chart-series-4: #c47f3b;
+  --chart-series-5: #7b6b8a;
+  --chart-series-6: #c45a5a;
 }
 
 /* ========================================
@@ -465,6 +492,15 @@ body:has(.modal-overlay) {
   --radius-bridge-sm: 8px;
   --radius-bridge-md: 14px;
   --radius-bridge-lg: 22px;
+
+  /* Data-viz palette (recharts series — admin charts).
+     Bridge accent palette: rust / pine / amber / sky / rose / plum. */
+  --chart-series-1: #b04a2c;
+  --chart-series-2: #2d4a3e;
+  --chart-series-3: #d4a24b;
+  --chart-series-4: #3b6a8f;
+  --chart-series-5: #c25b6f;
+  --chart-series-6: #6b4a7a;
 }
 
 body {
