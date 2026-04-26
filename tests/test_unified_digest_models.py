@@ -235,9 +235,15 @@ def _seed_legacy_world(db):
 
     Idempotent: safe to call across multiple tests sharing the session-scoped
     SQLite DB; reuses existing rows by email/key rather than re-creating.
+
+    #4253 — uses a uniquely-scoped parent email to avoid colliding with
+    ``test_parent_email_digest_job.py::test_digest_sectioned_legacy_blob_falls_back_to_legacy_html``,
+    which generates a parent named ``legacy_parent@test.com`` (via
+    ``email_suffix="legacy"``) and attaches an "Alex" integration to it. That
+    parent persists in the session-scoped DB and pollutes our backfill query.
     """
     m = _models()
-    parent = _make_parent(db, "legacy_parent@test.com")
+    parent = _make_parent(db, "v2_backfill_parent@test.com")
 
     def _get_or_create_user(email, full_name):
         existing = db.query(m["User"]).filter(m["User"].email == email).first()
