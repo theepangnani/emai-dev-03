@@ -26,17 +26,17 @@
 .xph-level-badge {
   display: inline-block;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   font-weight: 600;
-  background: var(--color-accent-subtle, rgba(99, 102, 241, 0.1));
-  color: var(--color-accent-strong, #4f46e5);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-strong);
 }
 
 .xph-total-xp {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-accent-strong, #4f46e5);
+  color: var(--color-accent-strong);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -52,7 +52,7 @@
 .xph-stat-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -84,7 +84,7 @@
 .xph-filter {
   padding: 6px 12px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   background: var(--color-surface);
   color: var(--color-ink);
@@ -95,7 +95,7 @@
   margin-left: auto;
   padding: 6px 16px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-weight: 500;
   background: var(--color-surface);
@@ -105,7 +105,7 @@
 }
 
 .xph-export-btn:hover {
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
 }
 
 /* Table */
@@ -136,7 +136,7 @@
 }
 
 .xph-table tbody tr:hover {
-  background: var(--color-surface-alt, rgba(0, 0, 0, 0.02));
+  background: var(--color-surface-alt);
 }
 
 .xph-table td {
@@ -157,14 +157,14 @@
 
 .xph-cell-xp {
   font-weight: 600;
-  color: var(--color-success, #16a34a);
+  color: var(--color-success);
 }
 
 /* Action pills */
 .xph-action-pill {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   font-weight: 500;
   background: color-mix(in srgb, var(--pill-color) 12%, transparent);
@@ -184,7 +184,7 @@
   color: var(--color-danger);
   padding: 16px;
   background: var(--color-danger-light);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* Empty state */
@@ -192,7 +192,7 @@
   text-align: center;
   padding: 40px 20px;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
 }
 
@@ -217,7 +217,7 @@
 .xph-load-more-btn {
   padding: 10px 24px;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 500;
   background: var(--color-surface);
@@ -227,7 +227,7 @@
 }
 
 .xph-load-more-btn:hover:not(:disabled) {
-  background: var(--color-surface-alt, #f3f4f6);
+  background: var(--color-surface-alt);
 }
 
 .xph-load-more-btn:disabled {

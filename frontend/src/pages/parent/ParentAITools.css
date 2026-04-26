@@ -14,14 +14,14 @@
 }
 
 .pai-subtitle {
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   margin: 0;
 }
 
 .pai-empty {
   text-align: center;
   padding: 3rem 1rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
 }
 
 /* Cards */
@@ -32,15 +32,15 @@
 }
 
 .pai-card {
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--card-bg, #fff);
+  background: var(--color-surface);
   transition: box-shadow 0.2s;
 }
 
 .pai-card-open {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .pai-card-header {
@@ -58,7 +58,7 @@
 }
 
 .pai-card-header:hover {
-  background: var(--hover-bg, #f8f8f8);
+  background: var(--color-surface-alt);
 }
 
 .pai-card-icon {
@@ -78,17 +78,17 @@
 .pai-card-info p {
   margin: 0;
   font-size: 0.85rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
 }
 
 .pai-card-toggle {
   font-size: 0.75rem;
-  color: var(--text-secondary, #999);
+  color: var(--color-ink-muted);
 }
 
 .pai-card-body {
   padding: 0 1.25rem 1.25rem;
-  border-top: 1px solid var(--border-color, #eee);
+  border-top: 1px solid var(--color-border);
 }
 
 /* Form */
@@ -105,25 +105,25 @@
   gap: 0.25rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-secondary, #555);
+  color: var(--color-ink-muted);
 }
 
 .pai-form select,
 .pai-form input {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border-color, #ccc);
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
-  background: var(--input-bg, #fff);
-  color: var(--text-primary, #333);
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
 
 .pai-btn {
   align-self: flex-start;
   padding: 0.6rem 1.25rem;
   border: none;
-  border-radius: 8px;
-  background: var(--primary-color, #4a7dff);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
   color: var(--color-surface);
   font-weight: 600;
   font-size: 0.9rem;
@@ -148,9 +148,9 @@
 .pai-error {
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
-  background: #fef2f2;
-  color: #b91c1c;
-  border-radius: 8px;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
 }
 
@@ -162,14 +162,14 @@
 
 .pai-meta {
   font-size: 0.8rem;
-  color: var(--text-secondary, #888);
+  color: var(--color-ink-muted);
 }
 
 .pai-success {
   padding: 1rem;
-  background: #f0fdf4;
-  color: #166534;
-  border-radius: 8px;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-radius: var(--radius-sm);
   text-align: center;
 }
 
@@ -183,23 +183,23 @@
 
 .pai-ws-item {
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border-left: 4px solid;
 }
 
 .pai-ws-item.pai-severity-high {
-  border-left-color: #ef4444;
-  background: #fef2f2;
+  border-left-color: var(--priority-high);
+  background: var(--priority-high-light);
 }
 
 .pai-ws-item.pai-severity-medium {
-  border-left-color: #f59e0b;
-  background: #fffbeb;
+  border-left-color: var(--priority-medium);
+  background: var(--priority-medium-light);
 }
 
 .pai-ws-item.pai-severity-low {
-  border-left-color: #3b82f6;
-  background: #eff6ff;
+  border-left-color: var(--color-accent);
+  background: var(--color-accent-light);
 }
 
 .pai-ws-header {
@@ -218,9 +218,9 @@
   color: var(--color-surface);
 }
 
-.pai-badge.pai-severity-high { background: #ef4444; }
-.pai-badge.pai-severity-medium { background: #f59e0b; }
-.pai-badge.pai-severity-low { background: #3b82f6; }
+.pai-badge.pai-severity-high { background: var(--priority-high); }
+.pai-badge.pai-severity-medium { background: var(--priority-medium); }
+.pai-badge.pai-severity-low { background: var(--color-accent); }
 
 .pai-ws-item p {
   margin: 0.25rem 0;
@@ -228,12 +228,12 @@
 }
 
 .pai-ws-score {
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   font-style: italic;
 }
 
 .pai-ws-action {
-  color: var(--text-primary, #333);
+  color: var(--color-ink);
 }
 
 /* Readiness */
@@ -257,12 +257,12 @@
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--border-color, #e0e0e0);
+  background: var(--color-border);
   transition: background 0.3s;
 }
 
 .pai-readiness-filled {
-  background: #22c55e;
+  background: var(--color-success);
 }
 
 .pai-readiness-score {
@@ -297,14 +297,14 @@
 
 .pai-check-detail {
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   margin: 0.15rem 0 0;
 }
 
 /* Practice Problems */
 .pai-instructions {
   font-style: italic;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   font-size: 0.9rem;
   margin: 0.25rem 0 1rem;
 }
@@ -319,15 +319,15 @@
   display: flex;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background: var(--hover-bg, #f9fafb);
-  border-radius: 8px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
 }
 
 .pai-problem-num {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: var(--primary-color, #4a7dff);
+  background: var(--color-accent);
   color: var(--color-surface);
   display: flex;
   align-items: center;
@@ -346,28 +346,28 @@
 .pai-hint {
   margin-top: 0.25rem !important;
   font-size: 0.8rem !important;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
 }
 
-/* Dark mode */
+/* Dark mode overrides — kept for backward compat; tokens above already auto-theme. */
 [data-theme="dark"] .pai-ws-item.pai-severity-high {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--priority-high-light);
 }
 
 [data-theme="dark"] .pai-ws-item.pai-severity-medium {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--priority-medium-light);
 }
 
 [data-theme="dark"] .pai-ws-item.pai-severity-low {
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--color-accent-light);
 }
 
 [data-theme="dark"] .pai-error {
-  background: rgba(185, 28, 28, 0.15);
-  color: #fca5a5;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 [data-theme="dark"] .pai-success {
-  background: rgba(22, 101, 52, 0.15);
-  color: #86efac;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }

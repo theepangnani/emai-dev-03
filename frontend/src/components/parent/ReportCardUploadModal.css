@@ -3,7 +3,7 @@
 .rc-upload-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--color-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,9 +11,9 @@
 }
 
 .rc-upload-modal {
-  background: var(--color-surface, #fff);
-  border-radius: var(--radius-lg, 14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 520px;
   max-height: 90vh;
@@ -28,19 +28,19 @@
   align-items: center;
   justify-content: space-between;
   padding: 18px 24px 14px;
-  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .rc-upload-header h2 {
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--color-ink, #1A202C);
+  color: var(--color-ink);
   margin: 0;
 }
 
 .rc-upload-header-subtitle {
   font-size: 14px;
-  color: var(--color-ink-muted, #6B7280);
+  color: var(--color-ink-muted);
   font-weight: 500;
   margin-left: 10px;
 }
@@ -49,7 +49,7 @@
   background: none;
   border: none;
   font-size: 24px;
-  color: var(--color-ink-muted, #6b7280);
+  color: var(--color-ink-muted);
   cursor: pointer;
   min-width: 44px;
   min-height: 44px;
@@ -59,7 +59,7 @@
 }
 
 .rc-upload-close:hover {
-  color: var(--color-ink, #1f2937);
+  color: var(--color-ink);
 }
 
 /* Body */
@@ -74,8 +74,8 @@
 
 /* Drop zone */
 .rc-upload-drop-zone {
-  border: 2px dashed var(--color-border, #E2E8F0);
-  border-radius: var(--radius-md, 10px);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
   padding: 40px;
   text-align: center;
   cursor: pointer;
@@ -83,19 +83,19 @@
 }
 
 .rc-upload-drop-zone:hover {
-  border-color: var(--color-accent, #4A90D9);
-  background: var(--color-accent-light, #E8F0FE);
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
 }
 
 .rc-upload-drop-zone.dragging {
   border-style: solid;
-  border-color: var(--color-accent, #4A90D9);
-  background: var(--color-accent-light, #E8F0FE);
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
 }
 
 .rc-upload-drop-zone.has-files {
   border-style: solid;
-  border-color: var(--color-border, #E2E8F0);
+  border-color: var(--color-border);
   padding: 16px;
 }
 
@@ -112,13 +112,13 @@
 
 .rc-upload-drop-content p {
   font-size: 14px;
-  color: var(--color-ink, #1A202C);
+  color: var(--color-ink);
   margin: 0 0 4px;
 }
 
 .rc-upload-drop-content small {
   font-size: 12px;
-  color: var(--color-ink-muted, #718096);
+  color: var(--color-ink-muted);
 }
 
 /* File list */
@@ -136,8 +136,8 @@
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: var(--color-surface-alt, #F8F9FA);
-  border-radius: var(--radius-sm, 6px);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
 }
 
 .rc-upload-file-icon {
@@ -154,7 +154,7 @@
 
 .rc-upload-file-name {
   font-size: 13px;
-  color: var(--color-ink, #1A202C);
+  color: var(--color-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -163,29 +163,29 @@
 
 .rc-upload-file-size {
   font-size: 11px;
-  color: var(--color-ink-muted, #718096);
+  color: var(--color-ink-muted);
 }
 
 .rc-upload-file-remove {
   background: transparent;
   border: none;
-  color: var(--color-ink-muted, #718096);
+  color: var(--color-ink-muted);
   cursor: pointer;
   font-size: 1rem;
   padding: 2px 6px;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   transition: color 0.2s ease;
   flex-shrink: 0;
 }
 
 .rc-upload-file-remove:hover {
-  color: var(--color-danger, #E53E3E);
+  color: var(--color-danger);
 }
 
 .rc-upload-add-more {
   background: none;
   border: none;
-  color: var(--color-accent, #4A90D9);
+  color: var(--color-accent);
   font-size: 13px;
   cursor: pointer;
   margin-top: 4px;
@@ -194,7 +194,7 @@
 }
 
 .rc-upload-add-more:hover {
-  color: var(--color-accent-strong, #3A7BC8);
+  color: var(--color-accent-strong);
   text-decoration: underline;
 }
 
@@ -208,23 +208,23 @@
 .rc-upload-field label {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-ink, #1A202C);
+  color: var(--color-ink);
 }
 
 .rc-upload-field input {
   padding: 10px 14px;
-  border: 1px solid var(--color-border, #E2E8F0);
-  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font-size: 14px;
-  color: var(--color-ink, #1A202C);
-  background: var(--color-surface, #fff);
+  color: var(--color-ink);
+  background: var(--color-surface);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .rc-upload-field input:focus {
   outline: none;
-  border-color: var(--color-accent, #4A90D9);
-  box-shadow: 0 0 0 3px var(--color-focus-ring, rgba(74, 144, 217, 0.25));
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 /* Error */
@@ -233,16 +233,16 @@
   align-items: flex-start;
   gap: 8px;
   padding: 10px;
-  background: rgba(229, 62, 62, 0.08);
-  border-radius: var(--radius-sm, 6px);
-  color: var(--color-danger, #E53E3E);
+  background: var(--color-danger-light);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
   font-size: 13px;
 }
 
 /* Progress */
 .rc-upload-progress {
   font-size: 14px;
-  color: var(--color-ink-muted, #718096);
+  color: var(--color-ink-muted);
   text-align: center;
   padding: 8px 0;
 }
@@ -251,20 +251,20 @@
 .rc-upload-success {
   text-align: center;
   padding: 24px 0;
-  color: var(--text-primary, #1f2937);
+  color: var(--color-ink);
 }
 
 .rc-upload-success h3 {
   margin: 0 0 8px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--color-success, #48BB78);
+  color: var(--color-success);
 }
 
 .rc-upload-success p {
   margin: 0;
   font-size: 14px;
-  color: var(--text-secondary, #6b7280);
+  color: var(--color-ink-muted);
 }
 
 /* Footer */
@@ -274,14 +274,14 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 14px 24px;
-  border-top: 1px solid var(--color-border, #E2E8F0);
+  border-top: 1px solid var(--color-border);
 }
 
 .rc-upload-footer .btn-secondary {
   background: transparent;
-  color: var(--color-ink, #1A202C);
-  border: 1px solid var(--color-border, #E2E8F0);
-  border-radius: var(--radius-sm, 6px);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   padding: 10px 24px;
   font-size: 14px;
   font-weight: 500;
@@ -290,15 +290,15 @@
 }
 
 .rc-upload-footer .btn-secondary:hover {
-  border-color: var(--color-ink-muted, #718096);
-  background: var(--color-surface-alt, #F8F9FA);
+  border-color: var(--color-ink-muted);
+  background: var(--color-surface-alt);
 }
 
 .rc-upload-footer .btn-primary {
-  background: var(--color-accent, #4A90D9);
+  background: var(--color-accent);
   color: var(--color-surface);
   border: none;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   padding: 10px 24px;
   font-size: 14px;
   font-weight: 500;
@@ -307,7 +307,7 @@
 }
 
 .rc-upload-footer .btn-primary:hover {
-  background: var(--color-accent-strong, #3A7BC8);
+  background: var(--color-accent-strong);
 }
 
 .rc-upload-footer .btn-primary:disabled {
@@ -327,7 +327,7 @@
 }
 
 [data-theme="dark"] .rc-upload-file-remove:hover {
-  color: var(--color-danger, #fca5a5);
+  color: var(--color-danger);
 }
 
 [data-theme="dark"] .rc-upload-field input {
@@ -335,15 +335,15 @@
 }
 
 [data-theme="dark"] .rc-upload-error {
-  color: var(--color-danger, #fca5a5);
+  color: var(--color-danger);
 }
 
 [data-theme="dark"] .rc-upload-success {
-  color: var(--text-primary, var(--color-ink));
+  color: var(--color-ink);
 }
 
 [data-theme="dark"] .rc-upload-success p {
-  color: var(--text-secondary, var(--color-ink-muted));
+  color: var(--color-ink-muted);
 }
 
 [data-theme="dark"] .rc-upload-footer {
@@ -362,7 +362,7 @@
   .rc-upload-modal {
     max-width: 100%;
     margin: 8px;
-    border-radius: var(--radius-md, 10px);
+    border-radius: var(--radius-md);
   }
 
   .rc-upload-drop-zone {

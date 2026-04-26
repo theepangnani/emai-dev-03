@@ -144,9 +144,9 @@
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--color-muted-border, #c5c5c5);
-  border-radius: 4px;
-  background: var(--color-surface, #fff);
+  border: 2px solid var(--color-muted-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface);
   cursor: pointer;
   flex-shrink: 0;
   margin-top: 2px;
@@ -166,7 +166,7 @@
   top: 0px;
   width: 5px;
   height: 9px;
-  border: solid white;
+  border: solid var(--color-surface);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -229,7 +229,7 @@
   color: var(--color-ink-muted);
   background: var(--color-surface-alt);
   padding: 1px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border-left: 2px solid var(--color-border);
 }
 
@@ -237,7 +237,7 @@
   font-size: 11px;
   font-weight: 600;
   padding: 1px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .pd-timeline-type.assignment {
@@ -246,8 +246,8 @@
 }
 
 .pd-timeline-type.task {
-  background: var(--color-purple-light, rgba(124, 58, 237, 0.08));
-  color: var(--color-purple, #7c3aed);
+  background: var(--color-purple-light);
+  color: var(--color-purple);
 }
 
 .pd-timeline-child {
@@ -279,15 +279,15 @@
 
 .pd-timeline-study-btn:hover {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-surface);
 }
 
 /* Remind button on timeline */
 .pd-timeline-remind-btn {
   padding: 4px 10px;
-  border: 1px solid #f59e0b;
+  border: 1px solid var(--color-warning);
   background: transparent;
-  color: #d97706;
+  color: var(--color-warning-text);
   border-radius: var(--radius-sm);
   font-size: 14px;
   cursor: pointer;
@@ -301,8 +301,8 @@
 }
 
 .pd-timeline-remind-btn:hover:not(:disabled) {
-  background: #fffbeb;
-  border-color: #d97706;
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-text);
 }
 
 .pd-timeline-remind-btn.reminded {
@@ -414,19 +414,19 @@
 
 /* -- Mobile layout -- */
 
-/* ── Dark mode ── */
+/* ── Dark mode overrides — kept for backward compat; tokens above already auto-theme. ── */
 [data-theme="dark"] .pd-timeline-type.task {
-  color: var(--color-purple, #c4b5fd);
+  color: var(--color-purple);
 }
 
 [data-theme="dark"] .pd-timeline-remind-btn {
-  border: 1px solid #fde68a;
-  color: #fbbf24;
+  border: 1px solid var(--color-warning);
+  color: var(--color-warning);
 }
 
 [data-theme="dark"] .pd-timeline-remind-btn:hover:not(:disabled) {
-  background: rgba(253, 230, 138, 0.10);
-  border-color: #fbbf24;
+  background: var(--color-warning-light);
+  border-color: var(--color-warning);
 }
 
 @media (max-width: 768px) {

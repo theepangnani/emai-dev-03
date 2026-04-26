@@ -39,7 +39,7 @@
 
 /* ── Center node ───────────────────────────── */
 .mm-center-node {
-  background: var(--color-accent-strong, #2a9fa8);
+  background: var(--color-accent-strong);
   color: var(--color-surface);
   font-weight: 700;
   font-size: 1.05rem;
@@ -48,7 +48,7 @@
   text-align: center;
   max-width: 220px;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(42, 159, 168, 0.25);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--color-accent-strong) 25%, transparent);
 }
 
 /* ── Branch ─────────────────────────────────── */
@@ -93,7 +93,7 @@
 
 /* ── Branch label button ───────────────────── */
 .mm-branch-label {
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   border: 2px solid var(--branch-color);
   color: var(--branch-color);
   font-weight: 600;
@@ -129,24 +129,24 @@
 }
 
 .mm-child {
-  background: var(--color-surface, #fff);
+  background: var(--color-surface);
   border-left: 3px solid var(--branch-color);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-sm);
   padding: 0.4rem 0.65rem;
   font-size: 0.82rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-xs);
   text-align: left;
 }
 
 .mm-child-label {
   font-weight: 600;
   display: block;
-  color: var(--color-text, #1a1a2e);
+  color: var(--color-ink);
 }
 
 .mm-child-detail {
   display: block;
-  color: var(--color-text-secondary, #666);
+  color: var(--color-ink-muted);
   font-size: 0.78rem;
   margin-top: 0.15rem;
 }

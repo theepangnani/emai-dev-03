@@ -9,12 +9,12 @@
   font-weight: 700;
   text-align: center;
   margin-bottom: 1.5rem;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink);
 }
 
 .study-session-subtitle {
   text-align: center;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-ink-muted);
   font-size: 0.9rem;
   margin: -0.75rem 0 1.5rem;
   line-height: 1.4;
@@ -24,18 +24,18 @@
   text-align: center;
   padding: 1.5rem 1rem;
   margin-top: 1.5rem;
-  background: var(--color-bg-secondary, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .study-session-empty p {
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-ink-muted);
   margin-bottom: 0.75rem;
 }
 
 .study-session-empty a {
-  color: var(--color-accent, #6366f1);
+  color: var(--color-accent);
   font-weight: 500;
   text-decoration: none;
 }
@@ -46,7 +46,7 @@
 
 .study-session-error {
   text-align: center;
-  color: var(--color-error, #ef4444);
+  color: var(--color-danger);
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
@@ -54,7 +54,7 @@
 .study-session-error button {
   background: none;
   border: none;
-  color: var(--color-accent, #6366f1);
+  color: var(--color-accent);
   cursor: pointer;
   font-weight: 500;
   text-decoration: underline;
@@ -73,21 +73,21 @@
   flex-direction: column;
   align-items: center;
   padding: 1rem 1.25rem;
-  background: var(--color-bg-secondary, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 12px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   min-width: 100px;
 }
 
 .study-session-stat-value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-accent, #6366f1);
+  color: var(--color-accent);
 }
 
 .study-session-stat-label {
   font-size: 0.75rem;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-ink-muted);
   margin-top: 0.25rem;
   text-align: center;
 }
@@ -101,7 +101,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink);
 }
 
 .study-session-list {
@@ -114,9 +114,9 @@
 }
 
 .study-session-item {
-  background: var(--color-bg, #fff);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
 }
 
@@ -129,12 +129,12 @@
 .study-session-item-subject {
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--color-text, #1e293b);
+  color: var(--color-ink);
 }
 
 .study-session-item-duration {
   font-size: 0.85rem;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-ink-muted);
 }
 
 .study-session-item-meta {
@@ -143,23 +143,23 @@
   align-items: center;
   margin-top: 0.35rem;
   font-size: 0.8rem;
-  color: var(--color-text-tertiary, #94a3b8);
+  color: var(--color-muted);
 }
 
 .study-session-item-badge {
-  color: var(--color-success, #22c55e);
+  color: var(--color-success);
   font-weight: 500;
 }
 
 .study-session-item-xp {
-  color: var(--color-accent, #6366f1);
+  color: var(--color-accent);
   font-weight: 600;
 }
 
 .study-session-recap-toggle {
   background: none;
   border: none;
-  color: var(--color-accent, #6366f1);
+  color: var(--color-accent);
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0.25rem 0;
@@ -169,11 +169,11 @@
 .study-session-recap-preview {
   margin-top: 0.5rem;
   padding: 0.75rem;
-  background: var(--color-bg-secondary, #f8fafc);
-  border-radius: 8px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   line-height: 1.5;
-  color: var(--color-text-secondary, #64748b);
+  color: var(--color-ink-muted);
   white-space: pre-line;
 }
 

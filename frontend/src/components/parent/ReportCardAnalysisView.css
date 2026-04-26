@@ -22,23 +22,23 @@
 
 .rca-header-meta {
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   margin-top: 0.15rem;
 }
 
 .rca-close-btn {
   background: none;
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   padding: 0.4rem 0.85rem;
   font-size: 0.85rem;
   cursor: pointer;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   transition: background 0.15s;
 }
 
 .rca-close-btn:hover {
-  background: var(--hover-bg, #f8f8f8);
+  background: var(--color-surface-alt);
 }
 
 /* Sections */
@@ -49,15 +49,15 @@
 }
 
 .rca-section {
-  border: 1px solid var(--border-color, #e0e0e0);
-  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--card-bg, #fff);
+  background: var(--color-surface);
   transition: box-shadow 0.2s;
 }
 
 .rca-section.rca-section-open {
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .rca-section-header {
@@ -75,7 +75,7 @@
 }
 
 .rca-section-header:hover {
-  background: var(--hover-bg, #f8f8f8);
+  background: var(--color-surface-alt);
 }
 
 .rca-section-icon {
@@ -92,12 +92,12 @@
 
 .rca-section-toggle {
   font-size: 0.7rem;
-  color: var(--text-secondary, #999);
+  color: var(--color-ink-muted);
 }
 
 .rca-section-body {
   padding: 0 1.25rem 1.25rem;
-  border-top: 1px solid var(--border-color, #eee);
+  border-top: 1px solid var(--color-border);
 }
 
 /* Teacher Feedback */
@@ -105,7 +105,7 @@
   font-size: 0.9rem;
   line-height: 1.6;
   margin: 1rem 0 0;
-  color: var(--text-primary, #333);
+  color: var(--color-ink);
 }
 
 /* Grade Analysis Table */
@@ -119,17 +119,17 @@
 .rca-grade-table th {
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border-bottom: 2px solid var(--border-color, #e0e0e0);
+  border-bottom: 2px solid var(--color-border);
   font-weight: 600;
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .rca-grade-table td {
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border-color, #eee);
+  border-bottom: 1px solid var(--color-border);
   vertical-align: top;
 }
 
@@ -139,7 +139,7 @@
 
 .rca-grade-cell {
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   padding: 0.15rem 0.35rem;
   display: inline-block;
   min-width: 2.5rem;
@@ -147,25 +147,25 @@
 }
 
 .rca-grade-above {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .rca-grade-near {
-  background: #fef9c3;
-  color: #854d0e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .rca-grade-below {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 .rca-teacher-comment-toggle {
   background: none;
   border: none;
   font-size: 0.75rem;
-  color: var(--primary-color, #4a7dff);
+  color: var(--color-accent);
   cursor: pointer;
   padding: 0.2rem 0;
   margin-top: 0.25rem;
@@ -178,17 +178,17 @@
 
 .rca-teacher-comment {
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   margin: 0.25rem 0 0;
   line-height: 1.4;
   padding-left: 0.5rem;
-  border-left: 2px solid var(--border-color, #e0e0e0);
+  border-left: 2px solid var(--color-border);
 }
 
 .rca-no-data {
   text-align: center;
   padding: 1.5rem 1rem;
-  color: var(--text-secondary, #888);
+  color: var(--color-ink-muted);
   font-size: 0.9rem;
 }
 
@@ -205,8 +205,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: var(--hover-bg, #f9fafb);
-  border-radius: 8px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
 }
 
@@ -224,15 +224,15 @@
   text-align: center;
 }
 
-.rca-skill-E { background: #22c55e; }
-.rca-skill-G { background: #3b82f6; }
-.rca-skill-S { background: #f59e0b; }
-.rca-skill-N { background: #ef4444; }
+.rca-skill-E { background: var(--color-success); }
+.rca-skill-G { background: var(--color-accent); }
+.rca-skill-S { background: var(--color-warning); }
+.rca-skill-N { background: var(--color-danger); }
 
 .rca-skills-summary {
   margin-top: 0.75rem;
   font-size: 0.85rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   line-height: 1.5;
 }
 
@@ -249,23 +249,23 @@
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.65rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border-left: 4px solid;
 }
 
 .rca-improvement-item.rca-priority-high {
-  border-left-color: #ef4444;
-  background: #fef2f2;
+  border-left-color: var(--priority-high);
+  background: var(--priority-high-light);
 }
 
 .rca-improvement-item.rca-priority-medium {
-  border-left-color: #f59e0b;
-  background: #fffbeb;
+  border-left-color: var(--priority-medium);
+  background: var(--priority-medium-light);
 }
 
 .rca-improvement-item.rca-priority-low {
-  border-left-color: #3b82f6;
-  background: #eff6ff;
+  border-left-color: var(--color-accent);
+  background: var(--color-accent-light);
 }
 
 .rca-priority-dot {
@@ -276,9 +276,9 @@
   margin-top: 0.35rem;
 }
 
-.rca-priority-high .rca-priority-dot { background: #ef4444; }
-.rca-priority-medium .rca-priority-dot { background: #f59e0b; }
-.rca-priority-low .rca-priority-dot { background: #3b82f6; }
+.rca-priority-high .rca-priority-dot { background: var(--priority-high); }
+.rca-priority-medium .rca-priority-dot { background: var(--priority-medium); }
+.rca-priority-low .rca-priority-dot { background: var(--color-accent); }
 
 .rca-improvement-content {
   flex: 1;
@@ -293,7 +293,7 @@
 
 .rca-improvement-detail {
   font-size: 0.8rem;
-  color: var(--text-secondary, #666);
+  color: var(--color-ink-muted);
   margin: 0;
   line-height: 1.4;
 }
@@ -310,9 +310,9 @@
   margin-top: 0.15rem;
 }
 
-.rca-priority-badge-high { background: #ef4444; }
-.rca-priority-badge-medium { background: #f59e0b; }
-.rca-priority-badge-low { background: #3b82f6; }
+.rca-priority-badge-high { background: var(--priority-high); }
+.rca-priority-badge-medium { background: var(--priority-medium); }
+.rca-priority-badge-low { background: var(--color-accent); }
 
 /* Parent Tips */
 .rca-tips-list {
@@ -327,8 +327,8 @@
   gap: 0.75rem;
   align-items: flex-start;
   padding: 0.65rem 1rem;
-  background: var(--hover-bg, #f9fafb);
-  border-radius: 8px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
 }
 
 .rca-tip-icon {
@@ -353,8 +353,8 @@
   font-size: 0.7rem;
   font-weight: 600;
   padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  background: var(--primary-color, #4a7dff);
+  border-radius: var(--radius-xs);
+  background: var(--color-accent);
   color: var(--color-surface);
   margin-top: 0.35rem;
 }
@@ -365,37 +365,37 @@
   line-height: 1.6;
   margin: 1rem 0 0;
   padding: 1rem;
-  background: var(--hover-bg, #f9fafb);
-  border-radius: 8px;
-  color: var(--text-primary, #333);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
 }
 
-/* Dark mode */
+/* Dark mode overrides — kept for backward compat; tokens above already auto-theme. */
 [data-theme="dark"] .rca-improvement-item.rca-priority-high {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--priority-high-light);
 }
 
 [data-theme="dark"] .rca-improvement-item.rca-priority-medium {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--priority-medium-light);
 }
 
 [data-theme="dark"] .rca-improvement-item.rca-priority-low {
-  background: rgba(59, 130, 246, 0.1);
+  background: var(--color-accent-light);
 }
 
 [data-theme="dark"] .rca-grade-above {
-  background: rgba(22, 197, 94, 0.15);
-  color: #86efac;
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 [data-theme="dark"] .rca-grade-near {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fde68a;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
 }
 
 [data-theme="dark"] .rca-grade-below {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+  background: var(--color-danger-light);
+  color: var(--color-danger);
 }
 
 /* Responsive */
@@ -439,7 +439,7 @@
 
   .rca-grade-table tr {
     padding: 0.6rem 0;
-    border-bottom: 1px solid var(--border-color, #eee);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .rca-grade-table tr:last-child {
@@ -456,7 +456,7 @@
     content: attr(data-label);
     font-weight: 600;
     font-size: 0.7rem;
-    color: var(--text-secondary, #666);
+    color: var(--color-ink-muted);
     text-transform: uppercase;
     letter-spacing: 0.03em;
     display: inline-block;
