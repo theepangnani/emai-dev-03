@@ -22,7 +22,7 @@
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
   border: 1px solid var(--tw-gray-200);
   margin-top: 12px;
 }

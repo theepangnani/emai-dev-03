@@ -219,7 +219,7 @@
 }
 
 .course-list-row:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
   border-color: var(--color-accent-light, var(--color-accent));
   transform: translateY(-1px);
 }
@@ -391,7 +391,7 @@
 }
 
 .course-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-md);
   border-color: var(--color-accent-light);
   transform: translateY(-1px);
 }
@@ -584,7 +584,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .courses-empty-card-icon {

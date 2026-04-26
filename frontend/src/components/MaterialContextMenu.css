@@ -39,7 +39,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md, 10px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-soft);
   z-index: 100;
   animation: ctxSlideIn 0.15s ease;
   padding: 6px 0;

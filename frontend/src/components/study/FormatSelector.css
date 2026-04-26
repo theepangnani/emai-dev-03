@@ -45,7 +45,7 @@
   border-color: var(--color-accent);
   background: var(--color-surface-alt, #f8fafb);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .format-card.selected {
