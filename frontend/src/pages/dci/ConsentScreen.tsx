@@ -10,7 +10,7 @@
 // single self-contained screen the route gates can render.
 
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import type { ChildSummary } from '../../api/parent';
@@ -310,6 +310,20 @@ export function ConsentScreen({
   onCancel,
 }: ConsentScreenProps) {
   const navigate = useNavigate();
+  // M0-13 (#4260): when routed at /dci/consent we honour ?return_to= so the
+  // parent lands back on /checkin or /parent/today after granting consent.
+  // Only same-origin relative paths are accepted to prevent open-redirect.
+  const [searchParams] = useSearchParams();
+  const returnTo = useMemo(() => {
+    const raw = searchParams.get('return_to');
+    if (!raw) return null;
+    // Reject anything that isn't a same-origin relative path. Must start
+    // with a single `/` (not `//` or `/\\`) and have no scheme/host.
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+      return null;
+    }
+    return raw;
+  }, [searchParams]);
   const childrenQuery = useQuery<ChildSummary[]>({
     queryKey: ['dciConsent', 'kidsForConsent'],
     queryFn: parentApi.getChildren,
@@ -417,7 +431,16 @@ export function ConsentScreen({
           key={`${activeKid.student_id}:${consentQuery.data.kid_id}`}
           kid={activeKid}
           initialConsent={consentQuery.data}
-          onSaved={(kidId) => onComplete?.(kidId)}
+          onSaved={(kidId) => {
+            onComplete?.(kidId);
+            // M0-13 (#4260): only navigate when this screen is routed
+            // standalone (no `onComplete` override). When embedded in a
+            // settings page the host owns navigation. Validated return_to
+            // wins; falls back to `/` so the parent never gets stuck.
+            if (!onComplete) {
+              navigate(returnTo ?? '/', { replace: true });
+            }
+          }}
         />
       )}
 

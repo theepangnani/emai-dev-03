@@ -125,6 +125,8 @@ const CheckInDonePage = lazyRetry(() => import('./pages/dci/CheckInDonePage').th
 const EveningSummaryPage = lazyRetry(() => import('./pages/dci/EveningSummaryPage').then((m) => ({ default: m.EveningSummaryPage })));
 const ArtifactDeepDivePage = lazyRetry(() => import('./pages/dci/ArtifactDeepDivePage').then((m) => ({ default: m.ArtifactDeepDivePage })));
 const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').then((m) => ({ default: m.PatternsStubPage })));
+// CB-DCI-001 M0-13 — parent consent screen routed at /dci/consent (#4260).
+const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((m) => ({ default: m.ConsentScreen })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -667,6 +669,20 @@ function App() {
                   <ProtectedRoute allowedRoles={['parent']}>
                     <DciFlagGate>
                       <PatternsStubPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-DCI-001 M0-13 — parent consent screen (#4260). Reads
+                  ?return_to= to bounce parents back into /checkin or
+                  /parent/today after they grant consent. Settings flow
+                  remains the alternate entry. */}
+              <Route
+                path="/dci/consent"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <ConsentScreen />
                     </DciFlagGate>
                   </ProtectedRoute>
                 }
