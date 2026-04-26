@@ -1,0 +1,78 @@
+.dci-artifact-strip {
+  margin-top: 4px;
+}
+
+.dci-artifact-strip__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-ink, #1b1e2b);
+  margin: 0 0 10px;
+}
+
+.dci-artifact-strip__list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 0;
+  margin: 0;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dci-artifact-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 160px;
+  min-height: 110px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-surface, #ffffff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+
+.dci-artifact-tile:hover {
+  border-color: #f3b04c;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.dci-artifact-tile:focus-visible {
+  outline: 2px solid #f3b04c;
+  outline-offset: 2px;
+}
+
+.dci-artifact-tile__thumb {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--color-surface-alt, #f5f6f9);
+}
+
+.dci-artifact-tile__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.dci-artifact-tile__preview {
+  font-size: 0.82rem;
+  color: var(--color-ink-muted, #5b6274);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .dci-artifact-tile {
+  background: var(--color-surface);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+[data-theme="dark"] .dci-artifact-tile:hover {
+  border-color: #fde68a;
+}
