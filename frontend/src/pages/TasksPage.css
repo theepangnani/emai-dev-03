@@ -461,18 +461,18 @@
  * ----------------------------------------------------------------- */
 .task-source-badge {
   /* Slate (assignment) */
-  --task-source-slate-bg: #e2e8f0;
+  --task-source-slate-bg: var(--tw-slate-200);
   --task-source-slate-fg: #334155;
   /* Teal (active email digest) */
   --task-source-teal-bg: #ccfbf1;
   --task-source-teal-fg: #115e59;
   /* Amber outline (tentative / unverified) */
   --task-source-amber-bg: transparent;
-  --task-source-amber-fg: #92400e;
-  --task-source-amber-border: #f59e0b;
+  --task-source-amber-fg: var(--tw-amber-800);
+  --task-source-amber-border: var(--tw-amber-500);
   /* Neutral (study guide) */
-  --task-source-neutral-bg: #f3f4f6;
-  --task-source-neutral-fg: #374151;
+  --task-source-neutral-bg: var(--tw-gray-100);
+  --task-source-neutral-fg: var(--tw-gray-700);
 
   display: inline-block;
   padding: 1px 8px;
@@ -530,13 +530,13 @@
 
 [data-theme='dark'] .task-source-badge {
   --task-source-slate-bg: #334155;
-  --task-source-slate-fg: #e2e8f0;
+  --task-source-slate-fg: var(--tw-slate-200);
   --task-source-teal-bg: #134e4a;
   --task-source-teal-fg: #99f6e4;
   --task-source-amber-fg: #fcd34d;
-  --task-source-amber-border: #fbbf24;
-  --task-source-neutral-bg: #374151;
-  --task-source-neutral-fg: #e5e7eb;
+  --task-source-amber-border: var(--tw-amber-400);
+  --task-source-neutral-bg: var(--tw-gray-700);
+  --task-source-neutral-fg: var(--tw-gray-200);
 }
 
 .task-row-due {
@@ -1013,8 +1013,8 @@ textarea.form-input {
 
 /* ── Dark mode ── */
 [data-theme="dark"] .task-row-btn.remind:not(.reminded):hover {
-  border-color: #fde68a;
-  color: #fde68a;
+  border-color: var(--tw-amber-200);
+  color: var(--tw-amber-200);
   background: rgba(253, 230, 138, 0.10);
 }
 
@@ -1034,7 +1034,7 @@ textarea.form-input {
 
 [data-theme="dark"] .task-group-overdue .task-group-count {
   background: rgba(252, 165, 165, 0.14);
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .task-group-today {
@@ -1043,7 +1043,7 @@ textarea.form-input {
 
 [data-theme="dark"] .task-group-today .task-group-count {
   background: rgba(253, 230, 138, 0.14);
-  color: #fbbf24;
+  color: var(--tw-amber-400);
 }
 
 [data-theme="dark"] .task-group-week .task-group-count {

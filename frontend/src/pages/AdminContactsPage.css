@@ -54,7 +54,7 @@
 }
 
 .admin-contacts-stat-card.lead .stat-value { color: #2563eb; }
-.admin-contacts-stat-card.contacted .stat-value { color: #d97706; }
+.admin-contacts-stat-card.contacted .stat-value { color: var(--tw-amber-600); }
 .admin-contacts-stat-card.interested .stat-value { color: #059669; }
 .admin-contacts-stat-card.converted .stat-value { color: var(--color-purple); }
 .admin-contacts-stat-card.warning .stat-value { color: var(--color-danger); }
@@ -216,11 +216,11 @@
 }
 
 .contact-status-badge.lead { background: #dbeafe; color: #1e40af; }
-.contact-status-badge.contacted { background: #fef3c7; color: #92400e; }
-.contact-status-badge.interested { background: #d1fae5; color: #065f46; }
+.contact-status-badge.contacted { background: var(--tw-amber-100); color: var(--tw-amber-800); }
+.contact-status-badge.interested { background: #d1fae5; color: var(--tw-emerald-800); }
 .contact-status-badge.converted { background: var(--color-purple-bg); color: #5b21b6; }
-.contact-status-badge.archived { background: #f3f4f6; color: #6b7280; }
-.contact-status-badge.unresponsive { background: #fee2e2; color: #991b1b; }
+.contact-status-badge.archived { background: var(--tw-gray-100); color: var(--tw-gray-500); }
+.contact-status-badge.unresponsive { background: var(--tw-red-100); color: var(--tw-red-800); }
 
 /* Tags */
 .admin-contacts-tags {
@@ -451,11 +451,11 @@
 /* Consent warning */
 .admin-contacts-consent-warning {
   padding: 8px 12px;
-  background: #fef3c7;
-  border: 1px solid #fbbf24;
+  background: var(--tw-amber-100);
+  border: 1px solid var(--tw-amber-400);
   border-radius: var(--radius-sm);
   font-size: 12px;
-  color: #92400e;
+  color: var(--tw-amber-800);
   margin-bottom: 12px;
 }
 
@@ -666,12 +666,12 @@
 
 /* Dark theme overrides */
 [data-theme="dark"] .contact-status-badge.lead { background: #1e3a5f; color: #bfdbfe; }
-[data-theme="dark"] .contact-status-badge.contacted { background: #78350f; color: #fde68a; }
+[data-theme="dark"] .contact-status-badge.contacted { background: #78350f; color: var(--tw-amber-200); }
 [data-theme="dark"] .contact-status-badge.interested { background: #064e3b; color: #a7f3d0; }
 [data-theme="dark"] .contact-status-badge.converted { background: #4c1d95; color: #ddd6fe; }
-[data-theme="dark"] .contact-status-badge.archived { background: #374151; color: var(--color-muted-border); }
+[data-theme="dark"] .contact-status-badge.archived { background: var(--tw-gray-700); color: var(--color-muted-border); }
 [data-theme="dark"] .contact-status-badge.unresponsive { background: #7f1d1d; color: #fecaca; }
-[data-theme="dark"] .admin-contacts-consent-warning { background: #78350f; border-color: #d97706; color: #fde68a; }
+[data-theme="dark"] .admin-contacts-consent-warning { background: #78350f; border-color: var(--tw-amber-600); color: var(--tw-amber-200); }
 
 @media (max-width: 768px) {
   .admin-contacts-stats {

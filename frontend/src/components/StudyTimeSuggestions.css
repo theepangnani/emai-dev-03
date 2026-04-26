@@ -71,11 +71,11 @@
 }
 
 .sts-slot--morning {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--tw-amber-500);
 }
 
 .sts-slot--afternoon {
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--tw-blue-500);
 }
 
 .sts-slot--evening {
@@ -114,11 +114,11 @@
 }
 
 .sts-slot--morning .sts-slot-bar-fill {
-  background: #f59e0b;
+  background: var(--tw-amber-500);
 }
 
 .sts-slot--afternoon .sts-slot-bar-fill {
-  background: #3b82f6;
+  background: var(--tw-blue-500);
 }
 
 .sts-slot--evening .sts-slot-bar-fill {
@@ -177,11 +177,11 @@
 }
 
 .sts-trend.trend-up {
-  color: #16a34a;
+  color: var(--tw-green-600);
 }
 
 .sts-trend.trend-down {
-  color: #dc2626;
+  color: var(--tw-red-600);
 }
 
 .sts-trend.trend-steady {
@@ -235,7 +235,7 @@
 }
 
 [data-theme="dark"] .sts-slot--morning {
-  border-left: 3px solid #fde68a;
+  border-left: 3px solid var(--tw-amber-200);
 }
 
 [data-theme="dark"] .sts-slot--afternoon {
@@ -251,7 +251,7 @@
 }
 
 [data-theme="dark"] .sts-slot--morning .sts-slot-bar-fill {
-  background: #fde68a;
+  background: var(--tw-amber-200);
 }
 
 [data-theme="dark"] .sts-slot--afternoon .sts-slot-bar-fill {
@@ -287,7 +287,7 @@
 }
 
 [data-theme="dark"] .sts-trend.trend-down {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .sts-trend.trend-steady {

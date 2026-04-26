@@ -2087,11 +2087,11 @@
 
 [data-theme="dark"] .cm-subguide-status.generating {
   background: rgba(253, 230, 138, 0.14);
-  border: 1px solid #fde68a;
+  border: 1px solid var(--tw-amber-200);
 }
 
 [data-theme="dark"] .cm-subguide-status.ready {
-  border: 1px solid #34d399;
+  border: 1px solid var(--tw-emerald-400);
 }
 
 @media (max-width: 480px) {
@@ -2301,20 +2301,20 @@
 }
 
 .cm-subguide-status.generating {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--tw-amber-100);
+  border: 1px solid var(--tw-amber-500);
+  color: var(--tw-amber-800);
 }
 
 .cm-subguide-status.ready {
   background: #d1fae5;
   border: 1px solid #10b981;
-  color: #065f46;
+  color: var(--tw-emerald-800);
 }
 
 
 .cm-subguide-status-link {
-  color: #065f46;
+  color: var(--tw-emerald-800);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
