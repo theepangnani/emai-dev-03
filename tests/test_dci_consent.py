@@ -473,18 +473,6 @@ class TestAssertDciConsent:
 
 
 class TestAuditLogOnConsentChange:
-    @pytest.mark.xfail(
-        reason=(
-            "Cross-stripe interaction: when test_dci_content_policy.py loads "
-            "before this test class, the consent endpoint's audit_logs INSERT "
-            "either fails silently or rolls back. POST returns 200, consent row "
-            "is written, but the audit row is missing. Tests pass in isolation. "
-            "Tracked as #4249 — root-cause investigation deferred post-merge "
-            "since flag is OFF in M0 and Bill 194 audit logging is verified "
-            "in isolation."
-        ),
-        strict=False,
-    )
     def test_audit_entry_created_for_new_consent(
         self, client, db_session, parent_with_two_kids
     ):
@@ -544,10 +532,6 @@ class TestAuditLogOnConsentChange:
         assert details["consent_created"] is True
         assert details["after"]["ai_ok"] is True
 
-    @pytest.mark.xfail(
-        reason="Same cross-stripe issue as test_audit_entry_created_for_new_consent. See #4249.",
-        strict=False,
-    )
     def test_audit_entry_records_field_diff_on_update(
         self, client, db_session, parent_with_two_kids
     ):
