@@ -342,6 +342,12 @@ class TestDCICrud:
         db_session.add(cc1)
         db_session.commit()
 
+        # #4250 — expunge the persistent instance from the identity map
+        # before staging the duplicate so SQLAlchemy doesn't emit a
+        # "New instance conflicts with persistent instance" SAWarning
+        # when we add a second row with the same composite PK.
+        db_session.expunge(cc1)
+
         # Same parent+kid pair must fail
         cc2 = CheckinConsent(parent_id=parent.id, kid_id=kid.id, voice_ok=True)
         db_session.add(cc2)

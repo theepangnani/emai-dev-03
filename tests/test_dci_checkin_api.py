@@ -417,6 +417,83 @@ def test_correct_returns_404_when_classification_missing(
     assert resp.json()["detail"] == "Classification not found"
 
 
+def _seed_checkin_with_classification(
+    db_session, *, kid_id, parent_id, subject="Math"
+):
+    """Create a daily_checkins row + one classification_events row.
+
+    Returns (checkin_id, classification_id). Used by the PATCH /correct
+    integration tests below to exercise the full route, not just the
+    helper.
+    """
+    from app.models.dci import ClassificationEvent, DailyCheckin
+
+    c = DailyCheckin(
+        kid_id=kid_id,
+        parent_id=parent_id,
+        photo_uris=[],
+        text_content="hello",
+        source="kid_web",
+    )
+    db_session.add(c)
+    db_session.flush()
+    ce = ClassificationEvent(
+        checkin_id=c.id,
+        artifact_type="text",
+        subject=subject,
+        confidence=0.9,
+    )
+    db_session.add(ce)
+    db_session.commit()
+    db_session.refresh(c)
+    db_session.refresh(ce)
+    return c.id, ce.id
+
+
+def test_correct_normalises_kid_typed_subject_alias(
+    client, db_session, kid, linked_parent, dci_flag_on
+):
+    """#4231 — `coerce_subject` must normalise common kid-typed variants
+    on the PATCH /correct route so a kid typing 'math' (lowercase) lands
+    on the canonical 'Math' enum, not free-form text."""
+    from app.models.dci import ClassificationEvent
+
+    checkin_id, ce_id = _seed_checkin_with_classification(
+        db_session, kid_id=kid.id, parent_id=linked_parent.id, subject="English"
+    )
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/checkin/{checkin_id}/correct",
+        headers=headers,
+        json={"subject": "math"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"checkin_id": checkin_id, "corrected": True}
+
+    db_session.expire_all()
+    ce = db_session.query(ClassificationEvent).filter_by(id=ce_id).first()
+    assert ce.subject == "Math"
+    assert ce.corrected_by_kid is True
+
+
+def test_correct_rejects_unknown_subject_with_422(
+    client, db_session, kid, linked_parent, dci_flag_on
+):
+    """#4231 — unknown subjects must 422 with the offending value rather
+    than silently writing free-form text into the canonical enum column."""
+    checkin_id, _ = _seed_checkin_with_classification(
+        db_session, kid_id=kid.id, parent_id=linked_parent.id
+    )
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/checkin/{checkin_id}/correct",
+        headers=headers,
+        json={"subject": "Underwater Basket Weaving"},
+    )
+    assert resp.status_code == 422, resp.text
+    assert "Underwater Basket Weaving" in resp.json()["detail"]
+
+
 def test_kid_checkin_resolves_linked_parent_not_self(
     db_session, kid, student_user, linked_parent
 ):
