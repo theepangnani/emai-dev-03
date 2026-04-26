@@ -12,6 +12,7 @@ import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { BridgeDefaultApplier } from './components/BridgeDefaultApplier';
 import { useVariantBucket } from './hooks/useVariantBucket';
+import { useFeatureFlagState } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
@@ -116,6 +117,19 @@ const AdminOutreachComposer = lazyRetry(() => import('./pages/AdminOutreachCompo
 const TutorPage = lazyRetry(() => import('./pages/TutorPage').then((m) => ({ default: m.TutorPage })));
 const LearningCyclePage = lazyRetry(() => import('./pages/LearningCyclePage').then((m) => ({ default: m.LearningCyclePage })));
 const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then((m) => ({ default: m.DemoVerifiedPage })));
+// CB-DCI-001 M0-9 — kid /checkin flow (3 screens). Gated by `dci_v1_enabled`
+// flag; flag-OFF visitors get redirected to `/` by `DciFlagGate`.
+const CheckInIntroPage = lazyRetry(() => import('./pages/dci/CheckInIntroPage').then((m) => ({ default: m.CheckInIntroPage })));
+const CheckInCapturePage = lazyRetry(() => import('./pages/dci/CheckInCapturePage').then((m) => ({ default: m.CheckInCapturePage })));
+const CheckInDonePage = lazyRetry(() => import('./pages/dci/CheckInDonePage').then((m) => ({ default: m.CheckInDonePage })));
+// CB-DCI-001 M0-10 — parent /parent/today routes (also gated by DciFlagGate).
+const EveningSummaryPage = lazyRetry(() => import('./pages/dci/EveningSummaryPage').then((m) => ({ default: m.EveningSummaryPage })));
+const ArtifactDeepDivePage = lazyRetry(() => import('./pages/dci/ArtifactDeepDivePage').then((m) => ({ default: m.ArtifactDeepDivePage })));
+const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').then((m) => ({ default: m.PatternsStubPage })));
+// CB-DCI-001 M0-13 — parent consent screen routed at /dci/consent (#4260).
+const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((m) => ({ default: m.ConsentScreen })));
+// CB-DCI-001 (#4266) — kid-friendly fallback when /checkin is hit without consent.
+const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeedsConsentPage').then((m) => ({ default: m.CheckinNeedsConsentPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -603,6 +617,98 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* CB-DCI-001 M0-9 — kid daily check-in /checkin (3 screens).
+                  Flag-gated via `dci_v1_enabled`; ProtectedRoute role=student. */}
+              <Route
+                path="/checkin"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInIntroPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkin/capture"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInCapturePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/checkin/done"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckInDonePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-DCI-001 (#4266) — kid-friendly fallback shown when a kid
+                  hits /checkin without a parent-saved consent row. The old
+                  redirect to /dci/consent (parent-only) caused a silent
+                  two-hop bounce; this page replaces it with a "show your
+                  parent" message + copy-link affordance. */}
+              <Route
+                path="/checkin/needs-consent"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckinNeedsConsentPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-DCI-001 M0-10 — parent /parent/today route block. Flag-gated. */}
+              <Route
+                path="/parent/today"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <EveningSummaryPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/artifact/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <ArtifactDeepDivePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/patterns"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <PatternsStubPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-DCI-001 M0-13 — parent consent screen (#4260). Reads
+                  ?return_to= to bounce parents back into /checkin or
+                  /parent/today after they grant consent. Settings flow
+                  remains the alternate entry. */}
+              <Route
+                path="/dci/consent"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <ConsentScreen />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
@@ -622,6 +728,22 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   // User already completed onboarding — send them to the dashboard
   if (!user.needs_onboarding && user.onboarding_completed) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * CB-DCI-001 M0-10 — gates the /parent/today routes behind the
+ * `dci_v1_enabled` feature flag (default OFF). When the flag is off the
+ * route silently redirects to `/` so the routes are invisible until M0
+ * ramps. When it is on, the wrapped page renders.
+ */
+function DciFlagGate({ children }: { children: ReactNode }) {
+  // S-3 (#4216): show a loader while the feature-flag query hydrates so
+  // parents with the flag ON don't see a momentary redirect-to-/ flash on
+  // cold loads. Once hydrated, redirect when disabled / render when enabled.
+  const { enabled, isLoading } = useFeatureFlagState('dci_v1_enabled');
+  if (isLoading) return <PageLoader />;
+  if (!enabled) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

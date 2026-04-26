@@ -144,10 +144,23 @@ def hooks_env(db_session):
 # 1. submit_assignment hook
 # ──────────────────────────────────────────────────────────────────────────
 
-def test_submit_assignment_auto_completes_linked_task(client, db_session, hooks_env):
+def test_submit_assignment_auto_completes_linked_task(
+    client, db_session, hooks_env, monkeypatch
+):
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, True)
+    # CI defense (#4254): the route's `is_feature_enabled("task_sync_enabled")`
+    # opens its own SessionLocal() to read the DB-backed flag. Under
+    # pytest-xdist `--dist loadfile` on CI the cross-session read of a
+    # just-committed flag value has been observed to come back stale even
+    # though local runs always see True. Patch the route's flag check to
+    # eliminate the cross-session read race — flag-OFF coverage is owned by
+    # `test_feature_flag_off_skips_submit_hook` below, which still drives
+    # the real DB-backed path.
+    monkeypatch.setattr(
+        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+    )
     env = hooks_env
 
     headers = _auth(client, env["student_user"].email)
@@ -167,11 +180,21 @@ def test_submit_assignment_auto_completes_linked_task(client, db_session, hooks_
     assert task.source_status == "source_submitted"
 
 
-def test_submit_assignment_when_no_task_exists(client, db_session, hooks_env):
+def test_submit_assignment_when_no_task_exists(
+    client, db_session, hooks_env, monkeypatch
+):
     """Hook is a no-op (not an error) when no Task was previously created."""
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, True)
+    # CI defense (#4254): see test_submit_assignment_auto_completes_linked_task
+    # for rationale. We need flag-ON to be observable inside the route so the
+    # hook actually runs and the "no-op when no Task exists" assertion is
+    # meaningful — otherwise the same assertion passes vacuously when the
+    # flag check returns False and the hook is skipped entirely.
+    monkeypatch.setattr(
+        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+    )
     env = hooks_env
 
     # Simulate "scheduled job never ran" by deleting the pre-created Task.
@@ -228,10 +251,16 @@ def test_feature_flag_off_skips_submit_hook(client, db_session, hooks_env):
 # 2. delete_assignment hook
 # ──────────────────────────────────────────────────────────────────────────
 
-def test_delete_assignment_soft_cancels_linked_task(client, db_session, hooks_env):
+def test_delete_assignment_soft_cancels_linked_task(
+    client, db_session, hooks_env, monkeypatch
+):
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, True)
+    # CI defense (#4254): see test_submit_assignment_auto_completes_linked_task.
+    monkeypatch.setattr(
+        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+    )
     env = hooks_env
     task_id = env["task"].id
     assignment_id = env["assignment"].id
@@ -258,6 +287,12 @@ def test_delete_assignment_hook_fails_gracefully(
     from app.models.assignment import Assignment
 
     _set_task_sync_flag(db_session, True)
+    # CI defense (#4254): force flag-ON inside the route so the patched
+    # `handle_assignment_deleted` actually fires and we exercise the
+    # graceful-failure path.
+    monkeypatch.setattr(
+        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+    )
     env = hooks_env
     # Snapshot ids before expiry — the ORM row is about to be deleted.
     assignment_id = env["assignment"].id

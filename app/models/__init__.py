@@ -64,6 +64,14 @@ from app.models.learning_cycle import (
     LearningCycleAnswer,
 )
 from app.models.tutor import TutorConversation, TutorMessage
+from app.models.dci import (
+    DailyCheckin,
+    ClassificationEvent,
+    AISummary,
+    ConversationStarter,
+    CheckinStreakSummary,
+    CheckinConsent,
+)
 
 
 __all__ = [
@@ -159,4 +167,10 @@ __all__ = [
     "LearningCycleAnswer",
     "TutorConversation",
     "TutorMessage",
+    "DailyCheckin",
+    "ClassificationEvent",
+    "AISummary",
+    "ConversationStarter",
+    "CheckinStreakSummary",
+    "CheckinConsent",
 ]

@@ -93,6 +93,17 @@ def seed_features(db: Session) -> int:
             "variant": "off",
         },
         {
+            "key": "dci_v1_enabled",
+            "name": "Daily Check-In V1",
+            "description": (
+                "CB-DCI-001 M0 — Daily Check-In Ritual web demo. "
+                "Gates the kid `/checkin` flow, parent `/parent/today` summary, "
+                "and `POST /api/dci/*` endpoints. OFF by default for the M0 build."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
+        {
             "key": "parent.unified_digest_v2",
             "name": "Unified Multi-Kid Email Digest V2",
             "description": (

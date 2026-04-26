@@ -1,0 +1,27 @@
+.dci-patterns-stub {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dci-patterns-stub__back {
+  font-size: 0.85rem;
+  color: var(--color-ink-muted, #5b6274);
+  text-decoration: none;
+  width: fit-content;
+}
+
+.dci-patterns-stub__back:hover {
+  color: var(--color-ink, #1b1e2b);
+}
+
+.dci-patterns-stub__line {
+  margin: 0;
+  font-style: italic;
+  color: var(--color-ink-muted, #5b6274);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}

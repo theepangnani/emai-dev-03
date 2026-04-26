@@ -10,6 +10,7 @@ const mockNavigate = vi.fn()
 const mockSearchParams = new URLSearchParams()
 const mockSetSearchParams = vi.fn()
 const mockGetAuthUrl = vi.fn()
+let mockWaitlistEnabled = false
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
@@ -34,12 +35,23 @@ vi.mock('../api/client', () => ({
   },
 }))
 
+// Mock useFeature so tests aren't gated on the async /api/features query.
+// Without this, `waitlist_enabled` falls back to its DEFAULT_DURING_LOAD=true,
+// hiding the "Sign up" link and breaking the auth-footer test (#4251).
+vi.mock('../hooks/useFeatureToggle', () => ({
+  useFeature: (key: string) => {
+    if (key === 'waitlist_enabled') return mockWaitlistEnabled
+    return false
+  },
+}))
+
 import { Login } from './Login'
 
 describe('Login', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUser = null
+    mockWaitlistEnabled = false
     // Reset search params to empty
     mockSearchParams.delete('token')
     mockSearchParams.delete('error')
@@ -62,9 +74,20 @@ describe('Login', () => {
   it('renders links to sign up and forgot password', () => {
     renderWithProviders(<Login />)
 
-    // waitlist_enabled defaults to false, so "Sign up" link is shown
-    expect(screen.getByRole('link', { name: /sign up/i })).toBeInTheDocument()
+    // `useFeature('waitlist_enabled')` defaults to TRUE during the
+    // `/api/features` query hydration (#3895), so the pre-launch
+    // "Join the Waitlist" link is shown instead of "Sign up".
+    expect(screen.getByRole('link', { name: /join the waitlist/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /forgot password/i })).toBeInTheDocument()
+  })
+
+  it('renders waitlist link when waitlist_enabled is true', () => {
+    mockWaitlistEnabled = true
+
+    renderWithProviders(<Login />)
+
+    expect(screen.getByRole('link', { name: /join the waitlist/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /sign up/i })).not.toBeInTheDocument()
   })
 
   it('submits credentials and calls login()', async () => {

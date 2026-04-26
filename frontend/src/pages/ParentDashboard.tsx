@@ -21,6 +21,7 @@ import { AssessmentCountdown } from '../components/AssessmentCountdown';
 import { ReportBugLink } from '../components/ReportBugLink';
 import { JourneyNudgeBanner } from '../components/JourneyNudgeBanner';
 import { GettingStartedWidget } from '../components/GettingStartedWidget';
+import { DciEntryCard } from '../components/dci/DciEntryCard';
 import './ParentDashboard.css';
 import './DashboardGrid.css';
 
@@ -458,6 +459,7 @@ export function ParentDashboard() {
 
             <section className="dash-section dash-section--secondary">
               <RecentActivityPanel selectedChild={pd.selectedChild} navigate={pd.navigate} collapsed={activityCollapsed} onToggle={() => setActivityCollapsed(c => !c)} />
+              <DciEntryCard />
             </section>
 
             <section className="dash-section dash-section--actions">
