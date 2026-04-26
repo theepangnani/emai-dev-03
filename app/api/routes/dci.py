@@ -45,6 +45,7 @@ from app.models.student import Student, parent_students
 from app.models.user import User
 from app.services import dci_service
 from app.services.dci_classifier import classify_artifact
+from app.services.dci_subject_taxonomy import coerce_subject
 from app.services.feature_flag_service import is_feature_enabled
 
 logger = get_logger(__name__)
@@ -556,7 +557,17 @@ async def correct_checkin(
             raise HTTPException(status_code=404, detail="Classification not found")
 
         if body.subject:
-            evt.subject = body.subject
+            # #4231 — kid-typed corrections normalise via coerce_subject
+            # (case-fold + alias map) so "math", "ENGLISH", "sci", "phys ed"
+            # all land on the canonical enum instead of writing free-form
+            # text or 422-ing the kid.
+            normalised = coerce_subject(body.subject)
+            if normalised is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Unknown subject: {body.subject!r}",
+                )
+            evt.subject = normalised
         if body.topic:
             evt.topic = body.topic
         if body.deadline_iso:

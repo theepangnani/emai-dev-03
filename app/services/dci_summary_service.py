@@ -55,12 +55,8 @@ logger = get_logger(__name__)
 DCI_SUMMARY_MODEL_DEFAULT = "claude-sonnet-4-6"
 
 # Cost guard — see § 13 "Cost ceiling" in design doc.
-# Thresholds were promoted to settings (#4204) so ops can tune per-env
-# without a deploy. Module constants kept for backwards-compat (legacy
-# tests / external callers may import them) but the service reads
-# `settings.dci_cost_*` at call time so monkey-patching settings works.
-DCI_COST_TARGET_USD = 0.02
-DCI_COST_ALERT_USD = 0.05
+# Thresholds live in Settings (#4204) so ops can tune per-env without a
+# deploy; the service reads `settings.dci_cost_*` at call time.
 
 # Token cap for the summary call. Sonnet 4.6 emits the structured tool
 # call comfortably under 800 tokens; cap at 1024 for safety headroom.

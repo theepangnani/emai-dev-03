@@ -55,3 +55,73 @@ def validate_subject(subject: str | None) -> str | None:
     if not s:
         return None
     return s if s in DCI_VALID_SUBJECTS else None
+
+
+# Common kid-typed variants that should map to a canonical subject.
+# Keys are lower-cased + whitespace-trimmed; values must be in
+# ``DCI_VALID_SUBJECTS``. Keep the list short and obvious — anything
+# ambiguous should fall through to ``None`` so the kid can re-pick.
+_SUBJECT_ALIASES: dict[str, str] = {
+    # Math
+    "math": "Math",
+    "maths": "Math",
+    "mathematics": "Math",
+    # Science
+    "science": "Science",
+    "sci": "Science",
+    # English
+    "english": "English",
+    "reading": "English",
+    "language arts": "English",
+    "ela": "English",
+    # History / Social Studies
+    "history": "History",
+    "social studies": "History",
+    "socials": "History",
+    # Geography
+    "geography": "Geography",
+    "geo": "Geography",
+    # Art
+    "art": "Art",
+    "arts": "Art",
+    # Music
+    "music": "Music",
+    # French
+    "french": "French",
+    "francais": "French",
+    "français": "French",
+    # Phys-Ed
+    "phys ed": "Phys-Ed",
+    "phys-ed": "Phys-Ed",
+    "physed": "Phys-Ed",
+    "physical education": "Phys-Ed",
+    "gym": "Phys-Ed",
+    "pe": "Phys-Ed",
+    # Other
+    "other": "Other",
+}
+
+
+def coerce_subject(subject: str | None) -> str | None:
+    """Title-case + alias-map a kid-typed subject, then strict-validate.
+
+    Use this on user-supplied input paths (e.g. the M0-4 PATCH endpoint)
+    so kid corrections like ``"math"``, ``"ENGLISH"``, ``"sci"``, or
+    ``"phys ed"`` normalise to the canonical enum instead of returning
+    ``None`` from ``validate_subject``.
+
+    Args:
+        subject: User-supplied subject string (or ``None``).
+
+    Returns:
+        The canonical subject string if it matches an alias or already
+        matches the canonical enum (case-insensitive); otherwise ``None``.
+    """
+    if subject is None:
+        return None
+    s = subject.strip()
+    if not s:
+        return None
+    key = s.lower()
+    canonical = _SUBJECT_ALIASES.get(key) or s.title()
+    return validate_subject(canonical)
