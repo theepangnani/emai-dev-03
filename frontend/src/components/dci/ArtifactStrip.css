@@ -70,7 +70,7 @@
 
 [data-theme="dark"] .dci-artifact-tile {
   background: var(--color-surface);
-  border-color: rgba(255, 255, 255, 0.10);
+  border-color: var(--color-surface-translucent-mid);
 }
 
 [data-theme="dark"] .dci-artifact-tile:hover {

@@ -594,7 +594,7 @@
 
 [data-theme="dark"] .gp-overall-letter {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-surface-translucent-low);
 }
 
 [data-theme="dark"] .gp-course-row:hover {
@@ -603,5 +603,5 @@
 
 [data-theme="dark"] .gp-letter-badge {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-surface-translucent-low);
 }

@@ -96,7 +96,7 @@
 }
 
 .tcm-filter-pill.active .tcm-filter-count {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-surface-translucent-high);
   color: var(--color-surface);
 }
 
