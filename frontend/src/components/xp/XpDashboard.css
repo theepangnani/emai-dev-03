@@ -286,15 +286,15 @@
 }
 
 [data-theme="dark"] .xp-streak--tier-hot .xp-streak-flame {
-  --streak-color: #fca5a5;
+  --streak-color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .xp-streak--tier-blazing .xp-streak-flame {
-  --streak-color: #fca5a5;
+  --streak-color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .xp-streak--tier-legendary .xp-streak-flame {
-  --streak-color: #fde68a;
+  --streak-color: var(--tw-amber-200);
 }
 
 @media (prefers-reduced-motion: reduce) {

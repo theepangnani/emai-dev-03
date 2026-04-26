@@ -23,7 +23,7 @@
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, var(--tw-amber-500), var(--tw-amber-600));
   color: var(--color-surface);
   font-size: 0.78rem;
   font-weight: 600;
@@ -60,12 +60,12 @@
   transform: translateX(-50%);
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 6px solid #d97706;
+  border-top: 6px solid var(--tw-amber-600);
 }
 
 /* Dark mode */
 [data-theme="dark"] .selection-tooltip-btn {
-  background: linear-gradient(135deg, #b45309, #92400e);
+  background: linear-gradient(135deg, #b45309, var(--tw-amber-800));
   box-shadow: 0 2px 8px rgba(180, 83, 9, 0.4);
 }
 

@@ -249,7 +249,7 @@
 [data-theme="dark"] .searchable-select__input {
   background: #1e1e2e;
   border-color: #3a3a4e;
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
 }
 
 [data-theme="dark"] .searchable-select__input:focus {
@@ -268,7 +268,7 @@
 }
 
 [data-theme="dark"] .searchable-select__option-label {
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
 }
 
 [data-theme="dark"] .searchable-select__selected {
@@ -277,7 +277,7 @@
 }
 
 [data-theme="dark"] .searchable-select__selected-label {
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
 }
 
 [data-theme="dark"] .searchable-select__tag {
@@ -306,13 +306,13 @@
 }
 
 [data-theme="dark"] .create-teacher-inline__header h4 {
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
 }
 
 [data-theme="dark"] .create-teacher-inline input {
   background: #252540;
   border-color: #3a3a4e;
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
 }
 
 /* ── Mobile Responsive ───────────────────────────── */

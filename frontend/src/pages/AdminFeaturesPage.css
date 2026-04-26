@@ -182,7 +182,7 @@
   border-radius: 6px;
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.35);
-  color: #92400e;
+  color: var(--tw-amber-800);
   font-size: 0.75rem;
   line-height: 1.35;
 }

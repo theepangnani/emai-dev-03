@@ -429,7 +429,7 @@
   align-items: center;
   padding: 10px 12px;
   font-size: var(--text-xs);
-  color: #6b7280;
+  color: var(--tw-gray-500);
   text-decoration: none;
   border-left: 1px solid var(--color-border);
   white-space: nowrap;

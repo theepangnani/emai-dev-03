@@ -180,7 +180,7 @@
 
 /* Errors */
 .csv-import-errors {
-  background: #fef2f2;
+  background: var(--tw-red-50);
   border: 1px solid #fecaca;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
@@ -189,7 +189,7 @@
 
 .csv-import-errors h4 {
   margin: 0 0 0.5rem;
-  color: #dc2626;
+  color: var(--tw-red-600);
   font-size: 0.9rem;
 }
 
@@ -197,7 +197,7 @@
   margin: 0;
   padding-left: 1.25rem;
   font-size: 0.8rem;
-  color: #b91c1c;
+  color: var(--tw-red-700);
 }
 
 /* Success */
@@ -212,7 +212,7 @@
 
 .csv-import-success h3 {
   margin: 0 0 0.5rem;
-  color: #16a34a;
+  color: var(--tw-green-600);
 }
 
 .csv-import-success p {
@@ -309,7 +309,7 @@
 }
 
 [data-theme="dark"] .csv-import-errors h4 {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .csv-import-errors ul {
@@ -325,7 +325,7 @@
 }
 
 [data-theme="dark"] .csv-import-success p {
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .csv-import-actions button {

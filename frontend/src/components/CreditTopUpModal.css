@@ -136,7 +136,7 @@
 }
 
 .payment-error {
-  color: #b91c1c;
+  color: var(--tw-red-700);
   font-size: 0.85rem;
   margin-top: 0.5rem;
 }
@@ -152,7 +152,7 @@
   height: 48px;
   line-height: 48px;
   border-radius: 50%;
-  background: #dcfce7;
+  background: var(--tw-green-100);
   color: #15803d;
   font-size: 1.5rem;
   margin-bottom: 1rem;
@@ -192,5 +192,5 @@
 
 [data-theme="dark"] .success-icon {
   background: rgba(110, 231, 183, 0.14);
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }

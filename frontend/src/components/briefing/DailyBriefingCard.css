@@ -42,10 +42,10 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #fef2f2;
+  background: var(--tw-red-50);
   border: 1px solid #fecaca;
   border-radius: var(--radius-sm);
-  color: #991b1b;
+  color: var(--tw-red-800);
   font-size: 0.85rem;
   font-weight: 500;
   margin-bottom: 12px;
@@ -83,7 +83,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--tw-red-500);
   display: inline-block;
   flex-shrink: 0;
 }
@@ -101,7 +101,7 @@
 }
 
 .briefing-help-btn:hover {
-  background: #f3f4f6;
+  background: var(--tw-gray-100);
   border-color: var(--color-muted-border);
 }
 
@@ -149,7 +149,7 @@
 }
 
 .help-my-kid-item:hover {
-  background: #f3f4f6;
+  background: var(--tw-gray-100);
 }
 
 .help-my-kid-item:disabled {
@@ -167,7 +167,7 @@
 .help-my-kid-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--tw-gray-200);
   border-top-color: #6366f1;
   border-radius: 50%;
   animation: hmk-spin 0.6s linear infinite;
@@ -198,11 +198,11 @@
 }
 
 .briefing-task-label.overdue {
-  color: #dc2626;
+  color: var(--tw-red-600);
 }
 
 .briefing-task-label.due-today {
-  color: #d97706;
+  color: var(--tw-amber-600);
 }
 
 .briefing-task-label.upcoming {
@@ -223,15 +223,15 @@
 }
 
 .briefing-badge.overdue {
-  background: #dc2626;
+  background: var(--tw-red-600);
 }
 
 .briefing-badge.due-today {
-  background: #d97706;
+  background: var(--tw-amber-600);
 }
 
 .briefing-badge.upcoming {
-  background: #9ca3af;
+  background: var(--tw-gray-400);
 }
 
 .briefing-task-item {
@@ -290,7 +290,7 @@
 }
 
 .briefing-skeleton-child {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tw-gray-200);
   border-radius: var(--radius-sm);
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -373,7 +373,7 @@
 }
 
 [data-theme="dark"] .briefing-attention-dot {
-  background: #fca5a5;
+  background: var(--tw-red-300);
 }
 
 [data-theme="dark"] .briefing-help-btn {
@@ -414,11 +414,11 @@
 }
 
 [data-theme="dark"] .briefing-task-label.overdue {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .briefing-task-label.due-today {
-  color: #fbbf24;
+  color: var(--tw-amber-400);
 }
 
 [data-theme="dark"] .briefing-task-label.upcoming {
@@ -430,11 +430,11 @@
 }
 
 [data-theme="dark"] .briefing-badge.overdue {
-  background: #fca5a5;
+  background: var(--tw-red-300);
 }
 
 [data-theme="dark"] .briefing-badge.due-today {
-  background: #fbbf24;
+  background: var(--tw-amber-400);
 }
 
 [data-theme="dark"] .briefing-badge.upcoming {
@@ -455,7 +455,7 @@
 }
 
 [data-theme="dark"] .briefing-child-clear {
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .briefing-skeleton .skeleton {

@@ -1041,8 +1041,8 @@
 }
 
 .cp-wizard-step-number:not(.reached) {
-  background: #e5e7eb;
-  color: #6b7280;
+  background: var(--tw-gray-200);
+  color: var(--tw-gray-500);
 }
 
 .cp-wizard-step-divider {

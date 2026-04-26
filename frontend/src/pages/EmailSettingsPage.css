@@ -275,7 +275,7 @@
 
 [data-theme="dark"] .email-type-school {
   background: rgba(125, 211, 252, 0.14);
-  color: #3b82f6;
+  color: var(--tw-blue-500);
 }
 
 [data-theme="dark"] .email-verified-badge {

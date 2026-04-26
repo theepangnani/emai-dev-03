@@ -74,5 +74,5 @@
 }
 
 [data-theme="dark"] .dci-artifact-tile:hover {
-  border-color: #fde68a;
+  border-color: var(--tw-amber-200);
 }

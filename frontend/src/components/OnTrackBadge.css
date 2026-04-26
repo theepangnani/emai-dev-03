@@ -21,7 +21,7 @@
 
 /* Green */
 .on-track-badge--green {
-  background: #dcfce7;
+  background: var(--tw-green-100);
   color: #166534;
 }
 .on-track-badge--green .on-track-dot {
@@ -39,11 +39,11 @@
 
 /* Red */
 .on-track-badge--red {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tw-red-100);
+  color: var(--tw-red-800);
 }
 .on-track-badge--red .on-track-dot {
-  background: #ef4444;
+  background: var(--tw-red-500);
 }
 
 /* Tooltip */
@@ -83,7 +83,7 @@
 }
 
 [data-theme="dark"] .on-track-badge--yellow .on-track-dot {
-  background: #fde68a;
+  background: var(--tw-amber-200);
 }
 
 [data-theme="dark"] .on-track-badge--red {
@@ -91,7 +91,7 @@
 }
 
 [data-theme="dark"] .on-track-badge--red .on-track-dot {
-  background: #fca5a5;
+  background: var(--tw-red-300);
 }
 
 [data-theme="dark"] .on-track-badge .on-track-tooltip {

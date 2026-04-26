@@ -54,7 +54,7 @@
 }
 
 .ac-days-badge--red {
-  background: #ef4444;
+  background: var(--tw-red-500);
 }
 
 .ac-days-label {
