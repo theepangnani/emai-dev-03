@@ -1,0 +1,90 @@
+.dci-entry-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.dci-entry-card__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dci-entry-card__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0;
+  font-weight: 600;
+}
+
+.dci-entry-card__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.dci-entry-card__subtitle {
+  font-size: 0.9rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.dci-entry-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dci-entry-card__primary,
+.dci-entry-card__secondary {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.dci-entry-card__primary {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #0f172a;
+}
+
+.dci-entry-card__primary:hover,
+.dci-entry-card__primary:focus-visible {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+.dci-entry-card__secondary {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+}
+
+.dci-entry-card__secondary:hover,
+.dci-entry-card__secondary:focus-visible {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.dci-entry-card__note {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
