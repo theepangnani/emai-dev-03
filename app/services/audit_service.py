@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.audit_log import AuditLog
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +25,16 @@ def log_action(
     Uses a SAVEPOINT so that failures in audit logging never corrupt
     the caller's transaction.  If the insert fails the savepoint is
     rolled back and the outer transaction remains healthy.
+
+    `AuditLog` is imported lazily inside the function (not at module top)
+    so test conftests that reload `app.models.*` after this service is
+    already imported pick up the current AuditLog class. Without this, a
+    stale class bound to pre-reload Base metadata fails silently inside
+    the try/except below — a Bill 194 audit gap. See #4249.
     """
     if not settings.audit_log_enabled:
         return
+    from app.models.audit_log import AuditLog
     try:
         with db.begin_nested():
             entry = AuditLog(

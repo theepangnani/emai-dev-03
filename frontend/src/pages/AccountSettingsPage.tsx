@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { StorageUsageBar } from '../components/StorageUsageBar';
+import { DciSettingsSection } from '../components/dci/DciSettingsSection'; // CB-DCI-001 M0-11 (#4148)
 import './AccountSettingsPage.css';
 
 export function AccountSettingsPage() {
@@ -384,6 +385,11 @@ export function AccountSettingsPage() {
           </section>
         )}
 
+
+        {isParent && (
+          // CB-DCI-001 M0-11 (#4148) — DCI settings block (additive)
+          <DciSettingsSection />
+        )}
 
         <section className="account-section account-danger-zone">
           <h2>Danger Zone</h2>

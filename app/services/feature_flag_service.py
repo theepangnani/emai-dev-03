@@ -25,6 +25,9 @@ from app.models.feature_flag import FeatureFlag
 
 logger = logging.getLogger(__name__)
 
+# Flag-key constants — keep in sync with `feature_seed_service.per_key_seeds`.
+DCI_V1_ENABLED = "dci_v1_enabled"
+
 
 def is_feature_enabled(key: str, db: Optional[Session] = None) -> bool:
     """Return True iff the DB-backed feature flag ``key`` exists and is ON.
@@ -72,3 +75,13 @@ def is_feature_enabled(key: str, db: Optional[Session] = None) -> bool:
     finally:
         if owns_session:
             session.close()
+
+
+def is_dci_enabled(db: Optional[Session] = None) -> bool:
+    """Return True iff the `dci_v1_enabled` flag is ON (CB-DCI-001 M0).
+
+    Thin convenience wrapper over :func:`is_feature_enabled` so DCI route
+    handlers and frontend gates have a single named entry point. Fails
+    closed on DB errors via the underlying helper.
+    """
+    return is_feature_enabled(DCI_V1_ENABLED, db=db)
