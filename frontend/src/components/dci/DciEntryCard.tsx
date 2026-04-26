@@ -52,14 +52,12 @@ export function DciEntryCard() {
         <Link
           to="/parent/today"
           className="dci-entry-card__primary"
-          role="button"
         >
           Open today&rsquo;s summary
         </Link>
         <Link
           to="/checkin"
           className="dci-entry-card__secondary"
-          role="button"
         >
           Kid view
         </Link>

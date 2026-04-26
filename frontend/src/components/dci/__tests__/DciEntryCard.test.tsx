@@ -31,10 +31,10 @@ describe('DciEntryCard (#4258)', () => {
     expect(
       screen.getByRole('heading', { level: 3, name: /daily check-in/i }),
     ).toBeInTheDocument();
-    // Primary + secondary actions are now <Link role="button"> for native
-    // open-in-new-tab semantics (#4264).
-    const primary = screen.getByRole('button', { name: /open today.*summary/i });
-    const secondary = screen.getByRole('button', { name: /kid view/i });
+    // Primary + secondary actions are <Link> (native <a>) for proper
+    // anchor semantics — open-in-new-tab, screen-reader link role (#4264, #4278).
+    const primary = screen.getByRole('link', { name: /open today.*summary/i });
+    const secondary = screen.getByRole('link', { name: /kid view/i });
     expect(primary).toBeInTheDocument();
     expect(primary).toHaveAttribute('href', '/parent/today');
     expect(secondary).toBeInTheDocument();
