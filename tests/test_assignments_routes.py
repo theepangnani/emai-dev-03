@@ -159,7 +159,7 @@ def test_submit_assignment_auto_completes_linked_task(
     # `test_feature_flag_off_skips_submit_hook` below, which still drives
     # the real DB-backed path.
     monkeypatch.setattr(
-        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+        "app.api.routes.assignments.is_feature_enabled", lambda *_a, **_kw: True
     )
     env = hooks_env
 
@@ -193,7 +193,7 @@ def test_submit_assignment_when_no_task_exists(
     # meaningful — otherwise the same assertion passes vacuously when the
     # flag check returns False and the hook is skipped entirely.
     monkeypatch.setattr(
-        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+        "app.api.routes.assignments.is_feature_enabled", lambda *_a, **_kw: True
     )
     env = hooks_env
 
@@ -259,7 +259,7 @@ def test_delete_assignment_soft_cancels_linked_task(
     _set_task_sync_flag(db_session, True)
     # CI defense (#4254): see test_submit_assignment_auto_completes_linked_task.
     monkeypatch.setattr(
-        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+        "app.api.routes.assignments.is_feature_enabled", lambda *_a, **_kw: True
     )
     env = hooks_env
     task_id = env["task"].id
@@ -291,7 +291,7 @@ def test_delete_assignment_hook_fails_gracefully(
     # `handle_assignment_deleted` actually fires and we exercise the
     # graceful-failure path.
     monkeypatch.setattr(
-        "app.api.routes.assignments.is_feature_enabled", lambda key: True
+        "app.api.routes.assignments.is_feature_enabled", lambda *_a, **_kw: True
     )
     env = hooks_env
     # Snapshot ids before expiry — the ORM row is about to be deleted.

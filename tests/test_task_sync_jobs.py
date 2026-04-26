@@ -160,7 +160,7 @@ async def test_sync_assignments_to_tasks_full_job(db_session, tasksync_env, monk
     # eliminate the race — flag-OFF coverage stays in
     # `test_feature_flag_off_skips_job` below.
     monkeypatch.setattr(
-        "app.jobs.task_sync_job.is_feature_enabled", lambda key: True
+        "app.jobs.task_sync_job.is_feature_enabled", lambda *_a, **_kw: True
     )
 
     env = tasksync_env
@@ -272,7 +272,7 @@ async def test_job_handles_service_exception(
     # `sync_all_upcoming_assignments` actually fires and the test can
     # observe the `task_sync.failed` log line.
     monkeypatch.setattr(
-        "app.jobs.task_sync_job.is_feature_enabled", lambda key: True
+        "app.jobs.task_sync_job.is_feature_enabled", lambda *_a, **_kw: True
     )
 
     with patch.object(
