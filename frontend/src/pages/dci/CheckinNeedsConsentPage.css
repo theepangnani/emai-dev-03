@@ -1,0 +1,91 @@
+/* CB-DCI-001 (#4266) — kid-friendly "needs consent" page styles.
+   Mirrors the .dci-checkin look so it feels like part of the same flow. */
+.dci-needs-consent {
+  min-height: 100vh;
+  background: var(--color-surface-bg);
+  padding: 24px 16px 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--color-text, #1b1e2b);
+}
+
+.dci-needs-consent__shell {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.dci-needs-consent__mascot {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.dci-needs-consent__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  margin: 0;
+}
+
+.dci-needs-consent__body {
+  font-size: 1rem;
+  color: var(--color-text-muted, #555);
+  margin: 0;
+}
+
+.dci-needs-consent__link-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.dci-needs-consent__link {
+  font-size: 0.9rem;
+  color: var(--color-text, #1b1e2b);
+  word-break: break-all;
+  background: transparent;
+  padding: 4px 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.dci-needs-consent__copy {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: center;
+}
+
+.dci-needs-consent__copy:hover {
+  background: var(--color-accent-strong);
+}
+
+.dci-needs-consent__nav {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.dci-needs-consent__back {
+  background: transparent;
+  border: none;
+  color: var(--color-accent-strong);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  text-decoration: underline;
+}

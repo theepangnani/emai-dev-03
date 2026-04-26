@@ -127,6 +127,8 @@ const ArtifactDeepDivePage = lazyRetry(() => import('./pages/dci/ArtifactDeepDiv
 const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').then((m) => ({ default: m.PatternsStubPage })));
 // CB-DCI-001 M0-13 — parent consent screen routed at /dci/consent (#4260).
 const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((m) => ({ default: m.ConsentScreen })));
+// CB-DCI-001 (#4266) — kid-friendly fallback when /checkin is hit without consent.
+const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeedsConsentPage').then((m) => ({ default: m.CheckinNeedsConsentPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -638,6 +640,21 @@ function App() {
                   <ProtectedRoute allowedRoles={['student']}>
                     <DciFlagGate>
                       <CheckInDonePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-DCI-001 (#4266) — kid-friendly fallback shown when a kid
+                  hits /checkin without a parent-saved consent row. The old
+                  redirect to /dci/consent (parent-only) caused a silent
+                  two-hop bounce; this page replaces it with a "show your
+                  parent" message + copy-link affordance. */}
+              <Route
+                path="/checkin/needs-consent"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <DciFlagGate>
+                      <CheckinNeedsConsentPage />
                     </DciFlagGate>
                   </ProtectedRoute>
                 }

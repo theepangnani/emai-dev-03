@@ -40,6 +40,18 @@ vi.mock('../../../api/parent', async () => {
   };
 });
 
+// #4268: EveningSummaryPage now gates the summary fetch on consent being
+// present. Default to ai_ok=true so existing tests still see the summary;
+// the redirect-bound tests live in ConsentRedirect / ConsentGating files.
+const mockGetConsent = vi.fn();
+vi.mock('../../../api/dciConsent', () => ({
+  dciConsentApi: {
+    list: vi.fn(),
+    get: (kidId: number) => mockGetConsent(kidId),
+    upsert: vi.fn(),
+  },
+}));
+
 // Stub DashboardLayout and ChildSelectorTabs to keep test focused on the
 // page body — both are exercised by their own dedicated tests.
 vi.mock('../../../components/DashboardLayout', () => ({
@@ -145,6 +157,20 @@ describe('EveningSummaryPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetChildren.mockResolvedValue([buildChild()]);
+    // Default: consent present + ai_ok so the summary fetch is unblocked.
+    mockGetConsent.mockResolvedValue({
+      parent_id: 1,
+      kid_id: 42,
+      photo_ok: true,
+      voice_ok: true,
+      ai_ok: true,
+      retention_days: 90,
+      dci_enabled: true,
+      muted: false,
+      kid_push_time: '15:15',
+      parent_push_time: '19:00',
+      allowed_retention_days: [90, 365, 1095],
+    });
   });
 
   it('renders shimmer while loading the summary', async () => {

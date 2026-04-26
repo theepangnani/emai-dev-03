@@ -34,11 +34,12 @@ export function CheckInIntroPage() {
     staleTime: 60_000,
   });
 
-  // M0-13 (#4260): bounce to /dci/consent when consent is missing for this
-  // kid (404 from the consent endpoint, or AI processing toggled off). Without
-  // this, the next /api/dci/checkin POST would 403 with no in-app way to
-  // grant consent. The parent-only consent route on the other side decides
-  // how to actually surface the request.
+  // M0-13 (#4260) + #4266: bounce to /checkin/needs-consent when consent
+  // is missing for this kid (404 from the consent endpoint, or AI
+  // processing toggled off). Original M0-13 sent the kid to /dci/consent
+  // directly, but that route is parent-only — the kid bounced twice and
+  // landed on `/` with no explanation. The kid-mode page explains the
+  // situation and gives them a copy-link to share with their parent.
   const consentQuery = useDciConsent(kidId);
   const consentMissing =
     kidId !== null &&
@@ -46,8 +47,7 @@ export function CheckInIntroPage() {
     (consentQuery.isError || (consentQuery.data && !consentQuery.data.ai_ok));
   useEffect(() => {
     if (!consentMissing) return;
-    const target = `/dci/consent?return_to=${encodeURIComponent('/checkin')}`;
-    navigate(target, { replace: true });
+    navigate('/checkin/needs-consent', { replace: true });
   }, [consentMissing, navigate]);
 
   useEffect(() => {
