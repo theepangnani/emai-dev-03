@@ -74,10 +74,9 @@ describe('Login', () => {
   it('renders links to sign up and forgot password', () => {
     renderWithProviders(<Login />)
 
-    // `useFeature('waitlist_enabled')` defaults to TRUE during the
-    // `/api/features` query hydration (#3895), so the pre-launch
-    // "Join the Waitlist" link is shown instead of "Sign up".
-    expect(screen.getByRole('link', { name: /join the waitlist/i })).toBeInTheDocument()
+    // useFeature('waitlist_enabled') is mocked to return mockWaitlistEnabled
+    // (defaults to false in beforeEach), so Login renders the "Sign up" link.
+    expect(screen.getByRole('link', { name: /sign up/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /forgot password/i })).toBeInTheDocument()
   })
 
