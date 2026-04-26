@@ -321,7 +321,7 @@ export function AccountSettingsPage() {
                 className="account-btn account-btn-secondary"
                 onClick={() => digestSendMutation.mutate()}
                 disabled={digestSendMutation.isPending}
-                style={{ background: '#4f46e5', color: '#fff', borderColor: '#4f46e5' }}
+                style={{ background: '#4f46e5', color: 'var(--color-surface)', borderColor: '#4f46e5' }}
               >
                 {digestSendMutation.isPending ? 'Sending...' : 'Send Test Email'}
               </button>
@@ -356,7 +356,7 @@ export function AccountSettingsPage() {
                   </div>
                 </div>
                 {digestPreview.children.map((child) => (
-                  <div key={child.student_id} style={{ marginBottom: 12, padding: 12, background: '#fff', borderRadius: 8, borderLeft: '3px solid #4f46e5' }}>
+                  <div key={child.student_id} style={{ marginBottom: 12, padding: 12, background: 'var(--color-surface)', borderRadius: 8, borderLeft: '3px solid #4f46e5' }}>
                     <strong>{child.full_name}</strong>
                     {child.grade_level && <span style={{ color: '#6b7280', marginLeft: 8, fontSize: 13 }}>Grade {child.grade_level}</span>}
                     {child.needs_attention && <span style={{ marginLeft: 8, background: '#fef2f2', color: '#dc2626', fontSize: 11, padding: '2px 6px', borderRadius: 8 }}>Needs attention</span>}

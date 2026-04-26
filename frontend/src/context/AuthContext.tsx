@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={contextValue}>
       {children}
       {showIdleWarning && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} role="alertdialog" aria-modal="true" aria-labelledby="session-expiring-title">
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--color-overlay)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }} role="alertdialog" aria-modal="true" aria-labelledby="session-expiring-title">
           <div style={{ background: 'var(--color-surface)', borderRadius: 8, padding: '2rem', maxWidth: 400, textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.2)' }}>
             <h3 id="session-expiring-title" style={{ margin: '0 0 1rem' }}>Session Expiring</h3>
             <p style={{ margin: '0 0 1.5rem', color: 'var(--color-ink-muted)' }}>Your session is about to expire. Click to stay logged in.</p>
