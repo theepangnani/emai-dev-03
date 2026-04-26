@@ -400,22 +400,21 @@ def test_status_flag_off_returns_403(client, db_session, kid, linked_parent):
     assert resp.status_code == 403
 
 
-def test_correct_returns_corrected_false_when_model_missing(
+def test_correct_returns_404_when_classification_missing(
     client, db_session, kid, linked_parent, dci_flag_on
 ):
-    """Until M0-2 lands, PATCH /correct degrades to a no-op (200, corrected=false)."""
+    """Post-M0-2 (#4140 merged): PATCH /correct against a non-existent
+    classification_event returns 404, not a graceful no-op. The earlier
+    `corrected=false` degradation only existed while the M0-2 model file
+    was off-disk on the M0-4 stripe branch."""
     headers = _auth(client, linked_parent.email)
     resp = client.patch(
-        "/api/dci/checkin/999/correct",
+        "/api/dci/checkin/999999/correct",
         headers=headers,
         json={"subject": "Science"},
     )
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert body["checkin_id"] == 999
-    # Either corrected=False (M0-2 not yet shipped) OR 404 if M0-2 + missing row.
-    # In this test the M0-2 model file is not on disk, so corrected=False is expected.
-    assert body["corrected"] is False
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["detail"] == "Classification not found"
 
 
 def test_kid_checkin_resolves_linked_parent_not_self(
@@ -457,24 +456,34 @@ def test_safe_filename_strips_control_chars_and_caps_length():
     assert _safe_filename("   ", "photo") == "<unnamed photo>"
 
 
-def test_background_task_skipped_when_no_checkin_id(
+def test_background_task_skipped_when_persistence_returns_none(
     client, db_session, kid, linked_parent, dci_flag_on, mock_classifier
 ):
-    """PR-review pass 2 [P2-I1]: when persistence is a no-op (M0-2 not
-    on disk), the route must NOT enqueue run_async_pipeline with a
-    placeholder ID — the M0-5/M0-6 services would otherwise dereference
-    a phantom row once they ship for real."""
+    """PR-review pass 2 [P2-I1]: when persistence is a no-op
+    (`_persist_checkin` returns None, e.g. M0-2 model unavailable in a
+    degraded state, or another DB-write failure path), the route must NOT
+    enqueue `run_async_pipeline` with a placeholder ID — the M0-5/M0-6
+    services would otherwise dereference a phantom row.
+
+    Post-M0-2 (#4140 merged): we trigger the no-op path by mocking the
+    persistence helper directly. Mocking `_resolve_parent_id_for_kid`
+    only affects the kid-auth branch; the test authenticates as a parent
+    (linked_parent fixture), so we must mock the persistence layer."""
     from unittest.mock import patch
 
     headers = _auth(client, linked_parent.email)
-    with patch("app.api.routes.dci.dci_service.run_async_pipeline") as mock_pipeline:
+    with patch(
+        "app.api.routes.dci._persist_checkin", return_value=None
+    ), patch(
+        "app.api.routes.dci.dci_service.run_async_pipeline"
+    ) as mock_pipeline:
         resp = client.post(
             "/api/dci/checkin",
             headers=headers,
             data={"kid_id": str(kid.id), "text": "test"},
         )
         assert resp.status_code == 202, resp.text
-        # M0-2 model is not on disk in this branch -> checkin_id is None
+        # Persistence skipped -> checkin_id is None
         # -> the BackgroundTask must NOT have been scheduled.
         assert mock_pipeline.call_count == 0
         assert resp.json()["checkin_id"] is None

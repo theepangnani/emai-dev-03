@@ -209,12 +209,21 @@ def _persist_classification(
         return
 
     try:
+        # SQLite Date columns reject str — coerce ISO string → date.
+        # PG would accept the string but cross-DB safety wins.
+        from datetime import date as _date
+        deadline_value = classification.deadline_iso
+        if isinstance(deadline_value, str):
+            try:
+                deadline_value = _date.fromisoformat(deadline_value)
+            except ValueError:
+                deadline_value = None
         row = ClassificationEvent(
             checkin_id=checkin_id,
             artifact_type=artifact_type,
             subject=classification.subject or None,
             topic=classification.topic or None,
-            deadline_iso=classification.deadline_iso,
+            deadline_iso=deadline_value,
             confidence=classification.confidence,
             corrected_by_kid=False,
             model_version=classification.model_version,
