@@ -15,7 +15,7 @@
 .upload-wizard-modal {
   background: var(--color-surface, #fff);
   border-radius: var(--radius-lg, 14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 560px;
   max-height: 90vh;
@@ -740,7 +740,7 @@
 
 .uw-tool-card:hover {
   border-color: var(--color-border, #E2E8F0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
