@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { ArcMascot } from '../../components/arc/ArcMascot';
 import { dciApi, type DciStreakResponse } from '../../api/dci';
+import { useDciConsent } from '../../hooks/useDciConsent';
 import { emitDciKidEvent } from '../../components/dci/telemetry';
 import type { CaptureMode } from '../../components/dci/CapturePicker';
 import './CheckIn.css';
@@ -32,6 +33,22 @@ export function CheckInIntroPage() {
     retry: false,
     staleTime: 60_000,
   });
+
+  // M0-13 (#4260): bounce to /dci/consent when consent is missing for this
+  // kid (404 from the consent endpoint, or AI processing toggled off). Without
+  // this, the next /api/dci/checkin POST would 403 with no in-app way to
+  // grant consent. The parent-only consent route on the other side decides
+  // how to actually surface the request.
+  const consentQuery = useDciConsent(kidId);
+  const consentMissing =
+    kidId !== null &&
+    !consentQuery.isLoading &&
+    (consentQuery.isError || (consentQuery.data && !consentQuery.data.ai_ok));
+  useEffect(() => {
+    if (!consentMissing) return;
+    const target = `/dci/consent?return_to=${encodeURIComponent('/checkin')}`;
+    navigate(target, { replace: true });
+  }, [consentMissing, navigate]);
 
   useEffect(() => {
     emitDciKidEvent('dci.kid.opened');
