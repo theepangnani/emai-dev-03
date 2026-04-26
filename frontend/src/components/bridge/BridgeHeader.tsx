@@ -19,7 +19,7 @@ export function BridgeHeader({ kidsLinked, classesTracked, activeTasks }: Bridge
       <div>
         <span className="bridge-kicker">{linkedLabel}</span>
         <h1 id="bridge-title" className="bridge-title">
-          Parent Hub
+          My Hub
         </h1>
       </div>
 

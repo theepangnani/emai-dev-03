@@ -124,9 +124,6 @@ export function MyKidsPage() {
     }).catch(() => {});
   }, []);
 
-  // Study times child selector (#3495)
-  const [studyTimesChildId, setStudyTimesChildId] = useState<number | null>(null);
-
   // Auto-trigger action from query params (#3504)
   useEffect(() => {
     const action = searchParams.get('action');
@@ -665,17 +662,12 @@ export function MyKidsPage() {
     );
   }
 
-  // Derived study-times child: falls back if the selected child was removed (#3508)
-  const activeStudyChild = (studyTimesChildId && children.find(c => c.student_id === studyTimesChildId))
-    ? studyTimesChildId
-    : children[0]?.student_id;
-
   return (
     <DashboardLayout welcomeSubtitle="Manage your children's education" showBackButton sidebarActions={sidebarActions}>
       <div className="bridge-page">
       <PageNav items={[
         { label: 'Home', to: '/dashboard' },
-        { label: 'My Kids' },
+        { label: 'My Hub' },
       ]} />
       <BridgeHeader {...bridgeStats} />
       <JourneyNudgeBanner pageName="my-kids" />
@@ -808,26 +800,13 @@ export function MyKidsPage() {
                 )}
               </article>
 
-              {/* ── Best Study Times ───────── */}
-              {children.length > 0 && (
-                <div className="mykids-study-times-wrap">
-                  {children.length > 1 && (
-                    <div className="mykids-study-times-switcher">
-                      <select
-                        aria-label="Select child for study times"
-                        value={activeStudyChild}
-                        onChange={e => setStudyTimesChildId(Number(e.target.value))}
-                        className="mykids-child-select"
-                      >
-                        {children.map(c => (
-                          <option key={c.student_id} value={c.student_id}>{c.full_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  <StudyTimeSuggestions studentId={activeStudyChild} />
-                </div>
-              )}
+              <EmailDigestCard
+                hasIntegration={hasEmailDigestIntegration}
+                onSetup={() => setShowEmailDigestWizard(true)}
+                onOpenDigest={() => navigate('/email-digest')}
+                aggregate
+              />
+
 
               {/* ── Unassigned Classes ─────────────────── */}
               {unassignedCourses.length > 0 && (
@@ -947,6 +926,54 @@ export function MyKidsPage() {
                     childName={childName}
                   />
                   <ListCard
+                    kicker="Content library"
+                    title="Class Materials"
+                    count={materials.length}
+                    description="Handouts, slides, photos of notes — parsed into study tools."
+                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
+                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
+                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
+                  >
+                    {recentMaterials.slice(0, 5).map(m => {
+                      const cls = matClass(m.content_type);
+                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
+                      return (
+                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
+                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
+                          <div>
+                            <div className="bridge-item-title">{m.title}</div>
+                            <div className="bridge-item-meta">
+                              {m.course_name}
+                            </div>
+                          </div>
+                          <span className="bridge-item-chev" aria-hidden="true">›</span>
+                        </li>
+                      );
+                    })}
+                  </ListCard>
+                  <ListCard
+                    kicker="People"
+                    title="Teachers"
+                    count={allTeachers.length}
+                    description={`Everyone teaching ${childName} this term.`}
+                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
+                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
+                  >
+                    {allTeachers.slice(0, 4).map(t => (
+                      <li key={t.key}>
+                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
+                        <div>
+                          <div className="bridge-item-title">{t.name}</div>
+                          <div className="bridge-item-meta">
+                            {t.subject && <span>{t.subject}</span>}
+                            {t.subject && t.email && <span> · </span>}
+                            {t.email && <span>{t.email}</span>}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ListCard>
+                  <ListCard
                     kicker="Courses · schedule"
                     title="Classes"
                     count={courses.length}
@@ -976,54 +1003,6 @@ export function MyKidsPage() {
                         <span className="bridge-item-chev" aria-hidden="true">›</span>
                       </li>
                     ))}
-                  </ListCard>
-                  <ListCard
-                    kicker="People"
-                    title="Teachers"
-                    count={allTeachers.length}
-                    description={`Everyone teaching ${childName} this term.`}
-                    headAction={{ label: '+ Add teacher', onClick: () => { setShowAddTeacher(true); setTeacherEmail(''); setTeacherName(''); setAddTeacherError(''); } }}
-                    emptyState={allTeachers.length === 0 ? `No teachers linked yet for ${childName}.` : undefined}
-                  >
-                    {allTeachers.slice(0, 4).map(t => (
-                      <li key={t.key}>
-                        <div className="bridge-item-avatar">{teacherInitials(t.name)}</div>
-                        <div>
-                          <div className="bridge-item-title">{t.name}</div>
-                          <div className="bridge-item-meta">
-                            {t.subject && <span>{t.subject}</span>}
-                            {t.subject && t.email && <span> · </span>}
-                            {t.email && <span>{t.email}</span>}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ListCard>
-                  <ListCard
-                    kicker="Content library"
-                    title="Class Materials"
-                    count={materials.length}
-                    description="Handouts, slides, photos of notes — parsed into study tools."
-                    headAction={{ label: '↑ Upload', onClick: () => studyTools.setShowStudyModal(true) }}
-                    footAction={materials.length > 0 ? { label: 'View library →', onClick: () => navigate('/course-materials') } : undefined}
-                    emptyState={materials.length === 0 ? `No class materials yet for ${childName}.` : undefined}
-                  >
-                    {recentMaterials.slice(0, 5).map(m => {
-                      const cls = matClass(m.content_type);
-                      const label = cls === 'other' ? 'FILE' : cls.toUpperCase();
-                      return (
-                        <li key={m.id} className="is-clickable" onClick={() => navigate(`/course-materials/${m.id}`)}>
-                          <div className={`bridge-mat-type bridge-mat-type--${cls}`}>{label}</div>
-                          <div>
-                            <div className="bridge-item-title">{m.title}</div>
-                            <div className="bridge-item-meta">
-                              {m.course_name}
-                            </div>
-                          </div>
-                          <span className="bridge-item-chev" aria-hidden="true">›</span>
-                        </li>
-                      );
-                    })}
                   </ListCard>
                 </div>
               </>
@@ -1492,7 +1471,7 @@ export function MyKidsPage() {
         open={showEmailDigestWizard}
         onClose={() => setShowEmailDigestWizard(false)}
         childName={children.find(c => c.student_id === selectedChild)?.full_name}
-        onComplete={() => { toast('Email digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
+        onComplete={() => { toast('Daily digest set up!', 'success'); setHasEmailDigestIntegration(true); }}
       />
       </div>
     </DashboardLayout>
