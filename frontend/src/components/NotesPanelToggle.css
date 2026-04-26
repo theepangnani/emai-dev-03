@@ -43,7 +43,7 @@
 }
 
 [data-theme="dark"] .notes-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-surface-translucent-low);
   border-color: #64b5f6;
   color: #64b5f6;
 }

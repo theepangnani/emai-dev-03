@@ -521,7 +521,7 @@
 
 .message.sent.thread-match mark,
 .message.sent.thread-match-active mark {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--color-surface-translucent-high);
 }
 
 .message-content {

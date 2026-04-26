@@ -53,5 +53,5 @@
 [data-theme="dark"] .dci-deadline-chip__badge {
   background: var(--color-surface-alt);
   color: var(--color-ink-muted);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-surface-translucent-mid);
 }

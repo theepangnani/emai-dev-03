@@ -208,5 +208,5 @@
 
 [data-theme="dark"] .dci-evening-page__empty {
   background: var(--color-surface);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-surface-translucent-mid);
 }

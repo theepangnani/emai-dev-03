@@ -38,7 +38,7 @@
 }
 
 .pd-child-tab.active .pd-grade-badge {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-translucent-mid);
   color: white;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .pd-child-tab.active .pd-overdue-badge {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-surface-translucent-high);
   color: white;
 }
 
