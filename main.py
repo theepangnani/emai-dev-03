@@ -41,6 +41,7 @@ from app.api.routes import class_import  # CB-ONBOARD-001 (#3985)
 from app.api.routes import tutor  # CB-TUTOR-002 Phase 1 (#4063)
 from app.api.routes import dci_streak  # CB-DCI-001 M0-8 (#4145)
 from app.api.routes import dci_consent  # CB-DCI-001 M0-11 (#4148)
+from app.api.routes import dci  # CB-DCI-001 M0-4 (#4139)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1263,6 +1264,7 @@ app.include_router(demo.router, prefix="/api/v1")  # CB-DEMO-001 B1 (#3603)
 app.include_router(tutor.router, prefix="/api")  # CB-TUTOR-002 Phase 1 (#4063)
 app.include_router(dci_streak.router, prefix="/api")  # CB-DCI-001 M0-8 (#4145)
 app.include_router(dci_consent.router, prefix="/api")  # CB-DCI-001 M0-11 (#4148)
+app.include_router(dci.router, prefix="/api")  # CB-DCI-001 M0-4 (#4139)
 
 logger.info("API routes registered at /api")
 
