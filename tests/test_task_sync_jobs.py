@@ -144,13 +144,24 @@ def _make_assignment(db_session, course_id, title, due_date):
 # ──────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_sync_assignments_to_tasks_full_job(db_session, tasksync_env):
+async def test_sync_assignments_to_tasks_full_job(db_session, tasksync_env, monkeypatch):
     """With flag ON: 3 in-window assignments → 9 Tasks (3 students × 3 assignments).
     Out-of-window and NULL-due assignments yield 0 Tasks."""
     from app.jobs.task_sync_job import sync_assignments_to_tasks
     from app.models.task import Task
 
     _set_flag(db_session, True)
+    # CI defense (#4254): the job's `is_feature_enabled("task_sync_enabled")`
+    # opens its own SessionLocal() to read the DB-backed flag. Under
+    # pytest-xdist `--dist loadfile` on CI the cross-session read of a
+    # just-committed flag value has been observed to come back stale even
+    # though local runs always see True, leading to `task_sync.skipped |
+    # flag=off` and the job returning early. Patch the job's flag check to
+    # eliminate the race — flag-OFF coverage stays in
+    # `test_feature_flag_off_skips_job` below.
+    monkeypatch.setattr(
+        "app.jobs.task_sync_job.is_feature_enabled", lambda key: True
+    )
 
     env = tasksync_env
     now = datetime.now(timezone.utc)
@@ -250,11 +261,19 @@ async def test_feature_flag_off_skips_job(db_session, tasksync_env, caplog):
 # ──────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_job_handles_service_exception(db_session, tasksync_env, caplog):
+async def test_job_handles_service_exception(
+    db_session, tasksync_env, caplog, monkeypatch
+):
     """If the service raises, the job swallows the exception and logs it."""
     from app.jobs import task_sync_job
 
     _set_flag(db_session, True)
+    # CI defense (#4254): force flag-ON inside the job so the patched
+    # `sync_all_upcoming_assignments` actually fires and the test can
+    # observe the `task_sync.failed` log line.
+    monkeypatch.setattr(
+        "app.jobs.task_sync_job.is_feature_enabled", lambda key: True
+    )
 
     with patch.object(
         task_sync_job,
