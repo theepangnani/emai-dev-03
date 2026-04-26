@@ -62,8 +62,10 @@ describe('Login', () => {
   it('renders links to sign up and forgot password', () => {
     renderWithProviders(<Login />)
 
-    // waitlist_enabled defaults to false, so "Sign up" link is shown
-    expect(screen.getByRole('link', { name: /sign up/i })).toBeInTheDocument()
+    // `useFeature('waitlist_enabled')` defaults to TRUE during the
+    // `/api/features` query hydration (#3895), so the pre-launch
+    // "Join the Waitlist" link is shown instead of "Sign up".
+    expect(screen.getByRole('link', { name: /join the waitlist/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /forgot password/i })).toBeInTheDocument()
   })
 
