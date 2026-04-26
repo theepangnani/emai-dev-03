@@ -8,6 +8,11 @@
   flex-direction: column;
   gap: 14px;
   margin-top: 16px;
+  /* Visual separator from siblings stacked above (e.g. RecentActivityPanel)
+     on narrow viewports — supplements the 16px margin so the card reads as
+     its own block rather than crowding the panel. */
+  padding-top: 24px;
+  border-top: 3px solid #f1f5f9;
 }
 
 .dci-entry-card__header {
@@ -44,10 +49,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 .dci-entry-card__primary,
-.dci-entry-card__secondary {
+.dci-entry-card__secondary,
+.dci-entry-card__copy {
   font: inherit;
   cursor: pointer;
   border-radius: 8px;
@@ -58,10 +65,22 @@
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
+/* Keyboard-visible focus ring on all three actions — the previous
+   background-only :focus-visible (1.06:1 delta) was invisible to keyboard
+   users. WCAG 2.4.7 / 2.4.11. */
+.dci-entry-card__primary:focus-visible,
+.dci-entry-card__secondary:focus-visible,
+.dci-entry-card__copy:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+}
+
 .dci-entry-card__primary {
   background: #0f172a;
   color: #f8fafc;
   border: 1px solid #0f172a;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .dci-entry-card__primary:hover,
@@ -74,12 +93,25 @@
   background: #ffffff;
   color: #0f172a;
   border: 1px solid #cbd5e1;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .dci-entry-card__secondary:hover,
 .dci-entry-card__secondary:focus-visible {
   background: #f1f5f9;
   border-color: #94a3b8;
+}
+
+.dci-entry-card__copy {
+  background: transparent;
+  color: #0f172a;
+  border: 1px solid transparent;
+}
+
+.dci-entry-card__copy:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .dci-entry-card__note {

@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useFeatureFlagState } from '../../hooks/useFeatureToggle';
 import './DciEntryCard.css';
 
@@ -15,10 +16,22 @@ import './DciEntryCard.css';
  * app is fast-follow; until then, parents share the URL).
  */
 export function DciEntryCard() {
-  const navigate = useNavigate();
   const { enabled, isLoading } = useFeatureFlagState('dci_v1_enabled');
+  const [copied, setCopied] = useState(false);
 
   if (isLoading || !enabled) return null;
+
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/checkin`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard may be unavailable (insecure context, denied permission);
+      // fail silently — the visible Kid view link still serves as fallback.
+    }
+  };
 
   return (
     <section
@@ -36,19 +49,25 @@ export function DciEntryCard() {
       </header>
 
       <div className="dci-entry-card__actions">
-        <button
-          type="button"
+        <Link
+          to="/parent/today"
           className="dci-entry-card__primary"
-          onClick={() => navigate('/parent/today')}
         >
           Open today&rsquo;s summary
-        </button>
-        <button
-          type="button"
+        </Link>
+        <Link
+          to="/checkin"
           className="dci-entry-card__secondary"
-          onClick={() => navigate('/checkin')}
         >
           Kid view
+        </Link>
+        <button
+          type="button"
+          className="dci-entry-card__copy"
+          onClick={handleCopyLink}
+          aria-live="polite"
+        >
+          {copied ? 'Copied!' : 'Copy link'}
         </button>
       </div>
 
