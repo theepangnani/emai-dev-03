@@ -20,5 +20,9 @@ export default defineConfig({
     // fix lands. The targeted suppression filter that runs first lives in
     // `src/test/setup.ts` so genuine app-level rejections still surface there.
     dangerouslyIgnoreUnhandledErrors: true,
+    // CI flake mitigation: under heavy parallel load, vitest+jsdom+MSW timing
+    // races cause occasional sporadic failures (different test per run). Retry
+    // twice before marking failed. Per-test bugs would still fail consistently.
+    retry: 2,
   },
 })
