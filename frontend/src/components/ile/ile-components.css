@@ -107,7 +107,7 @@
 /* Streak tier: hot (3-4 streak)
    Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-hot {
-  color: #ef4444;
+  color: var(--tw-red-500);
   background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
@@ -115,7 +115,7 @@
 /* Streak tier: blazing (5+ streak)
    Hardcoded red accent — matches StudentDashboard.css pattern; no CSS variable available */
 .ile-streak--tier-blazing {
-  color: #ef4444;
+  color: var(--tw-red-500);
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   animation: ile-streak-glow 2s ease-in-out infinite;

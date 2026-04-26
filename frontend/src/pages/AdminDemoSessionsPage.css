@@ -55,21 +55,21 @@
 }
 
 .demo-status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tw-amber-100);
+  color: var(--tw-amber-800);
 }
 
 .demo-status-badge.approved {
   background: #d1fae5;
-  color: #065f46;
+  color: var(--tw-emerald-800);
 }
 
 .demo-status-badge.rejected {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--tw-red-100);
+  color: var(--tw-red-800);
 }
 
 .demo-status-badge.blocklisted {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--tw-gray-200);
+  color: var(--tw-gray-700);
 }

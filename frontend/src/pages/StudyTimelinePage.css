@@ -253,7 +253,7 @@
 }
 
 [data-theme="dark"] .st-entry-xp {
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .st-entry-score {
@@ -261,7 +261,7 @@
 }
 
 [data-theme="dark"] .st-error {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .st-empty {

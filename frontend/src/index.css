@@ -173,6 +173,48 @@ body:has(.modal-overlay) {
   --chart-series-5: #7c3aed;
   --chart-series-6: #d64545;
 
+  /* ── Tailwind-aligned palette (CB-THEME-001 S6 round 2 / #4235) ──
+     Theme-aware aliases for the most common Tailwind hexes that appear
+     across legacy CSS. Light theme uses the canonical Tailwind v3 values;
+     other themes remap to their own neutrals/accents so a sweep is safe. */
+  --tw-gray-50:  #f9fafb;
+  --tw-gray-100: #f3f4f6;
+  --tw-gray-200: #e5e7eb;
+  --tw-gray-300: #d1d5db;
+  --tw-gray-400: #9ca3af;
+  --tw-gray-500: #6b7280;
+  --tw-gray-600: #4b5563;
+  --tw-gray-700: #374151;
+  --tw-gray-800: #1f2937;
+  --tw-gray-900: #111827;
+  --tw-slate-200: #e2e8f0;
+
+  --tw-red-50:  #fef2f2;
+  --tw-red-100: #fee2e2;
+  --tw-red-300: #fca5a5;
+  --tw-red-500: #ef4444;
+  --tw-red-600: #dc2626;
+  --tw-red-700: #b91c1c;
+  --tw-red-800: #991b1b;
+
+  --tw-green-100: #dcfce7;
+  --tw-green-500: #22c55e;
+  --tw-green-600: #16a34a;
+  --tw-green-700: #15803d;
+  --tw-emerald-400: #34d399;
+  --tw-emerald-800: #065f46;
+
+  --tw-blue-50:  #eff6ff;
+  --tw-blue-500: #3b82f6;
+  --tw-blue-700: #1d4ed8;
+
+  --tw-amber-100: #fef3c7;
+  --tw-amber-200: #fde68a;
+  --tw-amber-400: #fbbf24;
+  --tw-amber-500: #f59e0b;
+  --tw-amber-600: #d97706;
+  --tw-amber-800: #92400e;
+
   font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
@@ -288,6 +330,47 @@ body:has(.modal-overlay) {
   --color-surface-translucent-low: rgba(228, 228, 231, 0.06);
   --color-surface-translucent-mid: rgba(228, 228, 231, 0.14);
   --color-surface-translucent-high: rgba(228, 228, 231, 0.22);
+
+  /* Tailwind-aligned palette — dark theme: invert grays so legacy CSS that
+     used #1f2937 for text now reads near-white, and #f9fafb backgrounds
+     resolve to dark surfaces. Status hues remain warm but desaturated. */
+  --tw-gray-50:  #18181b;
+  --tw-gray-100: #1f1f23;
+  --tw-gray-200: #2a2a2e;
+  --tw-gray-300: #3f3f46;
+  --tw-gray-400: #71717a;
+  --tw-gray-500: #a1a1aa;
+  --tw-gray-600: #c4c4ca;
+  --tw-gray-700: #d4d4d8;
+  --tw-gray-800: #e4e4e7;
+  --tw-gray-900: #f4f4f5;
+  --tw-slate-200: #2a2a2e;
+
+  --tw-red-50:  rgba(252, 165, 165, 0.10);
+  --tw-red-100: rgba(252, 165, 165, 0.16);
+  --tw-red-300: #fca5a5;
+  --tw-red-500: #f87171;
+  --tw-red-600: #ef4444;
+  --tw-red-700: #fca5a5;
+  --tw-red-800: #fecaca;
+
+  --tw-green-100: rgba(110, 231, 183, 0.16);
+  --tw-green-500: #34d399;
+  --tw-green-600: #10b981;
+  --tw-green-700: #6ee7b7;
+  --tw-emerald-400: #6ee7b7;
+  --tw-emerald-800: #a7f3d0;
+
+  --tw-blue-50:  rgba(125, 211, 252, 0.10);
+  --tw-blue-500: #60a5fa;
+  --tw-blue-700: #93c5fd;
+
+  --tw-amber-100: rgba(253, 230, 138, 0.14);
+  --tw-amber-200: rgba(253, 230, 138, 0.22);
+  --tw-amber-400: #fbbf24;
+  --tw-amber-500: #fde68a;
+  --tw-amber-600: #fcd34d;
+  --tw-amber-800: #fef08a;
 }
 
 /* ========================================
@@ -394,6 +477,46 @@ body:has(.modal-overlay) {
   --color-surface-translucent-low: rgba(254, 253, 251, 0.10);
   --color-surface-translucent-mid: rgba(254, 253, 251, 0.22);
   --color-surface-translucent-high: rgba(254, 253, 251, 0.32);
+
+  /* Tailwind-aligned palette — focus theme: warm muted neutrals so legacy
+     gray text reads as warm sepia instead of cool blue-gray. */
+  --tw-gray-50:  #faf8f5;
+  --tw-gray-100: #f5f0ea;
+  --tw-gray-200: #ede5d8;
+  --tw-gray-300: #ddd6cc;
+  --tw-gray-400: #b0a89c;
+  --tw-gray-500: #8a8480;
+  --tw-gray-600: #6b6560;
+  --tw-gray-700: #4f4a45;
+  --tw-gray-800: #3a3631;
+  --tw-gray-900: #2c2a26;
+  --tw-slate-200: #ede5d8;
+
+  --tw-red-50:  rgba(196, 90, 90, 0.08);
+  --tw-red-100: rgba(196, 90, 90, 0.14);
+  --tw-red-300: #d88080;
+  --tw-red-500: #c45a5a;
+  --tw-red-600: #a84545;
+  --tw-red-700: #8a3030;
+  --tw-red-800: #6e2424;
+
+  --tw-green-100: rgba(74, 138, 74, 0.14);
+  --tw-green-500: #5a9e6a;
+  --tw-green-600: #4a8a4a;
+  --tw-green-700: #3a7a3a;
+  --tw-emerald-400: #6aae7a;
+  --tw-emerald-800: #2c5a30;
+
+  --tw-blue-50:  rgba(74, 124, 158, 0.10);
+  --tw-blue-500: #5a8fb5;
+  --tw-blue-700: #3a6c8e;
+
+  --tw-amber-100: rgba(201, 148, 58, 0.12);
+  --tw-amber-200: rgba(201, 148, 58, 0.20);
+  --tw-amber-400: #d4a55a;
+  --tw-amber-500: #c9943a;
+  --tw-amber-600: #a87a30;
+  --tw-amber-800: #7a5a1a;
 }
 
 /* ========================================
@@ -543,6 +666,46 @@ body:has(.modal-overlay) {
   --color-surface-translucent-low: rgba(251, 248, 242, 0.10);
   --color-surface-translucent-mid: rgba(251, 248, 242, 0.22);
   --color-surface-translucent-high: rgba(251, 248, 242, 0.32);
+
+  /* Tailwind-aligned palette — bridge theme: warm ivory neutrals + the
+     bridge accent family for status hues (rust/pine/amber/sky). */
+  --tw-gray-50:  #fbf8f2;
+  --tw-gray-100: #f5f1ea;
+  --tw-gray-200: #ece4d6;
+  --tw-gray-300: #e5ddd1;
+  --tw-gray-400: #b8ad9d;
+  --tw-gray-500: #8a8074;
+  --tw-gray-600: #6b645b;
+  --tw-gray-700: #4a443d;
+  --tw-gray-800: #2e2a24;
+  --tw-gray-900: #1c1a16;
+  --tw-slate-200: #ece4d6;
+
+  --tw-red-50:  rgba(168, 68, 88, 0.08);
+  --tw-red-100: rgba(168, 68, 88, 0.14);
+  --tw-red-300: #d68094;
+  --tw-red-500: #c25b6f;
+  --tw-red-600: #a84458;
+  --tw-red-700: #7a2f3e;
+  --tw-red-800: #5a2230;
+
+  --tw-green-100: rgba(45, 74, 62, 0.12);
+  --tw-green-500: #3e6855;
+  --tw-green-600: #2d4a3e;
+  --tw-green-700: #1c3329;
+  --tw-emerald-400: #4a7d68;
+  --tw-emerald-800: #1c3329;
+
+  --tw-blue-50:  rgba(59, 106, 143, 0.10);
+  --tw-blue-500: #3b6a8f;
+  --tw-blue-700: #2d5475;
+
+  --tw-amber-100: #f6ead3;
+  --tw-amber-200: rgba(212, 162, 75, 0.28);
+  --tw-amber-400: #e0b86c;
+  --tw-amber-500: #d4a24b;
+  --tw-amber-600: #a87a30;
+  --tw-amber-800: #7a5a1a;
 }
 
 body {

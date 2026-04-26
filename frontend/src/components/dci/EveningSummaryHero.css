@@ -1,6 +1,6 @@
 .dci-evening-hero {
   background: #0f172a; /* navy ink */
-  color: #e2e8f0;
+  color: var(--tw-slate-200);
   border-radius: 16px;
   padding: 24px 28px;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.18);

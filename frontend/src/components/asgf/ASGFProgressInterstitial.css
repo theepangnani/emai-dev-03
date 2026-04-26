@@ -161,7 +161,7 @@
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
-  color: #4b5563;
+  color: var(--tw-gray-600);
 }
 
 .asgf-progress-interstitial__preview-stat-icon {
