@@ -99,7 +99,7 @@ def dci_flag_on(db_session):
     if existing is None:
         existing = FeatureFlag(
             key="dci_v1_enabled",
-            name="DCI Daily Check-In",
+            name="Daily Check-In V1",
             description="CB-DCI-001 V1 feature gate",
             enabled=True,
         )
