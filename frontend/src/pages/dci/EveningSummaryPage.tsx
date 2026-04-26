@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { ChildSelectorTabs } from '../../components/ChildSelectorTabs';
@@ -10,6 +11,7 @@ import {
   useDciSummary,
   useConversationStarterFeedback,
 } from '../../hooks/useDciSummary';
+import { useDciConsent } from '../../hooks/useDciConsent';
 import type { DciArtifact } from '../../api/dciSummary';
 import { trackDciTelemetry } from '../../utils/dciTelemetry';
 import { logger } from '../../utils/logger';
@@ -40,6 +42,7 @@ function todayLocal(): string {
  * plus starter_used / starter_regenerated / deep_dive_opened on action.
  */
 export function EveningSummaryPage() {
+  const navigate = useNavigate();
   // `null` means "no explicit choice yet" — the page derives the effective
   // selection from the children list (first kid wins) until the parent
   // taps a tab. We avoid setState-in-effect (project lint rule) by deriving
@@ -85,6 +88,22 @@ export function EveningSummaryPage() {
     explicitlySelectedKidId ??
     (children.length > 0 ? children[0].student_id : null);
   const setSelectedKidId = setExplicitlySelectedKidId;
+
+  // M0-13 (#4260): gate the page on per-kid consent. If the consent row is
+  // missing (404) or AI processing is off, bounce the parent to /dci/consent
+  // with a return_to so they land back here after granting. The settings
+  // flow (DciSettingsSection in AccountSettingsPage) remains an alternate
+  // entry — both paths still work.
+  const consentQuery = useDciConsent(selectedKidId);
+  const consentMissing =
+    selectedKidId !== null &&
+    !consentQuery.isLoading &&
+    (consentQuery.isError || (consentQuery.data && !consentQuery.data.ai_ok));
+  useEffect(() => {
+    if (!consentMissing) return;
+    const target = `/dci/consent?return_to=${encodeURIComponent('/parent/today')}`;
+    navigate(target, { replace: true });
+  }, [consentMissing, navigate]);
 
   const summaryQuery = useDciSummary(selectedKidId, today);
   const feedbackMutation = useConversationStarterFeedback();
