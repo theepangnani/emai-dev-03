@@ -17,13 +17,30 @@ export function useDciConsentList(enabled: boolean = true) {
   });
 }
 
-/** Read consent for a single kid. */
+/**
+ * Read consent for a single kid.
+ *
+ * #4267: A 404 from `/api/dci/consent/{kid_id}` is the legitimate
+ * "no consent row yet" state — the most common first-visit case for a
+ * new parent. We retry only on 5xx server errors so the redirect
+ * decision fires in a single roundtrip instead of waiting for the
+ * global `retry: 1` to chew through a deterministic 404. 4xx errors
+ * (404 / 403) are propagated immediately as `isError=true` so the
+ * consumer can route to /dci/consent without a 1-2s blank state.
+ */
 export function useDciConsent(kidId: number | null | undefined) {
   return useQuery<DciConsent>({
     queryKey: kidId ? KEY_ONE(kidId) : ['dciConsent', 'kid', 'none'],
     queryFn: () => dciConsentApi.get(kidId as number),
     enabled: !!kidId,
     staleTime: 30_000,
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      // Retry only on transient 5xx; deterministic 4xx (404 = no consent
+      // yet, 403 = wrong role) should never retry.
+      if (typeof status === 'number' && status < 500) return false;
+      return failureCount < 1;
+    },
   });
 }
 

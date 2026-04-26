@@ -125,7 +125,11 @@ function ConsentEditor({ kid, initialConsent, onSaved }: ConsentEditorProps) {
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   const isSaving = upsert.isPending;
-  const canSave = !isSaving;
+  // #4269: once we've recorded a successful save, keep the save button
+  // disabled so the parent can't double-tap during the saved-flash delay
+  // before the host's auto-navigate fires.
+  const hasSaved = savedAt != null && !upsert.isError;
+  const canSave = !isSaving && !hasSaved;
 
   function handleSave() {
     upsert.mutate(
@@ -437,8 +441,15 @@ export function ConsentScreen({
             // standalone (no `onComplete` override). When embedded in a
             // settings page the host owns navigation. Validated return_to
             // wins; falls back to `/` so the parent never gets stuck.
+            //
+            // #4269: defer the bounce by 600ms so the green "Saved." status
+            // is actually visible before the editor unmounts. Editor's own
+            // `isPending → isSuccess` flip already disables the save button
+            // for this window so a double-tap can't fire.
             if (!onComplete) {
-              navigate(returnTo ?? '/', { replace: true });
+              window.setTimeout(() => {
+                navigate(returnTo ?? '/', { replace: true });
+              }, 600);
             }
           }}
         />

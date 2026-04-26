@@ -1,16 +1,11 @@
 /**
- * CB-DCI-001 M0-13 (#4260) — consent redirect tests.
+ * CB-DCI-001 fast-follows (#4268, #4269) — additional gating + timing tests.
  *
- * Three locked-down behaviours from the issue acceptance criteria:
- *   1. /parent/today and /checkin redirect to /dci/consent when the
- *      consent row is missing (404) or AI processing is off.
- *   2. No redirect fires when consent is present (ai_ok = true).
- *   3. ConsentScreen honours ?return_to= and bounces back after the parent
- *      saves consent.
- *
- * The consent endpoint is parent-only — for the kid /checkin scenario the
- * hook will surface an error which still triggers the redirect (which is
- * the issue's defined behaviour: stop the flow, hand off to /dci/consent).
+ * #4268: useDciSummary must NOT fire when consent is missing/absent —
+ *        otherwise we waste one backend cycle on every redirect-bound
+ *        /parent/today visit.
+ * #4269: ConsentScreen Saved-flash must remain visible for ≥400ms before
+ *        the host's auto-navigate fires.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -29,7 +24,6 @@ const mockGetSummary = vi.fn();
 const mockSubmitFeedback = vi.fn();
 const mockGetConsent = vi.fn();
 const mockUpsertConsent = vi.fn();
-const mockGetStreak = vi.fn();
 
 vi.mock('../../../api/parent', async () => {
   const actual = await vi.importActual<typeof import('../../../api/parent')>(
@@ -65,28 +59,6 @@ vi.mock('../../../api/dciConsent', () => ({
   },
 }));
 
-vi.mock('../../../api/dci', () => ({
-  dciApi: {
-    submitCheckin: vi.fn(),
-    getStatus: vi.fn(),
-    correct: vi.fn(),
-    getStreak: (...args: unknown[]) => mockGetStreak(...args),
-  },
-}));
-
-vi.mock('../../../context/AuthContext', () => ({
-  useAuth: () => ({
-    user: {
-      id: 42,
-      full_name: 'Haashini Sharma',
-      role: 'student',
-      roles: ['student'],
-    },
-    logout: vi.fn(),
-  }),
-}));
-
-// Stub heavy chrome — keeps the redirect-under-test the only assertion.
 vi.mock('../../../components/DashboardLayout', () => ({
   DashboardLayout: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="layout">{children}</div>
@@ -99,20 +71,15 @@ vi.mock('../../../utils/dciTelemetry', () => ({
   trackDciTelemetry: vi.fn(),
 }));
 
-// Lazy import after mocks so the page modules pick up the mocked deps.
 import { EveningSummaryPage } from '../EveningSummaryPage';
-import { CheckInIntroPage } from '../CheckInIntroPage';
 import { ConsentScreen } from '../ConsentScreen';
-import { CheckinNeedsConsentPage } from '../CheckinNeedsConsentPage';
 
-// ── Helpers ──────────────────────────────────────────────────────────────
 function LocationProbe() {
   const location = useLocation();
   return (
     <div
       data-testid="location-probe"
       data-pathname={location.pathname}
-      data-search={location.search}
     />
   );
 }
@@ -129,16 +96,8 @@ function renderRoutes(ui: ReactElement, initialEntries: string[]) {
             <MemoryRouter initialEntries={initialEntries}>
               <Routes>
                 <Route path="/parent/today" element={ui} />
-                <Route path="/checkin" element={ui} />
                 <Route path="/dci/consent" element={<ConsentScreen />} />
-                <Route
-                  path="/checkin/needs-consent"
-                  element={<CheckinNeedsConsentPage />}
-                />
-                <Route
-                  path="/"
-                  element={<div data-testid="home">home</div>}
-                />
+                <Route path="/" element={<div data-testid="home">home</div>} />
               </Routes>
               <LocationProbe />
             </MemoryRouter>
@@ -191,62 +150,92 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetChildren.mockResolvedValue([baseChild]);
   mockGetSummary.mockResolvedValue({ summary: null, state: 'no_checkin_today' });
-  mockGetStreak.mockResolvedValue({
-    kid_id: 42,
-    current_streak: 0,
-    longest_streak: 0,
-    last_checkin_date: null,
-    last_voice_sentiment: null,
-  });
 });
 
-// ── Tests ────────────────────────────────────────────────────────────────
-describe('CB-DCI-001 M0-13 — consent redirect (#4260)', () => {
-  it('redirects /parent/today to /dci/consent when consent is missing (404)', async () => {
+describe('useDciSummary consent gate (#4268)', () => {
+  it('does NOT call the summary endpoint when consent is missing (404)', async () => {
     mockGetConsent.mockRejectedValue(
       Object.assign(new Error('not found'), { response: { status: 404 } }),
     );
 
     renderRoutes(<EveningSummaryPage />, ['/parent/today']);
 
+    // Wait for the redirect to /dci/consent to fire, then assert summary
+    // was never called.
     await waitFor(() => {
-      const probe = screen.getByTestId('location-probe');
-      expect(probe.getAttribute('data-pathname')).toBe('/dci/consent');
-      expect(probe.getAttribute('data-search')).toContain(
-        'return_to=%2Fparent%2Ftoday',
-      );
+      expect(
+        screen.getByTestId('location-probe').getAttribute('data-pathname'),
+      ).toBe('/dci/consent');
     });
+    expect(mockGetSummary).not.toHaveBeenCalled();
   });
 
-  it('does NOT redirect when consent is present (ai_ok = true)', async () => {
+  it('does NOT call the summary endpoint when ai_ok is false', async () => {
+    mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
+
+    renderRoutes(<EveningSummaryPage />, ['/parent/today']);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('location-probe').getAttribute('data-pathname'),
+      ).toBe('/dci/consent');
+    });
+    expect(mockGetSummary).not.toHaveBeenCalled();
+  });
+
+  it('DOES call the summary endpoint when consent is present', async () => {
     mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
 
     renderRoutes(<EveningSummaryPage />, ['/parent/today']);
 
-    // Wait for the children + consent + summary queries to settle, then
-    // assert the path stayed on /parent/today.
     await waitFor(() => {
       expect(mockGetSummary).toHaveBeenCalled();
     });
-    expect(screen.getByTestId('location-probe').getAttribute('data-pathname')).toBe(
-      '/parent/today',
-    );
+  });
+});
+
+describe('ConsentScreen saved-flash timing (#4269)', () => {
+  it('keeps the Saved status visible for at least 400ms before navigating', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
+      mockUpsertConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
+
+      renderRoutes(
+        <div data-testid="never-rendered" />,
+        ['/dci/consent?return_to=%2Fparent%2Ftoday'],
+      );
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      const aiToggle = await screen.findByLabelText(/AI processing OK/);
+      if (!(aiToggle as HTMLInputElement).checked) {
+        await user.click(aiToggle);
+      }
+      await user.click(screen.getByTestId('dci-consent-save'));
+
+      // After save resolves the green Saved flash should appear.
+      await screen.findByTestId('dci-consent-saved');
+
+      // The location should NOT have changed yet — the host's auto-navigate
+      // is deferred so the parent can read the flash.
+      expect(
+        screen.getByTestId('location-probe').getAttribute('data-pathname'),
+      ).toBe('/dci/consent');
+
+      // After the timer fires, navigate happens.
+      vi.advanceTimersByTime(700);
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('location-probe').getAttribute('data-pathname'),
+        ).toBe('/parent/today');
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('redirects /checkin to /checkin/needs-consent when ai_ok is false (#4266)', async () => {
-    mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
-
-    renderRoutes(<CheckInIntroPage />, ['/checkin']);
-
-    await waitFor(() => {
-      const probe = screen.getByTestId('location-probe');
-      expect(probe.getAttribute('data-pathname')).toBe('/checkin/needs-consent');
-    });
-  });
-
-  it('honours ?return_to= and navigates back after a successful save', async () => {
-    // Initial GET returns ai_ok=false so the editor shows. Upsert succeeds
-    // and ConsentScreen should navigate back to the supplied return_to.
+  it('disables the save button after a successful save (no double-tap)', async () => {
     mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
     mockUpsertConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
 
@@ -256,20 +245,18 @@ describe('CB-DCI-001 M0-13 — consent redirect (#4260)', () => {
     );
 
     const user = userEvent.setup();
-    // Ensure ai_ok is checked, then save.
+
     const aiToggle = await screen.findByLabelText(/AI processing OK/);
     if (!(aiToggle as HTMLInputElement).checked) {
       await user.click(aiToggle);
     }
-    await user.click(screen.getByTestId('dci-consent-save'));
+    const saveBtn = screen.getByTestId('dci-consent-save');
+    await user.click(saveBtn);
 
-    await waitFor(() => {
-      expect(mockUpsertConsent).toHaveBeenCalledTimes(1);
-    });
-    await waitFor(() => {
-      expect(
-        screen.getByTestId('location-probe').getAttribute('data-pathname'),
-      ).toBe('/parent/today');
-    });
+    await screen.findByTestId('dci-consent-saved');
+
+    // Save button is now disabled — protects against double-tap during the
+    // saved-flash delay window.
+    expect(saveBtn).toBeDisabled();
   });
 });

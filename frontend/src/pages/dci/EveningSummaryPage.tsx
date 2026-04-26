@@ -105,7 +105,16 @@ export function EveningSummaryPage() {
     navigate(target, { replace: true });
   }, [consentMissing, navigate]);
 
-  const summaryQuery = useDciSummary(selectedKidId, today);
+  // #4268: only fetch the summary once consent is confirmed present. Without
+  // this gate the summary endpoint fires in parallel with the consent check
+  // and 403s on every redirect-bound visit, wasting one backend cycle (and
+  // an OpenAI call when the daily summary is uncached).
+  const consentReady =
+    selectedKidId !== null &&
+    !consentQuery.isLoading &&
+    !consentQuery.isError &&
+    consentQuery.data?.ai_ok === true;
+  const summaryQuery = useDciSummary(consentReady ? selectedKidId : null, today);
   const feedbackMutation = useConversationStarterFeedback();
 
   const summary = summaryQuery.data?.summary ?? null;
