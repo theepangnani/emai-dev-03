@@ -11,7 +11,7 @@ import { FeatureGate } from './components/FeatureGate';
 import { PageLoader } from './components/PageLoader';
 import { SeoDefaults } from './components/SeoDefaults';
 import { useVariantBucket } from './hooks/useVariantBucket';
-import { useFeatureFlagEnabled } from './hooks/useFeatureToggle';
+import { useFeatureFlagState } from './hooks/useFeatureToggle';
 import { RedirectPreservingQuery, LegacySessionRedirect } from './lib/routing-helpers';
 import './App.css';
 
@@ -121,6 +121,10 @@ const DemoVerifiedPage = lazyRetry(() => import('./pages/DemoVerifiedPage').then
 const CheckInIntroPage = lazyRetry(() => import('./pages/dci/CheckInIntroPage').then((m) => ({ default: m.CheckInIntroPage })));
 const CheckInCapturePage = lazyRetry(() => import('./pages/dci/CheckInCapturePage').then((m) => ({ default: m.CheckInCapturePage })));
 const CheckInDonePage = lazyRetry(() => import('./pages/dci/CheckInDonePage').then((m) => ({ default: m.CheckInDonePage })));
+// CB-DCI-001 M0-10 — parent /parent/today routes (also gated by DciFlagGate).
+const EveningSummaryPage = lazyRetry(() => import('./pages/dci/EveningSummaryPage').then((m) => ({ default: m.EveningSummaryPage })));
+const ArtifactDeepDivePage = lazyRetry(() => import('./pages/dci/ArtifactDeepDivePage').then((m) => ({ default: m.ArtifactDeepDivePage })));
+const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').then((m) => ({ default: m.PatternsStubPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -605,9 +609,7 @@ function App() {
                 }
               />
               {/* CB-DCI-001 M0-9 — kid daily check-in /checkin (3 screens).
-                  Flag-gated via `dci_v1_enabled`; ProtectedRoute role=student.
-                  Routes are intentionally added as a small additive block so
-                  ParentDashboard / MyKids / Tutor groupings stay untouched. */}
+                  Flag-gated via `dci_v1_enabled`; ProtectedRoute role=student. */}
               <Route
                 path="/checkin"
                 element={
@@ -638,6 +640,37 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* CB-DCI-001 M0-10 — parent /parent/today route block. Flag-gated. */}
+              <Route
+                path="/parent/today"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <EveningSummaryPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/artifact/:id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <ArtifactDeepDivePage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/parent/today/patterns"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <DciFlagGate>
+                      <PatternsStubPage />
+                    </DciFlagGate>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/" element={<HomeRedirect />} />
             </Routes>
           </Suspense>
@@ -651,20 +684,28 @@ function App() {
   );
 }
 
-/** CB-DCI-001 M0-9 — gate `/checkin/*` on the `dci_v1_enabled` feature flag.
- *  Flag stays OFF in prod by design; OFF redirects to `/`. */
-function DciFlagGate({ children }: { children: ReactNode }) {
-  const enabled = useFeatureFlagEnabled('dci_v1_enabled');
-  if (!enabled) return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
 function OnboardingGuard({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
   // User already completed onboarding — send them to the dashboard
   if (!user.needs_onboarding && user.onboarding_completed) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * CB-DCI-001 M0-10 — gates the /parent/today routes behind the
+ * `dci_v1_enabled` feature flag (default OFF). When the flag is off the
+ * route silently redirects to `/` so the routes are invisible until M0
+ * ramps. When it is on, the wrapped page renders.
+ */
+function DciFlagGate({ children }: { children: ReactNode }) {
+  // S-3 (#4216): show a loader while the feature-flag query hydrates so
+  // parents with the flag ON don't see a momentary redirect-to-/ flash on
+  // cold loads. Once hydrated, redirect when disabled / render when enabled.
+  const { enabled, isLoading } = useFeatureFlagState('dci_v1_enabled');
+  if (isLoading) return <PageLoader />;
+  if (!enabled) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

@@ -1,0 +1,212 @@
+.dci-evening-page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+}
+
+.dci-evening-page__tabs {
+  margin-bottom: 4px;
+}
+
+.dci-evening-page__section-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-ink, #1b1e2b);
+}
+
+.dci-evening-page__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Conversation Starter card ── */
+.dci-conv-starter {
+  position: relative;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 14px;
+  padding: 20px 22px 18px;
+  overflow: hidden;
+}
+
+.dci-conv-starter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: #f3b04c; /* amber accent rule */
+}
+
+.dci-conv-starter__header {
+  margin-bottom: 8px;
+}
+
+.dci-conv-starter__title {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.dci-conv-starter__text {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  font-style: italic;
+  margin: 0 0 16px;
+  color: #f8fafc;
+}
+
+.dci-conv-starter__footer {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dci-conv-starter__used,
+.dci-conv-starter__regen {
+  background: rgba(248, 250, 252, 0.08);
+  color: #f1f5f9;
+  border: 1px solid rgba(248, 250, 252, 0.18);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.dci-conv-starter__used:hover,
+.dci-conv-starter__regen:hover {
+  background: rgba(248, 250, 252, 0.16);
+}
+
+.dci-conv-starter__used--on {
+  background: #f3b04c;
+  color: #0f172a;
+  border-color: #f3b04c;
+  font-weight: 600;
+}
+
+.dci-conv-starter__used--on:hover {
+  background: #f3b04c;
+}
+
+.dci-conv-starter__used:disabled,
+.dci-conv-starter__regen:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* S-6 (#4219): inline error + retry on conversation starter */
+.dci-conv-starter__error {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #fca5a5;
+}
+
+.dci-conv-starter__retry {
+  background: transparent;
+  color: #f1f5f9;
+  border: 1px solid rgba(252, 165, 165, 0.45);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.dci-conv-starter__retry:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Empty state ── */
+.dci-evening-page__empty {
+  background: var(--color-surface, #ffffff);
+  border: 1px dashed var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 28px 24px;
+  text-align: center;
+}
+
+.dci-evening-page__empty-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-ink, #1b1e2b);
+}
+
+.dci-evening-page__empty-body {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--color-ink-muted, #5b6274);
+  line-height: 1.5;
+}
+
+/* S-7 (#4220): retry CTA inside the empty/error state */
+.dci-evening-page__empty-action {
+  margin-top: 14px;
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dci-evening-page__empty-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Shimmer ── */
+.dci-evening-page__shimmer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dci-shimmer-line {
+  height: 16px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-alt, #f5f6f9) 0%,
+    var(--color-surface-bg, #eef1f5) 50%,
+    var(--color-surface-alt, #f5f6f9) 100%
+  );
+  background-size: 200% 100%;
+  animation: dci-shimmer 1.4s ease-in-out infinite;
+}
+
+.dci-shimmer-line--hero {
+  height: 120px;
+}
+
+.dci-shimmer-line--card {
+  height: 90px;
+}
+
+@keyframes dci-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+[data-theme="dark"] .dci-evening-page__empty {
+  background: var(--color-surface);
+  border-color: rgba(255, 255, 255, 0.12);
+}
