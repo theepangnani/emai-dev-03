@@ -323,7 +323,7 @@ export function FlashcardsPage() {
         <h1>
           {guide.title}
           {reviewMode && <span className="review-mode-badge">Review Mode</span>}
-          {guide.version > 1 && <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}
+          {guide.version > 1 && <span style={{ background: 'var(--color-info-bg)', color: 'var(--color-info)', padding: '1px 6px', borderRadius: '8px', fontSize: '0.75rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>v{guide.version}</span>}
         </h1>
         <div className="flashcards-header-actions">
           <MaterialContextMenu items={[
