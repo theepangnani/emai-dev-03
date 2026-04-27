@@ -6,7 +6,12 @@
  * school email visibility). This card is now a thin summary whose primary
  * action navigates to that hub. When no integration exists, the action
  * routes to the existing setup wizard instead.
+ *
+ * #4349 (Stream M) — optionally embeds <DigestHistoryPanel> below the
+ * footer so the My Hub card surfaces the 5 most recent deliveries inline.
  */
+import { DigestHistoryPanel } from '../parent/DigestHistoryPanel';
+
 interface EmailDigestCardProps {
   hasIntegration: boolean;
   onSetup: () => void;
@@ -14,9 +19,11 @@ interface EmailDigestCardProps {
   /** When `aggregate` is true, copy renders without a kid name (used in the all-kids view). When false, `childName` must be set to a real name. */
   aggregate?: boolean;
   childName?: string;
+  /** When true (default false), render embedded DigestHistoryPanel with 5 recent below the footer. Default: false (back-compat). */
+  showRecentHistory?: boolean;
 }
 
-export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, aggregate = false, childName }: EmailDigestCardProps) {
+export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, aggregate = false, childName, showRecentHistory = false }: EmailDigestCardProps) {
   return (
     <article className="bridge-card bridge-card--digest">
       <header className="bridge-card-head">
@@ -63,6 +70,15 @@ export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, aggrega
           </button>
         )}
       </footer>
+
+      {showRecentHistory && hasIntegration && (
+        <DigestHistoryPanel
+          limit={5}
+          collapsible
+          defaultCollapsed={false}
+          className="bridge-card--digest-history"
+        />
+      )}
     </article>
   );
 }
