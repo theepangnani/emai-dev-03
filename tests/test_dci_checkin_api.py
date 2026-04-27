@@ -584,3 +584,194 @@ def test_correct_requires_at_least_one_field(
         json={},
     )
     assert resp.status_code == 422
+
+
+# ── Conversation-starter feedback PATCH (#4307, #4225) ────────────────
+
+
+@pytest.fixture()
+def seed_starter(db_session, kid):
+    """Factory: seed an AISummary + a ConversationStarter row.
+
+    Returns ``(summary_id, starter_id)``. Each call yields a new pair so
+    multiple seedings inside a single test do not collide on the
+    (kid_id, summary_date) UNIQUE constraint.
+    """
+    from datetime import date, timedelta
+
+    from app.models.dci import AISummary, ConversationStarter
+
+    counter = {"i": 0}
+
+    def _seed(text: str = "Hey, what was the trickiest moment today?"):
+        # offset summary_date so multiple calls don't collide on UNIQUE
+        offset = counter["i"]
+        counter["i"] += 1
+        summary = AISummary(
+            kid_id=kid.id,
+            summary_date=date.today() - timedelta(days=offset),
+            summary_json={"bullets": []},
+            model_version="claude-sonnet-4-6",
+            prompt_hash="x" * 64,
+        )
+        db_session.add(summary)
+        db_session.flush()
+        starter = ConversationStarter(summary_id=summary.id, text=text)
+        db_session.add(starter)
+        db_session.commit()
+        db_session.refresh(starter)
+        return summary.id, starter.id
+
+    return _seed
+
+
+def test_starter_feedback_undo_used_translates_to_was_used_false(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """#4307 — ``undo_used`` is a transient untoggle signal.
+
+    Must translate to ``was_used=False`` and clear ``parent_feedback``
+    back to NULL. Persisting the literal string would 500 on the
+    ``ck_conversation_starters_parent_feedback`` CHECK constraint
+    (which only allows ``thumbs_up | regenerate | NULL``)."""
+    from app.models.dci import ConversationStarter
+
+    _, starter_id = seed_starter()
+    # Seed an existing thumbs_up state so we can verify it gets cleared.
+    starter = (
+        db_session.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    starter.parent_feedback = "thumbs_up"
+    starter.was_used = True
+    db_session.commit()
+
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={"parent_feedback": "undo_used"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["was_used"] is False
+    # undo_used is NEVER persisted as a string — must be NULL on the row.
+    assert body["parent_feedback"] is None
+
+    db_session.expire_all()
+    refreshed = (
+        db_session.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    assert refreshed.was_used is False
+    assert refreshed.parent_feedback is None
+
+
+def test_starter_feedback_thumbs_up_persists_and_marks_used(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """``thumbs_up`` must persist as the literal enum value AND flip
+    ``was_used=True`` so the parent's "I used this" state is sticky."""
+    from app.models.dci import ConversationStarter
+
+    _, starter_id = seed_starter()
+
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={"parent_feedback": "thumbs_up"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["parent_feedback"] == "thumbs_up"
+    assert body["was_used"] is True
+
+    db_session.expire_all()
+    refreshed = (
+        db_session.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    assert refreshed.parent_feedback == "thumbs_up"
+    assert refreshed.was_used is True
+
+
+def test_starter_feedback_returns_404_when_starter_missing(
+    client, db_session, linked_parent, dci_flag_on
+):
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        "/api/dci/conversation-starters/999999/feedback",
+        headers=headers,
+        json={"parent_feedback": "thumbs_up"},
+    )
+    assert resp.status_code == 404
+
+
+def test_starter_feedback_rejects_unlinked_parent_with_404(
+    client, db_session, parent_user, kid, dci_flag_on, seed_starter
+):
+    """Family-scoping: a parent NOT linked to the kid behind the
+    starter's summary must get 404 (not 200, never 500)."""
+    _, starter_id = seed_starter()
+
+    # parent_user is NOT linked to `kid` (linked_parent fixture not used).
+    headers = _auth(client, parent_user.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={"parent_feedback": "thumbs_up"},
+    )
+    assert resp.status_code == 404
+
+
+def test_starter_feedback_empty_body_returns_422(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """PR-review pass 1 [I1]: an empty body must 422, not silently no-op
+    + 200 with a spurious DB commit. Mirrors the existing
+    `correct_checkin` "at least one field" guard."""
+    _, starter_id = seed_starter()
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={},
+    )
+    assert resp.status_code == 422
+    assert "At least one" in resp.json()["detail"]
+
+
+def test_starter_feedback_explicit_was_used_with_regenerate_is_honoured(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """PR-review pass 1 [I2]: an explicit ``was_used`` must apply even
+    when ``parent_feedback`` is also supplied (e.g. the parent flags
+    "regenerate" but also wants to keep their used-state visible).
+    Previously the override gate ``and parent_feedback is None``
+    silently dropped the explicit value."""
+    from app.models.dci import ConversationStarter
+
+    _, starter_id = seed_starter()
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={"parent_feedback": "regenerate", "was_used": True},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["parent_feedback"] == "regenerate"
+    assert body["was_used"] is True
+
+    db_session.expire_all()
+    refreshed = (
+        db_session.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    assert refreshed.parent_feedback == "regenerate"
+    assert refreshed.was_used is True
