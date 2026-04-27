@@ -542,3 +542,11 @@
   color: var(--color-ink);
   cursor: pointer;
 }
+
+/* #4349 Stream M — embedded DigestHistoryPanel inside Daily Digest card.
+ * Lets the card grow naturally with the recent-deliveries list. */
+.bridge-card--digest-history {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bridge-hair);
+}
