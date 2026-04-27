@@ -58,24 +58,26 @@ export function DigestHistoryPanel({
   if (heading !== null) {
     if (collapsible) {
       headingNode = (
-        <button
-          type="button"
-          className="dhp-heading dhp-heading--button"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-expanded={!collapsed}
-        >
-          <span className="dhp-heading-text">{heading}</span>
-          <svg
-            className={`dhp-chevron ${!collapsed ? 'dhp-chevron--open' : ''}`}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
+        <h2 className="dhp-heading dhp-heading--collapsible">
+          <button
+            type="button"
+            className="dhp-heading--button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-expanded={!collapsed}
           >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
+            <span className="dhp-heading-text">{heading}</span>
+            <svg
+              className={`dhp-chevron ${!collapsed ? 'dhp-chevron--open' : ''}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+        </h2>
       );
     } else {
       headingNode = <h2 className="dhp-heading">{heading}</h2>;

@@ -137,6 +137,7 @@ describe('DigestHistoryPanel', () => {
   it('when collapsible=true the heading button toggles aria-expanded correctly', async () => {
     mockGetLogs.mockResolvedValue({ data: [] });
     renderPanel({ collapsible: true, heading: 'Digest History' });
+    expect(screen.getByRole('heading', { level: 2, name: /digest history/i })).toBeInTheDocument();
     const headingBtn = screen.getByRole('button', { name: /digest history/i });
     // defaultCollapsed defaults to false → expanded.
     expect(headingBtn).toHaveAttribute('aria-expanded', 'true');

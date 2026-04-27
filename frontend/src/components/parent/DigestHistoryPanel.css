@@ -30,6 +30,11 @@
   color: var(--color-ink);
 }
 
+.dhp-heading.dhp-heading--collapsible {
+  margin: 0;
+  padding: 0;
+}
+
 .dhp-heading-text {
   font-size: 1rem;
   font-weight: 600;
