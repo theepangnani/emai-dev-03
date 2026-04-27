@@ -2691,102 +2691,126 @@ def _run_migrations_inner(engine, settings, logger):
                 #  (c) UPDATE — stamp `unified_v2_backfilled_at = NOW()` on
                 #      every integration whose `child_school_email` is set
                 #      and not denylisted, so step (b) skips it next run.
+                # (a) One-time data scrub — ONLY run when junk rows actually exist (#4338).
+                # Cheap LIMIT 1 probe avoids a full-table-scan DELETE on every cold start
+                # once the scrub has already cleaned up.
                 if _is_pg:
-                    # Postgres regex; anchored at start of local-part.
-                    conn.execute(text(
-                        """
-                        DELETE FROM parent_child_school_emails
-                        WHERE LOWER(email_address) ~ '^(no-?reply|donotreply|mailer-daemon)@'
-                        """
-                    ))
+                    needs_scrub = conn.execute(text(
+                        "SELECT 1 FROM parent_child_school_emails "
+                        "WHERE LOWER(email_address) ~ '^(no-?reply|donotreply|mailer-daemon)@' "
+                        "LIMIT 1"
+                    )).first()
                 else:
-                    # SQLite: no regex; LIKE chain with explicit prefixes.
-                    conn.execute(text(
-                        """
-                        DELETE FROM parent_child_school_emails
-                        WHERE LOWER(email_address) LIKE 'no-reply@%'
-                           OR LOWER(email_address) LIKE 'noreply@%'
-                           OR LOWER(email_address) LIKE 'donotreply@%'
-                           OR LOWER(email_address) LIKE 'mailer-daemon@%'
-                        """
-                    ))
-                conn.commit()
-                logger.info("Unified digest v2 backfill: scrubbed junk school_emails (#4328, #4099)")
+                    needs_scrub = conn.execute(text(
+                        "SELECT 1 FROM parent_child_school_emails "
+                        "WHERE LOWER(email_address) LIKE 'no-reply@%' "
+                        "OR LOWER(email_address) LIKE 'noreply@%' "
+                        "OR LOWER(email_address) LIKE 'donotreply@%' "
+                        "OR LOWER(email_address) LIKE 'mailer-daemon@%' "
+                        "LIMIT 1"
+                    )).first()
 
-                if _is_pg:
-                    conn.execute(text(
-                        """
-                        INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
-                        SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
-                        FROM parent_gmail_integrations pgi
-                        JOIN parent_child_profiles pcp
-                          ON pcp.parent_id = pgi.parent_id
-                         AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-                        WHERE pgi.child_school_email IS NOT NULL
-                          AND pgi.unified_v2_backfilled_at IS NULL
-                          AND LOWER(pgi.child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
-                          AND NOT EXISTS (
-                              SELECT 1 FROM parent_child_school_emails pcse
-                              WHERE pcse.child_profile_id = pcp.id
-                                AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
-                          )
-                        """
-                    ))
-                else:
-                    conn.execute(text(
-                        """
-                        INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
-                        SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
-                        FROM parent_gmail_integrations pgi
-                        JOIN parent_child_profiles pcp
-                          ON pcp.parent_id = pgi.parent_id
-                         AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-                        WHERE pgi.child_school_email IS NOT NULL
-                          AND pgi.unified_v2_backfilled_at IS NULL
-                          AND LOWER(pgi.child_school_email) NOT LIKE 'no-reply@%'
-                          AND LOWER(pgi.child_school_email) NOT LIKE 'noreply@%'
-                          AND LOWER(pgi.child_school_email) NOT LIKE 'donotreply@%'
-                          AND LOWER(pgi.child_school_email) NOT LIKE 'mailer-daemon@%'
-                          AND NOT EXISTS (
-                              SELECT 1 FROM parent_child_school_emails pcse
-                              WHERE pcse.child_profile_id = pcp.id
-                                AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
-                          )
-                        """
-                    ))
-                conn.commit()
-                logger.info("Unified digest v2 backfill: seeded parent_child_school_emails (#4013, #4328)")
+                if needs_scrub:
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            DELETE FROM parent_child_school_emails
+                            WHERE LOWER(email_address) ~ '^(no-?reply|donotreply|mailer-daemon)@'
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            DELETE FROM parent_child_school_emails
+                            WHERE LOWER(email_address) LIKE 'no-reply@%'
+                               OR LOWER(email_address) LIKE 'noreply@%'
+                               OR LOWER(email_address) LIKE 'donotreply@%'
+                               OR LOWER(email_address) LIKE 'mailer-daemon@%'
+                            """
+                        ))
+                    conn.commit()
+                    logger.info("Unified digest v2 backfill: scrubbed junk school_emails (#4328, #4099, #4338)")
 
-                # Stamp every integration whose child_school_email is set
-                # and not denylisted as "considered backfilled" — even rows
-                # we skipped because of NOT EXISTS. After this point a user
-                # delete in parent_child_school_emails is the source of
-                # truth and will not be re-seeded by step (b).
-                if _is_pg:
-                    conn.execute(text(
-                        """
-                        UPDATE parent_gmail_integrations
-                        SET unified_v2_backfilled_at = NOW()
-                        WHERE child_school_email IS NOT NULL
-                          AND unified_v2_backfilled_at IS NULL
-                          AND LOWER(child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
-                        """
-                    ))
-                else:
-                    conn.execute(text(
-                        """
-                        UPDATE parent_gmail_integrations
-                        SET unified_v2_backfilled_at = CURRENT_TIMESTAMP
-                        WHERE child_school_email IS NOT NULL
-                          AND unified_v2_backfilled_at IS NULL
-                          AND LOWER(child_school_email) NOT LIKE 'no-reply@%'
-                          AND LOWER(child_school_email) NOT LIKE 'noreply@%'
-                          AND LOWER(child_school_email) NOT LIKE 'donotreply@%'
-                          AND LOWER(child_school_email) NOT LIKE 'mailer-daemon@%'
-                        """
-                    ))
-                conn.commit()
-                logger.info("Unified digest v2 backfill: stamped unified_v2_backfilled_at (#4328)")
+                # (b) + (c) — run in ONE transaction so a failed INSERT doesn't leave
+                # integrations falsely stamped as backfilled (#4339).
+                try:
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
+                            SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
+                            FROM parent_gmail_integrations pgi
+                            JOIN parent_child_profiles pcp
+                              ON pcp.parent_id = pgi.parent_id
+                             AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                            WHERE pgi.child_school_email IS NOT NULL
+                              AND pgi.unified_v2_backfilled_at IS NULL
+                              AND LOWER(pgi.child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM parent_child_school_emails pcse
+                                  WHERE pcse.child_profile_id = pcp.id
+                                    AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
+                              )
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
+                            SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
+                            FROM parent_gmail_integrations pgi
+                            JOIN parent_child_profiles pcp
+                              ON pcp.parent_id = pgi.parent_id
+                             AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                            WHERE pgi.child_school_email IS NOT NULL
+                              AND pgi.unified_v2_backfilled_at IS NULL
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'no-reply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'noreply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'donotreply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'mailer-daemon@%'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM parent_child_school_emails pcse
+                                  WHERE pcse.child_profile_id = pcp.id
+                                    AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
+                              )
+                            """
+                        ))
+
+                    # Stamp every integration whose child_school_email is set and not
+                    # denylisted as "considered backfilled" — even rows we skipped because
+                    # of NOT EXISTS. After this point a user delete is the source of truth.
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            UPDATE parent_gmail_integrations
+                            SET unified_v2_backfilled_at = NOW()
+                            WHERE child_school_email IS NOT NULL
+                              AND unified_v2_backfilled_at IS NULL
+                              AND LOWER(child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            UPDATE parent_gmail_integrations
+                            SET unified_v2_backfilled_at = CURRENT_TIMESTAMP
+                            WHERE child_school_email IS NOT NULL
+                              AND unified_v2_backfilled_at IS NULL
+                              AND LOWER(child_school_email) NOT LIKE 'no-reply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'noreply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'donotreply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'mailer-daemon@%'
+                            """
+                        ))
+
+                    conn.commit()
+                    logger.info("Unified digest v2 backfill: seeded + stamped atomically (#4013, #4328, #4339)")
+                except Exception:
+                    conn.rollback()
+                    logger.warning(
+                        "Unified digest v2 backfill (#4013, #4328): step (b)+(c) failed and rolled back atomically — will retry on next cold start"
+                    )
+                    raise
 
                 # 3. Seed parent_digest_monitored_senders from the legacy
                 #    parent_digest_monitored_emails table. Dedupe on

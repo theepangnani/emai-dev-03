@@ -267,3 +267,104 @@ def test_unified_v2_backfilled_at_not_stamped_for_denylisted(db_session):
     assert refreshed.unified_v2_backfilled_at is None, (
         "denylisted integration was stamped — should remain NULL"
     )
+
+
+# ---------------------------------------------------------------------------
+# #4338 — scrub gate: second run with no junk does NOT issue another DELETE
+# ---------------------------------------------------------------------------
+
+def test_scrub_skipped_when_no_junk_rows_present(db_session):
+    """After the first migration run scrubs (or finds nothing to scrub),
+    a subsequent migration run on a clean table must NOT issue another
+    DELETE against ``parent_child_school_emails`` — the cheap LIMIT 1
+    probe should short-circuit it."""
+    from sqlalchemy import event
+
+    parent = _make_parent(db_session, "scrub_gate@test.com")
+    _make_integration(db_session, parent.id, "Hina", "hina@school.ca")
+
+    # First run: seeds + (no junk to scrub) + stamps.
+    _run_migrations_against_session(db_session)
+    assert _count_school_emails(db_session, parent.id, "hina@school.ca") == 1
+
+    # Capture every SQL statement issued during the second run.
+    captured = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        captured.append(statement)
+
+    engine = db_session.bind
+    event.listen(engine, "before_cursor_execute", _capture)
+    try:
+        _run_migrations_against_session(db_session)
+    finally:
+        event.remove(engine, "before_cursor_execute", _capture)
+
+    # No DELETE FROM parent_child_school_emails should appear in the second
+    # run — the LIMIT 1 probe should have short-circuited it. (The probe
+    # itself is a SELECT, not a DELETE.)
+    delete_stmts = [
+        s for s in captured
+        if "DELETE FROM parent_child_school_emails" in s.upper().replace("\n", " ")
+    ]
+    assert delete_stmts == [], (
+        "scrub DELETE was issued on the second migration run despite no "
+        f"junk rows being present: {delete_stmts}"
+    )
+
+    # Row count is unchanged — defense-in-depth.
+    db_session.expire_all()
+    assert _count_school_emails(db_session, parent.id, "hina@school.ca") == 1
+
+
+# ---------------------------------------------------------------------------
+# #4339 — atomic INSERT + stamp UPDATE: failed INSERT must not stamp
+# ---------------------------------------------------------------------------
+
+def test_failed_insert_does_not_stamp_integration(db_session):
+    """If step (b) INSERT into ``parent_child_school_emails`` fails, step
+    (c) stamp UPDATE on ``parent_gmail_integrations`` must NOT run — an
+    integration left stamped without a corresponding school-email row is
+    silent data loss because the next run will skip it on the
+    ``unified_v2_backfilled_at IS NULL`` guard."""
+    from sqlalchemy import event
+
+    m = _models()
+    parent = _make_parent(db_session, "atomic_backfill@test.com")
+    integ = _make_integration(db_session, parent.id, "Ira", "ira@school.ca")
+    assert integ.unified_v2_backfilled_at is None
+
+    # Inject a fault into the INSERT step. The integration backfill block
+    # in app/db/migrations.py is wrapped in an outer try/except that
+    # swallows the error with a warning log, so the migration call itself
+    # does not raise — but the (b)+(c) inner try/except must rollback
+    # atomically before the outer except catches it.
+    engine = db_session.bind
+
+    def _fail_on_insert(conn, cursor, statement, parameters, context, executemany):
+        normalized = statement.upper().replace("\n", " ")
+        if "INSERT INTO PARENT_CHILD_SCHOOL_EMAILS" in normalized:
+            raise RuntimeError("simulated INSERT failure for #4339 regression")
+
+    event.listen(engine, "before_cursor_execute", _fail_on_insert)
+    try:
+        _run_migrations_against_session(db_session)
+    finally:
+        event.remove(engine, "before_cursor_execute", _fail_on_insert)
+
+    # Verify no integration was stamped — the rollback must have undone
+    # any partial work and the stamp UPDATE must never have executed.
+    db_session.expire_all()
+    stamped_count = (
+        db_session.query(m["ParentGmailIntegration"])
+        .filter(m["ParentGmailIntegration"].unified_v2_backfilled_at.isnot(None))
+        .filter(m["ParentGmailIntegration"].id == integ.id)
+        .count()
+    )
+    assert stamped_count == 0, (
+        "integration was stamped despite the INSERT failing — "
+        "this is the silent data-loss bug #4339 was meant to prevent"
+    )
+
+    # Defense-in-depth: no school-email row was created either.
+    assert _count_school_emails(db_session, parent.id, "ira@school.ca") == 0
