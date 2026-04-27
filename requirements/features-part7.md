@@ -2412,3 +2412,75 @@ The original "My Kids" page was a heavy 2,200+ line MyKidsPage.tsx with mixed-de
 - [x] Deployed (Cloud Run live revision includes the bridge re-skin)
 - [x] Foundation for §6.144/§6.145/§6.146 follow-on work
 - [ ] Bridge component unit tests (#4124 — still open follow-up, non-blocking)
+
+### 6.149 Curriculum-Aligned Content Generation & MCP Server (CB-CMCP-001) — DRAFT (NOT STARTED) 2026-04-27
+
+**Source PRDs:**
+- `Requirement/Claude-ai-generated/CB-CMCP-001-PRD-v1.0.docx` (initial draft)
+- `Requirement/Claude-ai-generated/CB-CMCP-001-PRD-v1.1.docx` (authenticity amendments — supersedes v1.0)
+- `Requirement/Claude-ai-generated/CB-CMCP-001-DD-v1.0.docx` (design)
+
+**Status:** Draft. NOT started — pending strategic decisions and 1–2 board-coordinator validation interviews. Mentor review of v1.0 surfaced four authenticity gaps; v1.1 binds them as requirements (§6.149.1 below). Eleven other gaps remain open as decision/sub-issues (§6.149.2).
+
+#### Why this exists
+ClassBridge already generates AI study materials today (CB-ASGF-001 #3390, CB-UTDF-001, CB-TUTOR-001/002, [study_guides](app/models/study_guide.py) with curriculum_codes / template_key / parent_summary). What's missing — and what every B2B-edu competitor (Magic School AI, Diffit, Khanmigo, Brisk, myBlueprint Lessons) is racing toward — is **provable curriculum alignment to Ontario Ministry expectations** with a structured, auditable graph of OEs/SEs as a guardrail. CB-CMCP-001 builds that Curriculum Expectations Graph (CEG), wraps the generation pipeline in CEG guardrails (CGP), and exposes the resulting catalog via a Model Context Protocol server (CB-MCP) for board / developer-ecosystem access. Strategic motivation: provable alignment is a primary OECM/board-procurement objection that ClassBridge's B2C/AI-tutor stack cannot answer today.
+
+#### Five-layer architecture (per PRD v1.1)
+1. **Curriculum Expectations Graph (CEG)** — PostgreSQL + pgvector store of Ontario K-12 OE/SE expectations (paraphrased, not verbatim Ministry prose, for Crown-copyright safety). Phase 1: Grades 1–8 Math, Language, Science, Social Studies / History / Geography.
+2. **Content Generation Pipeline (CGP)** — FastAPI service that retrieves SEs from CEG, injects them as guardrails into Claude Sonnet (long-form) or GPT-4o-mini (high-volume short artifacts), runs alignment validation, stores artifacts in `content_artifacts` table.
+3. **CB-MCP Server** — separate Cloud Run FastAPI service implementing MCP protocol; serves catalog + coverage maps to board/developer clients via OAuth 2.0 + JWT.
+4. **Authenticity Layer (NEW v1.1)** — Class-context blending (A1) + Parent Companion content type (A2) + Arc voice overlay (A3). The differentiating layer that prevents the system from shipping as a "generic AI content factory."
+5. **Surface Integration (NEW v1.1)** — Generated artifacts emit derivative payloads for Bridge (CB-BRIDGE-001), Daily Check-In (CB-DCI-001), and Email Digest (CB-PEDI-002). End-user delivery is via these existing parent rituals; MCP is the board / developer surface, not the parent channel.
+
+#### 6.149.1 Authenticity amendments (PRD v1.1) — BINDING
+
+These four amendments are the load-bearing differentiators of CB-CMCP-001. They are not optional polish. Without them, the system is indistinguishable from competitors who can also tag content with curriculum codes.
+
+| ID | Amendment | Binding requirement |
+|---|---|---|
+| **A1** | **Class-Context Blending (FR-02.5)** | Generation MUST blend CEG SE list with a class-context envelope drawn from teacher-uploaded `course_contents`, parsed Google Classroom announcements (last 14 days), parsed teacher-email digest summary (last 30 days), and the teacher's existing approved-artifact library. Reuses CB-ASGF-001 ingestion pipeline. Fallback to CEG-only mode when no class context exists, with explicit "generic — no class-vocab anchoring" badge in UI. Acceptance: ≥70% of generations carry a populated envelope by M3. |
+| **A2** | **Parent Companion Content Type (FR-02.6)** | Distinct artifact shape (NOT worksheet-without-answer-key). Contains: plain-language SE explanation, 3–5 talking points, coaching prompts, "how to help without giving the answer" guidance, deep-links into the parent's Bridge view. Self-service exempt from teacher review queue. Delivered via DCI + Digest. Acceptance: every approved student artifact has a Parent Companion derivative within 60s; Parent Companion adoption ≥30% within 7 days of approval. |
+| **A3** | **Arc Brand Voice Layer (FR-02.7)** | Versioned prompt module overlay (`arc_voice_v1.txt`, ...) applied AFTER curriculum-guardrail and class-context layers. Student-facing artifacts SHALL carry Arc voice (warm, encouraging, growth-mindset, consistent with CB-TUTOR-001/002). Teacher-facing artifacts SHALL NOT (neutral professional tone). Parent Companion uses warm coaching tone but is NOT Arc-led — Arc is the student's pedagogical companion. Voice version bumps MUST NOT require code deploy. |
+| **A4** | **Surface Integration (FR-04.5)** | Every approved artifact emits three derivative payloads: (1) Daily Check-In coach card (CB-DCI-001), (2) Email Digest summary block (CB-PEDI-002), (3) Bridge entry (CB-BRIDGE-001). MCP is NOT the primary parent/student delivery channel — it is the board + developer-ecosystem surface. Acceptance: ≥80% of approved artifacts surface in DCI within 24h; Bridge entry CTR ≥15%. |
+
+#### 6.149.2 Strategic-decision items (NOT addressed in v1.1 — open issues)
+
+These eleven gaps from the mentor review require user-level decisions before requirement-level commitment. Each is tracked as a separate decision or sub-issue under the new CB-CMCP-001 epic.
+
+- One MCP server (role-scoped) vs. two deployments (board + end-user)?
+- `content_artifacts` vs. existing `study_guides` table — extend or run parallel?
+- Self-study path (no teacher review for self-initiated) vs. teacher-review-only?
+- Alignment validator: add second-pass embedding similarity check?
+- CEG extraction quality: two-pass extraction + curriculum-expert SLA + headcount line item?
+- Latency NFRs: per-content-type SLAs + streaming UX (8s P95 unrealistic for Sonnet long-form)?
+- Board surface: REST + signed-CSV + LTI primary, MCP secondary?
+- Cost model: $/artifact, monthly burn at 3 volume tiers?
+- CEG version cascade: change-severity classifier to avoid mass teacher re-review?
+- IEP / differentiation: in CB-CMCP-001 scope or deferred?
+- 1–2 board curriculum coordinator validation interviews BEFORE M0 commit?
+
+#### Existing ClassBridge work that CB-CMCP-001 builds on (NOT replaces)
+- **CB-ASGF-001 (#3390)** — Ask-a-Question to Flash Study; class-context ingestion pipeline (load-bearing for A1).
+- **CB-UTDF-001** — Unified template + detection framework; artifact templating.
+- **CB-TUTOR-001 (shipped Apr 23)** — Arc mascot, voice reference patterns (load-bearing for A3).
+- **CB-TUTOR-002 Phase 1 (in progress, epic #4062)** — short-learning-cycle pedagogy.
+- **CB-BRIDGE-001 (shipped Apr 25)** — Parent Hub surface (load-bearing for A4).
+- **CB-DCI-001 (M0 shipped Apr 25)** — Daily Check-In ritual (load-bearing for A4).
+- **CB-PEDI-002 (shipped Apr 23)** — Unified Email Digest V2 (load-bearing for A4).
+- **#571 Ontario Curriculum Management** — precursor to the CEG (will be subsumed once epic opens).
+- **#903 Phase 2 EPIC: MCP Protocol Integration** — end-user/Claude-Desktop MCP vision; different audience than CB-CMCP-001's board MCP.
+- **#2191 Epic: Port MCP Implementation from class-bridge-phase-2** — ~50% MCP scaffold; auth + transport reused.
+- **#959 Epic: AI Exam & Assessment Engine** — overlaps FR-02.1 Sample Test.
+- **#3021 [CB-UTDF] resolve contradictory answer key storage design** — DD §3.5 `content_artifacts.content_json` JSONB resolution.
+- **#802 / #803 VASP / DTAP compliance** — board-pilot non-technical predecessor; without a board partner, M4 has nowhere to land.
+
+#### Acceptance status
+- [x] PRD v1.0 drafted (`CB-CMCP-001-PRD-v1.0.docx`, Apr 27)
+- [x] Mentor review pass complete (Apr 27 — see plan `nifty-crunching-squid.md`)
+- [x] PRD v1.1 amendments document (`CB-CMCP-001-PRD-v1.1.docx`, Apr 27) — binds A1–A4 as requirements
+- [x] Requirements section §6.149 (this entry) added
+- [ ] CB-CMCP-001 epic opened on GitHub
+- [ ] Four authenticity gap sub-issues opened (A1–A4)
+- [ ] Eleven strategic-decision issues opened
+- [ ] Board-coordinator validation interviews complete
+- [ ] M0 (CEG build) NOT STARTED — gated on decisions + interviews
