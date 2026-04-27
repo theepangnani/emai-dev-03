@@ -24,8 +24,8 @@ export function HelpChatbot() {
     }
   });
 
-  const { user } = useAuth();
-  const arcVariant = getArcVariant(user?.id);
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
   const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
   const [inputValue, setInputValue] = useState('');
   const [helperMessage, setHelperMessage] = useState('');

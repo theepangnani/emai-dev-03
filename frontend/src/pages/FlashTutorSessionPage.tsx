@@ -28,8 +28,8 @@ export function FlashTutorSessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sessionId = parseInt(id || '0');
-  const { user } = useAuth();
-  const arcVariant = getArcVariant(user?.id);
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [session, setSession] = useState<ILESession | null>(null);
