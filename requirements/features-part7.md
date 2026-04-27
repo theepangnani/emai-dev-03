@@ -2180,7 +2180,71 @@ Follow-on to §6.142.1. After 10 feature streams merged, `/pr-review` was run ag
 **Operational state (as of 2026-04-26).** Master HEAD includes M0 + M0-12 + M0-13 + fast-follow batch. Live Cloud Run revision `classbridge-01142-l58` only contains M0 (M0-12/M0-13/fast-follow not yet deployed — separate explicit deploy approval required per global rule). Flag `dci_v1_enabled` is ON in prod; users can already navigate to `/parent/today` via direct URL or via Settings → DCI section. After re-deploy, parents will see `DciEntryCard` on their dashboard and the consent-redirect flow will kick in automatically. Bill 194 audit-logging silent-fail bug fixed in `audit_service.log_action` lazy-import (commit `8b4bce33`, see #4249 + `feedback_lazy_model_imports_in_services.md`). Bill 194 ramp gate `#4192` (production migration for `checkin_settings`) and counsel review of `dci_content_policy.py` keyword tables remain required before further flag escalation.
 
 
-### 6.144 Avatar colors — per-user Arc variant + kid CHILD_COLORS reorder (CB-AVATAR-COLORS-001) — SHIPPED 2026-04-27
+### 6.144 App-Wide Visual Unification — "Bridge" Theme as Default (CB-THEME-001) — SHIPPED 2026-04-26 + 27
+
+**Epic:** #4155 · **V1 PR:** #4242 (squash `709c8712`) · **Phase 2 PR:** #4300 (squash `605eca48`) · **Feature flag:** `theme.bridge_default` (off by default; ramp `internal_only → staff → on_for_all`)
+
+#### Why this exists
+The Parent Hub / Bridge re-skin (CB-BRIDGE-001) introduced a distinctive warmer visual language (ivory surfaces, warm-charcoal ink, rust/pine/amber/sky/rose accents, Fraunces serif headings + DM Sans body) that needed to apply app-wide across every role so the product feels like one product. Pre-shipped, the app used three coexisting palettes (`light`, `dark`, `focus`) plus the page-scoped `[data-landing="v2"]` for marketing.
+
+#### V1 (#4242) — Foundation + 7 streams + a11y audit (8 streams total, 119 files, +2280/-1636)
+| Stream | Scope |
+|---|---|
+| S0 #4156 | Foundation: `[data-theme="bridge"]` token block in `index.css` mapping bridge palette to existing `--color-*` token names + new bridge tokens (`--color-rust`, `--color-pine`, `--color-amber`, `--font-display-serif`, `--font-mono`, `--radius-bridge-*`); `bridge` registered in `ThemeContext` THEMES alongside `light/dark/focus`; force-apply via `BridgeDefaultApplier` when `theme.bridge_default` flag resolves on; FOIT global preload for Fraunces / DM Sans / JetBrains Mono in `index.html`; `frontend/src/THEME.md` documenting the system |
+| S1 #4157 | Parent surfaces token-driven reskin (17 files, symmetric +704/-703). Caught + fixed latent ghost-token bug (parent CSS used undefined tokens with hex fallbacks — bridge wasn't applying at all before this) |
+| S2 #4158 | Student surfaces token-driven reskin (17 files, symmetric +328/-328). Same ghost-token forensic finding fixed for student/ASGF surfaces |
+| S3 #4159 | Teacher surfaces token-driven reskin (6 files) |
+| S4 #4160 | Admin surfaces token-driven reskin (6 files, -150 net from removing redundant `[data-theme="dark"]` blocks now handled by semantic tokens) |
+| S5 #4161 | **HIGH-risk** shared shell + chrome (DashboardLayout sidebar, Dashboard.css modals, FABs). Dark-pill sidebar active state matches prototype; theme-aware via tokens |
+| S6 #4162 | Hardcoded color sweep (68 files, 190 literals replaced; 4 follow-ups filed for the remaining 1,045 literals) |
+| S8 #4164 | WCAG 2.1 AA contrast audit. `--color-danger` + `--priority-high` darkened from `#c25b6f` to `#a84458` (4.18 → 5.78 on white) |
+
+S7 (mobile parity) is fast-follow — separate Phase 2 mobile repo.
+
+#### Phase 2 (#4300) — 7 post-GA followups consolidated
+| Issue | Fix |
+|---|---|
+| #4213 | FOWT cache — synchronous bridge force-apply via localStorage cache (eliminates 100-500ms flash on cold-load for users in rollout cohort) |
+| #4224 | Add `--color-border-strong` for WCAG 1.4.11 affordance UI (form inputs, button outlines, focusable cards) |
+| #4226 | Per-theme recharts palette tokens for AdminSurveyPage (`--chart-series-1` through `--chart-series-6` per theme; resolved at runtime via `getComputedStyle` keyed on active theme) |
+| #4235 | Tailwind palette tokens (`--tw-{gray,red,green,blue,yellow}-*` per theme; 38 files swept) |
+| #4236 | Standalone shadow-rgba sweep → `--shadow-*` tokens (27 files) |
+| #4237 | Inline TSX `style={{ color: '#hex' }}` → `var(--color-*)` migration (5 TSX files) |
+| #4238 | Translucent surface tokens `--color-surface-translucent-{low,mid,high}` per theme (16 files; dark/focus use non-white base) |
+
+Phase 2 also bumped jsdom 28 → 29.0.2 (#4290) which removed both unhandled-rejection suppression layers added in V1 once jsdom upstream patched the undici v7 incompatibility (#4257). Plus 6 CI test fixes (#4286) consolidating Login selector update, xdist parent-email collision fix, task-sync `is_feature_enabled` cross-session DB read race monkeypatching, and `retry: 2` flake mitigation.
+
+#### Locked decisions (per planning Q&A)
+1. Theme key: `bridge`
+2. Force-apply default when flag on (overrides saved localStorage choice)
+3. Keep all 4 themes (`light`, `dark`, `focus`, `bridge`) — focus NOT retired
+4. Admin pages also unified (no per-role exemption)
+5. Mobile (S7) is fast-follow — NOT in initial parallel batch
+6. Font loading: FOIT global preload in `index.html`
+
+#### Workflow footprint
+- Foundation + 7 parallel streams + A11y stream (V1) → integrate/cb-theme-001 → master
+- 7 parallel followup streams + 1 dedicated merge stream + 1 master-rebase stream (Phase 2) → integrate/cb-theme-phase2 → master
+- 2× `/pr-review` per stream PR + 2× `/pr-review` on each integration branch before master ask
+- 17 issues closed via V1, 7 closed via Phase 2, 6 follow-ups still tracked (#4213 done in Phase 2, others post-GA)
+- Multiple master-rebases handled CB-DCI-001 M0, M0-12+13, and HF2 commits that landed during the work
+
+#### Out of scope (still pending)
+- S7 mobile parity in Phase 2 mobile repo (`ClassBridgeMobile/`)
+- S9 rollout ramp (`theme.bridge_default` flag flips: `internal_only → staff → on_for_all` over ≥2 weeks)
+- Renaming `light` theme to `bridge` (deferred until rollout completes)
+- Retiring `focus` theme (intentionally kept per locked decision #3)
+
+#### Acceptance status
+- [x] Token system shipped to master (V1)
+- [x] WCAG 2.1 AA pass on bridge palette critical text-on-surface combos
+- [x] All shared chrome + role surfaces token-aware
+- [x] Phase 2 follow-ups shipped (FOWT, border-strong, chart palette, Tailwind, shadows, inline TSX, translucent)
+- [ ] S9 rollout ramp (pending S9 stream + deploy approval)
+- [ ] Mobile parity (post-S9, separate repo)
+
+
+### 6.145 Avatar colors — per-user Arc variant + kid CHILD_COLORS reorder (CB-AVATAR-COLORS-001) — SHIPPED 2026-04-27
 
 **Epic:** #4311 · **Streams:** A #4312 (Arc per-user variant) · B #4313 (kid color reorder) · C #4318 (test mock fix) · **Integration branch:** `integrate/cb-avatar-colors` · **Status:** Pending master merge approval
 

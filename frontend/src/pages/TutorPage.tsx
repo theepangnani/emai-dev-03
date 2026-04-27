@@ -67,7 +67,8 @@ function greeting(firstName: string | undefined): string {
 }
 
 export function TutorPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -627,7 +628,7 @@ export function TutorPage() {
         <div className="ask-arc-page__container">
           {/* ── HERO ───────────────────────────────────────────── */}
           <header className="ask-arc-hero">
-            <div className="ask-arc-hero__mascot" data-arc={getArcVariant(user?.id)}>
+            <div className="ask-arc-hero__mascot" data-arc={arcVariant}>
               <ArcMascot size={88} mood={arcMood} glow animate />
             </div>
             <div className="ask-arc-hero__text">

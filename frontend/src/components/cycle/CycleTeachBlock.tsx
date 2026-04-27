@@ -45,14 +45,15 @@ export function CycleTeachBlock({
     return () => window.clearTimeout(t);
   }, [chunk.order]);
 
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
 
   return (
     <section
       className={`cycle-teach ${accentClass}`}
       aria-labelledby={`cycle-teach-heading-${chunk.order}`}
     >
-      <div className="cycle-teach__mascot" data-arc={getArcVariant(user?.id)}>
+      <div className="cycle-teach__mascot" data-arc={arcVariant}>
         <ArcMascot size={96} mood={mood} glow decorative />
       </div>
 

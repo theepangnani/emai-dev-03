@@ -32,10 +32,11 @@ export function CycleResults({
   onNewTopic,
 }: CycleResultsProps) {
   const mastered = chunkSummaries.filter((c) => c.mastered).length;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
   return (
     <section className="cycle-results" aria-labelledby="cycle-results-heading">
-      <div className="cycle-results__hero" data-arc={getArcVariant(user?.id)}>
+      <div className="cycle-results__hero" data-arc={arcVariant}>
         <ArcMascot size={120} mood="celebrating" glow decorative />
         <div>
           <p className="cycle-results__eyebrow">Cycle complete</p>
