@@ -515,6 +515,17 @@ class TestDCISchemas:
         with pytest.raises(Exception):
             ConversationStarterFeedback(parent_feedback="not_a_value")
 
+    def test_undo_used_is_schema_only_not_model_enum(self):
+        """#4225 — `undo_used` is a transient signal interpreted by the
+        route handler as ``was_used = false``; it must NOT appear in the
+        DB-level ``PARENT_FEEDBACK_VALUES`` tuple / CHECK constraint.
+        Pinning here so a future "tidy" doesn't silently start
+        persisting it."""
+        from app.models.dci import PARENT_FEEDBACK_VALUES
+
+        assert "undo_used" not in PARENT_FEEDBACK_VALUES
+        assert PARENT_FEEDBACK_VALUES == ("thumbs_up", "regenerate")
+
     def test_checkin_consent_retention_days_bounds(self):
         from app.schemas.dci import CheckinConsentCreate
 
