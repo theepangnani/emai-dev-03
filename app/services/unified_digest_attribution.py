@@ -38,8 +38,8 @@ into the digest structure without depending on ORM objects:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Iterable
 
 from sqlalchemy.orm import Session
 
@@ -131,6 +131,21 @@ _NON_PERSON_LOCAL_PARTS = frozenset({
     "info",
 })
 
+# Why: Ontario boards (the project's primary user segment) use bare board
+# domains that don't match gapps.*/.edu/.k12.*. Listing them explicitly
+# closes the auto-discovery gap for OCDSB/TDSB/etc. users.
+_KNOWN_SCHOOL_BOARD_DOMAINS = frozenset({
+    "ocdsb.ca",
+    "tdsb.on.ca",
+    "peelschools.org",
+    "dsbn.org",
+    "yrdsb.ca",
+    "dpcdsb.org",
+    "hwdsb.on.ca",
+    "wrdsb.ca",
+    "sd35.bc.ca",
+})
+
 
 def is_school_looking_address(addr: str) -> bool:
     """Heuristic: does this address look like a forwarded student inbox?
@@ -153,6 +168,8 @@ def is_school_looking_address(addr: str) -> bool:
     if domain.endswith(".edu") or ".edu." in domain:
         return True
     if ".k12." in domain or domain.endswith(".k12"):
+        return True
+    if domain in _KNOWN_SCHOOL_BOARD_DOMAINS:
         return True
     return False
 
@@ -313,7 +330,13 @@ def attribute_email(
 # ---------------------------------------------------------------------------
 
 
-def record_discovery(headers: dict, parent_id: int, db: Session) -> None:
+def record_discovery(
+    headers: dict,
+    parent_id: int,
+    db: Session,
+    *,
+    registered_addresses: set[str] | None = None,
+) -> None:
     """Surface unregistered school-looking To: addresses for the parent.
 
     Called by the digest worker after :func:`attribute_email`. For each
@@ -321,6 +344,12 @@ def record_discovery(headers: dict, parent_id: int, db: Session) -> None:
     ``parent_child_school_emails`` for any of the parent's kids, upsert a
     row in ``parent_discovered_school_emails`` (incrementing ``occurrences``
     + refreshing ``last_seen_at`` + replacing ``sample_sender``).
+
+    ``registered_addresses`` is an optional pre-fetched set of already-
+    registered school addresses (lower-cased) for this parent. The worker
+    fetches once per parent batch and passes it through to avoid an
+    O(N-emails) query (#4341). When omitted, falls back to a per-call
+    query for back-compat with direct callers / tests.
 
     Uses ``db.flush()`` only — the worker commits at the end (per #4051).
     """
@@ -339,17 +368,20 @@ def record_discovery(headers: dict, parent_id: int, db: Session) -> None:
         return
 
     # Drop addresses already registered for any of this parent's kids.
-    registered_rows = (
-        db.query(ParentChildSchoolEmail.email_address)
-        .join(
-            ParentChildProfile,
-            ParentChildProfile.id == ParentChildSchoolEmail.child_profile_id,
+    if registered_addresses is None:
+        registered_rows = (
+            db.query(ParentChildSchoolEmail.email_address)
+            .join(
+                ParentChildProfile,
+                ParentChildProfile.id == ParentChildSchoolEmail.child_profile_id,
+            )
+            .filter(ParentChildProfile.parent_id == parent_id)
+            .filter(ParentChildSchoolEmail.email_address.in_(candidates))
+            .all()
         )
-        .filter(ParentChildProfile.parent_id == parent_id)
-        .filter(ParentChildSchoolEmail.email_address.in_(candidates))
-        .all()
-    )
-    registered = {addr.lower() for (addr,) in registered_rows if addr}
+        registered = {addr.lower() for (addr,) in registered_rows if addr}
+    else:
+        registered = registered_addresses
     unregistered = [c for c in candidates if c not in registered]
     if not unregistered:
         return

@@ -1200,14 +1200,14 @@ def assign_discovered_school_email(
         db.query(ParentChildSchoolEmail)
         .filter(
             ParentChildSchoolEmail.child_profile_id == profile.id,
-            ParentChildSchoolEmail.email_address == discovery.email_address,
+            ParentChildSchoolEmail.email_address == (discovery.email_address or "").strip().lower(),
         )
         .first()
     )
     if existing is None:
         db.add(ParentChildSchoolEmail(
             child_profile_id=profile.id,
-            email_address=discovery.email_address,
+            email_address=(discovery.email_address or "").strip().lower(),
         ))
 
     db.delete(discovery)
@@ -1418,7 +1418,7 @@ def add_child_school_email(
         db.query(ParentChildSchoolEmail)
         .filter(
             ParentChildSchoolEmail.child_profile_id == profile_id,
-            ParentChildSchoolEmail.email_address == body.email_address,
+            ParentChildSchoolEmail.email_address == body.email_address.strip().lower(),
         )
         .first()
     )
@@ -1427,7 +1427,7 @@ def add_child_school_email(
 
     school_email = ParentChildSchoolEmail(
         child_profile_id=profile_id,
-        email_address=body.email_address,
+        email_address=body.email_address.strip().lower(),
     )
     db.add(school_email)
     db.commit()

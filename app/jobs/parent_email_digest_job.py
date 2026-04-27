@@ -1031,6 +1031,23 @@ async def send_unified_digest_for_parent(
     # prevents a crash between fetch and log from silently dropping a
     # parent-day of mail on retry.
     fetched_synced_at_by_id: dict[int, datetime] = {}
+    # #4341 — pre-fetch the parent's registered school-email set ONCE per
+    # batch and reuse across every record_discovery call below (was N
+    # queries, now 1).
+    from app.models.parent_gmail_integration import (
+        ParentChildProfile as _PCProfile,
+        ParentChildSchoolEmail as _PCSchoolEmail,
+    )
+    registered_school_emails: set[str] = {
+        (addr or "").lower()
+        for (addr,) in (
+            db.query(_PCSchoolEmail.email_address)
+            .join(_PCProfile, _PCProfile.id == _PCSchoolEmail.child_profile_id)
+            .filter(_PCProfile.parent_id == parent_id)
+            .all()
+        )
+        if addr
+    }
     for integration in integrations:
         try:
             fetch_result = await fetch_child_emails(db, integration, since=since)
@@ -1065,7 +1082,12 @@ async def send_unified_digest_for_parent(
             # so the parent can assign them to a kid via the UI banner. Wrap
             # broadly so a discovery error never breaks digest delivery.
             try:
-                record_discovery(headers, parent_id, db)
+                record_discovery(
+                    headers,
+                    parent_id,
+                    db,
+                    registered_addresses=registered_school_emails,
+                )
             except Exception:
                 logger.exception(
                     "record_discovery failed (non-fatal) | parent_id=%s",
