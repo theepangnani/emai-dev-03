@@ -237,9 +237,15 @@ describe('ConsentScreen saved-flash timing (#4269)', () => {
 
   // #4282: regression guard — if a future refactor removes the navTimerRef
   // unmount cleanup, the deferred navigate would still fire after the
-  // component is gone. Assert the cleanup actually cancels the pending timer.
-  it('cancels the pending navigate when the screen unmounts mid-flash', async () => {
+  // component is gone. We spy on window.setTimeout/clearTimeout to
+  // positively assert the cleanup ran with the timer id ConsentScreen
+  // armed for its 600ms post-save bounce. (A pure "no route change after
+  // unmount" check would silently pass even if cleanup were removed,
+  // because the MemoryRouter is gone too.)
+  it('cancels the pending navigate timer when the screen unmounts mid-flash', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+    const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
     try {
       mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
       mockUpsertConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
@@ -257,25 +263,33 @@ describe('ConsentScreen saved-flash timing (#4269)', () => {
       }
       await user.click(screen.getByTestId('dci-consent-save'));
 
-      // Saved flash appears — the 600ms navTimerRef is now armed.
+      // Saved flash appears — ConsentScreen has now armed the 600ms timer.
       await screen.findByTestId('dci-consent-saved');
-      expect(
-        screen.getByTestId('location-probe').getAttribute('data-pathname'),
-      ).toBe('/dci/consent');
+
+      // Find the post-save bounce timer (the only 600ms setTimeout call
+      // ConsentScreen makes in this flow). React-internal timers use
+      // different delays, so this filter reliably picks ours.
+      const bounceCalls = setTimeoutSpy.mock.results.filter(
+        (_, idx) => setTimeoutSpy.mock.calls[idx][1] === 600,
+      );
+      expect(bounceCalls).toHaveLength(1);
+      const bounceTimerId = bounceCalls[0].value as number;
 
       // Unmount BEFORE the 600ms timer fires (parent taps Cancel, route
-      // swap, modal close, etc.). Cleanup must clear the pending timer.
+      // swap, modal close, etc.). Cleanup must call clearTimeout with
+      // the id the component armed — that's the contract this test guards.
+      clearTimeoutSpy.mockClear();
       unmount();
 
-      // Advance past the 600ms window. If cleanup is missing, the deferred
-      // navigate would attempt to fire and React would warn.
-      vi.advanceTimersByTime(700);
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(bounceTimerId);
 
-      // The probe is gone (unmounted), and the home route never rendered —
-      // i.e. the deferred navigate did not run.
-      expect(screen.queryByTestId('location-probe')).not.toBeInTheDocument();
+      // Sanity: advancing past the window does not produce a late
+      // navigate (the route never swaps to the return_to path).
+      vi.advanceTimersByTime(700);
       expect(screen.queryByTestId('home')).not.toBeInTheDocument();
     } finally {
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
       vi.useRealTimers();
     }
   });
