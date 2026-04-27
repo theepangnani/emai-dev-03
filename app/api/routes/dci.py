@@ -628,6 +628,16 @@ async def submit_starter_feedback(
     Family-scoped: the starter's summary must belong to a kid linked
     to ``current_user`` via ``parent_students``.
     """
+    # PR-review pass 1 [I1]: an empty body ({} or both fields None)
+    # would silently no-op past every branch and still 200 with a
+    # spurious DB commit. Mirrors the explicit guard in
+    # ``correct_checkin`` (422 if no fields supplied).
+    if body.parent_feedback is None and body.was_used is None:
+        raise HTTPException(
+            status_code=422,
+            detail="At least one of parent_feedback or was_used is required",
+        )
+
     try:
         from app.models.dci import (  # type: ignore
             AISummary,
@@ -677,9 +687,14 @@ async def submit_starter_feedback(
         # itself is a separate endpoint. Don't touch was_used.
         starter.parent_feedback = "regenerate"
 
-    # Explicit was_used override (when the frontend sends it directly,
-    # without a feedback enum).
-    if body.was_used is not None and body.parent_feedback is None:
+    # Explicit was_used override applies LAST so the frontend can
+    # combine ``{parent_feedback: 'regenerate', was_used: true}`` (or
+    # similar) without surprise. ``undo_used`` is itself a was_used
+    # signal — don't let an explicit ``was_used`` from the same body
+    # contradict the just-set ``False``.
+    # PR-review pass 1 [I2]: previous gate ``and parent_feedback is None``
+    # silently dropped explicit was_used when an enum was also supplied.
+    if body.was_used is not None and body.parent_feedback != "undo_used":
         starter.was_used = body.was_used
 
     try:

@@ -726,3 +726,52 @@ def test_starter_feedback_rejects_unlinked_parent_with_404(
         json={"parent_feedback": "thumbs_up"},
     )
     assert resp.status_code == 404
+
+
+def test_starter_feedback_empty_body_returns_422(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """PR-review pass 1 [I1]: an empty body must 422, not silently no-op
+    + 200 with a spurious DB commit. Mirrors the existing
+    `correct_checkin` "at least one field" guard."""
+    _, starter_id = seed_starter()
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={},
+    )
+    assert resp.status_code == 422
+    assert "At least one" in resp.json()["detail"]
+
+
+def test_starter_feedback_explicit_was_used_with_regenerate_is_honoured(
+    client, db_session, kid, linked_parent, dci_flag_on, seed_starter
+):
+    """PR-review pass 1 [I2]: an explicit ``was_used`` must apply even
+    when ``parent_feedback`` is also supplied (e.g. the parent flags
+    "regenerate" but also wants to keep their used-state visible).
+    Previously the override gate ``and parent_feedback is None``
+    silently dropped the explicit value."""
+    from app.models.dci import ConversationStarter
+
+    _, starter_id = seed_starter()
+    headers = _auth(client, linked_parent.email)
+    resp = client.patch(
+        f"/api/dci/conversation-starters/{starter_id}/feedback",
+        headers=headers,
+        json={"parent_feedback": "regenerate", "was_used": True},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["parent_feedback"] == "regenerate"
+    assert body["was_used"] is True
+
+    db_session.expire_all()
+    refreshed = (
+        db_session.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    assert refreshed.parent_feedback == "regenerate"
+    assert refreshed.was_used is True
