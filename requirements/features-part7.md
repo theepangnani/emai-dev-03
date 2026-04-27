@@ -2034,6 +2034,52 @@ Streams complete (all pushed, all build/lint/tests green in their isolated workt
 - **Phase 4 observability** — `ttfi` (Time To First Insight) + `cycle_completion_rate` analytics events
 - **Deployment ramp plan** — internal → paid beta → GA, gated on `tutor_chat_enabled` then `learning_cycle_enabled`
 
+#### 6.142.4 Quick / Full / Worksheet modes + per-message PDF + chip-UX (Design-Gap remediation #4374)
+
+Follow-on to §6.142.1. The user reported that `/tutor` Explain mode fell short of a claude.ai-class experience for cheat-sheet-style prompts (e.g. "give me a cheat sheet for grade 5 math"): the assistant produced a short reply with no way to expand it, no way to download it, suggestion chips were bare verbs ("Practice problems") that lost topic anchor when sent, and tapping a chip just populated the input — the parent still had to tap Send. Five parallel streams (#4375 / #4376 / #4377 / #4381 / #4382) close the gap.
+
+##### Why this exists
+- **No expansion path** — the `_TUTOR_SYSTEM` prompt + 800-token cap produced reasonable conversational answers but truncated genuine cheat-sheet / study-guide requests. Users had no opt-in to a longer, structured artifact.
+- **No download** — there was no per-message way to capture a useful reply for offline use; only the conversation-level PDF utility from CB-ILE-001 existed and that targeted study guides, not chat turns.
+- **Chip topic-anchor loss** — chips read like commands ("More examples", "Practice problems") relative to the previous reply, but when emitted as user messages they lost the topic the conversation was about. The model responded with generic content because the chip text was generic.
+- **Chip click ergonomics** — tapping a chip populated the input but did not auto-send, requiring a second tap. Compounded with above, chips felt like a dead end.
+
+##### Locked behaviour
+
+| Decision | Value |
+|---|---|
+| Default reply mode | `quick` — current 800-token cap, current concise `_TUTOR_SYSTEM` prompt. **No behaviour change without opt-in.** |
+| `full` mode trigger | User taps "Get the full version" button on a settled assistant reply |
+| `full` mode budget | `max_tokens=3000` + structured-artifact prompt (Markdown headings, tables when comparing, fenced code for formulas/syntax, 1-2 worked examples per concept, short summary at end) |
+| `worksheet` mode trigger | User taps a Practice / Problem / Exercise / Worksheet suggestion chip (keyword router) |
+| `worksheet` mode budget | `max_tokens=3000` + numbered practice problems + clearly separated answer key section |
+| Per-message PDF | "Download as PDF" button on every settled assistant reply; reuses existing `downloadAsPdf` utility from `frontend/src/utils/exportUtils.ts` (client-side, html2canvas + jsPDF; no new dep) |
+| Suggestion chips | Self-contained, topic-anchored text (never bare verbs); chip click auto-sends in one tap |
+| System prompt | Adds stay-on-topic directive for short follow-ups ("examples", "more", "another") so single-word follow-ups stay anchored to the prior turn's subject |
+
+##### Streams
+
+| Stream | Issue | Scope |
+|---|---|---|
+| A — Backend mode parameter | [#4375](https://github.com/theepangnani/emai-dev-03/issues/4375) | `mode: "quick" \| "full"` request field on chat endpoint; `full` switches prompt + raises `max_tokens` to 3000 |
+| B — Frontend buttons | [#4376](https://github.com/theepangnani/emai-dev-03/issues/4376) | "Get the full version" + "Download as PDF" buttons on every settled assistant reply |
+| C — Requirements | [#4377](https://github.com/theepangnani/emai-dev-03/issues/4377) | This section + REQUIREMENTS.md index entry |
+| D — Chip UX + topic anchor | [#4381](https://github.com/theepangnani/emai-dev-03/issues/4381) | Chip click auto-sends; chip text is self-contained / topic-anchored; system prompt stay-on-topic directive for short follow-ups |
+| E — Worksheet mode | [#4382](https://github.com/theepangnani/emai-dev-03/issues/4382) | `mode: "worksheet"` value (numbered problems + separated answer key); chip text matching `practice|problem|exercise|worksheet` keywords routes via this mode |
+
+##### Cost / rate-limit notes
+`full` and `worksheet` modes raise `max_tokens` from 800 to 3000 — roughly 3-4× the per-call OpenAI cost vs. `quick`. The existing per-user 20-req/hr Tutor rate limit (set in §6.142.1) is unchanged, so the **daily ceiling per user remains bounded** even if every request used the larger budget. No new metering needed; cost is observable through the existing AI usage rollups.
+
+##### Out of scope (file separately if wanted)
+- "PDF the whole conversation" multi-turn export (this PR does per-message only)
+- Server-side typeset PDF (e.g. WeasyPrint / Puppeteer) — current path stays client-side
+- Persistent worksheet library (saving worksheets to a kid's profile for re-take)
+- Auto-grade student answers on a worksheet
+- Server-side regeneration of an old reply at higher token budget (`full` only applies to fresh generations)
+
+##### Cross-links
+Parent: [#4374](https://github.com/theepangnani/emai-dev-03/issues/4374) · Streams: [#4375](https://github.com/theepangnani/emai-dev-03/issues/4375) [#4376](https://github.com/theepangnani/emai-dev-03/issues/4376) [#4377](https://github.com/theepangnani/emai-dev-03/issues/4377) [#4381](https://github.com/theepangnani/emai-dev-03/issues/4381) [#4382](https://github.com/theepangnani/emai-dev-03/issues/4382) · Integration branch: `integrate/cb-tutor-002-quickfull-pdf`
+
 
 ### 6.142 Unified Multi-Kid Email Digest V2 (CB-PEDI-002, #4012) — INTEGRATION READY (2026-04-23)
 
