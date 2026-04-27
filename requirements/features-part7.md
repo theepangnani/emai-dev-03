@@ -2412,3 +2412,46 @@ The original "My Kids" page was a heavy 2,200+ line MyKidsPage.tsx with mixed-de
 - [x] Deployed (Cloud Run live revision includes the bridge re-skin)
 - [x] Foundation for §6.144/§6.145/§6.146 follow-on work
 - [ ] Bridge component unit tests (#4124 — still open follow-up, non-blocking)
+
+
+### 6.149 Multi-Parent Email Digest Sync (CB-PEDI-MULTIPARENT, #4330) — DESIGN-REVIEW (deferred)
+
+**Tracking issue:** #4330 · **Design doc:** `docs/design/multi-parent-digest-sync.md` · **Status:** design-review (not approved for build) · **Filed:** 2026-04-27
+
+#### Why this exists
+The CB-PEDI-002 (§6.142) schema is fully parent-scoped — each parent has their own `parent_child_profiles`, `parent_child_school_emails`, `parent_digest_monitored_senders`. But `parent_students` is many-to-many: a student can have multiple linked guardians. So when Parent A configures a kid, Parent B logging in for the same student sees a blank slate and has to redo it from scratch; subsequent edits never propagate either way. Live evidence (2026-04-27 defect): "Theepan" (parent A) had Thanushan + Haashini configured; "Idigital Spider" (parent B) saw both with "No school email configured yet."
+
+User intent (verbatim): *"Your kids and monitor senders should be synched by default across the parents. Second parent shouldn't need to configure again. However, they choose to do it if they like."*
+
+#### Approach (Option B: continuous shared-by-default with per-parent override)
+Two scopings were considered with the user; **Option B was chosen** over the simpler one-shot bootstrap (Option A) because continuous sync matches the household mental model — one-shot bootstrap creates silent divergence after day 1.
+
+- **Shared layer (student-scoped):** new tables `student_school_emails`, `student_monitored_senders`, `student_sender_assignments`. Senders keyed by `owner_set_signature` (sha256 of sorted parent_ids in the guardian set) so unrelated households never collide.
+- **Override layer (per-parent):** new table `parent_digest_overrides(parent_id, scope, target_id, action)` with `action ∈ {hide, replace}`. The legacy `parent_*` tables continue as the private layer for `replace` overrides.
+- **Effective view:** `shared ∪ private − HIDE overrides`, computed per-request.
+- **Default writes** mutate shared rows (visible to all guardians); per-row "Make private" creates HIDE+private; wholesale "Use my own list" toggle covers estranged-co-parent opt-out.
+- **Audit log** records every shared-row mutation for visibility and dispute backstop.
+
+#### Backfill from existing parent-scoped data
+Non-destructive: pick the earliest-configured parent as donor → seed shared rows from their data → non-donor divergence preserved as `replace` overrides. Single-parent students unaffected.
+
+#### Privacy & access control
+- Sharing is bounded by `parent_students` membership.
+- Counsel review **required** before `on_for_all` ramp — sharing parent-inbox-derived metadata across guardians changes the consent surface.
+
+#### Build stripe plan (when greenlit)
+S1 schema+backfill · S2 read pipeline · S3 write pipeline+overrides · S4 UI · S5 audit/observability · S6 privacy review gate. Same workflow shape as CB-PEDI-002 — one isolated worktree per stripe, 2× `/pr-review` rounds, integration branch, single PR to master.
+
+#### Rollout
+- New flag `parent.digest_multiparent_sync_v1` (off by default).
+- Ramp variant: off → on_5 → on_25 → on_50 → on_100 → on_for_all (after counsel signoff).
+
+#### Open design questions (for review)
+1. "Remove for everyone" — require all-guardians consent or trust any guardian's judgment? Default proposal: trust + audit-log visibility.
+2. In-app notification when another guardian mutates a shared row? Defer to telemetry.
+3. Authored shared rows after a guardian leaves the set — keep or cleanup? Default proposal: keep (others may still need them).
+
+#### Status
+- **Not in-progress.** Issue #4330 has the `design-review` label only.
+- Awaits user greenlight before any build stripe is opened.
+- Filed alongside the 2026-04-27 email-digest defect batch (#4327/#4328/#4329) so the design context is captured while it's fresh; **not bundled** into that batch — multi-parent sync is its own concern, large enough to warrant its own design doc + privacy review.
