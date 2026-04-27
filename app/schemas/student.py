@@ -20,6 +20,7 @@ class StudentResponse(BaseModel):
     user_id: int
     grade_level: int | None
     school_name: str | None
+    profile_photo_url: str | None = None  # CB-KIDPHOTO-001 (#4301)
     created_at: datetime
 
     class Config:

@@ -62,6 +62,9 @@ class Student(Base):
     postal_code = Column(String(20), nullable=True)
     notes = Column(Text, nullable=True)
 
+    # CB-KIDPHOTO-001 (#4301) — parent-uploaded profile photo (GCS object URL or path).
+    profile_photo_url = Column(String(512), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

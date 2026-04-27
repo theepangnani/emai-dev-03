@@ -752,6 +752,15 @@ export function MyKidsPage() {
                 toast('Failed to remove child', 'error');
               }
             }}
+            onPhotoChange={(newUrl) => {
+              // CB-KIDPHOTO-001 (#4301): patch in the new URL so the rail
+              // pill updates without a full re-fetch.
+              setChildren(prev => prev.map(c =>
+                c.student_id === child.student_id
+                  ? { ...c, profile_photo_url: newUrl }
+                  : c
+              ));
+            }}
           />
         );
       })()}
