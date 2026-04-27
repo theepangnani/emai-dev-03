@@ -417,49 +417,21 @@ def test_correct_returns_404_when_classification_missing(
     assert resp.json()["detail"] == "Classification not found"
 
 
-def _seed_checkin_with_classification(
-    db_session, *, kid_id, parent_id, subject="Math"
-):
-    """Create a daily_checkins row + one classification_events row.
-
-    Returns (checkin_id, classification_id). Used by the PATCH /correct
-    integration tests below to exercise the full route, not just the
-    helper.
-    """
-    from app.models.dci import ClassificationEvent, DailyCheckin
-
-    c = DailyCheckin(
-        kid_id=kid_id,
-        parent_id=parent_id,
-        photo_uris=[],
-        text_content="hello",
-        source="kid_web",
-    )
-    db_session.add(c)
-    db_session.flush()
-    ce = ClassificationEvent(
-        checkin_id=c.id,
-        artifact_type="text",
-        subject=subject,
-        confidence=0.9,
-    )
-    db_session.add(ce)
-    db_session.commit()
-    db_session.refresh(c)
-    db_session.refresh(ce)
-    return c.id, ce.id
-
-
 def test_correct_normalises_kid_typed_subject_alias(
-    client, db_session, kid, linked_parent, dci_flag_on
+    client,
+    db_session,
+    kid,
+    linked_parent,
+    dci_flag_on,
+    seed_checkin_with_classification,
 ):
     """#4231 — `coerce_subject` must normalise common kid-typed variants
     on the PATCH /correct route so a kid typing 'math' (lowercase) lands
     on the canonical 'Math' enum, not free-form text."""
     from app.models.dci import ClassificationEvent
 
-    checkin_id, ce_id = _seed_checkin_with_classification(
-        db_session, kid_id=kid.id, parent_id=linked_parent.id, subject="English"
+    checkin_id, ce_id = seed_checkin_with_classification(
+        kid_id=kid.id, parent_id=linked_parent.id, subject="English"
     )
     headers = _auth(client, linked_parent.email)
     resp = client.patch(
@@ -477,12 +449,17 @@ def test_correct_normalises_kid_typed_subject_alias(
 
 
 def test_correct_rejects_unknown_subject_with_422(
-    client, db_session, kid, linked_parent, dci_flag_on
+    client,
+    db_session,
+    kid,
+    linked_parent,
+    dci_flag_on,
+    seed_checkin_with_classification,
 ):
     """#4231 — unknown subjects must 422 with the offending value rather
     than silently writing free-form text into the canonical enum column."""
-    checkin_id, _ = _seed_checkin_with_classification(
-        db_session, kid_id=kid.id, parent_id=linked_parent.id
+    checkin_id, _ = seed_checkin_with_classification(
+        kid_id=kid.id, parent_id=linked_parent.id
     )
     headers = _auth(client, linked_parent.email)
     resp = client.patch(
@@ -492,6 +469,37 @@ def test_correct_rejects_unknown_subject_with_422(
     )
     assert resp.status_code == 422, resp.text
     assert "Underwater Basket Weaving" in resp.json()["detail"]
+
+
+def test_seed_factory_supports_multiple_checkins_per_test(
+    db_session, kid, linked_parent, seed_checkin_with_classification
+):
+    """#4275 — the promoted factory fixture must allow seeding more than one
+    (checkin, classification) pair inside a single test, with distinct IDs
+    and the per-call subject override honoured. This is the third caller
+    that motivated the promotion to a fixture."""
+    from app.models.dci import ClassificationEvent
+
+    c1_id, ce1_id = seed_checkin_with_classification(
+        kid_id=kid.id, parent_id=linked_parent.id, subject="Math"
+    )
+    c2_id, ce2_id = seed_checkin_with_classification(
+        kid_id=kid.id, parent_id=linked_parent.id, subject="Science"
+    )
+
+    assert c1_id != c2_id
+    assert ce1_id != ce2_id
+
+    rows = (
+        db_session.query(ClassificationEvent)
+        .filter(ClassificationEvent.id.in_([ce1_id, ce2_id]))
+        .all()
+    )
+    by_id = {r.id: r for r in rows}
+    assert by_id[ce1_id].subject == "Math"
+    assert by_id[ce2_id].subject == "Science"
+    assert by_id[ce1_id].checkin_id == c1_id
+    assert by_id[ce2_id].checkin_id == c2_id
 
 
 def test_kid_checkin_resolves_linked_parent_not_self(

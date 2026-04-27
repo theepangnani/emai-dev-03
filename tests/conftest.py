@@ -149,3 +149,59 @@ def _login(client, email):
 
 def _auth(client, email):
     return {"Authorization": f"Bearer {_login(client, email)}"}
+
+
+# ── CB-DCI-001 shared seed factory (#4275) ──
+#
+# Promoted from `tests/test_dci_checkin_api.py` so any DCI test file can seed
+# a check-in row plus its classification event without duplicating the
+# boilerplate. Usage:
+#
+#     def test_something(seed_checkin_with_classification, db_session, kid,
+#                        linked_parent):
+#         checkin_id, ce_id = seed_checkin_with_classification(
+#             kid_id=kid.id, parent_id=linked_parent.id, subject="English"
+#         )
+#         ...
+#
+# Returns a callable so a single test can seed multiple rows. The factory
+# binds to the test's `db_session` so all writes participate in the same
+# session and are visible to subsequent queries in the same test.
+@pytest.fixture()
+def seed_checkin_with_classification(db_session):
+    """Factory fixture: create a daily_checkins row + one classification_events row.
+
+    The returned callable accepts keyword arguments::
+
+        kid_id    -- Student.id (required)
+        parent_id -- User.id of the linked parent (required)
+        subject   -- canonical subject string, default "Math"
+
+    and returns ``(checkin_id, classification_id)``.
+    """
+
+    def _seed(*, kid_id, parent_id, subject="Math"):
+        from app.models.dci import ClassificationEvent, DailyCheckin
+
+        c = DailyCheckin(
+            kid_id=kid_id,
+            parent_id=parent_id,
+            photo_uris=[],
+            text_content="hello",
+            source="kid_web",
+        )
+        db_session.add(c)
+        db_session.flush()
+        ce = ClassificationEvent(
+            checkin_id=c.id,
+            artifact_type="text",
+            subject=subject,
+            confidence=0.9,
+        )
+        db_session.add(ce)
+        db_session.commit()
+        db_session.refresh(c)
+        db_session.refresh(ce)
+        return c.id, ce.id
+
+    return _seed
