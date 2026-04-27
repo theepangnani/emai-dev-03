@@ -12,6 +12,8 @@
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ArcMascot, type ArcMood } from '../arc';
+import { getArcVariant } from '../arc/util';
+import { useAuth } from '../../context/AuthContext';
 import type { CycleChunk } from './types';
 
 export interface CycleTeachBlockProps {
@@ -43,12 +45,14 @@ export function CycleTeachBlock({
     return () => window.clearTimeout(t);
   }, [chunk.order]);
 
+  const { user } = useAuth();
+
   return (
     <section
       className={`cycle-teach ${accentClass}`}
       aria-labelledby={`cycle-teach-heading-${chunk.order}`}
     >
-      <div className="cycle-teach__mascot">
+      <div className="cycle-teach__mascot" data-arc={getArcVariant(user?.id)}>
         <ArcMascot size={96} mood={mood} glow decorative />
       </div>
 

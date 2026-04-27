@@ -34,9 +34,11 @@ import './BridgePage.css';
 import './DashboardGrid.css';
 import '../components/ChildSelectorTabs.css';
 
+// CB-AVATAR-COLORS-001 #4313 — reordered to lead with rose; violet pushed to
+// index 4. Effect: the first-added kid gets a warmer default than violet.
 const CHILD_COLORS = [
-  '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b',
-  '#3b82f6', '#ef4444', '#10b981', '#6366f1',
+  '#ec4899', '#14b8a6', '#f59e0b', '#3b82f6',
+  '#8b5cf6', '#ef4444', '#10b981', '#6366f1',
 ];
 
 function getInitials(name: string): string {

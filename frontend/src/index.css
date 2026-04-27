@@ -59,6 +59,11 @@ body:has(.modal-overlay) {
   --color-accent-subtle: rgba(74, 144, 217, 0.08);
   --color-focus-ring: rgba(74, 144, 217, 0.12);
 
+  /* Decorative palette companion (matches --color-rose / --color-sky / --color-pine
+     / --color-amber pattern in the bridge theme). Used by Arc per-user variants
+     (CB-AVATAR-COLORS-001 #4312). */
+  --color-teal: #14b8a6;
+
   /* Purple accent (quiz/detail pages) */
   --color-purple: #7c3aed;
   --color-purple-strong: #6d28d9;
@@ -248,6 +253,9 @@ body:has(.modal-overlay) {
   --color-accent-subtle: rgba(167, 139, 250, 0.08);
   --color-focus-ring: rgba(167, 139, 250, 0.25);
 
+  /* Decorative teal — dark theme companion for Arc variants (#4312). */
+  --color-teal: #5eead4;
+
   --color-purple: #c4b5fd;
   --color-purple-strong: #a78bfa;
   --color-purple-light: rgba(167, 139, 250, 0.14);
@@ -395,6 +403,9 @@ body:has(.modal-overlay) {
   --color-accent-subtle: rgba(90, 143, 181, 0.08);
   --color-focus-ring: rgba(90, 143, 181, 0.15);
 
+  /* Decorative teal — focus theme companion for Arc variants (#4312). */
+  --color-teal: #3a9588;
+
   --color-purple: #7b6b8a;
   --color-purple-strong: #6b5b7a;
   --color-purple-light: #f3eff7;
@@ -536,6 +547,8 @@ body:has(.modal-overlay) {
   --color-amber: #d4a24b;
   --color-sky: #3b6a8f;
   --color-rose: #c25b6f;
+  /* Decorative teal — bridge theme companion for Arc variants (#4312). */
+  --color-teal: #2d8a7a;
   --color-on-track-bg: #e6efe8;
   --color-on-track-ink: #23523f;
   --color-pending-bg: #f6ead3;
@@ -707,6 +720,24 @@ body:has(.modal-overlay) {
   --tw-amber-600: #a87a30;
   --tw-amber-800: #7a5a1a;
 }
+
+/* ========================================
+   CB-AVATAR-COLORS-001 #4312 — Arc mascot per-user color variants.
+   Default: inherits the active theme's accent. Apply [data-arc="<key>"]
+   on any ancestor of <ArcMascot> to override per user.
+   ======================================== */
+:root, [data-theme="light"], [data-theme="dark"], [data-theme="focus"], [data-theme="bridge"] {
+  --arc-body-color: var(--color-accent);
+  --arc-body-color-strong: var(--color-accent-strong);
+  --arc-body-color-warm: var(--color-accent-warm);
+}
+
+[data-arc="rose"]   { --arc-body-color: #c25b6f; --arc-body-color-strong: #a04458; --arc-body-color-warm: #c25b6f; }
+[data-arc="sky"]    { --arc-body-color: #3b6a8f; --arc-body-color-strong: #2d5475; --arc-body-color-warm: #3b6a8f; }
+[data-arc="pine"]   { --arc-body-color: #2d4a3e; --arc-body-color-strong: #1c3329; --arc-body-color-warm: #2d4a3e; }
+[data-arc="purple"] { --arc-body-color: #7c3aed; --arc-body-color-strong: #6d28d9; --arc-body-color-warm: #7c3aed; }
+[data-arc="amber"]  { --arc-body-color: #d4a24b; --arc-body-color-strong: #a87a3a; --arc-body-color-warm: #d4a24b; }
+[data-arc="teal"]   { --arc-body-color: #14b8a6; --arc-body-color-strong: #0d9488; --arc-body-color-warm: #14b8a6; }
 
 body {
   margin: 0;

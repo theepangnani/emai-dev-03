@@ -18,6 +18,8 @@ import { ParentTeachingControls } from '../components/ile/ParentTeachingControls
 import { CareerConnectCard } from '../components/ile/CareerConnectCard';
 import { AhaMomentCelebration } from '../components/ile/AhaMomentCelebration';
 import { ArcMascot } from '../components/arc';
+import { getArcVariant } from '../components/arc/util';
+import { useAuth } from '../context/AuthContext';
 import './FlashTutorSessionPage.css';
 
 type Phase = 'question' | 'feedback' | 'results' | 'loading' | 'error' | 'expired';
@@ -26,6 +28,8 @@ export function FlashTutorSessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sessionId = parseInt(id || '0');
+  const { user } = useAuth();
+  const arcVariant = getArcVariant(user?.id);
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [session, setSession] = useState<ILESession | null>(null);
@@ -243,7 +247,7 @@ export function FlashTutorSessionPage() {
             <AhaMomentCelebration topic={results.topic} />
           )}
           <div className="fts-results">
-            <div className="fts-results-header">
+            <div className="fts-results-header" data-arc={arcVariant}>
               <ArcMascot size={64} mood="celebrating" decorative />
               <h1>Session Complete!</h1>
               <div className="fts-score-circle">

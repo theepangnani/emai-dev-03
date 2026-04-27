@@ -5,6 +5,8 @@ import { ChatMessage } from './ChatMessage';
 import { SuggestionChips } from './SuggestionChips';
 import { useChatPanelInteraction } from '../../hooks/useChatPanelInteraction';
 import { ArcMascot } from '../arc';
+import { getArcVariant } from '../arc/util';
+import { useAuth } from '../../context/AuthContext';
 import './HelpChatbot.css';
 
 const STORAGE_KEY = 'classbridge-help-open';
@@ -22,6 +24,8 @@ export function HelpChatbot() {
     }
   });
 
+  const { user } = useAuth();
+  const arcVariant = getArcVariant(user?.id);
   const { messages, sendMessage, isLoading, error, clearMessages } = useHelpChat();
   const [inputValue, setInputValue] = useState('');
   const [helperMessage, setHelperMessage] = useState('');
@@ -95,6 +99,7 @@ export function HelpChatbot() {
           className="help-chatbot-fab help-chatbot-fab--arc"
           onClick={() => setIsOpen(true)}
           aria-label="Open help chat"
+          data-arc={arcVariant}
         >
           <ArcMascot size={56} mood="waving" glow decorative />
         </button>
@@ -112,7 +117,7 @@ export function HelpChatbot() {
             onPointerDown={onDragStart}
             onDoubleClick={toggleMaximize}
           >
-            <div className="help-chatbot-header-title">
+            <div className="help-chatbot-header-title" data-arc={arcVariant}>
               <ArcMascot size={32} mood={isLoading ? 'thinking' : 'happy'} decorative />
               <h3>Arc · ClassBridge Help</h3>
             </div>
