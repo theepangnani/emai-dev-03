@@ -38,12 +38,21 @@ vi.mock('../api/client', () => ({
 // Mock useFeature so tests aren't gated on the async /api/features query.
 // Without this, `waitlist_enabled` falls back to its DEFAULT_DURING_LOAD=true,
 // hiding the "Sign up" link and breaking the auth-footer test (#4251).
-vi.mock('../hooks/useFeatureToggle', () => ({
-  useFeature: (key: string) => {
-    if (key === 'waitlist_enabled') return mockWaitlistEnabled
-    return false
-  },
-}))
+//
+// Spread `...actual` so sibling exports (`useFeatureFlagEnabled`,
+// `useFeatureFlagState`, `useFeatureVariant`, `useFeatureToggles`,
+// `fetchFeatures`) keep working if Login.tsx ever imports them — only
+// `useFeature` is overridden here (#4277).
+vi.mock('../hooks/useFeatureToggle', async () => {
+  const actual = await vi.importActual<typeof import('../hooks/useFeatureToggle')>('../hooks/useFeatureToggle')
+  return {
+    ...actual,
+    useFeature: (key: string) => {
+      if (key === 'waitlist_enabled') return mockWaitlistEnabled
+      return false
+    },
+  }
+})
 
 import { Login } from './Login'
 
