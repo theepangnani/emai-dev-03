@@ -1,5 +1,37 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
+// Stream A (#4312) wraps ArcMascot in a data-arc={getArcVariant(user?.id)}
+// element which calls useAuth(). Mock AuthContext so the pre-existing
+// TutorChat tests don't require an AuthProvider.
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: {
+      id: 1,
+      email: 'test@example.com',
+      full_name: 'Test User',
+      role: 'STUDENT',
+      roles: ['STUDENT'],
+      is_active: true,
+      google_connected: false,
+      needs_onboarding: false,
+      onboarding_completed: true,
+      email_verified: true,
+      interests: [],
+    },
+    token: 'test-token',
+    isLoading: false,
+    login: vi.fn(),
+    loginWithToken: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    switchRole: vi.fn(),
+    completeOnboarding: vi.fn(),
+    resendVerification: vi.fn(),
+    refreshUser: vi.fn(),
+  }),
+}));
+
 import { TutorChat } from '../TutorChat';
 
 // Helpers to build an SSE ReadableStream the component-under-test will consume.
