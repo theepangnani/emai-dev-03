@@ -200,7 +200,7 @@ jobs:
           # receiving traffic; routing must then be done explicitly via
           # `gcloud run services update-traffic --to-latest`.
           NO_TRAFFIC_FLAG=""
-          if [ "${{ github.event.inputs.route_traffic }}" = "false" ]; then
+          if [ "${{ inputs.route_traffic }}" = "false" ]; then
             NO_TRAFFIC_FLAG="--no-traffic"
           fi
 
@@ -227,6 +227,6 @@ jobs:
           echo "Deployed to: $URL"
 
       - name: Post-deploy summary (no-traffic)
-        if: github.event.inputs.route_traffic == 'false'
+        if: inputs.route_traffic == false
         run: |
           echo "::notice::Deploy complete WITHOUT traffic routing. Run: gcloud run services update-traffic ${{ env.SERVICE }} --to-latest --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} to ship."
