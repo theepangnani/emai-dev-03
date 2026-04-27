@@ -43,6 +43,10 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.student import Student, parent_students
 from app.models.user import User
+from app.schemas.dci import (
+    ConversationStarterFeedback,
+    ConversationStarterResponse,
+)
 from app.services import dci_service
 from app.services.dci_classifier import classify_artifact
 from app.services.dci_subject_taxonomy import coerce_subject
@@ -581,3 +585,126 @@ async def correct_checkin(
         db.rollback()
         logger.exception("DCI: correction write failed for checkin_id=%s", checkin_id)
         raise HTTPException(status_code=500, detail="Could not save correction")
+
+
+# ── PATCH /api/dci/conversation-starters/{id}/feedback ────────────────
+
+
+@router.patch(
+    "/conversation-starters/{starter_id}/feedback",
+    response_model=ConversationStarterResponse,
+    dependencies=[Depends(require_dci_enabled)],
+)
+@limiter.limit("20/minute")
+async def submit_starter_feedback(
+    request: Request,
+    starter_id: int,
+    body: ConversationStarterFeedback,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ConversationStarterResponse:
+    """Parent submits feedback on an AI conversation starter (#4307, #4225).
+
+    Accepts the three values defined by ``ConversationStarterFeedback``:
+
+      * ``thumbs_up`` — parent liked + used this starter. Persists
+        ``parent_feedback='thumbs_up'`` and ``was_used=True``.
+      * ``regenerate`` — parent wants a fresh starter. Persists
+        ``parent_feedback='regenerate'`` (existing semantics; the
+        regeneration path itself is owned by a separate endpoint).
+      * ``undo_used`` — transient untoggle signal (#4225). NOT a
+        persisted enum value — the DB CHECK constraint
+        ``ck_conversation_starters_parent_feedback`` only allows
+        ``thumbs_up | regenerate | NULL``. The handler translates
+        ``undo_used`` into ``was_used=False`` and clears
+        ``parent_feedback`` back to NULL so the parent can re-toggle
+        cleanly. Without this translation a literal write would 500
+        on the CHECK constraint.
+
+    ``body.was_used`` (when set explicitly) overrides the derived
+    value above so the frontend can also pass an explicit
+    ``{was_used: true/false}`` without a feedback enum.
+
+    Family-scoped: the starter's summary must belong to a kid linked
+    to ``current_user`` via ``parent_students``.
+    """
+    # PR-review pass 1 [I1]: an empty body ({} or both fields None)
+    # would silently no-op past every branch and still 200 with a
+    # spurious DB commit. Mirrors the explicit guard in
+    # ``correct_checkin`` (422 if no fields supplied).
+    if body.parent_feedback is None and body.was_used is None:
+        raise HTTPException(
+            status_code=422,
+            detail="At least one of parent_feedback or was_used is required",
+        )
+
+    try:
+        from app.models.dci import (  # type: ignore
+            AISummary,
+            ConversationStarter,
+        )
+    except ImportError:
+        # M0-2 not on disk — defensive fallback consistent with other DCI routes.
+        raise HTTPException(status_code=503, detail="DCI models not available")
+
+    starter = (
+        db.query(ConversationStarter)
+        .filter(ConversationStarter.id == starter_id)
+        .first()
+    )
+    if not starter:
+        raise HTTPException(status_code=404, detail="Conversation starter not found")
+
+    # Family scope: the starter → summary → kid must be linked to this parent.
+    summary = (
+        db.query(AISummary).filter(AISummary.id == starter.summary_id).first()
+    )
+    if not summary:
+        raise HTTPException(status_code=404, detail="Conversation starter not found")
+
+    linked = (
+        db.query(parent_students)
+        .filter(
+            parent_students.c.parent_id == current_user.id,
+            parent_students.c.student_id == summary.kid_id,
+        )
+        .first()
+    )
+    if not linked:
+        raise HTTPException(status_code=404, detail="Conversation starter not found")
+
+    # ── Translate feedback enum into persisted column values ─────────
+    # #4307: ``undo_used`` is a transient signal — never write the
+    # literal string to ``parent_feedback`` (DB CHECK would reject it).
+    if body.parent_feedback == "undo_used":
+        starter.was_used = False
+        starter.parent_feedback = None
+    elif body.parent_feedback == "thumbs_up":
+        starter.parent_feedback = "thumbs_up"
+        starter.was_used = True
+    elif body.parent_feedback == "regenerate":
+        # Existing semantics — record the request; the regeneration
+        # itself is a separate endpoint. Don't touch was_used.
+        starter.parent_feedback = "regenerate"
+
+    # Explicit was_used override applies LAST so the frontend can
+    # combine ``{parent_feedback: 'regenerate', was_used: true}`` (or
+    # similar) without surprise. ``undo_used`` is itself a was_used
+    # signal — don't let an explicit ``was_used`` from the same body
+    # contradict the just-set ``False``.
+    # PR-review pass 1 [I2]: previous gate ``and parent_feedback is None``
+    # silently dropped explicit was_used when an enum was also supplied.
+    if body.was_used is not None and body.parent_feedback != "undo_used":
+        starter.was_used = body.was_used
+
+    try:
+        db.commit()
+        db.refresh(starter)
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "DCI: starter feedback write failed for starter_id=%s", starter_id
+        )
+        raise HTTPException(status_code=500, detail="Could not save feedback")
+
+    return ConversationStarterResponse.model_validate(starter)
