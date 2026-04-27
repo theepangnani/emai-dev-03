@@ -11,9 +11,15 @@ import { EmailDigestCard } from '../EmailDigestCard';
 
 const mockGetLogs = vi.fn();
 
-vi.mock('../../../api/parentEmailDigest', () => ({
-  getLogs: (...args: unknown[]) => mockGetLogs(...args),
-}));
+vi.mock('../../../api/parentEmailDigest', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/parentEmailDigest')>(
+    '../../../api/parentEmailDigest',
+  );
+  return {
+    ...actual,
+    getLogs: (...args: unknown[]) => mockGetLogs(...args),
+  };
+});
 
 beforeEach(() => {
   mockGetLogs.mockReset();
