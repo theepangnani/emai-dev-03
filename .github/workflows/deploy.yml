@@ -25,6 +25,11 @@ on:
         required: false
         default: 'master'
         type: string
+      route_traffic:
+        description: 'Route 100% traffic to the new revision after deploy. Set to false to deploy without routing.'
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: deploy
@@ -190,12 +195,22 @@ jobs:
             CLOUDSQL_FLAG="--add-cloudsql-instances ${{ env.PROJECT_ID }}:${{ env.REGION }}:emai-db"
           fi
 
+          # Gate traffic routing behind the route_traffic input (default: true = current behavior).
+          # When route_traffic=false, append --no-traffic so the new revision deploys without
+          # receiving traffic; routing must then be done explicitly via
+          # `gcloud run services update-traffic --to-latest`.
+          NO_TRAFFIC_FLAG=""
+          if [ "${{ github.event.inputs.route_traffic }}" = "false" ]; then
+            NO_TRAFFIC_FLAG="--no-traffic"
+          fi
+
           gcloud run deploy ${{ env.SERVICE }} \
             --image ${{ env.IMAGE }}:${{ github.sha }} \
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
             $CLOUDSQL_FLAG \
+            $NO_TRAFFIC_FLAG \
             --set-env-vars "ENVIRONMENT=production,LOG_LEVEL=WARNING,LOG_TO_FILE=false,GOOGLE_REDIRECT_URI=https://www.classbridge.ca/api/google/callback,FRONTEND_URL=https://www.classbridge.ca,CANONICAL_DOMAIN=www.classbridge.ca,USE_GCS=true,GCS_BUCKET_NAME=classbridge-files,APP_VERSION=${{ github.sha }},GITHUB_TOKEN=${{ secrets.BUG_REPORT_GITHUB_TOKEN }},FROM_EMAIL=noreply@classbridge.ca,TWILIO_WHATSAPP_FROM=${{ secrets.TWILIO_WHATSAPP_FROM }},TWILIO_WHATSAPP_DIGEST_CONTENT_SID=${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID }},TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2=${{ secrets.TWILIO_WHATSAPP_DIGEST_CONTENT_SID_V2 }},TWILIO_WHATSAPP_OTP_CONTENT_SID=${{ secrets.TWILIO_WHATSAPP_OTP_CONTENT_SID }}" \
             --set-secrets "SECRET_KEY=SECRET_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,OPENAI_API_KEY=OPENAI_API_KEY:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,GOOGLE_CLIENT_SECRET=GOOGLE_CLIENT_SECRET:latest,SENDGRID_API_KEY=SENDGRID_API_KEY:latest,SMTP_USER=SMTP_USER:latest,SMTP_PASSWORD=SMTP_PASSWORD:latest,YOUTUBE_API_KEY=YOUTUBE_API_KEY:latest,TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest" \
             --memory 1Gi \
@@ -210,3 +225,8 @@ jobs:
         run: |
           URL=$(gcloud run services describe ${{ env.SERVICE }} --region ${{ env.REGION }} --format 'value(status.url)')
           echo "Deployed to: $URL"
+
+      - name: Post-deploy summary (no-traffic)
+        if: github.event.inputs.route_traffic == 'false'
+        run: |
+          echo "::notice::Deploy complete WITHOUT traffic routing. Run: gcloud run services update-traffic ${{ env.SERVICE }} --to-latest --region=${{ env.REGION }} --project=${{ env.PROJECT_ID }} to ship."
