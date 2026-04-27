@@ -26,6 +26,9 @@ const mockListMonitoredSenders = vi.fn();
 const mockAddMonitoredSender = vi.fn();
 const mockRemoveMonitoredSender = vi.fn();
 const mockGetChildren = vi.fn();
+const mockListDiscoveredSchoolEmails = vi.fn();
+const mockAssignDiscoveredSchoolEmail = vi.fn();
+const mockDismissDiscoveredSchoolEmail = vi.fn();
 
 vi.mock('../../api/parentEmailDigest', async () => {
   const actual = await vi.importActual<typeof import('../../api/parentEmailDigest')>(
@@ -49,6 +52,12 @@ vi.mock('../../api/parentEmailDigest', async () => {
     listMonitoredSenders: (...args: unknown[]) => mockListMonitoredSenders(...args),
     addMonitoredSender: (...args: unknown[]) => mockAddMonitoredSender(...args),
     removeMonitoredSender: (...args: unknown[]) => mockRemoveMonitoredSender(...args),
+    listDiscoveredSchoolEmails: (...args: unknown[]) =>
+      mockListDiscoveredSchoolEmails(...args),
+    assignDiscoveredSchoolEmail: (...args: unknown[]) =>
+      mockAssignDiscoveredSchoolEmail(...args),
+    dismissDiscoveredSchoolEmail: (...args: unknown[]) =>
+      mockDismissDiscoveredSchoolEmail(...args),
   };
 });
 
@@ -189,6 +198,11 @@ beforeEach(() => {
   mockListMonitoredEmails.mockResolvedValue({ data: [] });
   mockListChildProfiles.mockResolvedValue({ data: [] });
   mockListMonitoredSenders.mockResolvedValue({ data: [] });
+  // #4329: default — no auto-discovered school addresses. Tests that
+  // care about discovery rows override this.
+  mockListDiscoveredSchoolEmails.mockResolvedValue({ data: [] });
+  mockAssignDiscoveredSchoolEmail.mockResolvedValue({ data: { status: 'ok' } });
+  mockDismissDiscoveredSchoolEmail.mockResolvedValue({ data: undefined });
   // #4044: default — parent has no kids in the People-API list. Tests that
   // care about kid rows override this with mockGetChildren.mockResolvedValue.
   mockGetChildren.mockResolvedValue([]);
@@ -1897,5 +1911,143 @@ describe('EmailDigestPage — unified Digest History (#4056)', () => {
     if (img) {
       expect(img.hasAttribute('onerror')).toBe(false);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #4329 — Discovered school addresses (banner + assign modal)
+// ---------------------------------------------------------------------------
+
+describe('EmailDigestPage — discovered school emails (#4329)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Haashini' }),
+        buildChildProfile({ id: 12, first_name: 'Thanushan' }),
+      ],
+    });
+  });
+
+  it('hides the banner when no discoveries exist', async () => {
+    mockListDiscoveredSchoolEmails.mockResolvedValue({ data: [] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Your kids')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/couldn.t classify/)).not.toBeInTheDocument();
+  });
+
+  it('renders the banner when discoveries exist', async () => {
+    mockListDiscoveredSchoolEmails.mockResolvedValue({
+      data: [
+        {
+          id: 1,
+          email_address: '349017574@gapps.yrdsb.ca',
+          sample_sender: 'teacher@yrdsb.ca',
+          occurrences: 3,
+          first_seen_at: '2026-04-01T00:00:00Z',
+          last_seen_at: '2026-04-25T00:00:00Z',
+        },
+      ],
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/couldn.t classify/)).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: /Assign to a kid/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the modal when the banner button is clicked', async () => {
+    mockListDiscoveredSchoolEmails.mockResolvedValue({
+      data: [
+        {
+          id: 1,
+          email_address: '349017574@gapps.yrdsb.ca',
+          sample_sender: null,
+          occurrences: 1,
+          first_seen_at: '2026-04-01T00:00:00Z',
+          last_seen_at: '2026-04-25T00:00:00Z',
+        },
+      ],
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/couldn.t classify/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Assign to a kid/ }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', { name: /Assign discovered school addresses/ }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText('349017574@gapps.yrdsb.ca')).toBeInTheDocument();
+  });
+
+  it('calls assignDiscoveredSchoolEmail when a kid is selected and Assign clicked', async () => {
+    mockListDiscoveredSchoolEmails.mockResolvedValue({
+      data: [
+        {
+          id: 42,
+          email_address: 'kid@gapps.yrdsb.ca',
+          sample_sender: null,
+          occurrences: 1,
+          first_seen_at: '2026-04-01T00:00:00Z',
+          last_seen_at: '2026-04-25T00:00:00Z',
+        },
+      ],
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/couldn.t classify/)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Assign to a kid/ }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /Assign discovered school addresses/,
+    });
+    const select = within(dialog).getByRole('combobox', {
+      name: /Assign kid@gapps.yrdsb.ca to a kid/,
+    });
+    fireEvent.change(select, { target: { value: '11' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Assign' }));
+
+    await waitFor(() => {
+      expect(mockAssignDiscoveredSchoolEmail).toHaveBeenCalledWith(42, 11);
+    });
+  });
+
+  it('calls dismissDiscoveredSchoolEmail when Dismiss clicked', async () => {
+    mockListDiscoveredSchoolEmails.mockResolvedValue({
+      data: [
+        {
+          id: 7,
+          email_address: 'bye@gapps.yrdsb.ca',
+          sample_sender: null,
+          occurrences: 1,
+          first_seen_at: '2026-04-01T00:00:00Z',
+          last_seen_at: '2026-04-25T00:00:00Z',
+        },
+      ],
+    });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/couldn.t classify/)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Assign to a kid/ }));
+
+    const dialog = await screen.findByRole('dialog', {
+      name: /Assign discovered school addresses/,
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dismiss' }));
+
+    await waitFor(() => {
+      expect(mockDismissDiscoveredSchoolEmail).toHaveBeenCalledWith(7);
+    });
   });
 });

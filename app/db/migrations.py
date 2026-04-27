@@ -2868,3 +2868,60 @@ def _run_migrations_inner(engine, settings, logger):
             logger.info("Unique functional index on parent_child_profiles (#4047)")
     except Exception as e:
         logger.debug("Functional unique index #4047 skipped: %s", e)
+
+    # --- Auto-discovered school addresses table (#4329) ---
+    # SQLAlchemy's create_all() handles new-table creation at startup, but we
+    # add an explicit guard here so the unique constraint lands deterministically
+    # in environments where create_all() is not invoked (e.g. external tooling).
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            _tables = set(_inspector.get_table_names())
+            if "parent_discovered_school_emails" not in _tables:
+                _is_pg = "sqlite" not in settings.database_url
+                if _is_pg:
+                    conn.execute(text(
+                        """
+                        CREATE TABLE IF NOT EXISTS parent_discovered_school_emails (
+                            id SERIAL PRIMARY KEY,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            email_address VARCHAR(255) NOT NULL,
+                            sample_sender VARCHAR(255),
+                            occurrences INTEGER NOT NULL DEFAULT 1,
+                            first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT uq_parent_discovered_email UNIQUE (parent_id, email_address)
+                        )
+                        """
+                    ))
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_parent_discovered_school_emails_parent_id "
+                        "ON parent_discovered_school_emails (parent_id)"
+                    ))
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_parent_discovered_school_emails_email "
+                        "ON parent_discovered_school_emails (email_address)"
+                    ))
+                else:
+                    conn.execute(text(
+                        """
+                        CREATE TABLE IF NOT EXISTS parent_discovered_school_emails (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            email_address VARCHAR(255) NOT NULL,
+                            sample_sender VARCHAR(255),
+                            occurrences INTEGER NOT NULL DEFAULT 1,
+                            first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT uq_parent_discovered_email UNIQUE (parent_id, email_address)
+                        )
+                        """
+                    ))
+                conn.commit()
+                logger.info("Created parent_discovered_school_emails table (#4329)")
+            else:
+                logger.debug("parent_discovered_school_emails table already exists (#4329)")
+    except Exception as e:
+        logger.warning("parent_discovered_school_emails create skipped (#4329): %s", e)

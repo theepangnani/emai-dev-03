@@ -1034,3 +1034,64 @@ button.ed-kid-chip:hover {
   padding: 12px 20px 16px;
   border-top: 1px solid var(--color-border);
 }
+
+/* #4329 — discovered school addresses banner + assign modal */
+.ed-discovered-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-warning, #f59e0b);
+  background: var(--color-surface-muted, #fffbeb);
+  border-radius: 8px;
+}
+
+.ed-discovered-banner__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ed-discovered-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.ed-discovered-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+}
+
+.ed-discovered-row__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ed-discovered-addr {
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9375rem;
+}
+
+.ed-discovered-meta {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted, #6b7280);
+}
+
+.ed-discovered-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
