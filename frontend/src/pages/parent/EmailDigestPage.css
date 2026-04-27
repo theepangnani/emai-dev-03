@@ -571,6 +571,42 @@
   cursor: not-allowed;
 }
 
+/* #4327: per-row Edit affordance — sits beside .ed-monitored-remove. */
+.ed-monitored-edit {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ed-monitored-edit:hover {
+  background: var(--color-border);
+  color: var(--color-ink);
+}
+
+.ed-monitored-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* #4327: read-only email field in edit mode. */
+.ed-input--readonly {
+  background: var(--color-border);
+  color: var(--color-ink-muted);
+  cursor: not-allowed;
+}
+
+.ed-modal__hint {
+  margin: 4px 0 0 0;
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+}
+
 /* #4098: per-row remove icon button (school-email rows). Mirrors
    .ed-monitored-remove styling for visual consistency. */
 .ed-icon-btn {

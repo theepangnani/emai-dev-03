@@ -935,6 +935,214 @@ describe('EmailDigestPage — unified add-sender modal', () => {
   });
 });
 
+// #4327: edit-mode regression tests — Add/Edit modal reuse for monitored senders.
+describe('EmailDigestPage — edit monitored sender (#4327)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockListChildProfiles.mockResolvedValue({
+      data: [
+        buildChildProfile({ id: 11, first_name: 'Thanushan' }),
+        buildChildProfile({ id: 12, first_name: 'Haashini' }),
+      ],
+    });
+  });
+
+  it('renders Edit button for each monitored sender row', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 201,
+          email_address: 'teacher@school.ca',
+          applies_to_all: true,
+        }),
+        buildSender({
+          id: 202,
+          email_address: 'principal@school.ca',
+          applies_to_all: true,
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole('button', { name: 'Edit principal@school.ca' }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens modal pre-filled with the sender data; email field is read-only', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 201,
+          email_address: 'teacher@school.ca',
+          sender_name: 'Mrs. Smith',
+          label: 'Homeroom',
+          applies_to_all: false,
+          child_profile_ids: [11],
+          assignments: [{ child_profile_id: 11, first_name: 'Thanushan' }],
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', { name: 'Edit monitored sender' }),
+      ).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog', { name: 'Edit monitored sender' });
+    const emailInput = within(dialog).getByPlaceholderText(
+      'teacher@school.ca',
+    ) as HTMLInputElement;
+    expect(emailInput.value).toBe('teacher@school.ca');
+    expect(emailInput.readOnly).toBe(true);
+
+    const nameInput = within(dialog).getByPlaceholderText(
+      'Mrs. Smith',
+    ) as HTMLInputElement;
+    expect(nameInput.value).toBe('Mrs. Smith');
+
+    const labelInput = within(dialog).getByPlaceholderText(
+      'Homeroom, Principal, etc.',
+    ) as HTMLInputElement;
+    expect(labelInput.value).toBe('Homeroom');
+
+    const allKidsCheckbox = within(dialog).getByRole('checkbox', {
+      name: /All kids/,
+    }) as HTMLInputElement;
+    expect(allKidsCheckbox.checked).toBe(false);
+
+    expect(
+      within(dialog).getByRole('button', { name: 'Thanushan', pressed: true }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: 'Haashini', pressed: false }),
+    ).toBeInTheDocument();
+
+    expect(
+      within(dialog).getByRole('button', { name: 'Save changes' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/To change the email/),
+    ).toBeInTheDocument();
+  });
+
+  it('submits the edit through addMonitoredSender with updated kid assignments', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 201,
+          email_address: 'teacher@school.ca',
+          applies_to_all: true,
+          child_profile_ids: [],
+          assignments: [],
+        }),
+      ],
+    });
+    mockAddMonitoredSender.mockResolvedValue({
+      data: buildSender({
+        id: 201,
+        email_address: 'teacher@school.ca',
+        applies_to_all: false,
+        child_profile_ids: [12],
+      }),
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', { name: 'Edit monitored sender' }),
+      ).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog', { name: 'Edit monitored sender' });
+
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /All kids/ }));
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Haashini', pressed: false }),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      expect(mockAddMonitoredSender).toHaveBeenCalled();
+    });
+    const [[payload]] = mockAddMonitoredSender.mock.calls;
+    expect(payload).toMatchObject({
+      email_address: 'teacher@school.ca',
+      child_profile_ids: [12],
+    });
+  });
+
+  it('cancel closes the modal without calling the API', async () => {
+    mockListMonitoredSenders.mockResolvedValue({
+      data: [
+        buildSender({
+          id: 201,
+          email_address: 'teacher@school.ca',
+          applies_to_all: true,
+        }),
+      ],
+    });
+
+    renderWithProviders(<EmailDigestPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit teacher@school.ca' }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', { name: 'Edit monitored sender' }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: 'Edit monitored sender' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(mockAddMonitoredSender).not.toHaveBeenCalled();
+  });
+});
+
 // #4007: multi-kid routing — clicking Email Digest for a specific kid must land on that kid.
 describe('EmailDigestPage — multi-kid routing (#4007)', () => {
   const twoKids = [
