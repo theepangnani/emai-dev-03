@@ -2338,3 +2338,65 @@ After CB-BRIDGE-001 + CB-THEME-001 shipped, parents asked for the ability to upl
 - [x] Bridge styling matches CB-THEME-001 conventions
 - [x] CI green (frontend ✓ 3m46s · backend ✓ 3m55s on PR #4309)
 - [ ] Deploy to Cloud Run (separate explicit approval required)
+
+### 6.147 Auto-create Tasks from due-date signals — CB-TASKSYNC-001 MVP-1 — SHIPPED 2026-04-23
+
+**Issue/PR:** #3912 + PR #3946 · **Master commit:** `8335ec42` · **Feature flag:** `task_sync_enabled` (default OFF)
+
+#### Why this exists
+Parents and students were manually re-creating tasks from assignment due-date signals (Google Classroom syncs, manually-uploaded materials). MVP-1 closes the gap by letting a background job auto-create Task rows from any assignment that has a due-date in a configurable window — no UI changes, just signal → row.
+
+#### Locked decisions (per design docs / PR review history)
+1. **Feature gated** — `task_sync_enabled` flag (default OFF) so dev/test can isolate behavior; ramp via the standard flag ladder (`off → internal_only → staff → on_for_all`)
+2. **Signal source** — assignments with `due_date` set in a forward-looking window (size: confirm from code)
+3. **No auto-creation for past-due** — out-of-window assignments yield 0 Tasks (verified by `tests/test_task_sync_jobs.py`)
+4. **Idempotent** — re-runs don't duplicate (deduped on `(student_id, assignment_id, due_date)` or similar — confirm)
+5. **Hooks on submit/delete** — `assignments.py` POST submit triggers `handle_assignment_submitted` (auto-completes linked Task); DELETE triggers `handle_assignment_deleted` (soft-cancels linked Task). Both gated on the same flag.
+
+#### Implementation
+- `app/services/task_sync_service.py` — service layer for sync_all_upcoming_assignments + handlers
+- `app/jobs/task_sync_job.py` — APScheduler job wrapping the service
+- `app/api/routes/assignments.py` — POST submit / DELETE delete hooks (gated on flag via `is_feature_enabled("task_sync_enabled")`)
+- Test coverage: `tests/test_task_sync_jobs.py` (full job + flag-OFF skip + service exception graceful) and `tests/test_assignments_routes.py` (4 hook tests for the auto-completion + soft-cancel paths)
+
+#### Out of scope (MVP-1)
+- Frontend UI for auto-created tasks (rendered identically to manual tasks via existing TasksPage)
+- Per-student opt-out
+- Sync from external calendar (Google Calendar, etc.)
+- MVP-2+ — flag ramp + telemetry + post-rollout follow-ups
+
+#### Acceptance status
+- [x] Backend service + job shipped
+- [x] Submit/delete hooks gated + tested
+- [x] Feature flag registered, default OFF
+- [ ] MVP-2: flag ramp + telemetry (post-deploy work)
+
+### 6.148 Re-skin My Kids → Bridge — CB-BRIDGE-001 — SHIPPED 2026-04-25
+
+**Issue/PR:** PR #4123 (squash `cdb1d617`) plus follow-ups: PR #4131 CB-BRIDGE-HF (`e2aface2`) + PR #4169 CB-BRIDGE-HF2 (`5bf09a66`) · **Status:** SHIPPED to master + deployed
+
+#### Why this exists
+The original "My Kids" page was a heavy 2,200+ line MyKidsPage.tsx with mixed-density panels and inconsistent visual treatment. Parent-research surfaced low engagement on this page. CB-BRIDGE-001 introduced a new visual language (warm ivory surfaces, rust accent, Fraunces serif headings, dark-pill primary buttons) modeled on a designer's prototype — and decomposed the page into 7 reusable components under `frontend/src/components/bridge/`. The re-skin is the design-foundation layer that CB-THEME-001 (§6.144) later promoted to app-wide.
+
+#### Locked decisions
+1. **6-stripe integration** — the PR landed as 6 sequential code stripes for review-friendly atomicity
+2. **New components under `frontend/src/components/bridge/`** — BridgeHeader, KidRail, KidHero, KidActionsMenu, ListCard, EmailDigestCard, QuickToolsCard, plus shared `fonts.ts` and `util.ts` helpers
+3. **MyKidsPage retains as host** — wraps the new bridge components; no route change
+4. **Per-kid color via `CHILD_COLORS` deterministic index** — later refined by CB-AVATAR-COLORS-001 (§6.145)
+5. **Initial avatar character via `getInitial(name)` util** — later replaced by photo upload via CB-KIDPHOTO-001 (§6.146)
+
+#### Follow-ups shipped same wave
+- **CB-BRIDGE-HF (PR #4131)** — Post-deploy hotfixes: Parent Hub rename, restore lost affordances (per-chip detail, all-kids materials, Dinner Table Talk, GoogleClassroomPrompt, Quick Tools strip, Email Digest navigation)
+- **CB-BRIDGE-HF2 (PR #4169)** — Rename Parent Hub → My Hub (#4151), Daily Digest card replaces Best Study Times in all-kids view (#4152), Classes ↔ Class Materials grid swap (#4154)
+
+#### Out of scope (deferred / picked up by other epics)
+- App-wide visual unification (rust accent, Fraunces headings everywhere) — done by CB-THEME-001 (§6.144)
+- Kid profile photo upload — done by CB-KIDPHOTO-001 (§6.146)
+- Per-user Arc mascot color, kid hero avatar palette tuning — done by CB-AVATAR-COLORS-001 (§6.145)
+
+#### Acceptance status
+- [x] Bridge components shipped + integrated into MyKidsPage
+- [x] HF + HF2 hotfixes shipped
+- [x] Deployed (Cloud Run live revision includes the bridge re-skin)
+- [x] Foundation for §6.144/§6.145/§6.146 follow-on work
+- [ ] Bridge component unit tests (#4124 — still open follow-up, non-blocking)
