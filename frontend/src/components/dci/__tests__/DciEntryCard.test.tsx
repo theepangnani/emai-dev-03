@@ -65,8 +65,13 @@ describe('DciEntryCard (#4258)', () => {
         `${window.location.origin}/checkin`,
       );
     });
+    // Button label stays stable; the success state is announced via a
+    // sibling aria-live region so SR behaviour is consistent (#4280).
     expect(
-      await screen.findByRole('button', { name: /copied!/i }),
+      await screen.findByText(/link copied/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /copy link/i }),
     ).toBeInTheDocument();
   });
 

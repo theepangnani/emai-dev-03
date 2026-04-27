@@ -12,7 +12,7 @@
      on narrow viewports — supplements the 16px margin so the card reads as
      its own block rather than crowding the panel. */
   padding-top: 24px;
-  border-top: 3px solid #f1f5f9;
+  border-top: 3px solid #e2e8f0;
 }
 
 .dci-entry-card__header {
@@ -71,7 +71,7 @@
 .dci-entry-card__primary:focus-visible,
 .dci-entry-card__secondary:focus-visible,
 .dci-entry-card__copy:focus-visible {
-  outline: 2px solid #0f172a;
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 
