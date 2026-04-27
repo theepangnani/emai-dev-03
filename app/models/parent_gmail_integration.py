@@ -185,7 +185,7 @@ class ParentDiscoveredSchoolEmail(Base):
     parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     email_address = Column(String(255), nullable=False, index=True)
     sample_sender = Column(String(255), nullable=True)
-    occurrences = Column(Integer, nullable=False, default=1)
+    occurrences = Column(Integer, nullable=False, default=1, server_default=text("1"))
     first_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     last_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
