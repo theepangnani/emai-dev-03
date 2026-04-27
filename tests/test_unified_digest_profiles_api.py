@@ -161,6 +161,42 @@ class TestAddSchoolEmail:
         assert data["email_address"] == "jordan@school.ca"  # lower-cased
         assert data["forwarding_seen_at"] is None
 
+    def test_add_school_email_persists_lowercase_in_db(
+        self, client, db_session, setup
+    ):
+        """#4337 — POSTing ``KID@school.ca`` must persist as
+        ``kid@school.ca`` so Stage 1 attribution match doesn't depend on
+        user typing."""
+        from app.models.parent_gmail_integration import ParentChildSchoolEmail
+
+        headers = _auth(client, PARENT_EMAIL)
+        pid = setup["profile_b"].id
+        resp = client.post(
+            f"{PREFIX}/{pid}/school-emails",
+            json={"email_address": "KID@school.ca"},
+            headers=headers,
+        )
+        assert resp.status_code == 201, resp.text
+
+        row = (
+            db_session.query(ParentChildSchoolEmail)
+            .filter(
+                ParentChildSchoolEmail.child_profile_id == pid,
+                ParentChildSchoolEmail.email_address == "kid@school.ca",
+            )
+            .first()
+        )
+        assert row is not None
+        assert row.email_address == "kid@school.ca"
+
+        # Duplicate-with-different-case POST returns 409.
+        dup = client.post(
+            f"{PREFIX}/{pid}/school-emails",
+            json={"email_address": "Kid@School.ca"},
+            headers=headers,
+        )
+        assert dup.status_code == 409
+
     def test_add_duplicate_returns_409(self, client, setup):
         headers = _auth(client, PARENT_EMAIL)
         pid = setup["profile_a"].id

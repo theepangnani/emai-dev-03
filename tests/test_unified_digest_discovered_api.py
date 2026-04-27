@@ -234,6 +234,42 @@ class TestAssignDiscovered:
         )
         assert resp.status_code == 404
 
+    def test_assign_persists_lowercase_email_address(
+        self, client, db_session, setup
+    ):
+        """#4337 — assigning a discovery (whose stored address is already
+        lowercase by the worker normalization path) must round-trip into
+        ``parent_child_school_emails`` as a lowercase row. Lock this in so
+        a future change to the discovery storage path can't silently leak
+        mixed-case addresses into the school-emails table."""
+        from app.models.parent_gmail_integration import (
+            ParentChildSchoolEmail,
+        )
+
+        # Discovery rows arrive lowercase from the worker — that's the path
+        # we're guarding here.
+        row = _seed_discovery(
+            db_session, setup["parent"].id, "lowercased.kid@gapps.yrdsb.ca"
+        )
+        headers = _auth(client, PARENT_EMAIL)
+        resp = client.post(
+            f"{PREFIX}/discovered-school-emails/{row.id}/assign",
+            json={"child_profile_id": setup["profile"].id},
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        stored = (
+            db_session.query(ParentChildSchoolEmail)
+            .filter(
+                ParentChildSchoolEmail.child_profile_id == setup["profile"].id,
+                ParentChildSchoolEmail.email_address == "lowercased.kid@gapps.yrdsb.ca",
+            )
+            .first()
+        )
+        assert stored is not None
+        assert stored.email_address == "lowercased.kid@gapps.yrdsb.ca"
+
     def test_assign_404_when_profile_owned_by_other_parent(
         self, client, db_session, setup
     ):

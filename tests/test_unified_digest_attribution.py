@@ -519,6 +519,16 @@ def test_is_school_looking_address_heuristic():
     assert is_school_looking_address("kid@example.edu") is True
     # Positive — .k12.
     assert is_school_looking_address("kid@school.k12.tx.us") is True
+    # Positive — known Canadian school-board domains (#4336).
+    assert is_school_looking_address("kid@ocdsb.ca") is True
+    assert is_school_looking_address("kid@tdsb.on.ca") is True
+    assert is_school_looking_address("kid@peelschools.org") is True
+    assert is_school_looking_address("kid@dsbn.org") is True
+    assert is_school_looking_address("kid@yrdsb.ca") is True
+    assert is_school_looking_address("kid@dpcdsb.org") is True
+    assert is_school_looking_address("kid@hwdsb.on.ca") is True
+    assert is_school_looking_address("kid@wrdsb.ca") is True
+    assert is_school_looking_address("kid@sd35.bc.ca") is True
     # Negative — gmail
     assert is_school_looking_address("parent@gmail.com") is False
     # Negative — automated mailbox in school domain
@@ -527,9 +537,6 @@ def test_is_school_looking_address_heuristic():
     # Negative — empty / malformed
     assert is_school_looking_address("") is False
     assert is_school_looking_address("not-an-email") is False
-    # Negative — non-school .ca domain (ocdsb.ca isn't gapps/edu/k12 — covered
-    # via Stage 1 for registered kids; the heuristic stays conservative).
-    assert is_school_looking_address("kid@ocdsb.ca") is False
 
 
 def test_attribute_parent_direct_when_no_school_recipients(db_session):
@@ -704,3 +711,105 @@ def test_record_discovery_skips_non_school_recipients(db_session):
         .all()
     )
     assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# #4336 — Canadian school-board domain heuristic in attribution
+# ---------------------------------------------------------------------------
+
+
+def test_unregistered_ocdsb_recipient_falls_through_to_sender_tag(db_session):
+    """#4336 — an ``ocdsb.ca`` recipient that isn't registered for any kid
+    (so Stage 1 misses) must be classified as school-looking by the
+    heuristic. With a monitored sender row in place, attribution should
+    land on Stage 3 (sender-tag) rather than collapse to Stage 2
+    (parent_direct)."""
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_APPLIES_TO_ALL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "board1@test.com")
+    p1 = _make_profile(db_session, parent.id, "Boardkid")
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="teacher@school.ca",
+        applies_to_all=True,
+    )
+    db_session.add(sender)
+    db_session.commit()
+
+    # The recipient isn't registered for any of the parent's kids, but
+    # ocdsb.ca is now in the school-board allowlist — so we expect Stage 3
+    # (sender-tag), not Stage 2 (parent_direct).
+    result = attribute_email(
+        {
+            "To": "unregistered.kid@ocdsb.ca",
+            "From": "teacher@school.ca",
+        },
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_APPLIES_TO_ALL
+    assert p1.id in result["kid_ids"]
+
+
+# ---------------------------------------------------------------------------
+# #4341 — record_discovery with pre-fetched registered set
+# ---------------------------------------------------------------------------
+
+
+def test_record_discovery_uses_pre_fetched_registered_set_skips_query(db_session):
+    """#4341 — when the worker passes a pre-fetched ``registered_addresses``
+    set, the function must NOT issue its own registered-rows SELECT and
+    must respect the set when filtering candidates."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "cache1@test.com")
+
+    record_discovery(
+        {
+            "To": "already.registered@gapps.yrdsb.ca, brand.new@gapps.yrdsb.ca",
+            "From": "teacher@yrdsb.ca",
+        },
+        parent.id,
+        db_session,
+        registered_addresses={"already.registered@gapps.yrdsb.ca"},
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    addresses = {r.email_address for r in rows}
+    # The address present in the pre-fetched set is treated as registered
+    # and dropped — only the brand-new address gets surfaced.
+    assert addresses == {"brand.new@gapps.yrdsb.ca"}
+
+
+def test_record_discovery_back_compat_without_kwarg(db_session):
+    """#4341 — calling without ``registered_addresses`` still works (per-call
+    DB query fallback for direct callers / tests)."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "cache2@test.com")
+
+    record_discovery(
+        {"To": "fresh@gapps.yrdsb.ca", "From": "teacher@yrdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].email_address == "fresh@gapps.yrdsb.ca"
