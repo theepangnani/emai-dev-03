@@ -102,13 +102,35 @@ _SUBJECT_ALIASES: dict[str, str] = {
 }
 
 
+# Case-folded lookup of the canonical enum so coerce_subject can match
+# kid-typed casings (``"MATH"``, ``"english"``) without going through
+# locale-sensitive ``str.title()`` (which mangles apostrophes and varies
+# by Python build — see #4276).
+_CANONICAL_BY_CASEFOLD: dict[str, str] = {
+    s.casefold(): s for s in DCI_VALID_SUBJECTS
+}
+
+
 def coerce_subject(subject: str | None) -> str | None:
-    """Title-case + alias-map a kid-typed subject, then strict-validate.
+    """Alias-map + case-fold a kid-typed subject, then strict-validate.
 
     Use this on user-supplied input paths (e.g. the M0-4 PATCH endpoint)
     so kid corrections like ``"math"``, ``"ENGLISH"``, ``"sci"``, or
     ``"phys ed"`` normalise to the canonical enum instead of returning
     ``None`` from ``validate_subject``.
+
+    Lookup order:
+      1. Explicit ``_SUBJECT_ALIASES`` (lower-cased keys) — covers
+         ``"maths"``, ``"sci"``, ``"gym"``, ``"français"`` etc.
+      2. Case-fold match against ``DCI_VALID_SUBJECTS`` — covers
+         ``"MATH"`` / ``"math"`` / ``"Math"`` for canonical names that
+         aren't in the alias map.
+      3. Otherwise ``None`` (kid re-picks).
+
+    Note: this avoids ``str.title()`` because it is locale-sensitive in
+    some Python builds and mishandles apostrophes (e.g. ``"l'art"`` →
+    ``"L'Art"``), which would silently miss any future apostrophe-bearing
+    alias. See #4276.
 
     Args:
         subject: User-supplied subject string (or ``None``).
@@ -123,5 +145,7 @@ def coerce_subject(subject: str | None) -> str | None:
     if not s:
         return None
     key = s.lower()
-    canonical = _SUBJECT_ALIASES.get(key) or s.title()
-    return validate_subject(canonical)
+    canonical = _SUBJECT_ALIASES.get(key)
+    if canonical is None:
+        canonical = _CANONICAL_BY_CASEFOLD.get(s.casefold())
+    return canonical  # already in DCI_VALID_SUBJECTS or None
