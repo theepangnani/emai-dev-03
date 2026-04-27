@@ -2288,3 +2288,115 @@ After CB-THEME-001 shipped (#4242, #4300), Arc the mascot rendered rust/brown in
 - 1 master-rebase stream (incorporated CB-DCI-001 fast-follow batch 2 from master, 0 conflicts)
 - 2× CI verification (initial + post-rebase)
 - 1× `/pr-review` pass (APPROVE — 0 Critical, 0 Important, 3 Suggestions)
+
+### 6.146 Kid profile photo upload — click hero avatar to replace initial (CB-KIDPHOTO-001) — SHIPPED 2026-04-26
+
+**Issue:** #4301 · **PR:** #4309 (squash `a54c2e3d`) · **Status:** SHIPPED to master, deploy pending separate approval
+
+#### Why this exists
+After CB-BRIDGE-001 + CB-THEME-001 shipped, parents asked for the ability to upload a profile photo for each linked child instead of the auto-generated initial-on-colored-circle avatar. Photo replaces the initial in the My Hub bridge view; small filter pill also displays the photo (non-clickable).
+
+#### Locked decisions (per /defect Q&A)
+1. **Click target:** hero avatar ONLY (NOT the small filter pill — too small / awkward)
+2. **Visual style:** match bridge token system from CB-THEME-001
+3. **Storage:** GCS bucket per existing CB pattern; falls back to `local://` placeholder when `settings.use_gcs=false` (dev/test round-trip without real bucket)
+4. **Validation:** jpg/png/webp only, ≤5MB, magic-byte check, EXIF stripped
+5. **Image processing:** Pillow resize to max 512×512, re-encoded as JPEG quality=85
+6. **Affordances:** hover camera-icon overlay, loading spinner during upload, error toast on failure
+7. **Audit log:** parent_uploaded_kid_photo + parent_deleted_kid_photo entries record only student_id + boolean; never log image bytes or PII (MFIPPA)
+
+#### Backend
+- New column: `students.profile_photo_url VARCHAR(512) NULL` — idempotent migration with advisory lock 4301 (PG + SQLite paths)
+- POST `/api/parent/children/{id}/photo` — RBAC parent-of-student via parent_students join, multipart upload, rate-limited 10/min
+- DELETE `/api/parent/children/{id}/photo` — RBAC same, deletes from GCS best-effort, rate-limited 20/min
+- New service `app/services/kid_photo_service.py` (validate / process / upload / delete)
+- Best-effort previous-photo cleanup AFTER commit so delete failure cannot block upload
+- 9 backend tests cover happy paths + every 422/403 branch
+
+#### Frontend
+- Type: `profile_photo_url?: string | null` on `ChildSummary`
+- `KidHero.tsx`: clickable avatar button, hidden file input, TanStack `useMutation`, hover camera overlay, loading spinner, error toast, optimistic UI update
+- `KidRail.tsx`: small avatar shows photo if present (NOT clickable per locked design)
+- New `frontend/src/api/kidPhoto.ts` (upload + delete axios wrappers)
+- Bridge token-only styling — no new design tokens introduced
+- Light vitest coverage on KidHero
+
+#### Out of scope (deferred follow-ups)
+- `KidPhotoMenu` kebab (upload + remove dropdown UI) — base UX of "click avatar to replace" covers upload; explicit removal needs separate PR
+- Mobile parity in Phase 2 mobile repo
+- Per-kid color override UI — bundled with future KidPhotoMenu
+
+#### Known follow-ups (non-blocking)
+- Silent GCS-failure fallback in production — currently writes a `local://` placeholder URL when bucket is transiently unavailable + warns; should instead 503 the request so user can retry. Surfaced in /pr-review of #4309 as IMPORTANT-tier; not yet filed as standalone issue.
+- Optimistic URL never clears on `child.profile_photo_url` source-of-truth change — minor edge case noted in /pr-review.
+
+#### Acceptance status
+- [x] ALTER TABLE migration runs idempotently
+- [x] Upload + delete endpoints work, RBAC-gated, audit-logged
+- [x] Image validation + EXIF strip + resize work
+- [x] Frontend hero-click upload works; photo displays in hero + filter pill
+- [x] Bridge styling matches CB-THEME-001 conventions
+- [x] CI green (frontend ✓ 3m46s · backend ✓ 3m55s on PR #4309)
+- [ ] Deploy to Cloud Run (separate explicit approval required)
+
+### 6.147 Auto-create Tasks from due-date signals — CB-TASKSYNC-001 MVP-1 — SHIPPED 2026-04-23
+
+**Issue/PR:** #3912 + PR #3946 · **Master commit:** `8335ec42` · **Feature flag:** `task_sync_enabled` (default OFF)
+
+#### Why this exists
+Parents and students were manually re-creating tasks from assignment due-date signals (Google Classroom syncs, manually-uploaded materials). MVP-1 closes the gap by letting a background job auto-create Task rows from any assignment that has a due-date in a configurable window — no UI changes, just signal → row.
+
+#### Locked decisions (per design docs / PR review history)
+1. **Feature gated** — `task_sync_enabled` flag (default OFF) so dev/test can isolate behavior; ramp via the standard flag ladder (`off → internal_only → staff → on_for_all`)
+2. **Signal source** — assignments with `due_date` set in a forward-looking window (size: confirm from code)
+3. **No auto-creation for past-due** — out-of-window assignments yield 0 Tasks (verified by `tests/test_task_sync_jobs.py`)
+4. **Idempotent** — re-runs don't duplicate (deduped on `(student_id, assignment_id, due_date)` or similar — confirm)
+5. **Hooks on submit/delete** — `assignments.py` POST submit triggers `handle_assignment_submitted` (auto-completes linked Task); DELETE triggers `handle_assignment_deleted` (soft-cancels linked Task). Both gated on the same flag.
+
+#### Implementation
+- `app/services/task_sync_service.py` — service layer for sync_all_upcoming_assignments + handlers
+- `app/jobs/task_sync_job.py` — APScheduler job wrapping the service
+- `app/api/routes/assignments.py` — POST submit / DELETE delete hooks (gated on flag via `is_feature_enabled("task_sync_enabled")`)
+- Test coverage: `tests/test_task_sync_jobs.py` (full job + flag-OFF skip + service exception graceful) and `tests/test_assignments_routes.py` (4 hook tests for the auto-completion + soft-cancel paths)
+
+#### Out of scope (MVP-1)
+- Frontend UI for auto-created tasks (rendered identically to manual tasks via existing TasksPage)
+- Per-student opt-out
+- Sync from external calendar (Google Calendar, etc.)
+- MVP-2+ — flag ramp + telemetry + post-rollout follow-ups
+
+#### Acceptance status
+- [x] Backend service + job shipped
+- [x] Submit/delete hooks gated + tested
+- [x] Feature flag registered, default OFF
+- [ ] MVP-2: flag ramp + telemetry (post-deploy work)
+
+### 6.148 Re-skin My Kids → Bridge — CB-BRIDGE-001 — SHIPPED 2026-04-25
+
+**Issue/PR:** PR #4123 (squash `cdb1d617`) plus follow-ups: PR #4131 CB-BRIDGE-HF (`e2aface2`) + PR #4169 CB-BRIDGE-HF2 (`5bf09a66`) · **Status:** SHIPPED to master + deployed
+
+#### Why this exists
+The original "My Kids" page was a heavy 2,200+ line MyKidsPage.tsx with mixed-density panels and inconsistent visual treatment. Parent-research surfaced low engagement on this page. CB-BRIDGE-001 introduced a new visual language (warm ivory surfaces, rust accent, Fraunces serif headings, dark-pill primary buttons) modeled on a designer's prototype — and decomposed the page into 7 reusable components under `frontend/src/components/bridge/`. The re-skin is the design-foundation layer that CB-THEME-001 (§6.144) later promoted to app-wide.
+
+#### Locked decisions
+1. **6-stripe integration** — the PR landed as 6 sequential code stripes for review-friendly atomicity
+2. **New components under `frontend/src/components/bridge/`** — BridgeHeader, KidRail, KidHero, KidActionsMenu, ListCard, EmailDigestCard, QuickToolsCard, plus shared `fonts.ts` and `util.ts` helpers
+3. **MyKidsPage retains as host** — wraps the new bridge components; no route change
+4. **Per-kid color via `CHILD_COLORS` deterministic index** — later refined by CB-AVATAR-COLORS-001 (§6.145)
+5. **Initial avatar character via `getInitial(name)` util** — later replaced by photo upload via CB-KIDPHOTO-001 (§6.146)
+
+#### Follow-ups shipped same wave
+- **CB-BRIDGE-HF (PR #4131)** — Post-deploy hotfixes: Parent Hub rename, restore lost affordances (per-chip detail, all-kids materials, Dinner Table Talk, GoogleClassroomPrompt, Quick Tools strip, Email Digest navigation)
+- **CB-BRIDGE-HF2 (PR #4169)** — Rename Parent Hub → My Hub (#4151), Daily Digest card replaces Best Study Times in all-kids view (#4152), Classes ↔ Class Materials grid swap (#4154)
+
+#### Out of scope (deferred / picked up by other epics)
+- App-wide visual unification (rust accent, Fraunces headings everywhere) — done by CB-THEME-001 (§6.144)
+- Kid profile photo upload — done by CB-KIDPHOTO-001 (§6.146)
+- Per-user Arc mascot color, kid hero avatar palette tuning — done by CB-AVATAR-COLORS-001 (§6.145)
+
+#### Acceptance status
+- [x] Bridge components shipped + integrated into MyKidsPage
+- [x] HF + HF2 hotfixes shipped
+- [x] Deployed (Cloud Run live revision includes the bridge re-skin)
+- [x] Foundation for §6.144/§6.145/§6.146 follow-on work
+- [ ] Bridge component unit tests (#4124 — still open follow-up, non-blocking)
