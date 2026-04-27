@@ -55,7 +55,8 @@ export function TutorChat({
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages[messages.length - 1]?.id;
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const arcVariant = authLoading ? undefined : getArcVariant(user?.id);
 
   // Auto-scroll to bottom whenever a new message lands or tokens stream in.
   // During active streaming, use instant scroll to avoid interrupt-smooth
@@ -117,7 +118,7 @@ export function TutorChat({
       <div className="tutor-chat__stream" ref={scrollRef}>
         {isEmpty && (
           <div className="tutor-chat__empty">
-            <div className="tutor-chat__empty-mascot" aria-hidden="true" data-arc={getArcVariant(user?.id)}>
+            <div className="tutor-chat__empty-mascot" aria-hidden="true" data-arc={arcVariant}>
               <ArcMascot size={96} mood="waving" glow animate decorative />
             </div>
             <p className="tutor-chat__empty-eyebrow">Hey, {greeting}.</p>
