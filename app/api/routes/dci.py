@@ -621,9 +621,9 @@ async def submit_starter_feedback(
         cleanly. Without this translation a literal write would 500
         on the CHECK constraint.
 
-    ``body.was_used`` (when set explicitly) overrides the derived
-    value above so the frontend can also pass an explicit
-    ``{was_used: true/false}`` without a feedback enum.
+    ``body.was_used`` (when set explicitly) is applied last and
+    overrides any value derived from ``parent_feedback`` — except for
+    ``undo_used``, where ``was_used=False`` is the whole semantic.
 
     Family-scoped: the starter's summary must belong to a kid linked
     to ``current_user`` via ``parent_students``.
@@ -699,7 +699,6 @@ async def submit_starter_feedback(
 
     try:
         db.commit()
-        db.refresh(starter)
     except Exception:
         db.rollback()
         logger.exception(
