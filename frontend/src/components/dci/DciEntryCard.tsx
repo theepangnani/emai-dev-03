@@ -65,10 +65,15 @@ export function DciEntryCard() {
           type="button"
           className="dci-entry-card__copy"
           onClick={handleCopyLink}
-          aria-live="polite"
         >
-          {copied ? 'Copied!' : 'Copy link'}
+          Copy link
         </button>
+        {/* Stable accessible name on the button; the live announcement is a
+            sibling region so SRs reliably read it (button-name-change
+            announcements are inconsistent across SR/browser combos). */}
+        <span aria-live="polite" className="sr-only">
+          {copied ? 'Link copied' : ''}
+        </span>
       </div>
 
       <p className="dci-entry-card__note">
