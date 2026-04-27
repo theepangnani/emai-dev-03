@@ -235,6 +235,51 @@ describe('ConsentScreen saved-flash timing (#4269)', () => {
     }
   });
 
+  // #4282: regression guard — if a future refactor removes the navTimerRef
+  // unmount cleanup, the deferred navigate would still fire after the
+  // component is gone. Assert the cleanup actually cancels the pending timer.
+  it('cancels the pending navigate when the screen unmounts mid-flash', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
+      mockUpsertConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
+
+      const { unmount } = renderRoutes(
+        <div data-testid="never-rendered" />,
+        ['/dci/consent?return_to=%2Fparent%2Ftoday'],
+      );
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      const aiToggle = await screen.findByLabelText(/AI processing OK/);
+      if (!(aiToggle as HTMLInputElement).checked) {
+        await user.click(aiToggle);
+      }
+      await user.click(screen.getByTestId('dci-consent-save'));
+
+      // Saved flash appears — the 600ms navTimerRef is now armed.
+      await screen.findByTestId('dci-consent-saved');
+      expect(
+        screen.getByTestId('location-probe').getAttribute('data-pathname'),
+      ).toBe('/dci/consent');
+
+      // Unmount BEFORE the 600ms timer fires (parent taps Cancel, route
+      // swap, modal close, etc.). Cleanup must clear the pending timer.
+      unmount();
+
+      // Advance past the 600ms window. If cleanup is missing, the deferred
+      // navigate would attempt to fire and React would warn.
+      vi.advanceTimersByTime(700);
+
+      // The probe is gone (unmounted), and the home route never rendered —
+      // i.e. the deferred navigate did not run.
+      expect(screen.queryByTestId('location-probe')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('home')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('disables the save button after a successful save (no double-tap)', async () => {
     mockGetConsent.mockResolvedValue({ ...baseConsent, ai_ok: false });
     mockUpsertConsent.mockResolvedValue({ ...baseConsent, ai_ok: true });
