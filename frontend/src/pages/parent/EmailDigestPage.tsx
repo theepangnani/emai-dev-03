@@ -896,6 +896,10 @@ interface AddSenderModalProps {
   // #4053: parent clears its addSenderApiError when the user edits any input
   // so stale errors don't persist across re-submissions.
   onResetError?: () => void;
+  // #4327: dual-mode Add/Edit. When `initialSender` is present, the modal
+  // pre-fills its fields and treats email as read-only (it's the dedupe key).
+  mode?: 'add' | 'edit';
+  initialSender?: MonitoredSender | null;
 }
 
 function AddSenderModal({
@@ -905,12 +909,23 @@ function AddSenderModal({
   pending,
   apiError,
   onResetError,
+  mode = 'add',
+  initialSender = null,
 }: AddSenderModalProps) {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [label, setLabel] = useState('');
-  const [allKids, setAllKids] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const isEdit = mode === 'edit' && initialSender != null;
+  const [email, setEmail] = useState(isEdit ? initialSender!.email_address : '');
+  const [name, setName] = useState(
+    isEdit ? initialSender!.sender_name ?? '' : '',
+  );
+  const [label, setLabel] = useState(
+    isEdit ? initialSender!.label ?? '' : '',
+  );
+  const [allKids, setAllKids] = useState(
+    isEdit ? initialSender!.applies_to_all : true,
+  );
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(
+    isEdit ? new Set(initialSender!.child_profile_ids ?? []) : new Set(),
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
 
   // #4055: ESC-to-close for accessibility.
@@ -958,10 +973,15 @@ function AddSenderModal({
   };
 
   return (
-    <div className="ed-modal-backdrop" role="dialog" aria-modal="true" aria-label="Add monitored sender">
+    <div
+      className="ed-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isEdit ? 'Edit monitored sender' : 'Add monitored sender'}
+    >
       <div className="ed-modal">
         <div className="ed-modal__header">
-          <h3>Add monitored sender</h3>
+          <h3>{isEdit ? 'Edit monitored sender' : 'Add monitored sender'}</h3>
           <button
             type="button"
             className="ed-modal__close"
@@ -978,15 +998,21 @@ function AddSenderModal({
           <input
             id="sender-email"
             type="email"
-            className="ed-input"
+            className={`ed-input${isEdit ? ' ed-input--readonly' : ''}`}
             placeholder="teacher@school.ca"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
               onResetError?.();
             }}
-            autoFocus
+            readOnly={isEdit}
+            autoFocus={!isEdit}
           />
+          {isEdit && (
+            <p className="ed-modal__hint">
+              To change the email, remove this entry and add a new one.
+            </p>
+          )}
 
           <label className="ed-modal__label" htmlFor="sender-name">
             Name (optional)
@@ -1077,7 +1103,13 @@ function AddSenderModal({
             onClick={handleSubmit}
             disabled={pending}
           >
-            {pending ? 'Adding...' : 'Add sender'}
+            {pending
+              ? isEdit
+                ? 'Saving...'
+                : 'Adding...'
+              : isEdit
+                ? 'Save changes'
+                : 'Add sender'}
           </button>
         </div>
       </div>
@@ -1095,6 +1127,8 @@ function EmailDigestPageUnified() {
   const [whatsappSuccess, setWhatsappSuccess] = useState<string | null>(null);
   const [addSenderOpen, setAddSenderOpen] = useState(false);
   const [addSenderApiError, setAddSenderApiError] = useState<string | null>(null);
+  // #4327: when set, the AddSenderModal opens in edit mode pre-filled with this sender.
+  const [editSenderTarget, setEditSenderTarget] = useState<MonitoredSender | null>(null);
   const [addSchoolEmailFor, setAddSchoolEmailFor] = useState<number | null>(null);
   const [newSchoolEmail, setNewSchoolEmail] = useState('');
   // #4053: per-profile inline error for addSchoolEmailMutation.
@@ -1319,6 +1353,7 @@ function EmailDigestPageUnified() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parent', 'monitored-senders'] });
       setAddSenderOpen(false);
+      setEditSenderTarget(null);
       setAddSenderApiError(null);
     },
     onError: (err: unknown) => {
@@ -2082,6 +2117,16 @@ function EmailDigestPageUnified() {
                     )}
                   </div>
                   <button
+                    className="ed-monitored-edit"
+                    onClick={() => {
+                      setAddSenderApiError(null);
+                      setEditSenderTarget(s);
+                    }}
+                    aria-label={`Edit ${s.email_address}`}
+                  >
+                    Edit
+                  </button>
+                  <button
                     className="ed-monitored-remove"
                     onClick={() => handleRemoveSender(s)}
                     disabled={removeSenderMutation.isPending}
@@ -2153,11 +2198,18 @@ function EmailDigestPageUnified() {
           </div>
         )}
 
-        {addSenderOpen && (
+        {(addSenderOpen || editSenderTarget) && (
           <AddSenderModal
+            // #4327: keying by mode + sender id forces fresh state when the
+            // user opens edit for a different row without unmounting between.
+            key={editSenderTarget ? `edit-${editSenderTarget.id}` : 'add'}
             profiles={childProfiles}
+            mode={editSenderTarget ? 'edit' : 'add'}
+            initialSender={editSenderTarget}
             onClose={() => {
               setAddSenderOpen(false);
+              setEditSenderTarget(null);
+              setAddSenderApiError(null);
               // #4055: restore focus to the opening trigger on close.
               addSenderTriggerRef.current?.focus();
             }}
