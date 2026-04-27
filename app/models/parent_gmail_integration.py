@@ -31,6 +31,11 @@ class ParentGmailIntegration(Base):
     whatsapp_otp_code = Column(String(6), nullable=True)
     whatsapp_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Idempotency guard for unified-digest-v2 school-email backfill (#4328).
+    # Once stamped, the backfill skips this integration so user deletes of the
+    # corresponding row in parent_child_school_emails are not re-seeded.
+    unified_v2_backfilled_at = Column(DateTime(timezone=True), nullable=True)
+
     parent = relationship("User", backref="gmail_integrations")
     digest_settings = relationship("ParentDigestSettings", back_populates="integration", uselist=False, cascade="all, delete-orphan")
     delivery_logs = relationship("DigestDeliveryLog", back_populates="integration", cascade="all, delete-orphan")
