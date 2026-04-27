@@ -334,11 +334,12 @@ def test_failed_insert_does_not_stamp_integration(db_session):
     integ = _make_integration(db_session, parent.id, "Ira", "ira@school.ca")
     assert integ.unified_v2_backfilled_at is None
 
-    # Inject a fault into the INSERT step. The integration backfill block
-    # in app/db/migrations.py is wrapped in an outer try/except that
-    # swallows the error with a warning log, so the migration call itself
-    # does not raise — but the (b)+(c) inner try/except must rollback
-    # atomically before the outer except catches it.
+    # Inject a fault into the INSERT step. After #4345 the inner (b)+(c)
+    # try/except catches the failure, rolls back atomically, logs a warning,
+    # and DOES NOT re-raise — so the migration call itself does not raise
+    # and downstream steps (3 + 4 sender backfill) continue normally. What
+    # this test pins is the rollback semantic: no integration is stamped
+    # when the INSERT step fails.
     engine = db_session.bind
 
     def _fail_on_insert(conn, cursor, statement, parameters, context, executemany):

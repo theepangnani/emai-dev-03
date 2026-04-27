@@ -529,11 +529,16 @@ def test_is_school_looking_address_heuristic():
     assert is_school_looking_address("kid@hwdsb.on.ca") is True
     assert is_school_looking_address("kid@wrdsb.ca") is True
     assert is_school_looking_address("kid@sd35.bc.ca") is True
+    # Positive — subdomain of a known board (#4346).
+    assert is_school_looking_address("kid@student.ocdsb.ca") is True
     # Negative — gmail
     assert is_school_looking_address("parent@gmail.com") is False
     # Negative — automated mailbox in school domain
     assert is_school_looking_address("no-reply@gapps.yrdsb.ca") is False
     assert is_school_looking_address("noreply@example.edu") is False
+    # Negative — domain that contains a board name as a substring but doesn't
+    # end with it (#4346 — suffix match only, no false positive on lookalikes).
+    assert is_school_looking_address("kid@ocdsb.ca-fake.com") is False
     # Negative — empty / malformed
     assert is_school_looking_address("") is False
     assert is_school_looking_address("not-an-email") is False

@@ -1196,18 +1196,21 @@ def assign_discovered_school_email(
     if not profile:
         raise HTTPException(status_code=404, detail="Child profile not found")
 
+    # #4337 — Stage 1 match is case-insensitive, so storage must be lowercase.
+    # `email_address` is NOT NULL on ParentDiscoveredSchoolEmail (#4347).
+    normalized = discovery.email_address.strip().lower()
     existing = (
         db.query(ParentChildSchoolEmail)
         .filter(
             ParentChildSchoolEmail.child_profile_id == profile.id,
-            ParentChildSchoolEmail.email_address == (discovery.email_address or "").strip().lower(),
+            ParentChildSchoolEmail.email_address == normalized,
         )
         .first()
     )
     if existing is None:
         db.add(ParentChildSchoolEmail(
             child_profile_id=profile.id,
-            email_address=(discovery.email_address or "").strip().lower(),
+            email_address=normalized,
         ))
 
     db.delete(discovery)

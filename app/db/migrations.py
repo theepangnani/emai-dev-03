@@ -2806,11 +2806,16 @@ def _run_migrations_inner(engine, settings, logger):
                     conn.commit()
                     logger.info("Unified digest v2 backfill: seeded + stamped atomically (#4013, #4328, #4339)")
                 except Exception:
+                    # #4339 — atomic rollback of step (b)+(c) so a failed INSERT
+                    # never leaves integrations falsely stamped as backfilled.
+                    # #4345 — do NOT re-raise: steps 3+4 (sender backfill +
+                    # assignments) are independent of step 2's data and should
+                    # still run. Retry of step 2 happens on the next cold start.
                     conn.rollback()
                     logger.warning(
-                        "Unified digest v2 backfill (#4013, #4328): step (b)+(c) failed and rolled back atomically — will retry on next cold start"
+                        "Unified digest v2 backfill (#4013, #4328): step (b)+(c) failed and rolled back; "
+                        "downstream steps will continue, will retry next cold start"
                     )
-                    raise
 
                 # 3. Seed parent_digest_monitored_senders from the legacy
                 #    parent_digest_monitored_emails table. Dedupe on

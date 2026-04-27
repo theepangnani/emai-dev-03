@@ -169,7 +169,8 @@ def is_school_looking_address(addr: str) -> bool:
         return True
     if ".k12." in domain or domain.endswith(".k12"):
         return True
-    if domain in _KNOWN_SCHOOL_BOARD_DOMAINS:
+    # #4346 — match exact apex domain OR any subdomain (e.g. student.ocdsb.ca).
+    if any(domain == d or domain.endswith("." + d) for d in _KNOWN_SCHOOL_BOARD_DOMAINS):
         return True
     return False
 
