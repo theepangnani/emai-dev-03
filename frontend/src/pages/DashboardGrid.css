@@ -205,7 +205,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .dash-quick-action-icon {
@@ -252,7 +252,7 @@
 
 .dash-metric-card:hover {
   transform: scale(1.03);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .dash-metric-value {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -7,6 +7,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { PageNav } from '../components/PageNav';
 import { ListSkeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+import { useTheme } from '../context/ThemeContext';
 import { adminSurveyApi } from '../api/adminSurvey';
 import type {
   SurveyAnalytics,
@@ -18,15 +19,21 @@ import './AdminSurveyPage.css';
 
 const PAGE_SIZE = 20;
 
-const CHART_COLORS = [
-  '#4f46e5', '#0891b2', '#059669', '#d97706', '#dc2626',
-  '#7c3aed', '#db2777', '#0ea5e9', '#f59e0b', '#84cc16',
+// Number of `--chart-series-N` tokens defined per theme in index.css.
+const CHART_SERIES_COUNT = 6;
+
+// Fallback palette used if CSS custom properties haven't resolved yet
+// (e.g. SSR, initial paint, or test environments without computed styles).
+const CHART_FALLBACK = [
+  '#4a90d9', '#2e7d32', '#f3b04c', '#f4801f', '#7c3aed', '#d64545',
 ];
 
-const PIE_COLORS: Record<string, string> = {
-  parent: '#8b5cf6',
-  student: '#10b981',
-  teacher: '#3b82f6',
+// Roles map deterministically to series indices so role colors stay
+// consistent within a theme (parent → series-1, student → series-2, etc.).
+const PIE_ROLE_INDEX: Record<string, number> = {
+  parent: 0,
+  student: 1,
+  teacher: 2,
 };
 
 const TruncatedTick = ({ x, y, payload }: any) => {
@@ -45,6 +52,21 @@ const TruncatedTick = ({ x, y, payload }: any) => {
 
 export function AdminSurveyPage() {
   const { toast } = useToast();
+  const { theme } = useTheme();
+
+  // Resolve `--chart-series-N` CSS custom properties to raw color strings
+  // on each theme change — recharts can't consume CSS variables directly.
+  const chartColors = useMemo(() => {
+    if (typeof window === 'undefined') return CHART_FALLBACK;
+    const root = getComputedStyle(document.documentElement);
+    const resolved: string[] = [];
+    for (let i = 1; i <= CHART_SERIES_COUNT; i++) {
+      const value = root.getPropertyValue(`--chart-series-${i}`).trim();
+      resolved.push(value || CHART_FALLBACK[(i - 1) % CHART_FALLBACK.length]);
+    }
+    return resolved;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally re-read on theme change
+  }, [theme]);
 
   const [roleFilter, setRoleFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -171,7 +193,7 @@ export function AdminSurveyPage() {
             <XAxis type="number" domain={[0, 5]} />
             <YAxis type="category" dataKey="name" width={200} tick={<TruncatedTick />} />
             <Tooltip />
-            <Bar dataKey="average" fill={CHART_COLORS[0]} />
+            <Bar dataKey="average" fill={chartColors[0]} />
           </BarChart>
         </ResponsiveContainer>
       );
@@ -197,9 +219,9 @@ export function AdminSurveyPage() {
                 <XAxis dataKey="name" />
                 <YAxis allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="count" fill={CHART_COLORS[0]}>
+                <Bar dataKey="count" fill={chartColors[0]}>
                   {data.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    <Cell key={i} fill={chartColors[i % chartColors.length]} />
                   ))}
                 </Bar>
               </BarChart>
@@ -216,9 +238,9 @@ export function AdminSurveyPage() {
             <XAxis type="number" allowDecimals={false} />
             <YAxis type="category" dataKey="name" width={200} tick={<TruncatedTick />} />
             <Tooltip />
-            <Bar dataKey="count" fill={CHART_COLORS[0]}>
+            <Bar dataKey="count" fill={chartColors[0]}>
               {data.map((_, i) => (
-                <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                <Cell key={i} fill={chartColors[i % chartColors.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -319,9 +341,15 @@ export function AdminSurveyPage() {
                       outerRadius={90}
                       label={(props: any) => `${props.name} ${((props.percent ?? 0) * 100).toFixed(0)}%`}
                     >
-                      {pieData.map((entry) => (
-                        <Cell key={entry.name} fill={PIE_COLORS[entry.name] || CHART_COLORS[0]} />
-                      ))}
+                      {pieData.map((entry, i) => {
+                        const idx = PIE_ROLE_INDEX[entry.name] ?? i;
+                        return (
+                          <Cell
+                            key={entry.name}
+                            fill={chartColors[idx % chartColors.length]}
+                          />
+                        );
+                      })}
                     </Pie>
                     <Tooltip />
                     <Legend />
@@ -337,7 +365,7 @@ export function AdminSurveyPage() {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Line type="monotone" dataKey="count" stroke="#4f46e5" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="count" stroke={chartColors[0]} strokeWidth={2} dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

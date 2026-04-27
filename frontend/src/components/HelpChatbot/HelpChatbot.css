@@ -45,7 +45,7 @@
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -169,7 +169,7 @@
 
 .help-chatbot-close:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-surface-translucent-mid);
 }
 
 .help-chatbot-clear {
@@ -186,7 +186,7 @@
 
 .help-chatbot-clear:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-surface-translucent-mid);
 }
 
 .help-chatbot-credit-pill {
@@ -707,7 +707,7 @@
 .study-qa-action-row:hover {
   background: var(--color-surface-hover);
   border-color: var(--color-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .study-qa-action-row:focus-visible {

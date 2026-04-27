@@ -243,7 +243,7 @@
 }
 
 [data-theme="dark"] .bug-report-error {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .bug-report-paste-hint {
@@ -251,5 +251,5 @@
 }
 
 [data-theme="dark"] .bug-report-remove-preview {
-  background: #fca5a5;
+  background: var(--tw-red-300);
 }

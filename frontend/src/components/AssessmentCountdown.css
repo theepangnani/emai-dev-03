@@ -27,7 +27,7 @@
 }
 
 .ac-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .ac-days-badge {
@@ -54,7 +54,7 @@
 }
 
 .ac-days-badge--red {
-  background: #ef4444;
+  background: var(--tw-red-500);
 }
 
 .ac-days-label {

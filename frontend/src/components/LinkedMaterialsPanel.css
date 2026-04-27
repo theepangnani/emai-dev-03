@@ -161,8 +161,8 @@
   flex-shrink: 0;
 }
 .linked-material-delete-btn:hover {
-  color: #ef4444;
-  background: #fef2f2;
+  color: var(--tw-red-500);
+  background: var(--tw-red-50);
 }
 
 
@@ -211,6 +211,6 @@
 }
 
 [data-theme="dark"] .linked-material-delete-btn:hover {
-  color: #fca5a5;
+  color: var(--tw-red-300);
   background: rgba(252, 165, 165, 0.10);
 }

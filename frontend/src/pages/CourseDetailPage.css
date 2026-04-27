@@ -185,7 +185,7 @@
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
 .courses-btn.primary {

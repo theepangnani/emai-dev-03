@@ -160,7 +160,7 @@ export const SourceFilesSection = forwardRef<SourceFilesSectionHandle, SourceFil
             </div>
             <div className="cm-sfv-body">
               {viewLoading ? (
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#888' }}>Loading...</p>
+                <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-muted)' }}>Loading...</p>
               ) : viewBlobUrl ? (
                 viewingFile.file_type?.startsWith('image/') ? (
                   <img
@@ -178,7 +178,7 @@ export const SourceFilesSection = forwardRef<SourceFilesSectionHandle, SourceFil
               ) : (
                 <div style={{ textAlign: 'center', padding: '2rem' }}>
                   <p style={{ color: '#c00', marginBottom: '0.5rem' }}>This document could not be loaded. The file may be unavailable or in an unsupported format.</p>
-                  <p style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Try downloading the file instead, or report this issue if the problem persists.</p>
+                  <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Try downloading the file instead, or report this issue if the problem persists.</p>
                   <ReportBugLink errorMessage={`Failed to load file: ${viewingFile.filename}`} />
                 </div>
               )}

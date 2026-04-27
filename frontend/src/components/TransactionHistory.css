@@ -45,18 +45,18 @@
 }
 
 .txn-badge.purchase_credit {
-  background: #dcfce7;
+  background: var(--tw-green-100);
   color: #15803d;
 }
 
 .txn-badge.debit {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--tw-red-100);
+  color: var(--tw-red-700);
 }
 
 .txn-badge.refund {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--tw-amber-100);
+  color: var(--tw-amber-800);
 }
 
 .amount-positive {
@@ -65,7 +65,7 @@
 }
 
 .amount-negative {
-  color: #b91c1c;
+  color: var(--tw-red-700);
   font-weight: 600;
 }
 
@@ -121,7 +121,7 @@
 
 [data-theme="dark"] .txn-badge.purchase_credit {
   background: rgba(110, 231, 183, 0.14);
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .txn-badge.debit {
@@ -134,7 +134,7 @@
 }
 
 [data-theme="dark"] .amount-positive {
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .amount-negative {

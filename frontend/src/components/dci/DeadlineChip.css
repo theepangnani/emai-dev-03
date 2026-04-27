@@ -29,7 +29,7 @@
 
 .dci-deadline-chip--red {
   background: rgba(220, 38, 38, 0.10);
-  color: #b91c1c;
+  color: var(--tw-red-700);
   border-color: rgba(220, 38, 38, 0.25);
 }
 
@@ -46,12 +46,12 @@
 
 [data-theme="dark"] .dci-deadline-chip--red {
   background: rgba(252, 165, 165, 0.12);
-  color: #fca5a5;
+  color: var(--tw-red-300);
   border-color: rgba(252, 165, 165, 0.25);
 }
 
 [data-theme="dark"] .dci-deadline-chip__badge {
   background: var(--color-surface-alt);
   color: var(--color-ink-muted);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--color-surface-translucent-mid);
 }

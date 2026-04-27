@@ -22,8 +22,8 @@
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e5e7eb;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--tw-gray-200);
   margin-top: 12px;
 }
 
@@ -37,44 +37,44 @@
 .wd-card-title {
   margin: 0;
   font-size: 18px;
-  color: #1f2937;
+  color: var(--tw-gray-800);
 }
 
 .wd-close-btn {
   background: none;
   border: none;
   font-size: 22px;
-  color: #9ca3af;
+  color: var(--tw-gray-400);
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
 }
 .wd-close-btn:hover {
-  color: #4b5563;
+  color: var(--tw-gray-600);
 }
 
 .wd-period {
-  color: #6b7280;
+  color: var(--tw-gray-500);
   font-size: 13px;
   margin: 0 0 4px;
 }
 
 .wd-greeting {
-  color: #4b5563;
+  color: var(--tw-gray-600);
   margin: 0 0 16px;
   font-size: 15px;
 }
 
 .wd-loading,
 .wd-empty {
-  color: #9ca3af;
+  color: var(--tw-gray-400);
   font-size: 14px;
   padding: 16px 0;
   text-align: center;
 }
 
 .wd-error {
-  color: #dc2626;
+  color: var(--tw-red-600);
   font-size: 14px;
   padding: 12px 0;
 }
@@ -95,7 +95,7 @@
 
 .wd-child {
   padding: 14px 16px;
-  background: #f9fafb;
+  background: var(--tw-gray-50);
   border-radius: var(--radius-md);
   border-left: 4px solid #4f46e5;
 }
@@ -103,12 +103,12 @@
 .wd-child-name {
   margin: 0 0 4px;
   font-size: 15px;
-  color: #1f2937;
+  color: var(--tw-gray-800);
 }
 
 .wd-child-highlight {
   margin: 0 0 10px;
-  color: #6b7280;
+  color: var(--tw-gray-500);
   font-size: 13px;
 }
 
@@ -120,10 +120,10 @@
 
 .wd-stat {
   font-size: 13px;
-  color: #4b5563;
+  color: var(--tw-gray-600);
 }
 .wd-stat strong {
-  color: #1f2937;
+  color: var(--tw-gray-800);
 }
 
 .wd-overdue {
@@ -132,21 +132,21 @@
 }
 
 .wd-overdue-label {
-  color: #dc2626;
+  color: var(--tw-red-600);
   font-weight: 600;
 }
 
 .wd-overdue-list {
   margin: 4px 0 0 18px;
   padding: 0;
-  color: #dc2626;
+  color: var(--tw-red-600);
 }
 .wd-overdue-list li {
   margin: 2px 0;
 }
 
 .wd-overdue-date {
-  color: #9ca3af;
+  color: var(--tw-gray-400);
   font-size: 12px;
 }
 
@@ -192,7 +192,7 @@
 }
 
 .wd-send-error {
-  color: #dc2626;
+  color: var(--tw-red-600);
   font-size: 13px;
   margin: 8px 0 0;
   text-align: right;
@@ -274,7 +274,7 @@
 }
 
 [data-theme="dark"] .wd-error {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .wd-error button {
@@ -303,11 +303,11 @@
 }
 
 [data-theme="dark"] .wd-overdue-label {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .wd-overdue-list {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 [data-theme="dark"] .wd-overdue-date {
@@ -329,11 +329,11 @@
 }
 
 [data-theme="dark"] .wd-success {
-  color: #34d399;
+  color: var(--tw-emerald-400);
 }
 
 [data-theme="dark"] .wd-send-error {
-  color: #fca5a5;
+  color: var(--tw-red-300);
 }
 
 @media (max-width: 480px) {

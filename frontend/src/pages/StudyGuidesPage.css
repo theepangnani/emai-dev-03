@@ -53,7 +53,7 @@
 }
 
 .guides-child-selector .child-tab.active .grade-badge {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-surface-translucent-mid);
   color: white;
 }
 
@@ -236,7 +236,7 @@
 }
 
 .guides-filter-btn.active .filter-count {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-surface-translucent-high);
   color: white;
 }
 
@@ -541,7 +541,7 @@
 }
 
 .guides-assign-filter-btn.active .assign-filter-count {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-surface-translucent-high);
   color: white;
 }
 

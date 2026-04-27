@@ -117,7 +117,7 @@
   font-weight: 600;
 }
 .readiness-type-multiple_choice { background: #dbeafe; color: #1e40af; }
-.readiness-type-short_answer { background: #fef3c7; color: #92400e; }
+.readiness-type-short_answer { background: var(--tw-amber-100); color: var(--tw-amber-800); }
 .readiness-type-application { background: var(--color-purple-bg); color: #5b21b6; }
 
 .readiness-question-text {

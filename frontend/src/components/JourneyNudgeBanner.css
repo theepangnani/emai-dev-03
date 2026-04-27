@@ -122,5 +122,5 @@
 }
 
 [data-theme="dark"] .journey-nudge-banner__dismiss:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-surface-translucent-low);
 }
