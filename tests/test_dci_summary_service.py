@@ -663,6 +663,42 @@ async def test_smart_starter_trim_prefers_sentence_boundary(mock_get_client):
     assert "Confederation" not in text
 
 
+@pytest.mark.asyncio
+@patch("app.services.dci_summary_service.get_anthropic_client")
+async def test_smart_starter_trim_reattaches_question_on_boundary_path(
+    mock_get_client,
+):
+    """#4230 — boundary-path trim must still preserve interrogative tone.
+
+    When the chosen in-window boundary is `.` or `!` but the original
+    starter ended with `?`, the trailing punctuation must be swapped to
+    `?` so the parent sees a question, not a declarative half-sentence.
+    """
+    from app.services.dci_summary_service import generate_summary
+
+    payload = _good_payload()
+    # Mid-window `.` after "today"; trailing `?` past word 25. Without
+    # the fix, smart trim lands on the `.` and drops the question mark.
+    payload["conversation_starter"]["text"] = (
+        "Big news today. Tell me more about your Math class and the "
+        "science experiment you mentioned earlier today okay?"
+    )
+
+    mock_client = MagicMock()
+    mock_client.messages.create.return_value = _make_message(payload)
+    mock_get_client.return_value = mock_client
+
+    result = await generate_summary(
+        kid_id=1, summary_date="2026-04-25",
+        classification_events=_events_single_subject(),
+    )
+    text = result["conversation_starter"]["text"]
+    assert text.endswith("?"), (
+        f"Boundary-path trim should reattach `?`, got: {text!r}"
+    )
+    assert len(text.split()) <= 25
+
+
 # ---------------------------------------------------------------------------
 # #4187 — subject taxonomy validator (shared with M0-4 PATCH endpoint)
 # ---------------------------------------------------------------------------
