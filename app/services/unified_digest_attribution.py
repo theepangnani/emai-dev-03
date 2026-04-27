@@ -43,6 +43,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.core.school_boards import KNOWN_SCHOOL_BOARD_DOMAINS
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,21 +133,6 @@ _NON_PERSON_LOCAL_PARTS = frozenset({
     "info",
 })
 
-# Why: Ontario boards (the project's primary user segment) use bare board
-# domains that don't match gapps.*/.edu/.k12.*. Listing them explicitly
-# closes the auto-discovery gap for OCDSB/TDSB/etc. users.
-_KNOWN_SCHOOL_BOARD_DOMAINS = frozenset({
-    "ocdsb.ca",
-    "tdsb.on.ca",
-    "peelschools.org",
-    "dsbn.org",
-    "yrdsb.ca",
-    "dpcdsb.org",
-    "hwdsb.on.ca",
-    "wrdsb.ca",
-    "sd35.bc.ca",
-})
-
 
 def is_school_looking_address(addr: str) -> bool:
     """Heuristic: does this address look like a forwarded student inbox?
@@ -170,7 +157,9 @@ def is_school_looking_address(addr: str) -> bool:
     if ".k12." in domain or domain.endswith(".k12"):
         return True
     # #4346 — match exact apex domain OR any subdomain (e.g. student.ocdsb.ca).
-    if any(domain == d or domain.endswith("." + d) for d in _KNOWN_SCHOOL_BOARD_DOMAINS):
+    # Why: bare board domains (ocdsb.ca, tdsb.on.ca, etc.) don't match the
+    # gapps.*/.edu/.k12.* patterns above. List lives in app/core/school_boards.py.
+    if any(domain == d or domain.endswith("." + d) for d in KNOWN_SCHOOL_BOARD_DOMAINS):
         return True
     return False
 
