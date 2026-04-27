@@ -369,3 +369,8 @@ class DiscoveredSchoolEmailResponse(BaseModel):
 
 class DiscoveredAssignBody(BaseModel):
     child_profile_id: int
+
+
+class DiscoveredAssignResponse(BaseModel):
+    status: str
+    child_profile_id: int

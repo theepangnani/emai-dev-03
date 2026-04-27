@@ -900,7 +900,8 @@ def _render_unified_digest_sections(
 
     # #4329 — ambiguous-attribution footer.
     if attribution_counts:
-        ambiguous = int(attribution_counts.get("sender_tag_ambiguous") or 0)
+        from app.services.unified_digest_attribution import ATTR_SOURCE_SENDER_TAG_AMBIGUOUS
+        ambiguous = int(attribution_counts.get(ATTR_SOURCE_SENDER_TAG_AMBIGUOUS) or 0)
         if ambiguous > 0:
             plural = "s" if ambiguous > 1 else ""
             parts.append(

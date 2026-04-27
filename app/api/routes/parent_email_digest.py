@@ -55,6 +55,7 @@ from app.schemas.parent_email_digest import (
     ChildProfileResponse,
     DiscoveredSchoolEmailResponse,
     DiscoveredAssignBody,
+    DiscoveredAssignResponse,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -1160,7 +1161,10 @@ def list_discovered_school_emails(
     return rows
 
 
-@router.post("/discovered-school-emails/{discovery_id}/assign")
+@router.post(
+    "/discovered-school-emails/{discovery_id}/assign",
+    response_model=DiscoveredAssignResponse,
+)
 @limiter.limit("30/minute", key_func=get_user_id_or_ip)
 def assign_discovered_school_email(
     request: Request,
