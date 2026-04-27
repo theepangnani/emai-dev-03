@@ -2178,3 +2178,49 @@ Follow-on to §6.142.1. After 10 feature streams merged, `/pr-review` was run ag
 **Key resolved decisions (full table in design lock §13).** Sonnet 4.6 + prompt cache for summary (Opus 4.7 reserved as one-flag fallback) · separate `checkin_streak_summary` table (reusing `StreakLog` writes via existing `action_type`) · Day-7 parent nudge invitation-framed + mute toggle (P1 honored without violating P2) · streak monetization NONE (resolves PRD §14 Q8) · content-policy v0 = regex + keyword, fail-closed (ML classifier in fast-follow) · slot in §6.143 (note: §6.142 is duplicated between CB-TUTOR-002 and CB-PEDI-002 — fast-follow renumbering issue).
 
 **Operational state (as of 2026-04-26).** Master HEAD includes M0 + M0-12 + M0-13 + fast-follow batch. Live Cloud Run revision `classbridge-01142-l58` only contains M0 (M0-12/M0-13/fast-follow not yet deployed — separate explicit deploy approval required per global rule). Flag `dci_v1_enabled` is ON in prod; users can already navigate to `/parent/today` via direct URL or via Settings → DCI section. After re-deploy, parents will see `DciEntryCard` on their dashboard and the consent-redirect flow will kick in automatically. Bill 194 audit-logging silent-fail bug fixed in `audit_service.log_action` lazy-import (commit `8b4bce33`, see #4249 + `feedback_lazy_model_imports_in_services.md`). Bill 194 ramp gate `#4192` (production migration for `checkin_settings`) and counsel review of `dci_content_policy.py` keyword tables remain required before further flag escalation.
+
+
+### 6.144 Avatar colors — per-user Arc variant + kid CHILD_COLORS reorder (CB-AVATAR-COLORS-001) — SHIPPED 2026-04-27
+
+**Epic:** #4311 · **Streams:** A #4312 (Arc per-user variant) · B #4313 (kid color reorder) · C #4318 (test mock fix) · **Integration branch:** `integrate/cb-avatar-colors` · **Status:** Pending master merge approval
+
+#### Why this exists
+After CB-THEME-001 shipped (#4242, #4300), Arc the mascot rendered rust/brown in bridge mode because its body gradient referenced `--color-accent` (which the bridge palette overrides to rust). User feedback: "anything but brown — random based on user persona." Separately, the first-added kid hero avatar (Thanushan) defaulted to violet (`#8b5cf6`); user wanted warmer default tones.
+
+#### Locked decisions
+1. **Arc randomness** — per-user deterministic hash (option (i) — like Slack avatars; persists across sessions; no backend storage)
+2. **Arc palette** — 6 curated tokens: `--color-rose` (pink), `--color-sky` (blue), `--color-pine` (green), `--color-purple` (violet), `--color-amber` (gold), and new `--color-teal` (added per theme)
+3. **Arc click target** — N/A (Arc is decorative-only on the tutor surfaces; no click-to-customize for now)
+4. **Kid avatars** — option (α): reorder `CHILD_COLORS` array (rose first, violet to index 4). Per-kid override deferred to the future PR that ships `KidPhotoMenu` DELETE UI.
+5. **Theme awareness** — Arc variant blocks use explicit hex (NOT `--color-rose` etc.) so each user's Arc color is stable across light/dark/focus/bridge theme switches. Identity > theme adjustment.
+
+#### Implementation summary
+- **`frontend/src/index.css`** — added `--color-teal` to all 4 themes; default `--arc-body-color*` tokens bind to `--color-accent*`; 6 `[data-arc="<key>"]` variant blocks override per user
+- **`frontend/src/components/arc/util.ts`** (new) — `getArcVariant(userId)` returns one of `ARC_VARIANTS` via `Math.abs(id) % 6`; defaults to `'rose'` for unauthenticated
+- **`frontend/src/components/arc/util.test.ts`** (new) — 4 vitest cases (deterministic, distribution, null/undefined, negative)
+- **`frontend/src/components/arc/ArcMascot.tsx`** — 3 SVG gradient stop swaps with 3-level fallback `var(--arc-body-color, var(--color-accent, #hex))`
+- **6 caller wrappings** — TutorPage, HelpChatbot, FlashTutorSessionPage, CycleResults, CycleTeachBlock, TutorChat each pull `useAuth().user.id` and apply `data-arc={getArcVariant(...)}` to the ArcMascot's container
+- **`frontend/src/pages/MyKidsPage.tsx`** — `CHILD_COLORS` reordered: rose `#ec4899` first; violet `#8b5cf6` to index 4
+- **Test mock fix (Stream C #4318)** — `vi.mock('AuthContext', ...)` added to `TutorChat.test.tsx` and `LearningCyclePage.test.tsx` since their components now call `useAuth()` via the data-arc wrapper
+
+#### Out of scope (deferred)
+- Per-kid color override (parent picks color via UI) — bundles with the future `KidPhotoMenu` DELETE UI followup
+- Mobile parity in Phase 2 mobile repo
+- Other themes' Arc tinting — variants stay color-stable across themes by design
+- Backfill of §6.144 spec for CB-THEME-001 (the V1 + Phase 2 work that shipped earlier in this session) — separate documentation issue
+
+#### Acceptance
+- [x] Arc not brown for any user in bridge mode (rust accent decoupled from arc body)
+- [x] Same user → same Arc color across reloads (deterministic via Math.abs(id) % 6)
+- [x] Different users → good distribution across 6 variants (verified by vitest)
+- [x] Kid hero default leads with rose; violet preserved at index 4
+- [x] CI green (frontend ✓ 3m37s · backend ✓ 4m1s on rebased branch `7266769f`)
+- [x] No new behavior, copy, prop, schema, or backend changes
+- [ ] Master-merge approval (pending user)
+
+#### Workflow footprint
+- 3 parallel isolated worktrees (Stream A 150 lines, Stream B 5 lines, Stream C test mock fix)
+- 1 dedicated merge stream (combined into integration branch with 0 conflicts)
+- 1 master-rebase stream (incorporated CB-DCI-001 fast-follow batch 2 from master, 0 conflicts)
+- 2× CI verification (initial + post-rebase)
+- 1× `/pr-review` pass (APPROVE — 0 Critical, 0 Important, 3 Suggestions)
