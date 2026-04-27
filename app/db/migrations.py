@@ -12,6 +12,20 @@ from sqlalchemy import inspect as sa_inspect, text
 
 
 # ---------------------------------------------------------------------------
+# Denylist for unified-v2 school-email backfill (#4328, #4099)
+#
+# Kept here for documentation; the SQL clauses in the unified-digest-v2
+# backfill block use these prefixes literally. If you change them, update
+# the SQL in `_run_migrations_inner` to match.
+# ---------------------------------------------------------------------------
+
+SCHOOL_EMAIL_DENYLIST = ['no-reply@classroom.google.com']
+SCHOOL_EMAIL_DENYLIST_PATTERNS = [
+    'no-reply@', 'noreply@', 'donotreply@', 'mailer-daemon@',
+]  # local-part anchored
+
+
+# ---------------------------------------------------------------------------
 # Helper: CASCADE / UNIQUE constraint migration
 # ---------------------------------------------------------------------------
 
@@ -2542,6 +2556,34 @@ def _run_migrations_inner(engine, settings, logger):
     except Exception as e:
         logger.debug("email_delivery_status migration skipped (column likely exists): %s", e)
 
+    # --- Idempotency guard for unified-v2 school-email backfill (#4328) ---
+    # Add `unified_v2_backfilled_at` to parent_gmail_integrations so the
+    # backfill below can stamp processed integrations and skip them on
+    # subsequent runs. Without this, a user deleting a school-email via the
+    # UI gets it re-created on the next Cloud Run cold start because the
+    # legacy `child_school_email` column still holds the value.
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            if "parent_gmail_integrations" in _inspector.get_table_names():
+                existing_cols = {c["name"] for c in _inspector.get_columns("parent_gmail_integrations")}
+                if "unified_v2_backfilled_at" not in existing_cols:
+                    col_type = "TIMESTAMPTZ" if "sqlite" not in settings.database_url else "DATETIME"
+                    try:
+                        conn.execute(text(
+                            f"ALTER TABLE parent_gmail_integrations ADD COLUMN unified_v2_backfilled_at {col_type}"
+                        ))
+                        conn.commit()
+                        logger.info("Added unified_v2_backfilled_at column to parent_gmail_integrations (#4328)")
+                    except Exception as col_err:
+                        conn.rollback()
+                        logger.warning(
+                            "Failed to add unified_v2_backfilled_at to parent_gmail_integrations (#4328): %s",
+                            col_err,
+                        )
+    except Exception as e:
+        logger.debug("unified_v2_backfilled_at migration skipped (column likely exists): %s", e)
+
     # --- Unified Digest v2 data model (#4012, #4013) ---
     # Create 4 new parent-level tables decoupling sender identity from
     # integration identity, plus a best-effort idempotent backfill from
@@ -2636,24 +2678,144 @@ def _run_migrations_inner(engine, settings, logger):
                 # 2. Seed parent_child_school_emails from the legacy
                 #    child_school_email column, linked to the profile we just
                 #    created. forwarding_seen_at stays NULL (unconfirmed).
-                conn.execute(text(
-                    """
-                    INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
-                    SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
-                    FROM parent_gmail_integrations pgi
-                    JOIN parent_child_profiles pcp
-                      ON pcp.parent_id = pgi.parent_id
-                     AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
-                    WHERE pgi.child_school_email IS NOT NULL
-                      AND NOT EXISTS (
-                          SELECT 1 FROM parent_child_school_emails pcse
-                          WHERE pcse.child_profile_id = pcp.id
-                            AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
-                      )
-                    """
-                ))
-                conn.commit()
-                logger.info("Unified digest v2 backfill: seeded parent_child_school_emails (#4013)")
+                #
+                # (#4328, #4099) Three-step ordering:
+                #  (a) One-time data scrub — DELETE any pre-existing junk
+                #      rows (no-reply@*, donotreply@*, mailer-daemon@*) that
+                #      were seeded by earlier runs of this backfill before
+                #      the denylist + guard existed. Idempotent: a no-op
+                #      after the first migration run.
+                #  (b) INSERT new rows, gated on `unified_v2_backfilled_at IS
+                #      NULL` (idempotency: a user delete is not re-seeded)
+                #      AND the source value not matching the denylist.
+                #  (c) UPDATE — stamp `unified_v2_backfilled_at = NOW()` on
+                #      every integration whose `child_school_email` is set
+                #      and not denylisted, so step (b) skips it next run.
+                # (a) One-time data scrub — ONLY run when junk rows actually exist (#4338).
+                # Cheap LIMIT 1 probe avoids a full-table-scan DELETE on every cold start
+                # once the scrub has already cleaned up.
+                if _is_pg:
+                    needs_scrub = conn.execute(text(
+                        "SELECT 1 FROM parent_child_school_emails "
+                        "WHERE LOWER(email_address) ~ '^(no-?reply|donotreply|mailer-daemon)@' "
+                        "LIMIT 1"
+                    )).first()
+                else:
+                    needs_scrub = conn.execute(text(
+                        "SELECT 1 FROM parent_child_school_emails "
+                        "WHERE LOWER(email_address) LIKE 'no-reply@%' "
+                        "OR LOWER(email_address) LIKE 'noreply@%' "
+                        "OR LOWER(email_address) LIKE 'donotreply@%' "
+                        "OR LOWER(email_address) LIKE 'mailer-daemon@%' "
+                        "LIMIT 1"
+                    )).first()
+
+                if needs_scrub:
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            DELETE FROM parent_child_school_emails
+                            WHERE LOWER(email_address) ~ '^(no-?reply|donotreply|mailer-daemon)@'
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            DELETE FROM parent_child_school_emails
+                            WHERE LOWER(email_address) LIKE 'no-reply@%'
+                               OR LOWER(email_address) LIKE 'noreply@%'
+                               OR LOWER(email_address) LIKE 'donotreply@%'
+                               OR LOWER(email_address) LIKE 'mailer-daemon@%'
+                            """
+                        ))
+                    conn.commit()
+                    logger.info("Unified digest v2 backfill: scrubbed junk school_emails (#4328, #4099, #4338)")
+
+                # (b) + (c) — run in ONE transaction so a failed INSERT doesn't leave
+                # integrations falsely stamped as backfilled (#4339).
+                try:
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
+                            SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
+                            FROM parent_gmail_integrations pgi
+                            JOIN parent_child_profiles pcp
+                              ON pcp.parent_id = pgi.parent_id
+                             AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                            WHERE pgi.child_school_email IS NOT NULL
+                              AND pgi.unified_v2_backfilled_at IS NULL
+                              AND LOWER(pgi.child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM parent_child_school_emails pcse
+                                  WHERE pcse.child_profile_id = pcp.id
+                                    AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
+                              )
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            INSERT INTO parent_child_school_emails (child_profile_id, email_address, forwarding_seen_at, created_at)
+                            SELECT pcp.id, LOWER(pgi.child_school_email), NULL, pgi.created_at
+                            FROM parent_gmail_integrations pgi
+                            JOIN parent_child_profiles pcp
+                              ON pcp.parent_id = pgi.parent_id
+                             AND LOWER(pcp.first_name) = LOWER(pgi.child_first_name)
+                            WHERE pgi.child_school_email IS NOT NULL
+                              AND pgi.unified_v2_backfilled_at IS NULL
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'no-reply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'noreply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'donotreply@%'
+                              AND LOWER(pgi.child_school_email) NOT LIKE 'mailer-daemon@%'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM parent_child_school_emails pcse
+                                  WHERE pcse.child_profile_id = pcp.id
+                                    AND LOWER(pcse.email_address) = LOWER(pgi.child_school_email)
+                              )
+                            """
+                        ))
+
+                    # Stamp every integration whose child_school_email is set and not
+                    # denylisted as "considered backfilled" — even rows we skipped because
+                    # of NOT EXISTS. After this point a user delete is the source of truth.
+                    if _is_pg:
+                        conn.execute(text(
+                            """
+                            UPDATE parent_gmail_integrations
+                            SET unified_v2_backfilled_at = NOW()
+                            WHERE child_school_email IS NOT NULL
+                              AND unified_v2_backfilled_at IS NULL
+                              AND LOWER(child_school_email) !~ '^(no-?reply|donotreply|mailer-daemon)@'
+                            """
+                        ))
+                    else:
+                        conn.execute(text(
+                            """
+                            UPDATE parent_gmail_integrations
+                            SET unified_v2_backfilled_at = CURRENT_TIMESTAMP
+                            WHERE child_school_email IS NOT NULL
+                              AND unified_v2_backfilled_at IS NULL
+                              AND LOWER(child_school_email) NOT LIKE 'no-reply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'noreply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'donotreply@%'
+                              AND LOWER(child_school_email) NOT LIKE 'mailer-daemon@%'
+                            """
+                        ))
+
+                    conn.commit()
+                    logger.info("Unified digest v2 backfill: seeded + stamped atomically (#4013, #4328, #4339)")
+                except Exception:
+                    # #4339 — atomic rollback of step (b)+(c) so a failed INSERT
+                    # never leaves integrations falsely stamped as backfilled.
+                    # #4345 — do NOT re-raise: steps 3+4 (sender backfill +
+                    # assignments) are independent of step 2's data and should
+                    # still run. Retry of step 2 happens on the next cold start.
+                    conn.rollback()
+                    logger.warning(
+                        "Unified digest v2 backfill (#4013, #4328): step (b)+(c) failed and rolled back; "
+                        "downstream steps will continue, will retry next cold start"
+                    )
 
                 # 3. Seed parent_digest_monitored_senders from the legacy
                 #    parent_digest_monitored_emails table. Dedupe on
@@ -2735,3 +2897,60 @@ def _run_migrations_inner(engine, settings, logger):
             logger.info("Unique functional index on parent_child_profiles (#4047)")
     except Exception as e:
         logger.debug("Functional unique index #4047 skipped: %s", e)
+
+    # --- Auto-discovered school addresses table (#4329) ---
+    # SQLAlchemy's create_all() handles new-table creation at startup, but we
+    # add an explicit guard here so the unique constraint lands deterministically
+    # in environments where create_all() is not invoked (e.g. external tooling).
+    try:
+        with engine.connect() as conn:
+            _inspector = sa_inspect(engine)
+            _tables = set(_inspector.get_table_names())
+            if "parent_discovered_school_emails" not in _tables:
+                _is_pg = "sqlite" not in settings.database_url
+                if _is_pg:
+                    conn.execute(text(
+                        """
+                        CREATE TABLE IF NOT EXISTS parent_discovered_school_emails (
+                            id SERIAL PRIMARY KEY,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            email_address VARCHAR(255) NOT NULL,
+                            sample_sender VARCHAR(255),
+                            occurrences INTEGER NOT NULL DEFAULT 1,
+                            first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            CONSTRAINT uq_parent_discovered_email UNIQUE (parent_id, email_address)
+                        )
+                        """
+                    ))
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_parent_discovered_school_emails_parent_id "
+                        "ON parent_discovered_school_emails (parent_id)"
+                    ))
+                    conn.execute(text(
+                        "CREATE INDEX IF NOT EXISTS ix_parent_discovered_school_emails_email "
+                        "ON parent_discovered_school_emails (email_address)"
+                    ))
+                else:
+                    conn.execute(text(
+                        """
+                        CREATE TABLE IF NOT EXISTS parent_discovered_school_emails (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            email_address VARCHAR(255) NOT NULL,
+                            sample_sender VARCHAR(255),
+                            occurrences INTEGER NOT NULL DEFAULT 1,
+                            first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT uq_parent_discovered_email UNIQUE (parent_id, email_address)
+                        )
+                        """
+                    ))
+                conn.commit()
+                logger.info("Created parent_discovered_school_emails table (#4329)")
+            else:
+                logger.debug("parent_discovered_school_emails table already exists (#4329)")
+    except Exception as e:
+        logger.warning("parent_discovered_school_emails create skipped (#4329): %s", e)

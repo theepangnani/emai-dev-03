@@ -275,3 +275,24 @@ export const updateSenderAssignments = (
   api.patch<MonitoredSender>(`/api/parent/email-digest/monitored-senders/${id}/assignments`, {
     child_profile_ids,
   });
+
+// Auto-discovered school addresses (#4329) — surfaced by the worker when
+// a forwarded email lands with a school-looking To: address that isn't
+// registered for any kid.
+export interface DiscoveredSchoolEmail {
+  id: number;
+  email_address: string;
+  sample_sender: string | null;
+  occurrences: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export const listDiscoveredSchoolEmails = () =>
+  api.get<DiscoveredSchoolEmail[]>('/api/parent/email-digest/discovered-school-emails');
+
+export const assignDiscoveredSchoolEmail = (id: number, child_profile_id: number) =>
+  api.post(`/api/parent/email-digest/discovered-school-emails/${id}/assign`, { child_profile_id });
+
+export const dismissDiscoveredSchoolEmail = (id: number) =>
+  api.delete(`/api/parent/email-digest/discovered-school-emails/${id}`);

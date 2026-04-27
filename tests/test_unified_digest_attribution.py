@@ -23,6 +23,7 @@ def _models():
         ParentChildProfile,
         ParentChildSchoolEmail,
         ParentDigestMonitoredSender,
+        ParentDiscoveredSchoolEmail,
         SenderChildAssignment,
     )
     return {
@@ -32,6 +33,7 @@ def _models():
         "ParentChildProfile": ParentChildProfile,
         "ParentChildSchoolEmail": ParentChildSchoolEmail,
         "ParentDigestMonitoredSender": ParentDigestMonitoredSender,
+        "ParentDiscoveredSchoolEmail": ParentDiscoveredSchoolEmail,
         "SenderChildAssignment": SenderChildAssignment,
     }
 
@@ -163,6 +165,10 @@ def test_school_email_multi_kid_match_returns_all_matched(db_session):
 
 
 def test_school_email_does_not_leak_across_parents(db_session):
+    """#4329 — parent_b has no registered school email AND no monitored
+    sender, so the email falls to ``unattributed`` (it has a school-looking
+    recipient, so it's NOT parent_direct). Critically: parent_a's school
+    email row must not leak across the parent boundary."""
     from app.services.unified_digest_attribution import (
         ATTR_SOURCE_UNATTRIBUTED,
         attribute_email,
@@ -174,14 +180,14 @@ def test_school_email_does_not_leak_across_parents(db_session):
     prof_a = _make_profile(db_session, parent_a.id, "Akid")
     db_session.add(m["ParentChildSchoolEmail"](
         child_profile_id=prof_a.id,
-        email_address="kid@ocdsb.ca",
+        email_address="kid@gapps.yrdsb.ca",
     ))
     db_session.commit()
 
     # Parent B fetches an email addressed to Parent A's kid. Must not
     # match anything under Parent B's scope.
     result = attribute_email(
-        {"To": "kid@ocdsb.ca"},
+        {"To": "kid@gapps.yrdsb.ca"},
         parent_b.id,
         db_session,
     )
@@ -193,9 +199,13 @@ def test_school_email_does_not_leak_across_parents(db_session):
 # ---------------------------------------------------------------------------
 
 
-def test_sender_with_specific_assignments(db_session):
+def test_sender_with_specific_assignments_downgrades_to_ambiguous(db_session):
+    """#4329 — strict-subset sender match now downgrades to all-kids ambiguous
+    when the recipient is a school-looking address that we can't tie back to
+    a registered kid. The recipient pins the email as 'forwarded from school',
+    but we can't be sure which kid this was actually for."""
     from app.services.unified_digest_attribution import (
-        ATTR_SOURCE_SENDER_TAG,
+        ATTR_SOURCE_SENDER_TAG_AMBIGUOUS,
         attribute_email,
     )
     m = _models()
@@ -203,6 +213,7 @@ def test_sender_with_specific_assignments(db_session):
     parent = _make_parent(db_session, "sender1@test.com")
     p1 = _make_profile(db_session, parent.id, "One")
     p2 = _make_profile(db_session, parent.id, "Two")
+    p3 = _make_profile(db_session, parent.id, "Three")
     sender = m["ParentDigestMonitoredSender"](
         parent_id=parent.id,
         email_address="teacher@school.ca",
@@ -217,12 +228,15 @@ def test_sender_with_specific_assignments(db_session):
     db_session.commit()
 
     result = attribute_email(
-        {"From": "Teacher <TEACHER@school.ca>"},
+        {
+            "To": "unregistered.kid@gapps.yrdsb.ca",
+            "From": "Teacher <TEACHER@school.ca>",
+        },
         parent.id,
         db_session,
     )
-    assert result["source"] == ATTR_SOURCE_SENDER_TAG
-    assert sorted(result["kid_ids"]) == sorted([p1.id, p2.id])
+    assert result["source"] == ATTR_SOURCE_SENDER_TAG_AMBIGUOUS
+    assert sorted(result["kid_ids"]) == sorted([p1.id, p2.id, p3.id])
 
 
 def test_sender_applies_to_all_returns_all_parent_profiles(db_session):
@@ -245,7 +259,10 @@ def test_sender_applies_to_all_returns_all_parent_profiles(db_session):
     db_session.commit()
 
     result = attribute_email(
-        {"From": "principal@school.ca"},
+        {
+            "To": "broadcast@gapps.yrdsb.ca",
+            "From": "principal@school.ca",
+        },
         parent.id,
         db_session,
     )
@@ -275,9 +292,14 @@ def test_sender_lookup_scoped_to_parent(db_session):
     ))
     db_session.commit()
 
-    # Parent B looking at the same From address should not attribute.
+    # Parent B looking at the same From address should not attribute. Use an
+    # unregistered school-looking recipient so we still exercise the Stage-3
+    # sender lookup (else we'd short-circuit to parent_direct). #4329
     result = attribute_email(
-        {"From": "coach@school.ca"},
+        {
+            "To": "stranger@gapps.yrdsb.ca",
+            "From": "coach@school.ca",
+        },
         parent_b.id,
         db_session,
     )
@@ -289,14 +311,19 @@ def test_sender_lookup_scoped_to_parent(db_session):
 # ---------------------------------------------------------------------------
 
 
-def test_no_recipient_no_sender_returns_unattributed(db_session):
+def test_no_recipient_no_sender_returns_parent_direct(db_session):
+    """#4329 — when there are no school-looking recipients, the email
+    didn't come through any school forwarding pipe. Surface as
+    parent_direct rather than running sender-tag (which would mis-
+    attribute when the parent's own correspondence happens to match
+    a monitored sender)."""
     from app.services.unified_digest_attribution import (
-        ATTR_SOURCE_UNATTRIBUTED,
+        ATTR_SOURCE_PARENT_DIRECT,
         attribute_email,
     )
     parent = _make_parent(db_session, "un1@test.com")
     result = attribute_email({}, parent.id, db_session)
-    assert result == {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}
+    assert result == {"kid_ids": [], "source": ATTR_SOURCE_PARENT_DIRECT}
 
 
 def test_school_email_beats_sender_when_both_would_match(db_session):
@@ -451,8 +478,10 @@ def test_attribute_email_flush_failure_does_not_log_raw_recipients(
 def test_sectioning_groups_emails_by_attribution_source():
     from app.services.unified_digest_attribution import (
         ATTR_SOURCE_APPLIES_TO_ALL,
+        ATTR_SOURCE_PARENT_DIRECT,
         ATTR_SOURCE_SCHOOL_EMAIL,
         ATTR_SOURCE_SENDER_TAG,
+        ATTR_SOURCE_SENDER_TAG_AMBIGUOUS,
         ATTR_SOURCE_UNATTRIBUTED,
         build_sectioned_digest,
     )
@@ -463,11 +492,329 @@ def test_sectioning_groups_emails_by_attribution_source():
         ({"id": 3}, {"kid_ids": [11], "source": ATTR_SOURCE_SENDER_TAG}),
         ({"id": 4}, {"kid_ids": [10, 11], "source": ATTR_SOURCE_APPLIES_TO_ALL}),
         ({"id": 5}, {"kid_ids": [], "source": ATTR_SOURCE_UNATTRIBUTED}),
+        ({"id": 6}, {"kid_ids": [], "source": ATTR_SOURCE_PARENT_DIRECT}),
+        ({"id": 7}, {"kid_ids": [10, 11], "source": ATTR_SOURCE_SENDER_TAG_AMBIGUOUS}),
     ]
     result = build_sectioned_digest(pairs)
-    # multi-kid school_email AND applies_to_all both land in for_all_kids
+    # multi-kid school_email + applies_to_all + sender_tag_ambiguous → for_all_kids
     ids_all = [e["id"] for e in result["for_all_kids"]]
-    assert ids_all == [2, 4]
+    assert ids_all == [2, 4, 7]
     assert [e["id"] for e in result["per_kid"][10]] == [1]
     assert [e["id"] for e in result["per_kid"][11]] == [3]
     assert [e["id"] for e in result["unattributed"]] == [5]
+    assert [e["id"] for e in result["parent_direct"]] == [6]
+
+
+# ---------------------------------------------------------------------------
+# #4329 — parent-direct + ambiguous + auto-discovery
+# ---------------------------------------------------------------------------
+
+
+def test_is_school_looking_address_heuristic():
+    from app.services.unified_digest_attribution import is_school_looking_address
+
+    # Positive — gapps.* domain
+    assert is_school_looking_address("349017574@gapps.yrdsb.ca") is True
+    # Positive — .edu
+    assert is_school_looking_address("kid@example.edu") is True
+    # Positive — .k12.
+    assert is_school_looking_address("kid@school.k12.tx.us") is True
+    # Positive — known Canadian school-board domains (#4336).
+    assert is_school_looking_address("kid@ocdsb.ca") is True
+    assert is_school_looking_address("kid@tdsb.on.ca") is True
+    assert is_school_looking_address("kid@peelschools.org") is True
+    assert is_school_looking_address("kid@dsbn.org") is True
+    assert is_school_looking_address("kid@yrdsb.ca") is True
+    assert is_school_looking_address("kid@dpcdsb.org") is True
+    assert is_school_looking_address("kid@hwdsb.on.ca") is True
+    assert is_school_looking_address("kid@wrdsb.ca") is True
+    assert is_school_looking_address("kid@sd35.bc.ca") is True
+    # Positive — subdomain of a known board (#4346).
+    assert is_school_looking_address("kid@student.ocdsb.ca") is True
+    # Negative — gmail
+    assert is_school_looking_address("parent@gmail.com") is False
+    # Negative — automated mailbox in school domain
+    assert is_school_looking_address("no-reply@gapps.yrdsb.ca") is False
+    assert is_school_looking_address("noreply@example.edu") is False
+    # Negative — domain that contains a board name as a substring but doesn't
+    # end with it (#4346 — suffix match only, no false positive on lookalikes).
+    assert is_school_looking_address("kid@ocdsb.ca-fake.com") is False
+    # Negative — empty / malformed
+    assert is_school_looking_address("") is False
+    assert is_school_looking_address("not-an-email") is False
+
+
+def test_attribute_parent_direct_when_no_school_recipients(db_session):
+    """#4329 — recipient list contains only the parent's gmail (or other
+    non-school addresses) → parent_direct, kid_ids=[], even if From matches
+    a registered monitored sender."""
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_PARENT_DIRECT,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "pd1@test.com")
+    p1 = _make_profile(db_session, parent.id, "Solo")
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="teacher@school.ca",
+        applies_to_all=True,
+    )
+    db_session.add(sender)
+    db_session.commit()
+
+    result = attribute_email(
+        {
+            "To": "parent@gmail.com",
+            "From": "teacher@school.ca",
+        },
+        parent.id,
+        db_session,
+    )
+    assert result == {"kid_ids": [], "source": ATTR_SOURCE_PARENT_DIRECT}
+    # Sanity — the parent has a kid but parent_direct skips kid attribution.
+    assert p1.id
+
+
+def test_attribute_school_email_match_still_wins_over_parent_direct(db_session):
+    """Stage 1 short-circuits before the parent-direct check — a registered
+    school address always attributes to its kid even if other recipients are
+    parent-direct."""
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_SCHOOL_EMAIL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "pdsmix@test.com")
+    profile = _make_profile(db_session, parent.id, "Tracked")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="tracked@gapps.yrdsb.ca",
+    ))
+    db_session.commit()
+
+    result = attribute_email(
+        {"To": "parent@gmail.com, tracked@gapps.yrdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_SCHOOL_EMAIL
+    assert result["kid_ids"] == [profile.id]
+
+
+def test_record_discovery_inserts_unregistered_school_address(db_session):
+    """#4329 — record_discovery surfaces unregistered school-looking To:
+    addresses so the parent can assign them later."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "disc1@test.com")
+
+    record_discovery(
+        {
+            "To": "349017574@gapps.yrdsb.ca, parent@gmail.com",
+            "From": "Teacher <teacher@yrdsb.ca>",
+        },
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].email_address == "349017574@gapps.yrdsb.ca"
+    assert rows[0].sample_sender == "teacher@yrdsb.ca"
+    assert rows[0].occurrences == 1
+
+
+def test_record_discovery_skips_already_registered_address(db_session):
+    """#4329 — addresses already registered under any kid of this parent
+    should not be re-surfaced."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "disc2@test.com")
+    profile = _make_profile(db_session, parent.id, "Known")
+    db_session.add(m["ParentChildSchoolEmail"](
+        child_profile_id=profile.id,
+        email_address="known.kid@gapps.yrdsb.ca",
+    ))
+    db_session.commit()
+
+    record_discovery(
+        {
+            "To": "known.kid@gapps.yrdsb.ca",
+            "From": "teacher@yrdsb.ca",
+        },
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert rows == []
+
+
+def test_record_discovery_bumps_occurrences_on_repeat(db_session):
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "disc3@test.com")
+
+    record_discovery(
+        {"To": "kid@gapps.yrdsb.ca", "From": "first@yrdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+    record_discovery(
+        {"To": "kid@gapps.yrdsb.ca", "From": "second@yrdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].occurrences == 2
+    # Latest sample_sender wins so the UX hint stays fresh.
+    assert rows[0].sample_sender == "second@yrdsb.ca"
+
+
+def test_record_discovery_skips_non_school_recipients(db_session):
+    """Only school-looking domains qualify for discovery — gmail-only
+    recipients are parent-direct and don't need to be classified."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "disc4@test.com")
+
+    record_discovery(
+        {"To": "parent@gmail.com", "From": "x@gmail.com"},
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# #4336 — Canadian school-board domain heuristic in attribution
+# ---------------------------------------------------------------------------
+
+
+def test_unregistered_ocdsb_recipient_falls_through_to_sender_tag(db_session):
+    """#4336 — an ``ocdsb.ca`` recipient that isn't registered for any kid
+    (so Stage 1 misses) must be classified as school-looking by the
+    heuristic. With a monitored sender row in place, attribution should
+    land on Stage 3 (sender-tag) rather than collapse to Stage 2
+    (parent_direct)."""
+    from app.services.unified_digest_attribution import (
+        ATTR_SOURCE_APPLIES_TO_ALL,
+        attribute_email,
+    )
+    m = _models()
+
+    parent = _make_parent(db_session, "board1@test.com")
+    p1 = _make_profile(db_session, parent.id, "Boardkid")
+    sender = m["ParentDigestMonitoredSender"](
+        parent_id=parent.id,
+        email_address="teacher@school.ca",
+        applies_to_all=True,
+    )
+    db_session.add(sender)
+    db_session.commit()
+
+    # The recipient isn't registered for any of the parent's kids, but
+    # ocdsb.ca is now in the school-board allowlist — so we expect Stage 3
+    # (sender-tag), not Stage 2 (parent_direct).
+    result = attribute_email(
+        {
+            "To": "unregistered.kid@ocdsb.ca",
+            "From": "teacher@school.ca",
+        },
+        parent.id,
+        db_session,
+    )
+    assert result["source"] == ATTR_SOURCE_APPLIES_TO_ALL
+    assert p1.id in result["kid_ids"]
+
+
+# ---------------------------------------------------------------------------
+# #4341 — record_discovery with pre-fetched registered set
+# ---------------------------------------------------------------------------
+
+
+def test_record_discovery_uses_pre_fetched_registered_set_skips_query(db_session):
+    """#4341 — when the worker passes a pre-fetched ``registered_addresses``
+    set, the function must NOT issue its own registered-rows SELECT and
+    must respect the set when filtering candidates."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "cache1@test.com")
+
+    record_discovery(
+        {
+            "To": "already.registered@gapps.yrdsb.ca, brand.new@gapps.yrdsb.ca",
+            "From": "teacher@yrdsb.ca",
+        },
+        parent.id,
+        db_session,
+        registered_addresses={"already.registered@gapps.yrdsb.ca"},
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    addresses = {r.email_address for r in rows}
+    # The address present in the pre-fetched set is treated as registered
+    # and dropped — only the brand-new address gets surfaced.
+    assert addresses == {"brand.new@gapps.yrdsb.ca"}
+
+
+def test_record_discovery_back_compat_without_kwarg(db_session):
+    """#4341 — calling without ``registered_addresses`` still works (per-call
+    DB query fallback for direct callers / tests)."""
+    from app.services.unified_digest_attribution import record_discovery
+    m = _models()
+
+    parent = _make_parent(db_session, "cache2@test.com")
+
+    record_discovery(
+        {"To": "fresh@gapps.yrdsb.ca", "From": "teacher@yrdsb.ca"},
+        parent.id,
+        db_session,
+    )
+    db_session.commit()
+
+    rows = (
+        db_session.query(m["ParentDiscoveredSchoolEmail"])
+        .filter(m["ParentDiscoveredSchoolEmail"].parent_id == parent.id)
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].email_address == "fresh@gapps.yrdsb.ca"

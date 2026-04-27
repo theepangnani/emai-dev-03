@@ -31,6 +31,11 @@ class ParentGmailIntegration(Base):
     whatsapp_otp_code = Column(String(6), nullable=True)
     whatsapp_otp_expires_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Idempotency guard for unified-digest-v2 school-email backfill (#4328).
+    # Once stamped, the backfill skips this integration so user deletes of the
+    # corresponding row in parent_child_school_emails are not re-seeded.
+    unified_v2_backfilled_at = Column(DateTime(timezone=True), nullable=True)
+
     parent = relationship("User", backref="gmail_integrations")
     digest_settings = relationship("ParentDigestSettings", back_populates="integration", uselist=False, cascade="all, delete-orphan")
     delivery_logs = relationship("DigestDeliveryLog", back_populates="integration", cascade="all, delete-orphan")
@@ -162,3 +167,25 @@ class SenderChildAssignment(Base):
         back_populates="sender_assignments",
         lazy="selectin",
     )
+
+
+# ---------------------------------------------------------------------------
+# Auto-discovered school addresses (#4329)
+# Surface unregistered school-looking To: addresses so the parent can assign
+# them to a kid (or dismiss). Filled by the worker on each digest run.
+# ---------------------------------------------------------------------------
+
+class ParentDiscoveredSchoolEmail(Base):
+    __tablename__ = "parent_discovered_school_emails"
+    __table_args__ = (
+        UniqueConstraint("parent_id", "email_address", name="uq_parent_discovered_email"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    parent_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    email_address = Column(String(255), nullable=False, index=True)
+    sample_sender = Column(String(255), nullable=True)
+    occurrences = Column(Integer, nullable=False, default=1, server_default=text("1"))
+    first_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

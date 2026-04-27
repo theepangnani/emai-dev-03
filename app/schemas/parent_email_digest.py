@@ -349,3 +349,28 @@ class ChildProfileResponse(BaseModel):
     school_emails: list[ChildSchoolEmailResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Auto-discovered school addresses (#4329)
+# ---------------------------------------------------------------------------
+
+
+class DiscoveredSchoolEmailResponse(BaseModel):
+    id: int
+    email_address: str
+    sample_sender: Optional[str] = None
+    occurrences: int
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DiscoveredAssignBody(BaseModel):
+    child_profile_id: int
+
+
+class DiscoveredAssignResponse(BaseModel):
+    status: str
+    child_profile_id: int

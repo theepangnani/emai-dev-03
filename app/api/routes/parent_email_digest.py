@@ -32,6 +32,7 @@ from app.models.parent_gmail_integration import (
     ParentChildProfile,
     ParentChildSchoolEmail,
     ParentDigestMonitoredSender,
+    ParentDiscoveredSchoolEmail,
     SenderChildAssignment,
 )
 from app.models.user import User, UserRole
@@ -52,6 +53,9 @@ from app.schemas.parent_email_digest import (
     ChildSchoolEmailCreate,
     ChildSchoolEmailResponse,
     ChildProfileResponse,
+    DiscoveredSchoolEmailResponse,
+    DiscoveredAssignBody,
+    DiscoveredAssignResponse,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -1133,6 +1137,115 @@ def delete_monitored_sender(
 
 
 # ---------------------------------------------------------------------------
+# Auto-discovered school addresses (#4329)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/discovered-school-emails",
+    response_model=list[DiscoveredSchoolEmailResponse],
+)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def list_discovered_school_emails(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """List unregistered school-looking To: addresses surfaced by the worker."""
+    rows = (
+        db.query(ParentDiscoveredSchoolEmail)
+        .filter(ParentDiscoveredSchoolEmail.parent_id == current_user.id)
+        .order_by(ParentDiscoveredSchoolEmail.last_seen_at.desc())
+        .all()
+    )
+    return rows
+
+
+@router.post(
+    "/discovered-school-emails/{discovery_id}/assign",
+    response_model=DiscoveredAssignResponse,
+)
+@limiter.limit("30/minute", key_func=get_user_id_or_ip)
+def assign_discovered_school_email(
+    request: Request,
+    discovery_id: int,
+    body: DiscoveredAssignBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Move a discovered address into ``parent_child_school_emails``.
+
+    Idempotent: if the address is already registered for the target
+    profile, just delete the discovery row (no error).
+    """
+    discovery = (
+        db.query(ParentDiscoveredSchoolEmail)
+        .filter(
+            ParentDiscoveredSchoolEmail.id == discovery_id,
+            ParentDiscoveredSchoolEmail.parent_id == current_user.id,
+        )
+        .first()
+    )
+    if not discovery:
+        raise HTTPException(status_code=404, detail="Discovered email not found")
+
+    profile = (
+        db.query(ParentChildProfile)
+        .filter(
+            ParentChildProfile.id == body.child_profile_id,
+            ParentChildProfile.parent_id == current_user.id,
+        )
+        .first()
+    )
+    if not profile:
+        raise HTTPException(status_code=404, detail="Child profile not found")
+
+    # #4337 — Stage 1 match is case-insensitive, so storage must be lowercase.
+    # `email_address` is NOT NULL on ParentDiscoveredSchoolEmail (#4347).
+    normalized = discovery.email_address.strip().lower()
+    existing = (
+        db.query(ParentChildSchoolEmail)
+        .filter(
+            ParentChildSchoolEmail.child_profile_id == profile.id,
+            ParentChildSchoolEmail.email_address == normalized,
+        )
+        .first()
+    )
+    if existing is None:
+        db.add(ParentChildSchoolEmail(
+            child_profile_id=profile.id,
+            email_address=normalized,
+        ))
+
+    db.delete(discovery)
+    db.commit()
+    return {"status": "ok", "child_profile_id": profile.id}
+
+
+@router.delete("/discovered-school-emails/{discovery_id}", status_code=204)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def dismiss_discovered_school_email(
+    request: Request,
+    discovery_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+):
+    """Dismiss a discovered school address."""
+    discovery = (
+        db.query(ParentDiscoveredSchoolEmail)
+        .filter(
+            ParentDiscoveredSchoolEmail.id == discovery_id,
+            ParentDiscoveredSchoolEmail.parent_id == current_user.id,
+        )
+        .first()
+    )
+    if not discovery:
+        raise HTTPException(status_code=404, detail="Discovered email not found")
+    db.delete(discovery)
+    db.commit()
+
+
+# ---------------------------------------------------------------------------
 # Unified Digest v2 — parent-level child profiles + school emails (#4014)
 # ---------------------------------------------------------------------------
 
@@ -1312,7 +1425,7 @@ def add_child_school_email(
         db.query(ParentChildSchoolEmail)
         .filter(
             ParentChildSchoolEmail.child_profile_id == profile_id,
-            ParentChildSchoolEmail.email_address == body.email_address,
+            ParentChildSchoolEmail.email_address == body.email_address.strip().lower(),
         )
         .first()
     )
@@ -1321,7 +1434,7 @@ def add_child_school_email(
 
     school_email = ParentChildSchoolEmail(
         child_profile_id=profile_id,
-        email_address=body.email_address,
+        email_address=body.email_address.strip().lower(),
     )
     db.add(school_email)
     db.commit()

@@ -286,6 +286,8 @@ async def test_unified_digest_skips_when_no_emails_and_notify_on_empty_false(db_
 
 @pytest.mark.asyncio
 async def test_unified_digest_counts_unattributed(db_session):
+    """#4329 — an email with an unregistered school-looking To: + no
+    monitored sender match should bin under ``unattributed``."""
     from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
 
     parent, _int, _prof = _make_parent_with_integrations(
@@ -297,14 +299,15 @@ async def test_unified_digest_counts_unattributed(db_session):
 
     async def fake_fetch(db, integration, since=None):
         # No recipient match, no monitored sender registered for this
-        # parent -> unattributed.
+        # parent → unattributed. Use a school-looking domain (gapps.*)
+        # so the email isn't short-circuited as parent_direct.
         return {
             "emails": [{
                 "source_id": "mx",
                 "sender_email": "mystery@nowhere.ca",
                 "subject": "?",
                 "snippet": "?",
-                "to_addresses": ["someone_else@ocdsb.ca"],
+                "to_addresses": ["someone_else@gapps.yrdsb.ca"],
                 "delivered_to_addresses": [],
                 "received_at": since,
             }],
@@ -324,6 +327,50 @@ async def test_unified_digest_counts_unattributed(db_session):
 
     assert result["email_count"] == 1
     assert result["attribution_counts"]["unattributed"] == 1
+    assert result["attribution_counts"]["school_email"] == 0
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_counts_parent_direct(db_session):
+    """#4329 — an email sent to the parent's gmail (no school-looking
+    recipient) should bin under ``parent_direct``, not ``unattributed``."""
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _int, _prof = _make_parent_with_integrations(
+        db_session,
+        "unified_pd@test.com",
+        ["solo@gapps.yrdsb.ca"],
+    )
+    since = datetime(2026, 4, 23, 0, 0, tzinfo=timezone.utc)
+
+    async def fake_fetch(db, integration, since=None):
+        return {
+            "emails": [{
+                "source_id": "pd1",
+                "sender_email": "newsletter@anywhere.com",
+                "subject": "Weekly newsletter",
+                "snippet": "...",
+                "to_addresses": ["parent@gmail.com"],
+                "delivered_to_addresses": [],
+                "received_at": since,
+            }],
+            "synced_at": datetime.now(timezone.utc),
+        }
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=fake_fetch),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True, since=since
+        )
+
+    assert result["email_count"] == 1
+    assert result["attribution_counts"]["parent_direct"] == 1
+    assert result["attribution_counts"]["unattributed"] == 0
     assert result["attribution_counts"]["school_email"] == 0
 
 
