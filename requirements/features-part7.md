@@ -2529,7 +2529,7 @@ These eleven gaps from the mentor review require user-level decisions before req
 
 ### 6.151 My Hub — Daily Digest Panel First + Embedded 5-Recent History (#4349) — INTEGRATION READY 2026-04-27
 
-**Issue/PR:** Epic #4349 · Stream PRs: #4358 (A — shared component), #4360 (M — My Hub reorder + embed), #4372 (E — EmailDigestPage refactor) · Final integration PR: TBD · **Status:** IMPLEMENTED on `integrate/4349-my-hub-digest-history`, deploy pending
+**Issue/PR:** Epic #4349 · Stream PRs: #4358 (A — shared component), #4360 (M — My Hub reorder + embed), #4372 (E — EmailDigestPage refactor) · Final integration PR: #4378 · **Status:** IMPLEMENTED on `integrate/4349-my-hub-digest-history`, deploy pending
 
 #### Why this exists
 The My Hub all-kids view rendered Class Materials before Daily Digest, and the Daily Digest card itself was a thin summary that linked out to `/email-digest` for history. Parents wanted the digest hub more prominent (it's the daily-touchpoint feature) and wanted to see the most recent digests inline without leaving the page. The dedicated `/email-digest` page already had a 50-item Digest History section that duplicated the JSX (~440 lines across legacy + unified renderers). This work reorders the panels, embeds a 5-recent collapsible panel inline, and dedupes the history JSX into one shared component used by both surfaces.
@@ -2556,7 +2556,7 @@ The My Hub all-kids view rendered Class Materials before Daily Digest, and the D
 The unified v2 data model stores ONE digest delivery per parent per send (covering all kids); `digest_delivery_log` table has no `child_profile_id`/`student_id` column. The 5-recent panel shows the same parent-level entries in both all-kids and child-filter modes. True per-child digest history would require either a backend filter that scans `digest_content` for the child's section or a new join via `SenderChildAssignment` — deferred to a follow-up if usage data shows demand.
 
 #### Tracking
-Epic issue **#4349**. PRs: **#4358** (Stream A), **#4360** (Stream M), **#4372** (Stream E). Final integration PR: **TBD** (this PR).
+Epic issue **#4349**. PRs: **#4358** (Stream A), **#4360** (Stream M), **#4372** (Stream E). Final integration PR: **#4378**.
 
 #### Deploy note
 Frontend-only change. Ship in next routine deploy after `/pr-review` 2× passes.
