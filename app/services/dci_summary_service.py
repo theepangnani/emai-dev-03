@@ -145,6 +145,8 @@ def _normalise_payload(payload: dict[str, Any]) -> dict[str, Any]:
             # Trim back to a clean clause (must keep at least half the
             # window so we don't gut the starter on a single early period).
             text = capped[: last_boundary + 1]
+            if original_ended_with_question and not text.endswith("?"):
+                text = text.rstrip(".!") + "?"
         else:
             text = capped.rstrip(",;: ")
             if original_ended_with_question and not text.endswith("?"):
