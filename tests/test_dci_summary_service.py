@@ -677,11 +677,16 @@ async def test_smart_starter_trim_reattaches_question_on_boundary_path(
     from app.services.dci_summary_service import generate_summary
 
     payload = _good_payload()
-    # Mid-window `.` after "today"; trailing `?` past word 25. Without
-    # the fix, smart trim lands on the `.` and drops the question mark.
+    # 30-word interrogative with a `.` boundary in the second half of
+    # the 25-word window (after "clicked") and the trailing `?` past
+    # word 25. Without the fix, smart trim lands on the in-window `.`
+    # and produces a declarative half-sentence — losing the `?`.
+    # The shorter example in #4230's body (19 words) does not actually
+    # trip the >25-word cap; this longer variant is the real regression.
     payload["conversation_starter"]["text"] = (
-        "Big news today. Tell me more about your Math class and the "
-        "science experiment you mentioned earlier today okay?"
+        "Tell me more about your Math class today and how the new "
+        "lesson on long division clicked. Did the science experiment "
+        "with the baking soda volcano go well today okay?"
     )
 
     mock_client = MagicMock()
