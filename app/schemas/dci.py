@@ -115,11 +115,17 @@ class ConversationStarterCreate(BaseModel):
 
 
 class ConversationStarterFeedback(BaseModel):
-    """Parent feedback on a starter (used / regenerate)."""
+    """Parent feedback on a starter (used / regenerate / undo_used).
+
+    `undo_used` (#4225) is an explicit untoggle signal sent by the
+    frontend when the parent clears the "I used this" state. It is
+    interpreted by the route handler as ``was_used = false`` and is
+    not persisted in the ``parent_feedback`` column itself.
+    """
 
     was_used: bool | None = None
     parent_feedback: str | None = Field(
-        default=None, pattern="^(thumbs_up|regenerate)$"
+        default=None, pattern="^(thumbs_up|regenerate|undo_used)$"
     )
 
 

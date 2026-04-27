@@ -508,6 +508,9 @@ class TestDCISchemas:
         ConversationStarterFeedback(was_used=True, parent_feedback="thumbs_up")
         ConversationStarterFeedback(parent_feedback="regenerate")
         ConversationStarterFeedback(was_used=False)
+        # #4225 — explicit untoggle signal from the frontend; route
+        # handler interprets it as `was_used = false`.
+        ConversationStarterFeedback(parent_feedback="undo_used")
 
         with pytest.raises(Exception):
             ConversationStarterFeedback(parent_feedback="not_a_value")
