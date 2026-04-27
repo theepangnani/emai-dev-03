@@ -153,6 +153,7 @@ def list_children(
             invite_status=invite_status,
             invite_id=invite_id,
             invite_link=invite_link,
+            profile_photo_url=student.profile_photo_url,  # CB-KIDPHOTO-001 (#4301)
         ))
 
     log_action(db, user_id=current_user.id, action="read", resource_type="children", details={"count": len(result)})
@@ -310,6 +311,7 @@ def get_parent_dashboard(
             active_task_count=_task_count_map.get(student.user_id, 0),
             invite_status=_inv_status,
             invite_id=_inv_id,
+            profile_photo_url=student.profile_photo_url,  # CB-KIDPHOTO-001 (#4301)
         ))
 
         # Build courses with teacher info (using batch-fetched teacher map)

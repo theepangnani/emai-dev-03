@@ -51,6 +51,7 @@ class ChildSummary(BaseModel):
     active_task_count: int = 0
     invite_status: str | None = None  # "active", "pending", or "email_unverified"
     invite_id: int | None = None  # ID of pending invite (for resend)
+    profile_photo_url: str | None = None  # CB-KIDPHOTO-001 (#4301)
 
     class Config:
         from_attributes = True

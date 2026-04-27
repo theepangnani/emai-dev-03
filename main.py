@@ -20,7 +20,7 @@ from app.core.logging_config import setup_logging, get_logger, RequestLogger, ge
 from app.core.middleware import DomainRedirectMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter
 from app.db.database import Base, engine, SessionLocal
-from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline, study_sessions, report_card, bug_reports, daily_quiz
+from app.api.routes import auth, users, students, courses, assignments, google_classroom, study, logs, messages, notifications, teacher_communications, parent, parent_ai, parent_kids, admin, admin_waitlist, invites, tasks, course_contents, search, inspiration, faq, analytics, link_requests, quiz_results, onboarding, grades, waitlist, notes, ai_usage, account_deletion, data_export, activity, resource_links, help as help_routes, briefing, weekly_digest, study_sharing, calendar_import, tutorials, readiness, conversation_starters, daily_digest, survey, admin_survey, xp, events, study_requests, timeline, study_sessions, report_card, bug_reports, daily_quiz
 from app.api.routes import school_report_cards  # §6.121 Report Card Upload & AI Analysis
 from app.api.routes import study_suggestions
 from app.api.routes import holiday_dates
@@ -1021,6 +1021,58 @@ def _migrate_dci_tables() -> None:
 _migrate_dci_tables()
 
 
+# CB-KIDPHOTO-001 (#4301) — students.profile_photo_url column for parent-uploaded
+# kid profile photos. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries × 5s — see CLAUDE.md migration-locking section). Idempotent.
+_kp_lock_conn = None
+_kp_lock_acquired = False
+try:
+    if _is_pg:
+        _kp_lock_conn = engine.connect()
+        for _kp_attempt in range(1, 4):
+            _kp_result = _kp_lock_conn.execute(text("SELECT pg_try_advisory_lock(4301)"))
+            _kp_lock_acquired = _kp_result.scalar()
+            if _kp_lock_acquired:
+                logger.info("Acquired advisory lock 4301 for students.profile_photo_url migration (attempt %d)", _kp_attempt)
+                break
+            logger.warning("Advisory lock 4301 held by another instance (attempt %d/3), retrying in 5s...", _kp_attempt)
+            time.sleep(5)
+        if not _kp_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4301 after 3 attempts — running students.profile_photo_url migration without lock")
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                _conn.execute(text(
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS profile_photo_url VARCHAR(512)"
+                ))
+            else:
+                _existing = {
+                    row[1]
+                    for row in _conn.execute(text("PRAGMA table_info(students)")).fetchall()
+                }
+                if "profile_photo_url" not in _existing:
+                    _conn.execute(text(
+                        "ALTER TABLE students ADD COLUMN profile_photo_url VARCHAR(512)"
+                    ))
+            _conn.commit()
+            logger.info("students.profile_photo_url migration completed (#4301)")
+        except Exception as _kp_col_err:
+            _conn.rollback()
+            logger.warning("students.profile_photo_url migration note: %s", _kp_col_err)
+except Exception as _kp_err:
+    logger.warning("students.profile_photo_url migration outer note: %s", _kp_err)
+finally:
+    if _kp_lock_conn is not None:
+        if _kp_lock_acquired:
+            try:
+                _kp_lock_conn.execute(text("SELECT pg_advisory_unlock(4301)"))
+                _kp_lock_conn.commit()
+            except Exception:
+                pass
+        _kp_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
@@ -1196,6 +1248,7 @@ app.include_router(messages.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(teacher_communications.router, prefix="/api")
 app.include_router(parent.router, prefix="/api")
+app.include_router(parent_kids.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_waitlist.router, prefix="/api")
 app.include_router(admin_contacts.router, prefix="/api")

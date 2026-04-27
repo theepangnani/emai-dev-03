@@ -54,6 +54,7 @@ export interface ChildSummary {
   invite_status: 'active' | 'pending' | 'email_unverified' | null;
   invite_id: number | null;
   link_request_pending?: boolean;
+  profile_photo_url?: string | null; // CB-KIDPHOTO-001 (#4301)
 }
 
 export interface ChildOverview {

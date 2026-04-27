@@ -54,8 +54,16 @@ export function KidRail({ children, selectedChild, onSelect, onAddChild, colors 
               onClick={() => onSelect(isActive ? null : child.student_id)}
               aria-pressed={isActive}
             >
-              <span className="bridge-chip-dot" style={{ background: color }} aria-hidden="true">
-                {getInitial(child.full_name)}
+              <span
+                className="bridge-chip-dot"
+                style={{ background: child.profile_photo_url ? 'transparent' : color }}
+                aria-hidden="true"
+              >
+                {child.profile_photo_url ? (
+                  <img src={child.profile_photo_url} alt="" className="bridge-chip-dot-img" />
+                ) : (
+                  getInitial(child.full_name)
+                )}
               </span>
               <span className="bridge-chip-body">
                 <span className="bridge-chip-main">
