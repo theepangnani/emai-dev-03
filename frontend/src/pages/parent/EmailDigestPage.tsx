@@ -25,6 +25,9 @@ import {
   listMonitoredSenders,
   addMonitoredSender,
   removeMonitoredSender,
+  listDiscoveredSchoolEmails,
+  assignDiscoveredSchoolEmail,
+  dismissDiscoveredSchoolEmail,
   type EmailDigestIntegration,
   type EmailDigestSettings,
   type DigestDeliveryLog,
@@ -33,6 +36,7 @@ import {
   type MonitoredSender,
   type MonitoredSenderAssignment,
   type SenderKidSelection,
+  type DiscoveredSchoolEmail,
 } from '../../api/parentEmailDigest';
 import { parentApi, type ChildSummary } from '../../api/parent';
 import { useConfirm } from '../../components/ConfirmModal';
@@ -1109,6 +1113,8 @@ function EmailDigestPageUnified() {
   const addSenderTriggerRef = useRef<HTMLButtonElement | null>(null);
   // #4056: digest-history expand/collapse state — mirrors the legacy UX.
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
+  // #4329: open-state for the discovered-school-emails assign modal.
+  const [discoveredOpen, setDiscoveredOpen] = useState(false);
 
   const { data: integrations = [], isLoading: intLoading, isError: intError } =
     useQuery<EmailDigestIntegration[]>({
@@ -1141,6 +1147,29 @@ function EmailDigestPageUnified() {
     queryKey: ['parent', 'monitored-senders'],
     queryFn: () => listMonitoredSenders().then((r) => r.data),
     // Always fetch — parent-scoped (#4048).
+  });
+
+  // #4329: auto-discovered school addresses (unregistered To: hits).
+  const { data: discovered = [] } = useQuery<DiscoveredSchoolEmail[]>({
+    queryKey: ['parent', 'discovered-school-emails'],
+    queryFn: () => listDiscoveredSchoolEmails().then((r) => r.data),
+  });
+
+  // #4329: assign / dismiss mutations for discovered addresses.
+  const assignDiscoveredMutation = useMutation({
+    mutationFn: ({ id, childProfileId }: { id: number; childProfileId: number }) =>
+      assignDiscoveredSchoolEmail(id, childProfileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'discovered-school-emails'] });
+      queryClient.invalidateQueries({ queryKey: ['parent', 'child-profiles'] });
+    },
+  });
+
+  const dismissDiscoveredMutation = useMutation({
+    mutationFn: (id: number) => dismissDiscoveredSchoolEmail(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parent', 'discovered-school-emails'] });
+    },
   });
 
   // #4056: digest history — same query shape as legacy.
@@ -1859,6 +1888,14 @@ function EmailDigestPageUnified() {
           </div>
         )}
 
+        {/* 4329: Auto-discovered school addresses banner (above "Your kids"). */}
+        {discovered.length > 0 && (
+          <DiscoveredSchoolEmailsBanner
+            count={discovered.length}
+            onOpen={() => setDiscoveredOpen(true)}
+          />
+        )}
+
         {/* 2. Your kids */}
         <div className="ed-settings-card">
           <h2 className="ed-section-title">Your kids</h2>
@@ -2170,8 +2207,202 @@ function EmailDigestPageUnified() {
             onResetError={() => setAddSenderApiError(null)}
           />
         )}
+
+        {/* #4329: discovered-school-emails assign modal */}
+        {discoveredOpen && (
+          <DiscoveredAssignModal
+            discovered={discovered}
+            profiles={childProfiles}
+            assignPending={assignDiscoveredMutation.isPending}
+            dismissPending={dismissDiscoveredMutation.isPending}
+            onAssign={(id, childProfileId) =>
+              assignDiscoveredMutation.mutate({ id, childProfileId })
+            }
+            onDismiss={(id) => dismissDiscoveredMutation.mutate(id)}
+            onClose={() => setDiscoveredOpen(false)}
+          />
+        )}
       </div>
       {confirmModal}
     </DashboardLayout>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// #4329 — Discovered school addresses banner + assign modal
+// ---------------------------------------------------------------------------
+
+interface DiscoveredSchoolEmailsBannerProps {
+  count: number;
+  onOpen: () => void;
+}
+
+function DiscoveredSchoolEmailsBanner({
+  count,
+  onOpen,
+}: DiscoveredSchoolEmailsBannerProps) {
+  const noun = count === 1 ? 'school address' : 'school addresses';
+  return (
+    <div
+      className="ed-discovered-banner"
+      role="region"
+      aria-label="Unclassified school addresses"
+    >
+      <div className="ed-discovered-banner__copy">
+        <strong>
+          We&rsquo;ve seen {count} {noun} we couldn&rsquo;t classify.
+        </strong>
+        <p className="ed-help-text">
+          Assigning each address to a kid keeps future emails attributed correctly.
+        </p>
+      </div>
+      <button
+        type="button"
+        className="ed-primary-btn"
+        onClick={onOpen}
+      >
+        Assign to a kid &rarr;
+      </button>
+    </div>
+  );
+}
+
+interface DiscoveredAssignModalProps {
+  discovered: DiscoveredSchoolEmail[];
+  profiles: ChildProfile[];
+  assignPending: boolean;
+  dismissPending: boolean;
+  onAssign: (id: number, childProfileId: number) => void;
+  onDismiss: (id: number) => void;
+  onClose: () => void;
+}
+
+function DiscoveredAssignModal({
+  discovered,
+  profiles,
+  assignPending,
+  dismissPending,
+  onAssign,
+  onDismiss,
+  onClose,
+}: DiscoveredAssignModalProps) {
+  const [selections, setSelections] = useState<Record<number, number | ''>>({});
+
+  // ESC-to-close — matches the AddSenderModal pattern.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handleAssign = (id: number) => {
+    const choice = selections[id];
+    if (typeof choice !== 'number') return;
+    onAssign(id, choice);
+  };
+
+  const noProfiles = profiles.length === 0;
+
+  return (
+    <div
+      className="ed-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Assign discovered school addresses"
+    >
+      <div className="ed-modal">
+        <div className="ed-modal__header">
+          <h3>Assign school addresses</h3>
+          <button
+            type="button"
+            className="ed-modal__close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            &times;
+          </button>
+        </div>
+        <div className="ed-modal__body">
+          <p className="ed-help-text">
+            We saw these school-looking addresses in your forwarded emails but they
+            aren&rsquo;t registered for any kid yet. Assign each to a kid so future
+            emails get attributed correctly.
+          </p>
+          {noProfiles && (
+            <p className="ed-error-text">
+              You need at least one kid profile before you can assign an address.
+            </p>
+          )}
+          {discovered.length === 0 && (
+            <p className="ed-empty-history">No discovered addresses.</p>
+          )}
+          <div className="ed-discovered-list">
+            {discovered.map((d) => {
+              const selected = selections[d.id];
+              return (
+                <div key={d.id} className="ed-discovered-row">
+                  <div className="ed-discovered-row__primary">
+                    <span className="ed-discovered-addr">{d.email_address}</span>
+                    {d.sample_sender && (
+                      <span className="ed-discovered-meta">
+                        last sender: {d.sample_sender}
+                      </span>
+                    )}
+                    <span className="ed-discovered-meta">
+                      {d.occurrences} email{d.occurrences === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  <div className="ed-discovered-row__actions">
+                    <select
+                      className="ed-input"
+                      aria-label={`Assign ${d.email_address} to a kid`}
+                      value={selected ?? ''}
+                      onChange={(e) =>
+                        setSelections((prev) => ({
+                          ...prev,
+                          [d.id]: e.target.value === '' ? '' : Number(e.target.value),
+                        }))
+                      }
+                      disabled={noProfiles || assignPending}
+                    >
+                      <option value="">Select a kid…</option>
+                      {profiles.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.first_name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="ed-primary-btn"
+                      onClick={() => handleAssign(d.id)}
+                      disabled={
+                        typeof selected !== 'number' || assignPending || noProfiles
+                      }
+                    >
+                      {assignPending ? 'Assigning…' : 'Assign'}
+                    </button>
+                    <button
+                      type="button"
+                      className="ed-sync-btn"
+                      onClick={() => onDismiss(d.id)}
+                      disabled={dismissPending}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

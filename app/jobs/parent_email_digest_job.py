@@ -848,7 +848,11 @@ def _parent_first_name(parent: "User | None") -> str:
     return parts[0] if parts else "Parent"
 
 
-def _render_unified_digest_sections(sections: dict) -> str:
+def _render_unified_digest_sections(
+    sections: dict,
+    *,
+    attribution_counts: dict | None = None,
+) -> str:
     """Render the unified digest as a minimal HTML body.
 
     Kept deliberately simple — Stream 4 owns frontend polish; the worker
@@ -860,8 +864,12 @@ def _render_unified_digest_sections(sections: dict) -> str:
             "for_all_kids": [email, ...],
             "per_kid": { kid_id: [email, ...] },
             "per_kid_names": { kid_id: "FirstName" },
+            "parent_direct": [email, ...],
             "unattributed": [email, ...],
         }
+
+    ``attribution_counts`` (optional, #4329) drives an opt-in footer
+    when ``sender_tag_ambiguous`` > 0.
     """
     parts: list[str] = []
 
@@ -877,6 +885,9 @@ def _render_unified_digest_sections(sections: dict) -> str:
         )
         return f"<h3>{title}</h3><ul>{items}</ul>"
 
+    # #4329 — parent-direct mail rendered ABOVE per-kid sections.
+    parts.append(_block("Sent directly to you", sections.get("parent_direct") or []))
+
     parts.append(_block("For all your kids", sections.get("for_all_kids") or []))
 
     per_kid = sections.get("per_kid") or {}
@@ -886,6 +897,17 @@ def _render_unified_digest_sections(sections: dict) -> str:
         parts.append(_block(f"For {label}", emails))
 
     parts.append(_block("Unattributed", sections.get("unattributed") or []))
+
+    # #4329 — ambiguous-attribution footer.
+    if attribution_counts:
+        ambiguous = int(attribution_counts.get("sender_tag_ambiguous") or 0)
+        if ambiguous > 0:
+            plural = "s" if ambiguous > 1 else ""
+            parts.append(
+                f'<p class="ed-digest-footer">{ambiguous} email{plural} '
+                "couldn&rsquo;t be confidently classified — registering "
+                "school emails for each kid will fix this.</p>"
+            )
 
     body = "\n".join(p for p in parts if p)
     return body or "No new school emails today."
@@ -921,11 +943,14 @@ async def send_unified_digest_for_parent(
     from app.services.parent_gmail_service import fetch_child_emails
     from app.services.unified_digest_attribution import (
         ATTR_SOURCE_APPLIES_TO_ALL,
+        ATTR_SOURCE_PARENT_DIRECT,
         ATTR_SOURCE_SCHOOL_EMAIL,
         ATTR_SOURCE_SENDER_TAG,
+        ATTR_SOURCE_SENDER_TAG_AMBIGUOUS,
         ATTR_SOURCE_UNATTRIBUTED,
         attribute_email,
         build_sectioned_digest,
+        record_discovery,
     )
 
     now = datetime.now(timezone.utc)
@@ -1036,6 +1061,16 @@ async def send_unified_digest_for_parent(
             }
             attribution = attribute_email(headers, parent_id, db)
             attributed_pairs.append((email, attribution))
+            # #4329 — auto-discover unregistered school-looking To: addresses
+            # so the parent can assign them to a kid via the UI banner. Wrap
+            # broadly so a discovery error never breaks digest delivery.
+            try:
+                record_discovery(headers, parent_id, db)
+            except Exception:
+                logger.exception(
+                    "record_discovery failed (non-fatal) | parent_id=%s",
+                    parent_id,
+                )
 
     email_count = len(attributed_pairs)
 
@@ -1045,6 +1080,8 @@ async def send_unified_digest_for_parent(
         ATTR_SOURCE_SCHOOL_EMAIL: 0,
         ATTR_SOURCE_SENDER_TAG: 0,
         ATTR_SOURCE_APPLIES_TO_ALL: 0,
+        ATTR_SOURCE_PARENT_DIRECT: 0,
+        ATTR_SOURCE_SENDER_TAG_AMBIGUOUS: 0,
         ATTR_SOURCE_UNATTRIBUTED: 0,
     }
     for _, attribution in attributed_pairs:
@@ -1084,7 +1121,9 @@ async def send_unified_digest_for_parent(
             "reason": "no_new_emails",
         }
 
-    digest_html = _render_unified_digest_sections(sections)
+    digest_html = _render_unified_digest_sections(
+        sections, attribution_counts=attribution_counts
+    )
     parent_name = _parent_first_name(parent)
 
     # #4109 — personalize subject when the parent has exactly one kid.
