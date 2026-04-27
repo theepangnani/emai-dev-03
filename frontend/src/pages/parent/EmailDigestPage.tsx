@@ -2154,6 +2154,7 @@ function EmailDigestPageUnified() {
                     )}
                   </div>
                   <button
+                    type="button"
                     className="ed-monitored-edit"
                     onClick={() => {
                       setAddSenderApiError(null);
@@ -2164,6 +2165,7 @@ function EmailDigestPageUnified() {
                     Edit
                   </button>
                   <button
+                    type="button"
                     className="ed-monitored-remove"
                     onClick={() => handleRemoveSender(s)}
                     disabled={removeSenderMutation.isPending}
