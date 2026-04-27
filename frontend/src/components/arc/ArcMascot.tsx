@@ -80,18 +80,18 @@ export function ArcMascot({
       <defs>
         {/* Body gradient — blends brand blue into a warmer teal */}
         <linearGradient id={gradBody} x1="20" y1="30" x2="100" y2="110" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="var(--color-accent, #4a90d9)" />
-          <stop offset="100%" stopColor="var(--color-accent-strong, #2d6eb5)" />
+          <stop offset="0%" stopColor="var(--arc-body-color, var(--color-accent, #4a90d9))" />
+          <stop offset="100%" stopColor="var(--arc-body-color-strong, var(--color-accent-strong, #2d6eb5))" />
         </linearGradient>
         {/* Sparkle gradient — warm accent */}
         <radialGradient id={gradSparkle} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="var(--color-accent-warm, #f4801f)" stopOpacity="1" />
-          <stop offset="100%" stopColor="var(--color-accent-warm, #f4801f)" stopOpacity="0.6" />
+          <stop offset="0%" stopColor="var(--arc-body-color-warm, var(--color-accent-warm, #f4801f))" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--arc-body-color-warm, var(--color-accent-warm, #f4801f))" stopOpacity="0.6" />
         </radialGradient>
         {/* Halo glow gradient */}
         <radialGradient id={gradGlow} cx="50%" cy="55%" r="50%">
-          <stop offset="0%" stopColor="var(--color-accent-warm, #f4801f)" stopOpacity="0.28" />
-          <stop offset="70%" stopColor="var(--color-accent-warm, #f4801f)" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--arc-body-color-warm, var(--color-accent-warm, #f4801f))" stopOpacity="0.28" />
+          <stop offset="70%" stopColor="var(--arc-body-color-warm, var(--color-accent-warm, #f4801f))" stopOpacity="0" />
         </radialGradient>
       </defs>
 

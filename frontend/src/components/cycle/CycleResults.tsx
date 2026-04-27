@@ -6,6 +6,8 @@
  * render.
  */
 import { ArcMascot } from '../arc';
+import { getArcVariant } from '../arc/util';
+import { useAuth } from '../../context/AuthContext';
 import type { CycleChunkSummary } from './types';
 
 export interface CycleResultsProps {
@@ -30,9 +32,10 @@ export function CycleResults({
   onNewTopic,
 }: CycleResultsProps) {
   const mastered = chunkSummaries.filter((c) => c.mastered).length;
+  const { user } = useAuth();
   return (
     <section className="cycle-results" aria-labelledby="cycle-results-heading">
-      <div className="cycle-results__hero">
+      <div className="cycle-results__hero" data-arc={getArcVariant(user?.id)}>
         <ArcMascot size={120} mood="celebrating" glow decorative />
         <div>
           <p className="cycle-results__eyebrow">Cycle complete</p>

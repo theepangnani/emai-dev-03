@@ -11,6 +11,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArcMascot } from '../arc';
+import { getArcVariant } from '../arc/util';
+import { useAuth } from '../../context/AuthContext';
 import { TutorMessage } from './TutorMessage';
 import { TutorSuggestionChips } from './TutorSuggestionChips';
 import { TutorInputBar } from './TutorInputBar';
@@ -53,6 +55,7 @@ export function TutorChat({
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages[messages.length - 1]?.id;
+  const { user } = useAuth();
 
   // Auto-scroll to bottom whenever a new message lands or tokens stream in.
   // During active streaming, use instant scroll to avoid interrupt-smooth
@@ -114,7 +117,7 @@ export function TutorChat({
       <div className="tutor-chat__stream" ref={scrollRef}>
         {isEmpty && (
           <div className="tutor-chat__empty">
-            <div className="tutor-chat__empty-mascot" aria-hidden="true">
+            <div className="tutor-chat__empty-mascot" aria-hidden="true" data-arc={getArcVariant(user?.id)}>
               <ArcMascot size={96} mood="waving" glow animate decorative />
             </div>
             <p className="tutor-chat__empty-eyebrow">Hey, {greeting}.</p>

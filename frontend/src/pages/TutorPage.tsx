@@ -41,6 +41,7 @@ import ASGFResumePrompt from '../components/asgf/ASGFResumePrompt';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { ChildSelectorTabs } from '../components/ChildSelectorTabs';
 import { ArcMascot, XpStreakBadge, type ArcMood } from '../components/arc';
+import { getArcVariant } from '../components/arc/util';
 import { TutorChat } from '../components/tutor';
 import type { TutorMessageType } from '../components/tutor';
 import { api } from '../api/client';
@@ -626,7 +627,7 @@ export function TutorPage() {
         <div className="ask-arc-page__container">
           {/* ── HERO ───────────────────────────────────────────── */}
           <header className="ask-arc-hero">
-            <div className="ask-arc-hero__mascot">
+            <div className="ask-arc-hero__mascot" data-arc={getArcVariant(user?.id)}>
               <ArcMascot size={88} mood={arcMood} glow animate />
             </div>
             <div className="ask-arc-hero__text">
