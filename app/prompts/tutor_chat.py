@@ -1,7 +1,7 @@
 """Prompt templates for the Arc tutor chat (CB-TUTOR-002 Phase 1).
 
 Exports:
-  - build_system_prompt(grade_level) -> str
+  - build_system_prompt(grade_level, mode='quick') -> str
   - build_user_prompt(message, history, context) -> str
   - SUGGESTION_CHIP_INSTRUCTION
 
@@ -12,7 +12,7 @@ suggested follow-up prompts.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from app.prompts.grade_tone import get_tone_profile
 
@@ -22,13 +22,28 @@ SUGGESTION_CHIP_INSTRUCTION = (
     "Chips should be short (under 8 words) follow-up prompts the user could tap next."
 )
 
+FULL_MODE_STRUCTURE_INSTRUCTION = (
+    "The user asked for a full, detailed response, so produce a structured "
+    "Markdown artifact (a cheat-sheet style reference they can keep). "
+    "Organize the answer with `##` and `###` headings for clear sections. "
+    "When you compare methods, options, or trade-offs, present them in a "
+    "Markdown table. Put formulas, equations, code, or syntax inside fenced "
+    "code blocks. Walk through 1-2 worked examples for each key concept so "
+    "the steps are concrete. End with a short `## Summary` section that "
+    "recaps the main takeaways in a few bullets. Keep your warm, "
+    "encouraging Arc voice throughout — structure should help the learner, "
+    "not feel like a textbook."
+)
 
-def build_system_prompt(grade_level: int | None) -> str:
-    """Return the Arc tutor system prompt, shaped by grade level."""
+
+def build_system_prompt(
+    grade_level: int | None, mode: Literal["quick", "full"] = "quick"
+) -> str:
+    """Return the Arc tutor system prompt, shaped by grade level and mode."""
     effective_grade = grade_level if grade_level is not None else 7
     tone = get_tone_profile(effective_grade)
 
-    return (
+    base = (
         "You are Arc, ClassBridge's AI learning companion for K-12 students, "
         "parents, and teachers in Ontario.\n"
         "Answer the user's question directly and concisely. Do NOT ask for "
@@ -45,8 +60,11 @@ def build_system_prompt(grade_level: int | None) -> str:
         "context — treat it as private.\n"
         "Be warm, encouraging, and concise. Avoid corporate hedging like "
         "\"as an AI\" or \"I cannot provide\".\n"
-        f"{SUGGESTION_CHIP_INSTRUCTION}"
     )
+
+    if mode == "full":
+        return f"{base}{FULL_MODE_STRUCTURE_INSTRUCTION}\n{SUGGESTION_CHIP_INSTRUCTION}"
+    return f"{base}{SUGGESTION_CHIP_INSTRUCTION}"
 
 
 def _format_history(history: list[dict[str, Any]] | None) -> str:

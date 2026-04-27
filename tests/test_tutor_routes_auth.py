@@ -92,6 +92,86 @@ def test_stream_rate_limit_exceeded_returns_429(client, db_session, app):
         app.state.limiter.reset()
         set_tutor_flag(db_session, enabled=False)
 
+def test_stream_request_accepts_mode_quick(client, db_session):
+    """Request body validation accepts ``{"mode": "quick"}`` (#4375)."""
+    make_user(db_session, email="tutor_mode_quick@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mode_quick@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "hi", "mode": "quick"},
+                headers=headers,
+            )
+        assert resp.status_code == 200
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_request_accepts_mode_full(client, db_session):
+    """Request body validation accepts ``{"mode": "full"}`` (#4375)."""
+    make_user(db_session, email="tutor_mode_full@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mode_full@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "hi", "mode": "full"},
+                headers=headers,
+            )
+        assert resp.status_code == 200
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_request_accepts_mode_omitted(client, db_session):
+    """Omitting ``mode`` defaults to quick — backwards compatible (#4375)."""
+    make_user(db_session, email="tutor_mode_default@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mode_default@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "hi"},
+                headers=headers,
+            )
+        assert resp.status_code == 200
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_request_rejects_invalid_mode(client, db_session):
+    """An unknown ``mode`` value must produce a 422 from request validation (#4375)."""
+    make_user(db_session, email="tutor_mode_bad@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    try:
+        headers = _auth(client, "tutor_mode_bad@test.com")
+        resp = client.post(
+            "/api/tutor/chat/stream",
+            json={"message": "hi", "mode": "garbage"},
+            headers=headers,
+        )
+        assert resp.status_code == 422
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
 def test_stream_flag_off_returns_403_before_rate_limit(client, db_session, app):
     """Flag-off must short-circuit with 403 BEFORE the rate limiter decrements.
 

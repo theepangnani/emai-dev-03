@@ -511,6 +511,58 @@ def test_stream_literal_double_bracket_not_dropped(client, db_session):
         set_tutor_flag(db_session, enabled=False)
 
 
+def test_stream_full_mode_passes_3000_max_tokens(client, db_session):
+    """`mode='full'` must request ``max_tokens=3000`` from OpenAI (#4375)."""
+    make_user(db_session, email="tutor_mode_full_tokens@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mode_full_tokens@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "explain in detail", "mode": "full"},
+                headers=headers,
+            )
+            assert resp.status_code == 200
+            _ = resp.text  # drain the stream so the route runs to completion
+
+            mock_client.chat.completions.create.assert_called_once()
+            kwargs = mock_client.chat.completions.create.call_args.kwargs
+            assert kwargs["max_tokens"] == 3000
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
+def test_stream_quick_mode_passes_800_max_tokens(client, db_session):
+    """`mode='quick'` (and default) must keep ``max_tokens=800`` (#4375 regression)."""
+    make_user(db_session, email="tutor_mode_quick_tokens@test.com")
+    set_tutor_flag(db_session, enabled=True)
+
+    mock_client = mock_openai_client(stream_pieces=["ok"])
+    try:
+        with patch(
+            "app.api.routes.tutor.openai.AsyncOpenAI", return_value=mock_client
+        ):
+            headers = _auth(client, "tutor_mode_quick_tokens@test.com")
+            resp = client.post(
+                "/api/tutor/chat/stream",
+                json={"message": "short answer please"},  # mode omitted → quick
+                headers=headers,
+            )
+            assert resp.status_code == 200
+            _ = resp.text
+
+            mock_client.chat.completions.create.assert_called_once()
+            kwargs = mock_client.chat.completions.create.call_args.kwargs
+            assert kwargs["max_tokens"] == 800
+    finally:
+        set_tutor_flag(db_session, enabled=False)
+
+
 def test_load_history_stable_order_on_timestamp_tie(db_session):
     """Two rows with identical created_at must pair deterministically.
 
