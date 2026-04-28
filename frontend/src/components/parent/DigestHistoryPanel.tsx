@@ -1,6 +1,5 @@
-import { useState, type JSX, type ReactNode } from 'react';
+import { useEffect, useId, useState, type JSX, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import DOMPurify from 'dompurify';
 import {
   getLogs,
   type DigestDeliveryLog,
@@ -20,7 +19,11 @@ export interface DigestHistoryPanelProps {
   className?: string;
   /** Custom copy for the empty state. Defaults to "No digests delivered yet." */
   emptyState?: ReactNode;
+  /** Optional one-line subhint rendered below the heading. Useful when embedded under a child filter to clarify scope. */
+  description?: ReactNode;
 }
+
+type DOMPurifyType = typeof import('dompurify').default;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -38,6 +41,21 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`dhp-status ${cls}`}>{status}</span>;
 }
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`dhp-chevron ${open ? 'dhp-chevron--open' : ''}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
 export function DigestHistoryPanel({
   limit = 5,
   heading = 'Digest History',
@@ -45,14 +63,38 @@ export function DigestHistoryPanel({
   defaultCollapsed = false,
   className,
   emptyState = 'No digests delivered yet.',
+  description,
 }: DigestHistoryPanelProps): JSX.Element {
+  const listId = useId();
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
+  // `defaultCollapsed` is read once at mount; runtime prop changes are intentionally
+  // ignored. If a future caller needs to control collapse state externally, expose
+  // `collapsed` + `onToggle` props instead of mutating the initializer.
   const [collapsed, setCollapsed] = useState<boolean>(collapsible && defaultCollapsed);
+  const [purify, setPurify] = useState<DOMPurifyType | null>(null);
 
   const { data: logs = [], isLoading } = useQuery<DigestDeliveryLog[]>({
     queryKey: ['email-digest', 'logs', 'panel', limit],
     queryFn: () => getLogs({ limit }).then((r) => r.data),
+    staleTime: 60_000, // S-1: 1-min cache to debounce navigation refetches
   });
+
+  // S-7: if the currently expanded row is no longer in the list after a refetch,
+  // reset so we don't render an orphaned expanded state.
+  useEffect(() => {
+    if (expandedLogId !== null && !logs.some((l) => l.id === expandedLogId)) {
+      setExpandedLogId(null);
+    }
+  }, [logs, expandedLogId]);
+
+  // S-12: lazy-load DOMPurify only when a row gets expanded.
+  useEffect(() => {
+    if (expandedLogId !== null && !purify) {
+      import('dompurify')
+        .then((m) => setPurify(() => m.default))
+        .catch(() => {});
+    }
+  }, [expandedLogId, purify]);
 
   const wrapperClass = ['dhp-panel', className].filter(Boolean).join(' ');
   const showList = !collapsible || !collapsed;
@@ -67,18 +109,10 @@ export function DigestHistoryPanel({
             className="dhp-heading--button"
             onClick={() => setCollapsed((c) => !c)}
             aria-expanded={!collapsed}
+            aria-controls={listId}
           >
             <span className="dhp-heading-text">{heading}</span>
-            <svg
-              className={`dhp-chevron ${!collapsed ? 'dhp-chevron--open' : ''}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            <Chevron open={!collapsed} />
           </button>
         </h2>
       );
@@ -90,14 +124,21 @@ export function DigestHistoryPanel({
   return (
     <div className={wrapperClass}>
       {headingNode}
+      {description && <p className="dhp-description">{description}</p>}
       {showList && (
         <>
-          {isLoading && <div className="dhp-loading">Loading history…</div>}
+          {isLoading && (
+            <div id={listId} className="dhp-loading">
+              Loading history...
+            </div>
+          )}
           {!isLoading && logs.length === 0 && (
-            <div className="dhp-empty">{emptyState}</div>
+            <div id={listId} className="dhp-empty">
+              {emptyState}
+            </div>
           )}
           {!isLoading && logs.length > 0 && (
-            <div className="dhp-log-list">
+            <div id={listId} className="dhp-log-list">
               {logs.map((log) => {
                 const isOpen = expandedLogId === log.id;
                 return (
@@ -115,26 +156,21 @@ export function DigestHistoryPanel({
                         </span>
                         <StatusBadge status={log.status} />
                       </div>
-                      <svg
-                        className={`dhp-chevron ${isOpen ? 'dhp-chevron--open' : ''}`}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        aria-hidden="true"
-                      >
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
+                      <Chevron open={isOpen} />
                     </button>
                     {isOpen && (
                       <div className="dhp-log-content">
                         {log.digest_content ? (
-                          <div
-                            className="dhp-digest-text"
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(log.digest_content),
-                            }}
-                          />
+                          purify ? (
+                            <div
+                              className="dhp-digest-text"
+                              dangerouslySetInnerHTML={{
+                                __html: purify.sanitize(log.digest_content),
+                              }}
+                            />
+                          ) : (
+                            <div className="dhp-digest-text">Loading content...</div>
+                          )
                         ) : (
                           <p className="dhp-no-content">No digest content available.</p>
                         )}
