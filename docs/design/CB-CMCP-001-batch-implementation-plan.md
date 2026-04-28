@@ -216,7 +216,7 @@ This is the load-bearing claim that lets CB-CMCP-001 ship in 9 months instead of
 | `app/mcp/__init__.py` | 125 | MCP server scaffold | M2 batch 2a |
 | `app/mcp/auth.py` | 155 | MCP JWT + RBAC | M2 batch 2a (extend with BOARD_ADMIN/CURRICULUM_ADMIN) |
 | `app/mcp/resources/student.py` | 779 | A1 student-context envelope | M1 batch 1b |
-| `app/mcp/tools/study.py` | 459 | Dedup + rate-limit pattern; replace endpoints with curriculum-guardrailed | M2 batch 2c |
+| `app/mcp/tools/study.py` | 459 | Dedup (SHA-256 content-hash) + per-user rate-limit (10/min in-memory) pattern is reusable BUT is currently in-line per-endpoint, not extracted as a utility. **Port step:** extract to `app/services/cmcp/dedup_and_ratelimit.py` first, then call from M1-A request handler. Replace the endpoints with curriculum-guardrailed equivalents in M2 batch 2C. | M2 batch 2c |
 | `app/mcp/tools/tutor.py` | 611 | Defer (relevant to end-user MCP, not board) | Out of M0–M4 scope |
 | `app/mcp/tools/import_tools.py` | 403 | Out of CB-CMCP-001 scope | (covered by #2196) |
 
@@ -227,7 +227,10 @@ This is the load-bearing claim that lets CB-CMCP-001 ship in 9 months instead of
 | `app/services/ai_service.py` | Engine router; extend with envelope + voice |
 | `app/models/study_guide.py` | Becomes `ContentArtifact` per D2 |
 | `app/models/course_content.py` | Class-context source (A1) |
-| `app/services/asgf_*` services | Class-context ingestion source (A1) |
+| ASGF ingestion services — `app/services/asgf_ingestion_service.py`, `app/services/asgf_service.py`, `app/services/asgf_assignment_service.py` | Class-context ingestion source (A1) — **primary integration point** (the entry path that turns uploads into class-context envelope material) |
+| ASGF slide service — `app/services/asgf_slide_service.py` | Class-context ingestion source (A1) — **primary integration point** (slide-deck parsing feeds the envelope alongside ingestion) |
+| ASGF pedi + learning-history services — `app/services/asgf_pedi_service.py`, `app/services/asgf_learning_history_service.py` | Class-context ingestion source (A1) — **primary integration point** (pedagogical signals + learning history shape envelope content) |
+| ASGF cost / OCR / quiz / save services — `app/services/asgf_cost_service.py`, `app/services/asgf_ocr_service.py`, `app/services/asgf_quiz_service.py`, `app/services/asgf_save_service.py` | Class-context ingestion source (A1) — tangential (OCR + cost accounting + quiz/save flows are read-only references, not primary integration points) |
 | `app/services/pedi_*` services | Email Digest summary block target (A4) |
 | `app/services/dci_*` services | Daily Check-In coach card target (A4) |
 | Bridge components (`frontend/src/components/bridge/*`) | Bridge entry render target (A4) |
@@ -327,11 +330,13 @@ These apply to every new surface; reviewed at each stripe's `/pr-review` pass.
 
 ### 6.6 When to invoke `/bencium-innovative-ux-designer` and `/frontend-design`
 
-Both skills are about distinctive production-grade UI. They overlap with `/ui-ux-pro-max`. To avoid overlap:
+Both skills are about distinctive production-grade UI and have **identical stated descriptions**, so the choice between them is operator preference — not a principled assignment. Either is appropriate at any of the high-stakes UI stripes; pairing with `/ui-ux-pro-max` (which covers patterns, tokens, accessibility, layout) is the load-bearing call.
 
-- Invoke `/ui-ux-pro-max` first on every UI stripe (covers patterns, tokens, accessibility, layout).
-- Invoke `/bencium-innovative-ux-designer` **only** for the Board Admin Dashboard stripe (M3 batch 3h) — that surface has the most freedom for distinctive layouts (heatmaps, executive summaries, export flows).
-- Invoke `/frontend-design` **only** for the Parent Companion render stripe (M1 batch 1f) — that surface is the brand-defining moment for parents and deserves distinctive visual treatment.
+Recommended pairing pattern:
+
+- Always invoke `/ui-ux-pro-max` first on every UI stripe.
+- Invoke EITHER `/bencium-innovative-ux-designer` OR `/frontend-design` (operator pick) at brand-defining stripes — primarily **M1-F Parent Companion render** (the brand-defining moment for parents) and **M3-H Board Admin Dashboard** (most freedom for distinctive layouts).
+- If the surface is high-stakes and time allows, invoke both and pick the stronger output.
 
 ---
 
