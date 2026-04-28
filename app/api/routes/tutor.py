@@ -63,7 +63,8 @@ INTER_TOKEN_TIMEOUT = 15.0
 
 @lru_cache(maxsize=64)
 def _cached_system_prompt(
-    grade_level: int | None, mode: Literal["quick", "full"] = "quick"
+    grade_level: int | None,
+    mode: Literal["quick", "full", "worksheet"] = "quick",
 ) -> str:
     """Memoized wrapper around `build_system_prompt` (per grade × mode)."""
     return build_system_prompt(grade_level, mode)
@@ -189,7 +190,7 @@ def _context_dict(body: TutorChatRequest) -> dict:
 async def _stream_completion(
     system_prompt: str,
     user_prompt: str,
-    mode: Literal["quick", "full"] = "quick",
+    mode: Literal["quick", "full", "worksheet"] = "quick",
 ) -> AsyncIterator[str]:
     """Yield token deltas from the OpenAI chat completion stream.
 
@@ -198,7 +199,11 @@ async def _stream_completion(
     surfaces as ``openai.APITimeoutError`` rather than hanging the SSE
     connection indefinitely.
     """
-    max_tokens = MAX_RESPONSE_TOKENS_FULL if mode == "full" else MAX_RESPONSE_TOKENS
+    max_tokens = (
+        MAX_RESPONSE_TOKENS_FULL
+        if mode in ("full", "worksheet")
+        else MAX_RESPONSE_TOKENS
+    )
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=30.0)
     stream = await client.chat.completions.create(
         model=MODEL,

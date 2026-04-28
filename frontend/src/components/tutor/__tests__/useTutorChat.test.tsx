@@ -128,6 +128,26 @@ describe('useTutorChat', () => {
     expect(body.mode).toBe('full');
   });
 
+  it('includes mode:"worksheet" in POST body when sendMessage is called with { mode: "worksheet" } — #4382', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"ok"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useTutorChat());
+    await act(async () => {
+      await result.current.sendMessage('practice problems please', { mode: 'worksheet' });
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.mode).toBe('worksheet');
+  });
+
   it('omits mode field entirely when sendMessage is called without opts', async () => {
     // Server defaults to "quick" when mode is absent — don't bother sending it.
     const fetchMock = vi.fn().mockResolvedValue({

@@ -220,6 +220,86 @@ describe('TutorChat', () => {
     );
   });
 
+  it('clicking a practice-style chip routes through mode:"worksheet" — #4382', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Here you go."}\n\n',
+        'data: {"type":"chips","suggestions":["Practice factoring problems for Grade 10"]}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"1. Factor x^2-9."}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Sam" />);
+
+    const input = screen.getByRole('textbox', { name: /message arc/i });
+    await user.type(input, 'Tell me about factoring{Enter}');
+
+    const chipList = await screen.findByRole('list', {
+      name: /suggested follow-up/i,
+    });
+    const chip = within(chipList).getByText(
+      'Practice factoring problems for Grade 10',
+    );
+    await user.click(chip);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondBody.mode).toBe('worksheet');
+  });
+
+  it('clicking a non-practice chip does NOT include a mode field — #4382', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Here you go."}\n\n',
+        'data: {"type":"chips","suggestions":["How does this apply in real life?"]}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Real-life uses include..."}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Sam" />);
+
+    const input = screen.getByRole('textbox', { name: /message arc/i });
+    await user.type(input, 'Tell me about photosynthesis{Enter}');
+
+    const chipList = await screen.findByRole('list', {
+      name: /suggested follow-up/i,
+    });
+    const chip = within(chipList).getByText(
+      'How does this apply in real life?',
+    );
+    await user.click(chip);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondBody).not.toHaveProperty('mode');
+  });
+
   it('clicking a chip during an active stream is a no-op — #4381', async () => {
     // Stream stays open (no done frame) so isStreaming=true throughout.
     let resolveDone: (() => void) | null = null;
