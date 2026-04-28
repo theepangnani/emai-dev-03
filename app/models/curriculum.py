@@ -188,6 +188,24 @@ class CEGExpectation(Base):
         Boolean, nullable=False, default=True, server_default="TRUE"
     )
 
+    # Review workflow fields (CB-CMCP-001 M0-B 0B-3a, #4428).
+    # Stripe 0B-2 inserts extracted rows with ``review_state='pending'`` +
+    # ``active=False``. Stripe 0B-3a's curriculum-admin review endpoints
+    # transition these to ``accepted`` (sets ``active=True``) or
+    # ``rejected`` (keeps ``active=False`` and stamps ``reviewed_*``).
+    # Legacy / seeded rows default to ``accepted`` so they don't appear
+    # as pending in the review queue.
+    review_state = Column(
+        String(20), nullable=False, default="accepted", server_default="accepted"
+    )
+    reviewed_by_user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
     # Embedding (dialect-aware). Nullable because extraction (M0-B) backfills
     # embeddings asynchronously; rows can be inserted before the embedding
     # job runs.
@@ -195,6 +213,12 @@ class CEGExpectation(Base):
 
     created_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     subject = relationship("CEGSubject", back_populates="expectations")
@@ -218,6 +242,14 @@ class CEGExpectation(Base):
         Index("ix_ceg_expectations_type", "expectation_type"),
         Index("ix_ceg_expectations_parent_oe", "parent_oe_id"),
         Index("ix_ceg_expectations_version_active", "curriculum_version_id", "active"),
+        # CB-CMCP-001 0B-3a (#4428): index the review queue lookup —
+        # ``GET /api/ceg/admin/review/pending`` filters on
+        # ``review_state='pending'`` and orders by ``created_at``.
+        Index(
+            "ix_ceg_expectations_review_state_created",
+            "review_state",
+            "created_at",
+        ),
         UniqueConstraint(
             "ministry_code",
             "curriculum_version_id",
@@ -226,6 +258,10 @@ class CEGExpectation(Base):
         CheckConstraint(
             "expectation_type IN ('overall', 'specific')",
             name="ck_ceg_expectations_type",
+        ),
+        CheckConstraint(
+            "review_state IN ('pending', 'accepted', 'rejected')",
+            name="ck_ceg_expectations_review_state",
         ),
     )
 
