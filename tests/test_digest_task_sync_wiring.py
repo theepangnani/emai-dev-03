@@ -640,6 +640,7 @@ def test_send_digest_now_dispatches_to_unified_when_v2_flag_on(
             "status": "delivered",
             "email_count": 2,
             "attribution_counts": {"school_email": 2},
+            "channel_status": {"in_app": True, "email": True},
             "message": "Unified digest delivered with 2 emails",
         }
     )
@@ -668,6 +669,9 @@ def test_send_digest_now_dispatches_to_unified_when_v2_flag_on(
     assert body["status"] == "delivered"
     assert body["email_count"] == 2
     assert body["attribution_counts"] == {"school_email": 2}
+    # #4449 — channel_status must also round-trip so the manual "Send Now"
+    # UI keeps showing per-channel delivery indicators when V2 dispatches.
+    assert body["channel_status"] == {"in_app": True, "email": True}
 
 
 def test_send_digest_now_dispatches_to_legacy_when_v2_flag_off(

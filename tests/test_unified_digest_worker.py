@@ -195,6 +195,9 @@ async def test_unified_digest_groups_integrations_and_attributes(db_session):
     # Both emails attributed via school_email
     assert result["attribution_counts"]["school_email"] == 2
     assert result["attribution_counts"]["unattributed"] == 0
+    # #4449 — channel_status mirrors legacy contract so the manual "Send
+    # Now" UI keeps showing per-channel indicators when V2 dispatches.
+    assert result["channel_status"] == {"in_app": True, "email": True}
 
     # #4052 — exactly ONE DigestDeliveryLog per unified run (was N-per-
     # integration under the legacy path). The row is keyed to the first
@@ -281,6 +284,9 @@ async def test_unified_digest_skips_when_no_emails_and_notify_on_empty_false(db_
     assert result["status"] == "skipped"
     assert result["email_count"] == 0
     assert result["reason"] == "no_new_emails"
+    # #4449 — early-return paths emit ``channel_status=None`` so callers
+    # can rely on the key always being present.
+    assert result["channel_status"] is None
     mock_notify.assert_not_called()
 
 
@@ -406,8 +412,72 @@ async def test_unified_digest_dedup_prevents_second_run_same_day(db_session):
 
     assert result["status"] == "skipped"
     assert result["reason"] == "already_delivered"
+    # #4449 — early-return paths emit ``channel_status=None``.
+    assert result["channel_status"] is None
     # fetch should NOT have been invoked (dedup short-circuits).
     mock_fetch.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# #4449 — unified worker must return ``channel_status`` so the manual
+# "Send Now" UI keeps showing per-channel delivery indicators when V2
+# dispatches. Mirrors the legacy ``send_digest_for_integration`` contract:
+# True = sent, False = attempted+failed, None = not requested.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_unified_digest_returns_channel_status_for_all_three_channels(
+    db_session,
+):
+    """Parent with delivery_channels='in_app,email,whatsapp' → returned
+    ``channel_status`` includes all three keys keyed to the per-channel
+    outcome.
+    """
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "channel_status_all3@test.com"
+    )
+
+    sectioned_payload = {
+        "urgent": ["Yearbook due TODAY"],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": False}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=sectioned_payload),
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template",
+        new=MagicMock(return_value=True),
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", ""
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    # Status is "partial" because email failed but in_app + whatsapp ok.
+    assert result["status"] == "partial"
+    # All three channel keys present, mirroring legacy semantics.
+    assert result["channel_status"] == {
+        "in_app": True,
+        "email": False,
+        "whatsapp": True,
+    }
 
 
 # ---------------------------------------------------------------------------
