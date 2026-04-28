@@ -7,7 +7,8 @@
 .dhp-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;        /* was 12px — restores legacy heading→list spacing (.ed-section-title margin-bottom: 16px) */
+  margin-top: 8px;  /* preserves legacy /email-digest spacing (.ed-history-section margin-top: 8px); MyHub embed overrides via .bridge-card--digest-history */
 }
 
 .dhp-heading {
@@ -154,4 +155,10 @@
   margin-top: 12px;
   padding-top: 8px;
   border-top: 1px solid var(--color-border);
+}
+
+.dhp-description {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+  margin: 0;
 }

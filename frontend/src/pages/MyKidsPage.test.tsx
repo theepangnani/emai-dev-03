@@ -12,6 +12,17 @@ const mockGetChildren = vi.fn()
 const mockCreateChild = vi.fn()
 const mockLinkChild = vi.fn()
 
+// #4400 — Capture EmailDigestCard props so we can assert MyKidsPage wires
+// showRecentHistory={true} (and aggregate/childName) correctly. Bare-mock
+// is safe: EmailDigestCard has no other exports the SUT needs.
+const emailDigestCardSpy = vi.fn()
+vi.mock('../components/bridge/EmailDigestCard', () => ({
+  EmailDigestCard: (props: Record<string, unknown>) => {
+    emailDigestCardSpy(props)
+    return <div data-testid="email-digest-card-mock" />
+  },
+}))
+
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 1, full_name: 'Test Parent', role: 'parent', roles: ['parent'] },
@@ -95,6 +106,7 @@ function renderPage() {
 describe('MyKidsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    emailDigestCardSpy.mockClear()
   })
 
   it('shows empty state when parent has no children', async () => {
@@ -159,5 +171,30 @@ describe('MyKidsPage', () => {
     await waitFor(() => {
       expect(mockCreateChild).toHaveBeenCalledWith('Alex Smith', 'guardian', undefined)
     })
+  })
+
+  // Regression test for #4400: /pr-review pass 2 of #4378 noted that no test
+  // verified MyKidsPage actually wires showRecentHistory={true} to
+  // EmailDigestCard. Without this guard, a careless future edit could remove
+  // the prop and no test would catch it. The all-kids view is the most-traveled
+  // path (default state, no selectedChild) — pin its props here.
+  it('all-kids view passes showRecentHistory={true} + aggregate={true} to EmailDigestCard (#4400)', async () => {
+    mockGetChildren.mockResolvedValue([
+      { student_id: 10, user_id: 20, full_name: 'Alex Smith', course_count: 0 },
+      { student_id: 11, user_id: 21, full_name: 'Sam Smith', course_count: 0 },
+    ])
+
+    renderPage()
+
+    await waitFor(() => {
+      expect(emailDigestCardSpy).toHaveBeenCalled()
+    })
+
+    expect(emailDigestCardSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        showRecentHistory: true,
+        aggregate: true,
+      }),
+    )
   })
 })

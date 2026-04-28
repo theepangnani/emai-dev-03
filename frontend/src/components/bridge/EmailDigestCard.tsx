@@ -77,6 +77,7 @@ export function EmailDigestCard({ hasIntegration, onSetup, onOpenDigest, aggrega
           collapsible
           defaultCollapsed={false}
           className="bridge-card--digest-history"
+          description={!aggregate ? 'These digests cover all your kids.' : undefined}
         />
       )}
     </article>
