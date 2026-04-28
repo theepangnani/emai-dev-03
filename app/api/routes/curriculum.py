@@ -143,6 +143,10 @@ def list_curriculum_courses(
             func.count(CEGExpectation.id).label("expectation_count"),
         )
         .join(CEGExpectation, CEGExpectation.subject_id == CEGSubject.id)
+        .filter(
+            CEGExpectation.active.is_(True),
+            CEGExpectation.review_state == "accepted",
+        )
         .group_by(CEGSubject.code)
         .order_by(CEGSubject.code)
         .all()
@@ -179,7 +183,11 @@ def _load_course_expectations(db: Session, course_code: str):
         )
         .join(CEGStrand, CEGExpectation.strand_id == CEGStrand.id)
         .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
-        .filter(CEGSubject.code == course_code)
+        .filter(
+            func.upper(CEGSubject.code) == course_code,
+            CEGExpectation.active.is_(True),
+            CEGExpectation.review_state == "accepted",
+        )
         .order_by(CEGStrand.code, CEGExpectation.ministry_code)
         .all()
     )
@@ -267,7 +275,7 @@ def search_curriculum_expectations(
     if not q or not q.strip():
         return _build_course_response(db, course_code)
 
-    q_lower = q.strip().lower()
+    q_pattern = f"%{q.strip()}%"
 
     rows = (
         db.query(
@@ -277,10 +285,12 @@ def search_curriculum_expectations(
         .join(CEGStrand, CEGExpectation.strand_id == CEGStrand.id)
         .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
         .filter(
-            CEGSubject.code == course_code,
+            func.upper(CEGSubject.code) == course_code,
+            CEGExpectation.active.is_(True),
+            CEGExpectation.review_state == "accepted",
             or_(
-                CEGExpectation.description.ilike(f"%{q_lower}%"),
-                CEGExpectation.ministry_code.ilike(f"%{q_lower}%"),
+                CEGExpectation.description.ilike(q_pattern),
+                CEGExpectation.ministry_code.ilike(q_pattern),
             ),
         )
         .order_by(CEGStrand.code, CEGExpectation.ministry_code)
@@ -290,11 +300,17 @@ def search_curriculum_expectations(
     if not rows:
         # Empty result on a possibly-known subject — distinguish "subject
         # exists but no matches" (200 + empty strands) from "subject does
-        # not exist" (404).
+        # not exist" (404). The fallback also enforces active/review_state
+        # so that a subject whose only expectations are pending/rejected
+        # is treated as "unknown" from the public-surface perspective.
         any_row = (
             db.query(CEGExpectation.grade)
             .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
-            .filter(CEGSubject.code == course_code)
+            .filter(
+                func.upper(CEGSubject.code) == course_code,
+                CEGExpectation.active.is_(True),
+                CEGExpectation.review_state == "accepted",
+            )
             .order_by(CEGExpectation.grade.desc())
             .first()
         )

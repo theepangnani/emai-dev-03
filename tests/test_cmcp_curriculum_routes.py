@@ -616,6 +616,527 @@ def test_get_course_groups_strands_correctly_under_one_subject(
     assert algebra_codes == ["C1.1"]
 
 
+# ── Active / review_state filtering (#4441) ────────────────────────────
+
+
+@pytest.fixture()
+def seeded_curriculum_with_review_states(db_session):
+    """Seed a single subject with a mix of (active, review_state) rows.
+
+    Layout::
+
+        REVXXXX (subject "Review Test")
+            R "Review Strand"
+                R1.1 (active=True,  review_state='accepted') — "active accepted alpha"
+                R1.2 (active=False, review_state='pending')  — "pending beta"
+                R1.3 (active=False, review_state='rejected') — "rejected gamma"
+
+    The expectation_count returned by /courses must be 1 (only R1.1).
+    /{code} and /{code}/search must only return R1.1.
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    suffix = uuid4().hex[:6].upper()
+    rev_code = f"R{suffix}"
+    version_slug = f"test-rev-{uuid4().hex[:6]}"
+
+    rev = CEGSubject(code=rev_code, name="Review Test")
+    db_session.add(rev)
+    db_session.flush()
+
+    rev_r = CEGStrand(subject_id=rev.id, code="R", name="Review Strand")
+    db_session.add(rev_r)
+    db_session.flush()
+
+    rev_v = CurriculumVersion(
+        subject_id=rev.id,
+        grade=9,
+        version=version_slug,
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(rev_v)
+    db_session.flush()
+
+    accepted = CEGExpectation(
+        ministry_code="R1.1",
+        cb_code=f"CB-G9-{rev_code}-R1-OE1",
+        subject_id=rev.id,
+        strand_id=rev_r.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="active accepted alpha",
+        curriculum_version_id=rev_v.id,
+        active=True,
+        review_state="accepted",
+    )
+    pending = CEGExpectation(
+        ministry_code="R1.2",
+        cb_code=f"CB-G9-{rev_code}-R1-SE2",
+        subject_id=rev.id,
+        strand_id=rev_r.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="pending beta",
+        curriculum_version_id=rev_v.id,
+        active=False,
+        review_state="pending",
+    )
+    rejected = CEGExpectation(
+        ministry_code="R1.3",
+        cb_code=f"CB-G9-{rev_code}-R1-SE3",
+        subject_id=rev.id,
+        strand_id=rev_r.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="rejected gamma",
+        curriculum_version_id=rev_v.id,
+        active=False,
+        review_state="rejected",
+    )
+    db_session.add_all([accepted, pending, rejected])
+    db_session.commit()
+
+    expectation_ids = [accepted.id, pending.id, rejected.id]
+    strand_ids = [rev_r.id]
+    version_ids = [rev_v.id]
+    subject_ids = [rev.id]
+
+    yield {
+        "rev_code": rev_code,
+        "subject": rev,
+        "accepted": accepted,
+        "pending": pending,
+        "rejected": rejected,
+    }
+
+    db_session.query(CEGExpectation).filter(
+        CEGExpectation.id.in_(expectation_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CurriculumVersion).filter(
+        CurriculumVersion.id.in_(version_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CEGStrand).filter(
+        CEGStrand.id.in_(strand_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CEGSubject).filter(
+        CEGSubject.id.in_(subject_ids)
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+def test_courses_excludes_pending_and_rejected_expectations(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_with_review_states
+):
+    """/courses expectation_count must exclude active=False / non-accepted
+    rows. Mutation-test guard for #4441: revert the active/review_state
+    filter and this test fails (count would be 3 instead of 1).
+    """
+    rev_code = seeded_curriculum_with_review_states["rev_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get("/api/curriculum/courses", headers=headers)
+    assert resp.status_code == 200, resp.text
+    codes = {item["course_code"]: item for item in resp.json()}
+    assert rev_code in codes
+    assert codes[rev_code]["expectation_count"] == 1
+
+
+def test_get_course_excludes_pending_and_rejected_expectations(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_with_review_states
+):
+    """GET /{course_code} must only return active=True / review_state='accepted'
+    rows — pending and rejected expectations must not leak.
+    """
+    rev_code = seeded_curriculum_with_review_states["rev_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(f"/api/curriculum/{rev_code}", headers=headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    flat = [
+        e["code"] for s in body["strands"] for e in s["expectations"]
+    ]
+    assert flat == ["R1.1"]
+    descriptions = [
+        e["description"]
+        for s in body["strands"]
+        for e in s["expectations"]
+    ]
+    assert "pending beta" not in descriptions
+    assert "rejected gamma" not in descriptions
+
+
+def test_search_excludes_pending_and_rejected_expectations(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_with_review_states
+):
+    """/{course_code}/search must filter on active=True / review_state='accepted'.
+    A search for "beta" (only present in the pending row) must return an
+    empty strands list, not the pending row.
+    """
+    rev_code = seeded_curriculum_with_review_states["rev_code"]
+    headers = _auth(client, parent_user.email)
+    # "beta" only matches the pending row's description; with the filter
+    # in place, the result must be empty (and the subject is "known"
+    # because R1.1 is accepted, so we get 200 + empty strands).
+    resp = client.get(
+        f"/api/curriculum/{rev_code}/search?q=beta", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["strands"] == []
+
+    # Sanity: a search for "alpha" (only on the accepted row) does match.
+    resp_ok = client.get(
+        f"/api/curriculum/{rev_code}/search?q=alpha", headers=headers
+    )
+    assert resp_ok.status_code == 200, resp_ok.text
+    flat = [
+        e["code"]
+        for s in resp_ok.json()["strands"]
+        for e in s["expectations"]
+    ]
+    assert flat == ["R1.1"]
+
+
+def test_routes_filter_on_review_state_independently_of_active(
+    client, parent_user, cmcp_flag_on, db_session
+):
+    """Defense-in-depth: even if a row has ``active=True`` but
+    ``review_state != 'accepted'`` (a hypothetical model-invariant
+    violation from a buggy admin workflow), the public routes must
+    still hide it. Mutation-test guard for the ``review_state ==
+    'accepted'`` filter specifically — the ``active=True`` filter alone
+    would let this row through.
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    suffix = uuid4().hex[:6].upper()
+    bad_code = f"X{suffix}"
+    subj = CEGSubject(code=bad_code, name="Bad-state Subject")
+    db_session.add(subj)
+    db_session.flush()
+    strand = CEGStrand(subject_id=subj.id, code="X", name="Bad Strand")
+    db_session.add(strand)
+    db_session.flush()
+    ver = CurriculumVersion(
+        subject_id=subj.id,
+        grade=9,
+        version=f"test-bad-{uuid4().hex[:6]}",
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(ver)
+    db_session.flush()
+    # Inconsistent row: active=True (bypasses active filter) but
+    # review_state='rejected' (must still be filtered out by the
+    # review_state guard).
+    bad_row = CEGExpectation(
+        ministry_code="X1.1",
+        cb_code=f"CB-G9-{bad_code}-X1-OE1",
+        subject_id=subj.id,
+        strand_id=strand.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="should never appear",
+        curriculum_version_id=ver.id,
+        active=True,
+        review_state="rejected",
+    )
+    db_session.add(bad_row)
+    db_session.commit()
+    try:
+        headers = _auth(client, parent_user.email)
+
+        # /courses must omit the subject (no accepted rows).
+        list_resp = client.get("/api/curriculum/courses", headers=headers)
+        assert list_resp.status_code == 200
+        codes = {item["course_code"] for item in list_resp.json()}
+        assert bad_code not in codes
+
+        # /{course_code} must 404.
+        detail_resp = client.get(
+            f"/api/curriculum/{bad_code}", headers=headers
+        )
+        assert detail_resp.status_code == 404
+
+        # /{course_code}/search must also 404 (no accepted rows under
+        # this subject — the empty-strands fallback only fires for
+        # subjects with at least one accepted row).
+        search_resp = client.get(
+            f"/api/curriculum/{bad_code}/search?q=should",
+            headers=headers,
+        )
+        assert search_resp.status_code == 404
+    finally:
+        db_session.delete(bad_row)
+        db_session.delete(ver)
+        db_session.delete(strand)
+        db_session.delete(subj)
+        db_session.commit()
+
+
+def test_get_course_404_when_only_pending_or_rejected_rows_exist(
+    client, parent_user, cmcp_flag_on, db_session
+):
+    """A subject whose only expectations are pending/rejected must 404 on
+    GET /{course_code} — it's not publicly visible.
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    suffix = uuid4().hex[:6].upper()
+    inv_code = f"I{suffix}"
+    inv = CEGSubject(code=inv_code, name="Invisible")
+    db_session.add(inv)
+    db_session.flush()
+    inv_strand = CEGStrand(subject_id=inv.id, code="I", name="Invisible Strand")
+    db_session.add(inv_strand)
+    db_session.flush()
+    inv_v = CurriculumVersion(
+        subject_id=inv.id,
+        grade=9,
+        version=f"test-inv-{uuid4().hex[:6]}",
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(inv_v)
+    db_session.flush()
+    inv_pending = CEGExpectation(
+        ministry_code="I1.1",
+        cb_code=f"CB-G9-{inv_code}-I1-OE1",
+        subject_id=inv.id,
+        strand_id=inv_strand.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="invisible pending",
+        curriculum_version_id=inv_v.id,
+        active=False,
+        review_state="pending",
+    )
+    db_session.add(inv_pending)
+    db_session.commit()
+    try:
+        headers = _auth(client, parent_user.email)
+        resp = client.get(f"/api/curriculum/{inv_code}", headers=headers)
+        assert resp.status_code == 404
+        # Search must also 404 — empty-strands fallback only applies to
+        # subjects with at least one accepted row.
+        resp_search = client.get(
+            f"/api/curriculum/{inv_code}/search?q=anything",
+            headers=headers,
+        )
+        assert resp_search.status_code == 404
+    finally:
+        db_session.delete(inv_pending)
+        db_session.delete(inv_v)
+        db_session.delete(inv_strand)
+        db_session.delete(inv)
+        db_session.commit()
+
+
+# ── Case-insensitive subject lookup (#4442) ────────────────────────────
+
+
+@pytest.fixture()
+def seeded_curriculum_lowercase_subject(db_session):
+    """Seed a subject with a *lowercase* code so we can exercise the
+    case-insensitive lookup added by #4442.
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    suffix = uuid4().hex[:6].lower()
+    lower_code = f"l{suffix}"  # all lowercase
+    version_slug = f"test-low-{uuid4().hex[:6]}"
+
+    subj = CEGSubject(code=lower_code, name="Lowercase Subject")
+    db_session.add(subj)
+    db_session.flush()
+    strand = CEGStrand(subject_id=subj.id, code="L", name="Lower Strand")
+    db_session.add(strand)
+    db_session.flush()
+    ver = CurriculumVersion(
+        subject_id=subj.id,
+        grade=9,
+        version=version_slug,
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(ver)
+    db_session.flush()
+    exp = CEGExpectation(
+        ministry_code="L1.1",
+        cb_code=f"CB-G9-{lower_code.upper()}-L1-OE1",
+        subject_id=subj.id,
+        strand_id=strand.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="lowercase-seeded subject",
+        curriculum_version_id=ver.id,
+        active=True,
+        review_state="accepted",
+    )
+    db_session.add(exp)
+    db_session.commit()
+
+    yield {
+        "lower_code": lower_code,
+        "subject": subj,
+        "expectation": exp,
+    }
+
+    db_session.query(CEGExpectation).filter(
+        CEGExpectation.id == exp.id
+    ).delete(synchronize_session=False)
+    db_session.query(CurriculumVersion).filter(
+        CurriculumVersion.id == ver.id
+    ).delete(synchronize_session=False)
+    db_session.query(CEGStrand).filter(
+        CEGStrand.id == strand.id
+    ).delete(synchronize_session=False)
+    db_session.query(CEGSubject).filter(
+        CEGSubject.id == subj.id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+def test_get_course_finds_lowercase_seeded_subject_via_uppercase_url(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_lowercase_subject
+):
+    """A subject seeded with a lowercase code must be reachable via the
+    uppercase URL the route normalizes to. Mutation-test guard for #4442:
+    revert ``func.upper(CEGSubject.code) == course_code`` to a direct
+    ``CEGSubject.code == course_code`` and this test fails (404).
+    """
+    lower_code = seeded_curriculum_lowercase_subject["lower_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(
+        f"/api/curriculum/{lower_code.upper()}", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # Response course_code reflects the URL (uppercased input), per the
+    # existing `course_code = course_code.upper()` normalization.
+    assert body["course_code"] == lower_code.upper()
+    flat = [
+        e["code"] for s in body["strands"] for e in s["expectations"]
+    ]
+    assert flat == ["L1.1"]
+
+
+def test_get_course_finds_lowercase_seeded_subject_via_lowercase_url(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_lowercase_subject
+):
+    """The same lowercase-seeded subject is also reachable via a lowercase
+    URL (the route uppercases the input first, then compares case-
+    insensitively to the stored code).
+    """
+    lower_code = seeded_curriculum_lowercase_subject["lower_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(
+        f"/api/curriculum/{lower_code}", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    flat = [
+        e["code"]
+        for s in resp.json()["strands"]
+        for e in s["expectations"]
+    ]
+    assert flat == ["L1.1"]
+
+
+def test_search_finds_lowercase_seeded_subject_via_uppercase_url(
+    client, parent_user, cmcp_flag_on, seeded_curriculum_lowercase_subject
+):
+    """Search must also use the case-insensitive subject-code comparison.
+    """
+    lower_code = seeded_curriculum_lowercase_subject["lower_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(
+        f"/api/curriculum/{lower_code.upper()}/search?q=lowercase",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    flat = [
+        e["code"]
+        for s in resp.json()["strands"]
+        for e in s["expectations"]
+    ]
+    assert flat == ["L1.1"]
+
+
+# ── Case-insensitive search query (#4443) ──────────────────────────────
+
+
+def test_search_query_is_case_insensitive_uppercase(
+    client, parent_user, cmcp_flag_on, seeded_curriculum
+):
+    """ILIKE is case-insensitive, so an uppercase query must match a
+    lowercase description. Mutation-test guard for #4443: if ILIKE were
+    swapped for LIKE (and the previous ``q.lower()`` removed), this test
+    would fail because the description "Demonstrate understanding of
+    fractions" contains lowercase "fraction" but not "FRACTION".
+    """
+    math_code = seeded_curriculum["math_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(
+        f"/api/curriculum/{math_code}/search?q=FRACTION", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    flat = [
+        (s["name"], e["code"])
+        for s in body["strands"]
+        for e in s["expectations"]
+    ]
+    # Same matches as the lowercase ?q=fraction case — both "B1.1" and
+    # "C1.1" mention "fractions".
+    assert ("Number Sense", "B1.1") in flat
+    assert ("Algebra", "C1.1") in flat
+
+
+def test_search_query_is_case_insensitive_mixed_case(
+    client, parent_user, cmcp_flag_on, seeded_curriculum
+):
+    """A mixed-case query must also match — guards against any future
+    regression that re-introduces a casing transform on the query.
+    """
+    math_code = seeded_curriculum["math_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(
+        f"/api/curriculum/{math_code}/search?q=FraCTion", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    flat = [
+        e["code"]
+        for s in resp.json()["strands"]
+        for e in s["expectations"]
+    ]
+    assert "B1.1" in flat
+    assert "C1.1" in flat
+
+
 # ── Role-agnostic read access (M0) ─────────────────────────────────────
 
 
