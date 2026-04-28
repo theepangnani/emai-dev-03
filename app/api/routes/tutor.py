@@ -27,7 +27,7 @@ import logging
 import re
 import uuid
 from functools import lru_cache
-from typing import AsyncIterator
+from typing import AsyncIterator, Literal
 
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -54,16 +54,20 @@ FEATURE_FLAG_KEY = "tutor_chat_enabled"
 MODEL = "gpt-4o-mini"
 MAX_HISTORY_PAIRS = 3  # last N (user, assistant) pairs to include as context
 MAX_RESPONSE_TOKENS = 800
+MAX_RESPONSE_TOKENS_FULL = 3000
 CREDITS_PER_MESSAGE = 0.25
 # Max seconds to wait between consecutive tokens from the OpenAI stream
 # before we abort — guards against the upstream hanging mid-response.
 INTER_TOKEN_TIMEOUT = 15.0
 
 
-@lru_cache(maxsize=32)
-def _cached_system_prompt(grade_level: int | None) -> str:
-    """Memoized wrapper around `build_system_prompt` (same prompt per grade)."""
-    return build_system_prompt(grade_level)
+@lru_cache(maxsize=64)
+def _cached_system_prompt(
+    grade_level: int | None,
+    mode: Literal["quick", "full", "worksheet"] = "quick",
+) -> str:
+    """Memoized wrapper around `build_system_prompt` (per grade × mode)."""
+    return build_system_prompt(grade_level, mode)
 
 
 def _check_tutor_flag(
@@ -184,7 +188,9 @@ def _context_dict(body: TutorChatRequest) -> dict:
 
 
 async def _stream_completion(
-    system_prompt: str, user_prompt: str
+    system_prompt: str,
+    user_prompt: str,
+    mode: Literal["quick", "full", "worksheet"] = "quick",
 ) -> AsyncIterator[str]:
     """Yield token deltas from the OpenAI chat completion stream.
 
@@ -193,6 +199,11 @@ async def _stream_completion(
     surfaces as ``openai.APITimeoutError`` rather than hanging the SSE
     connection indefinitely.
     """
+    max_tokens = (
+        MAX_RESPONSE_TOKENS_FULL
+        if mode in ("full", "worksheet")
+        else MAX_RESPONSE_TOKENS
+    )
     client = openai.AsyncOpenAI(api_key=settings.openai_api_key, timeout=30.0)
     stream = await client.chat.completions.create(
         model=MODEL,
@@ -201,7 +212,7 @@ async def _stream_completion(
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.4,
-        max_tokens=MAX_RESPONSE_TOKENS,
+        max_tokens=max_tokens,
         stream=True,
     )
     stream_iter = stream.__aiter__()
@@ -263,7 +274,7 @@ async def tutor_chat_stream(
         _load_history(db, conversation.id) if conversation is not None else []
     )
     context = _context_dict(body)
-    system_prompt = _cached_system_prompt(context.get("grade_level"))
+    system_prompt = _cached_system_prompt(context.get("grade_level"), body.mode)
     user_prompt = build_user_prompt(body.message, history, context)
 
     # Run moderation before opening the stream so we can emit the error
@@ -316,7 +327,7 @@ async def tutor_chat_stream(
         chip_buffer = ""  # pending token text (may or may not be CHIPS start)
         in_chips = False  # true once we've confirmed the buffer is a CHIPS block
         try:
-            async for delta in _stream_completion(system_prompt, user_prompt):
+            async for delta in _stream_completion(system_prompt, user_prompt, body.mode):
                 collected.append(delta)
 
                 # Case A — already inside a confirmed CHIPS block: keep

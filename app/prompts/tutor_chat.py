@@ -1,7 +1,7 @@
 """Prompt templates for the Arc tutor chat (CB-TUTOR-002 Phase 1).
 
 Exports:
-  - build_system_prompt(grade_level) -> str
+  - build_system_prompt(grade_level, mode='quick') -> str
   - build_user_prompt(message, history, context) -> str
   - SUGGESTION_CHIP_INSTRUCTION
 
@@ -12,23 +12,59 @@ suggested follow-up prompts.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from app.prompts.grade_tone import get_tone_profile
 
 SUGGESTION_CHIP_INSTRUCTION = (
     'After your answer, output 3-4 suggestion chips on a new line in this exact format: '
     '[[CHIPS: "chip1", "chip2", "chip3"]]. '
-    "Chips should be short (under 8 words) follow-up prompts the user could tap next."
+    "Each chip MUST be a complete, self-contained prompt that names the topic the user "
+    "is currently learning — never bare verbs like \"Practice problems\", \"Examples\", "
+    'or \"More\". Use 4-10 words. Bad: "Practice problems". '
+    'Good: "Practice problems on the topic above" or "Show worked examples of this concept".'
+)
+
+FULL_MODE_STRUCTURE_INSTRUCTION = (
+    "The user asked for a full, detailed response, so produce a structured "
+    "Markdown artifact (a cheat-sheet style reference they can keep). "
+    "Organize the answer with `##` and `###` headings for clear sections. "
+    "When you compare methods, options, or trade-offs, present them in a "
+    "Markdown table. Put formulas, equations, code, or syntax inside fenced "
+    "code blocks. Walk through 1-2 worked examples for each key concept so "
+    "the steps are concrete. End with a short `## Summary` section that "
+    "recaps the main takeaways in a few bullets. Keep your warm, "
+    "encouraging Arc voice throughout — structure should help the learner, "
+    "not feel like a textbook."
+)
+
+WORKSHEET_MODE_INSTRUCTION = (
+    "The user asked for practice problems, so produce a worksheet on the "
+    "most recent topic from the conversation. Output a numbered list of "
+    "5-10 practice problems (use exactly the count the user asked for if "
+    "they specified one) using Markdown numbering (`1.`, `2.`, `3.`, ...). "
+    "Order the problems by difficulty progression — easier first, harder "
+    "last — so the learner ramps up. After the problem list, render a "
+    "clearly-separated section with the heading `## Answer key` followed "
+    "by the worked solutions in matching numbered order (`1.`, `2.`, "
+    "`3.`, ...) so the answers line up one-to-one with the problems. Keep "
+    "the warm, age-appropriate Arc voice throughout. "
+    "Your suggestion chips MUST point AWAY from more practice — suggest "
+    "learning the next concept, asking for a hint on a problem, or "
+    "exploring a related topic. Do NOT suggest more practice / more "
+    "problems / another worksheet."
 )
 
 
-def build_system_prompt(grade_level: int | None) -> str:
-    """Return the Arc tutor system prompt, shaped by grade level."""
+def build_system_prompt(
+    grade_level: int | None,
+    mode: Literal["quick", "full", "worksheet"] = "quick",
+) -> str:
+    """Return the Arc tutor system prompt, shaped by grade level and mode."""
     effective_grade = grade_level if grade_level is not None else 7
     tone = get_tone_profile(effective_grade)
 
-    return (
+    base = (
         "You are Arc, ClassBridge's AI learning companion for K-12 students, "
         "parents, and teachers in Ontario.\n"
         "Answer the user's question directly and concisely. Do NOT ask for "
@@ -45,8 +81,17 @@ def build_system_prompt(grade_level: int | None) -> str:
         "context — treat it as private.\n"
         "Be warm, encouraging, and concise. Avoid corporate hedging like "
         "\"as an AI\" or \"I cannot provide\".\n"
-        f"{SUGGESTION_CHIP_INSTRUCTION}"
+        "When the user's reply is a short follow-up like \"examples\", "
+        "\"another\", \"more\", \"practice\", or \"try one\", continue on the "
+        "same topic as the prior assistant turn — do NOT switch subjects or "
+        "list mixed-subject content.\n"
     )
+
+    if mode == "full":
+        return f"{base}{FULL_MODE_STRUCTURE_INSTRUCTION}\n{SUGGESTION_CHIP_INSTRUCTION}"
+    if mode == "worksheet":
+        return f"{base}{WORKSHEET_MODE_INSTRUCTION}\n{SUGGESTION_CHIP_INSTRUCTION}"
+    return f"{base}{SUGGESTION_CHIP_INSTRUCTION}"
 
 
 def _format_history(history: list[dict[str, Any]] | None) -> str:

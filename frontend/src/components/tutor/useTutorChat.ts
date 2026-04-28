@@ -27,11 +27,26 @@ export interface TutorMessage {
   /** True while tokens are still streaming into this bubble. */
   streaming?: boolean;
   timestamp: Date;
+  /** Tutor reply mode that produced this assistant message. */
+  mode?: 'quick' | 'full' | 'worksheet';
+  /** The user-prompt text that produced this assistant message. Stored on the
+   *  assistant stub so a later "Get the full version" action can replay the
+   *  same prompt with mode: 'full'. */
+  userPrompt?: string;
+  /** True once `requestFull` has been triggered for this assistant message —
+   *  used to debounce repeat clicks on "Get the full version" so a fast
+   *  double-click doesn't fire two parallel /tutor/chat/stream POSTs. */
+  fullRequested?: boolean;
 }
 
 export interface UseTutorChatResult {
   messages: TutorMessage[];
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (
+    text: string,
+    opts?: { mode?: 'quick' | 'full' | 'worksheet' },
+  ) => Promise<void>;
+  /** Re-fire the user prompt that produced `assistantId` with mode:'full'. */
+  requestFull: (assistantId: string) => void;
   isStreaming: boolean;
   cancel: () => void;
   error: string | null;
@@ -52,6 +67,19 @@ export interface UseTutorChatOptions {
 
 /** Last 3 (user, assistant) pairs = 6 messages. */
 const HISTORY_TURNS = 3;
+
+/** Generate a collision-resistant message ID. Prefers `crypto.randomUUID()`
+ *  (available in modern browsers + Node 19+ + jsdom 22+) and falls back to a
+ *  timestamp + random-suffix for older test environments. SUGGESTION-11
+ *  (#4401): two messages created in the same millisecond used to share an
+ *  `id` under the old `Date.now()` scheme, which broke the `m.id ===
+ *  assistantId` lookup during streaming. */
+function genId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function lastTurns(messages: TutorMessage[], limit = HISTORY_TURNS) {
   // Walk backwards collecting complete pairs.
@@ -115,6 +143,12 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
     setMessagesRef.current = setMessages;
   }, [setMessages]);
 
+  // Synchronous guard for the "Get the full version" debounce. The ref is
+  // mutated inside `requestFull` so two back-to-back calls in the same tick
+  // can't both pass the check (which is what would happen if we relied on
+  // messagesRef, since it is updated via useEffect after commit).
+  const fullRequestedIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
@@ -137,7 +171,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { mode?: 'quick' | 'full' | 'worksheet' }) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
@@ -146,19 +180,22 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const mode = opts?.mode;
       const userMessage: TutorMessage = {
-        id: `u-${Date.now()}`,
+        id: genId('u'),
         role: 'user',
         content: trimmed,
         timestamp: new Date(),
       };
-      const assistantId = `a-${Date.now()}`;
+      const assistantId = genId('a');
       const assistantStub: TutorMessage = {
         id: assistantId,
         role: 'assistant',
         content: '',
         streaming: true,
         timestamp: new Date(),
+        ...(mode ? { mode } : {}),
+        userPrompt: trimmed,
       };
 
       // Snapshot history BEFORE appending the new user turn so the server
@@ -186,6 +223,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
             ...(conversationIdRef.current
               ? { conversation_id: conversationIdRef.current }
               : {}),
+            ...(mode ? { mode } : {}),
           }),
         });
 
@@ -303,5 +341,29 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
     [],
   );
 
-  return { messages, sendMessage, isStreaming, cancel, error, clear };
+  const requestFull = useCallback(
+    (assistantId: string) => {
+      // Synchronous debounce check FIRST so two calls in the same tick can't
+      // both pass — react state updates are async, refs that mirror state
+      // via useEffect are also async, so neither would catch a fast double-click.
+      if (fullRequestedIdsRef.current.has(assistantId)) return;
+      const target = messagesRef.current.find((m) => m.id === assistantId);
+      if (!target || target.role !== 'assistant') return;
+      if (target.mode === 'full') return;
+      if (target.fullRequested) return;
+      const prompt = target.userPrompt;
+      if (!prompt) return;
+      // Claim the slot synchronously so any racing call short-circuits above.
+      fullRequestedIdsRef.current.add(assistantId);
+      // Mark the source message as requested in state so the UI hides the
+      // "Get the full version" button on next render.
+      setMessagesRef.current((prev) =>
+        prev.map((m) => (m.id === assistantId ? { ...m, fullRequested: true } : m)),
+      );
+      void sendMessage(prompt, { mode: 'full' });
+    },
+    [sendMessage],
+  );
+
+  return { messages, sendMessage, requestFull, isStreaming, cancel, error, clear };
 }

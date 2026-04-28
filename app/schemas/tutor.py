@@ -1,6 +1,8 @@
 """Pydantic schemas for the Tutor Chat endpoint — CB-TUTOR-002 Phase 1 (#4063)."""
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -17,6 +19,7 @@ class TutorChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     conversation_id: str | None = None
     context_override: TutorChatContextOverride | None = None
+    mode: Literal["quick", "full", "worksheet"] = "quick"
 
 
 class TutorChatDoneResponse(BaseModel):
