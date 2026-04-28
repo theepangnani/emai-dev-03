@@ -51,12 +51,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role
+from app.api.deps import require_role
 from app.db.database import get_db
 from app.models.curriculum import (
+    EXPECTATION_TYPE_OVERALL,
     EXPECTATION_TYPE_VALUES,
     CEGExpectation,
 )
@@ -160,18 +161,24 @@ class EditExpectationRequest(BaseModel):
     """Writable fields the curriculum admin may edit on review.
 
     All fields are optional — the route applies only those the caller sets.
+    Unknown keys are rejected (``extra='forbid'``) to avoid silent drops:
+    a reviewer who PATCHes a typo'd field name should get a 422, not a
+    200 with the field silently ignored. This is the MFIPPA / curriculum-
+    accuracy posture for this product (no silent drops, no silent
+    overrides).
+
     The list is intentionally narrow (per #4428 scope): description
-    paraphrase, ministry_code, strand_id, expectation_type, topic,
-    parent_oe_id. ``topic`` is not yet a column on ``ceg_expectations`` —
-    if/when it lands the schema can be extended; for now setting it is a
-    no-op with no error so the API contract is forward-compatible.
+    paraphrase, ministry_code, strand_id, expectation_type, parent_oe_id,
+    review_notes. ``topic`` is NOT in this schema — re-add it the day a
+    ``topic`` column lands on ``ceg_expectations``.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     description: Optional[str] = Field(default=None, min_length=1, max_length=4000)
     ministry_code: Optional[str] = Field(default=None, min_length=1, max_length=40)
     strand_id: Optional[int] = Field(default=None, gt=0)
     expectation_type: Optional[str] = Field(default=None)
-    topic: Optional[str] = Field(default=None, max_length=200)
     parent_oe_id: Optional[int] = Field(default=None, gt=0)
     review_notes: Optional[str] = Field(default=None, max_length=2000)
 
@@ -378,18 +385,60 @@ def edit_expectation(
             detail="At least one editable field must be provided",
         )
 
+    # Validate parent_oe_id (DD §2.1 invariant: SE → OE only, same version,
+    # no self-loop). The DB-level FK only checks existence, not the type /
+    # version / self-loop invariants — a reviewer fat-fingering an id can
+    # corrupt the SE→OE tree silently. Catch it at the API layer.
+    if "parent_oe_id" in incoming and incoming["parent_oe_id"] is not None:
+        new_parent_id = incoming["parent_oe_id"]
+        if new_parent_id == expectation.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="parent_oe_id cannot reference the row itself",
+            )
+        parent = (
+            db.query(CEGExpectation)
+            .filter(CEGExpectation.id == new_parent_id)
+            .first()
+        )
+        if parent is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"parent_oe_id {new_parent_id} does not exist",
+            )
+        if parent.expectation_type != EXPECTATION_TYPE_OVERALL:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="parent_oe_id must point to an 'overall' expectation",
+            )
+        if parent.curriculum_version_id != expectation.curriculum_version_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="parent_oe_id must be in the same curriculum_version",
+            )
+
     # Capture before/after diff for the audit row. Only fields actually
-    # changing the persisted value are recorded.
+    # changing the persisted value are recorded. Values are stringified
+    # so non-JSON-native types (e.g., a future datetime column) cannot
+    # silently break the audit-log JSON encode (Bill 194 silent-fail
+    # guard, see #4249).
     diff: dict[str, dict[str, object]] = {}
     for field, new_value in incoming.items():
         if field not in _EDITABLE_FIELDS:
-            # Forward-compatible no-op (e.g., ``topic`` until it lands).
+            # Defensive — the Pydantic ``extra='forbid'`` config rejects
+            # unknown fields before we get here, so this is unreachable
+            # in normal operation. Kept as a belt-and-suspenders guard
+            # for the case where the schema and whitelist diverge in
+            # future edits.
             continue
         old_value = getattr(expectation, field, None)
         if old_value == new_value:
             continue
         setattr(expectation, field, new_value)
-        diff[field] = {"old": old_value, "new": new_value}
+        diff[field] = {
+            "old": str(old_value) if old_value is not None else None,
+            "new": str(new_value) if new_value is not None else None,
+        }
 
     if not diff:
         # Nothing actually changed — skip the audit-log write entirely.

@@ -397,13 +397,15 @@ def test_edit_partial_update_persists_only_touched_fields(
     assert len(rows) == 1
 
 
-def test_edit_topic_field_is_silently_ignored(
+def test_edit_unknown_field_is_rejected_with_422(
     client, curriculum_admin, cmcp_flag_on, ceg_seed, db_session
 ):
-    """Forward-compat: ``topic`` is in the schema but not yet a column.
+    """Pydantic ``extra='forbid'`` rejects unknown fields — no silent drops.
 
-    A request that only sends ``topic`` is treated as a no-op (no audit-log
-    entry, no DB change), and returns the row unchanged.
+    A reviewer who sends a typo'd field name (e.g., ``topic``, ``foo``)
+    must get 422 so they know the change wasn't applied. Silent drops are
+    the MFIPPA / curriculum-accuracy failure mode this product hardens
+    against.
     """
     headers = _auth(client, curriculum_admin.email)
     eid = ceg_seed["pending"].id
@@ -413,11 +415,103 @@ def test_edit_topic_field_is_silently_ignored(
         headers=headers,
         json={"topic": "fractions"},
     )
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 422, resp.text
 
-    # No audit row written for a no-op edit.
+    # No audit row written when validation fails.
     rows = _audit_entries_for(db_session, eid, "ceg_review_edit")
     assert len(rows) == 0
+
+
+def test_edit_parent_oe_self_reference_returns_400(
+    client, curriculum_admin, cmcp_flag_on, ceg_seed
+):
+    """A row cannot be its own parent_oe (cycle prevention)."""
+    headers = _auth(client, curriculum_admin.email)
+    eid = ceg_seed["pending"].id
+    resp = client.patch(
+        f"/api/ceg/admin/review/{eid}",
+        headers=headers,
+        json={"parent_oe_id": eid},
+    )
+    assert resp.status_code == 400
+    assert "itself" in resp.json()["detail"]
+
+
+def test_edit_parent_oe_unknown_id_returns_400(
+    client, curriculum_admin, cmcp_flag_on, ceg_seed
+):
+    """parent_oe_id must reference an existing row."""
+    headers = _auth(client, curriculum_admin.email)
+    eid = ceg_seed["pending"].id
+    resp = client.patch(
+        f"/api/ceg/admin/review/{eid}",
+        headers=headers,
+        json={"parent_oe_id": 999999},
+    )
+    assert resp.status_code == 400
+    assert "does not exist" in resp.json()["detail"]
+
+
+def test_edit_parent_oe_must_be_overall_type(
+    client, curriculum_admin, cmcp_flag_on, ceg_seed
+):
+    """parent_oe_id must point at an OE row (DD §2.1: SE → OE only)."""
+    headers = _auth(client, curriculum_admin.email)
+    eid = ceg_seed["pending"].id
+    # The 'pending' fixture row is itself a 'specific' (SE), so pointing
+    # the accepted row's parent_oe at it should be rejected.
+    accepted_id = ceg_seed["accepted"].id
+    resp = client.patch(
+        f"/api/ceg/admin/review/{accepted_id}",
+        headers=headers,
+        json={"parent_oe_id": eid},
+    )
+    assert resp.status_code == 400
+    assert "overall" in resp.json()["detail"]
+
+
+def test_edit_parent_oe_must_be_same_curriculum_version(
+    client, curriculum_admin, cmcp_flag_on, ceg_seed, db_session
+):
+    """parent_oe_id must be in the same curriculum_version as the row."""
+    from app.models.curriculum import (
+        CEGExpectation,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    # Spin up a second curriculum_version + an OE belonging to it.
+    other_version = CurriculumVersion(
+        subject_id=ceg_seed["subject"].id,
+        grade=7,
+        version=f"2020-rev2-{uuid4().hex[:6]}",
+        change_severity=None,
+    )
+    db_session.add(other_version)
+    db_session.flush()
+
+    other_oe = CEGExpectation(
+        ministry_code=f"X1.1-{uuid4().hex[:6]}",
+        subject_id=ceg_seed["subject"].id,
+        strand_id=ceg_seed["strand"].id,
+        grade=7,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="Cross-version OE",
+        curriculum_version_id=other_version.id,
+        active=True,
+        review_state="accepted",
+    )
+    db_session.add(other_oe)
+    db_session.commit()
+
+    headers = _auth(client, curriculum_admin.email)
+    resp = client.patch(
+        f"/api/ceg/admin/review/{ceg_seed['pending'].id}",
+        headers=headers,
+        json={"parent_oe_id": other_oe.id},
+    )
+    assert resp.status_code == 400
+    assert "curriculum_version" in resp.json()["detail"]
 
 
 def test_edit_invalid_expectation_type_returns_422(
