@@ -101,6 +101,7 @@ def _isolate_task_sync_flag(app):
     keys_to_reset = (
         "task_sync_enabled",
         "dci_v1_enabled",  # CB-DCI-001 M0-3 (#4141)
+        "cmcp.enabled",    # CB-CMCP-001 M0-B 0B-1 (#4415)
     )
 
     db = SessionLocal()

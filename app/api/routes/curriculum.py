@@ -27,7 +27,7 @@ reuse the same flag. When the flag is OFF every endpoint returns 403
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -79,10 +79,7 @@ def require_cmcp_enabled(
 # When 0A-1 merges, this stripe rebases cleanly: the import succeeds and
 # the routes start serving live data with no further code changes.
 
-if TYPE_CHECKING:  # pragma: no cover — typing only
-    from app.models.curriculum import CurriculumExpectation as _ExpectationModel
-
-_EXPECTATION_MODEL = None  # type: Optional[type]
+_EXPECTATION_MODEL: Optional[type] = None
 try:  # pragma: no cover — exercised in integration once 0A-1 lands
     from app.models.curriculum import CurriculumExpectation as _LiveExpectationModel
     _EXPECTATION_MODEL = _LiveExpectationModel
