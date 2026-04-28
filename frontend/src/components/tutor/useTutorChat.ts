@@ -27,11 +27,19 @@ export interface TutorMessage {
   /** True while tokens are still streaming into this bubble. */
   streaming?: boolean;
   timestamp: Date;
+  /** Tutor reply mode that produced this assistant message. */
+  mode?: 'quick' | 'full';
+  /** The user-prompt text that produced this assistant message. Stored on the
+   *  assistant stub so a later "Get the full version" action can replay the
+   *  same prompt with mode: 'full'. */
+  userPrompt?: string;
 }
 
 export interface UseTutorChatResult {
   messages: TutorMessage[];
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, opts?: { mode?: 'quick' | 'full' }) => Promise<void>;
+  /** Re-fire the user prompt that produced `assistantId` with mode:'full'. */
+  requestFull: (assistantId: string) => void;
   isStreaming: boolean;
   cancel: () => void;
   error: string | null;
@@ -137,7 +145,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { mode?: 'quick' | 'full' }) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
@@ -146,6 +154,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
       const controller = new AbortController();
       abortRef.current = controller;
 
+      const mode = opts?.mode;
       const userMessage: TutorMessage = {
         id: `u-${Date.now()}`,
         role: 'user',
@@ -159,6 +168,8 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
         content: '',
         streaming: true,
         timestamp: new Date(),
+        ...(mode ? { mode } : {}),
+        userPrompt: trimmed,
       };
 
       // Snapshot history BEFORE appending the new user turn so the server
@@ -186,6 +197,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
             ...(conversationIdRef.current
               ? { conversation_id: conversationIdRef.current }
               : {}),
+            ...(mode ? { mode } : {}),
           }),
         });
 
@@ -303,5 +315,17 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
     [],
   );
 
-  return { messages, sendMessage, isStreaming, cancel, error, clear };
+  const requestFull = useCallback(
+    (assistantId: string) => {
+      const target = messagesRef.current.find((m) => m.id === assistantId);
+      if (!target || target.role !== 'assistant') return;
+      if (target.mode === 'full') return;
+      const prompt = target.userPrompt;
+      if (!prompt) return;
+      void sendMessage(prompt, { mode: 'full' });
+    },
+    [sendMessage],
+  );
+
+  return { messages, sendMessage, requestFull, isStreaming, cancel, error, clear };
 }
