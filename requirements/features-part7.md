@@ -2527,3 +2527,36 @@ These eleven gaps from the mentor review require user-level decisions before req
 - [ ] Board-coordinator validation interviews complete
 - [ ] M0 (CEG build) NOT STARTED — gated on decisions + interviews
 
+### 6.151 My Hub — Daily Digest Panel First + Embedded 5-Recent History (#4349) — INTEGRATION READY 2026-04-27
+
+**Issue/PR:** Epic #4349 · Stream PRs: #4358 (A — shared component), #4360 (M — My Hub reorder + embed), #4372 (E — EmailDigestPage refactor) · Final integration PR: #4378 · **Status:** IMPLEMENTED on `integrate/4349-my-hub-digest-history`, deploy pending
+
+#### Why this exists
+The My Hub all-kids view rendered Class Materials before Daily Digest, and the Daily Digest card itself was a thin summary that linked out to `/email-digest` for history. Parents wanted the digest hub more prominent (it's the daily-touchpoint feature) and wanted to see the most recent digests inline without leaving the page. The dedicated `/email-digest` page already had a 50-item Digest History section that duplicated the JSX (~440 lines across legacy + unified renderers). This work reorders the panels, embeds a 5-recent collapsible panel inline, and dedupes the history JSX into one shared component used by both surfaces.
+
+#### Files changed
+- **New:** `frontend/src/components/parent/DigestHistoryPanel.{tsx,css}` + `__tests__/DigestHistoryPanel.test.tsx` (Stream A)
+- **Modified:** `frontend/src/pages/MyKidsPage.{tsx,css}`, `frontend/src/components/bridge/EmailDigestCard.tsx`, `frontend/src/components/bridge/__tests__/EmailDigestCard.test.tsx` (Stream M)
+- **Modified:** `frontend/src/pages/parent/EmailDigestPage.{tsx,test.tsx,css}` (Stream E)
+
+#### Streams
+- **Stream A** — Shared `DigestHistoryPanel` component (`limit`, `heading`, `collapsible`, `defaultCollapsed`, `className` props; query key `['email-digest','logs','panel',limit]`; status badge + DOMPurify content render; 8 tests).
+- **Stream M** — My Hub all-kids panel reorder; `EmailDigestCard.showRecentHistory` prop renders embedded panel below footer when integration exists.
+- **Stream E** — `EmailDigestPage` refactor — both legacy + unified now consume `<DigestHistoryPanel limit={50} />`; ~440 lines of dup JSX/CSS removed.
+
+#### Acceptance Criteria
+- [x] My Hub all-kids view: Daily Digest card renders before Class Materials card
+- [x] My Hub child view: Daily Digest card already renders first; embedded history added there too
+- [x] Embedded panel shows up to 5 recent digests with date · email count · status · expand-to-content
+- [x] Embedded panel is collapsible (header click toggles list)
+- [x] `/email-digest` Digest History section is visually + behaviorally identical to before (limit unchanged at 50)
+- [x] No backend changes (no schema migration, no new endpoint, no new env var)
+
+#### Per-child filtering — explicitly out of scope
+The unified v2 data model stores ONE digest delivery per parent per send (covering all kids); `digest_delivery_log` table has no `child_profile_id`/`student_id` column. The 5-recent panel shows the same parent-level entries in both all-kids and child-filter modes. True per-child digest history would require either a backend filter that scans `digest_content` for the child's section or a new join via `SenderChildAssignment` — deferred to a follow-up if usage data shows demand.
+
+#### Tracking
+Epic issue **#4349**. PRs: **#4358** (Stream A), **#4360** (Stream M), **#4372** (Stream E). Final integration PR: **#4378**.
+
+#### Deploy note
+Frontend-only change. Ship in next routine deploy after `/pr-review` 2× passes.
