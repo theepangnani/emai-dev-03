@@ -682,6 +682,66 @@ describe('TutorChat', () => {
     expect(filename).toMatch(/^Arc-tutor-\d{8}-\d{4}\.pdf$/);
   });
 
+  it('attaches the PDF wrapper on-screen invisible (NOT off-screen at -99999px) — #4431', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+
+    // Inspect the wrapper element passed to downloadAsPdf — it must be
+    // positioned ON-SCREEN (top:0, left:0) and made invisible via opacity 0,
+    // not parked off-screen at left:-99999px (which broke html2canvas in
+    // production — #4431).
+    const wrapper = vi.mocked(downloadAsPdf).mock.calls[0][0] as HTMLElement;
+    expect(wrapper.style.left).toBe('0px');
+    expect(wrapper.style.top).toBe('0px');
+    expect(wrapper.style.opacity).toBe('0');
+    expect(wrapper.style.pointerEvents).toBe('none');
+    // Anti-regression: the broken value must NOT be present.
+    expect(wrapper.style.left).not.toBe('-99999px');
+  });
+
+  it('waits one animation frame after appendChild before invoking downloadAsPdf — #4431', async () => {
+    // Spy on rAF to verify the order of operations.
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+
+    // rAF must have been called at least once during the download flow.
+    expect(rafSpy).toHaveBeenCalled();
+    rafSpy.mockRestore();
+  });
+
   it('sanitizes HTML in assistant content before passing to PDF (IMPORTANT-3 XSS guard)', async () => {
     // Stream an assistant reply with a payload that would execute via inline HTML.
     mockFetchOk([
