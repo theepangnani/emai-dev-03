@@ -139,12 +139,13 @@ def test_system_prompt_full_mode_chip_instruction_is_last() -> None:
 
 
 def test_chip_instruction_demands_self_contained_topic_named_chips() -> None:
-    """Chips must be self-contained prompts that name the topic (#4381 Bug 2a)."""
+    """Chips must be self-contained, topic-anchored, and grade-agnostic
+    (#4381 Bug 2a + #4374 SUGG-3)."""
     assert "self-contained" in SUGGESTION_CHIP_INSTRUCTION
-    # The "Good" example must demonstrate naming the topic — looser binding
-    # than a hard-coded grade-specific example to avoid LLM mimicry.
-    assert "Practice" in SUGGESTION_CHIP_INSTRUCTION
-    assert "topic" in SUGGESTION_CHIP_INSTRUCTION
+    # Abstract good-example phrasing — proves SUGG-3 fix is in place.
+    assert "topic above" in SUGGESTION_CHIP_INSTRUCTION
+    # Guard against regression to the grade-specific anchor.
+    assert "Grade 10" not in SUGGESTION_CHIP_INSTRUCTION
 
 
 def test_system_prompt_has_stay_on_topic_directive() -> None:
