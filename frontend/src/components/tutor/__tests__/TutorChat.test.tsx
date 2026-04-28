@@ -266,7 +266,7 @@ describe('TutorChat', () => {
       ok: true,
       body: makeSSEStream([
         'data: {"type":"token","text":"Here you go."}\n\n',
-        'data: {"type":"chips","suggestions":["How does this apply in real life?"]}\n\n',
+        'data: {"type":"chips","suggestions":["What are the historical origins?"]}\n\n',
         'data: {"type":"done"}\n\n',
       ]),
     });
@@ -289,7 +289,7 @@ describe('TutorChat', () => {
       name: /suggested follow-up/i,
     });
     const chip = within(chipList).getByText(
-      'How does this apply in real life?',
+      'What are the historical origins?',
     );
     await user.click(chip);
 
@@ -578,6 +578,45 @@ describe('TutorChat', () => {
         name: /download pdf/i,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('clicking "Get the full version" twice quickly only fires ONE additional fetch (#4395 debounce)', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"short"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"long structured"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'topic{Enter}',
+    );
+
+    const fullBtn = await screen.findByRole('button', { name: /get the full version/i });
+    // Double-click in quick succession before React re-renders.
+    await user.click(fullBtn);
+    await user.click(fullBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/long structured/i)).toBeInTheDocument();
+    });
+
+    // 1 initial sendMessage + 1 requestFull = 2 total. Two clicks must NOT
+    // fire 3 fetches.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('clicking "Download PDF" invokes the downloadAsPdf helper', async () => {

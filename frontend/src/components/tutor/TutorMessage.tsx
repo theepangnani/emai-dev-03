@@ -44,7 +44,7 @@ export function TutorMessage({
 
   const showActions =
     !isUser && !streaming && !safety && content.trim() !== '';
-  const showFullButton = showActions && message.mode !== 'full';
+  const showFullButton = showActions && message.mode !== 'full' && !message.fullRequested;
 
   return (
     <article

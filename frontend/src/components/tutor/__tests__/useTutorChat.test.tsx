@@ -247,4 +247,79 @@ describe('useTutorChat', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('requestFull marks the source message fullRequested:true (debounce guard)', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"short"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"long"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useTutorChat());
+    await act(async () => {
+      await result.current.sendMessage('Explain photosynthesis');
+    });
+
+    const assistant = result.current.messages.find((m) => m.role === 'assistant');
+    expect(assistant).toBeDefined();
+    expect(assistant?.fullRequested).toBeFalsy();
+
+    await act(async () => {
+      result.current.requestFull(assistant!.id);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // The original quick-mode source message must now be marked fullRequested:true
+    // so a second click on "Get the full version" is suppressed.
+    const sourceAfter = result.current.messages.find((m) => m.id === assistant!.id);
+    expect(sourceAfter?.fullRequested).toBe(true);
+  });
+
+  it('requestFull called twice in quick succession only fires ONE additional fetch', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"short"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"long"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useTutorChat());
+    await act(async () => {
+      await result.current.sendMessage('Explain photosynthesis');
+    });
+
+    const assistant = result.current.messages.find((m) => m.role === 'assistant');
+    expect(assistant).toBeDefined();
+
+    // Two back-to-back calls — second must be debounced by fullRequested guard.
+    await act(async () => {
+      result.current.requestFull(assistant!.id);
+      result.current.requestFull(assistant!.id);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // 1 initial sendMessage + 1 requestFull = 2 fetches total (NOT 3).
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

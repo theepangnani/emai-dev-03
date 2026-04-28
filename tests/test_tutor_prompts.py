@@ -141,9 +141,10 @@ def test_system_prompt_full_mode_chip_instruction_is_last() -> None:
 def test_chip_instruction_demands_self_contained_topic_named_chips() -> None:
     """Chips must be self-contained prompts that name the topic (#4381 Bug 2a)."""
     assert "self-contained" in SUGGESTION_CHIP_INSTRUCTION
-    # The "Good" example must carry a concrete topic-named chip so the
-    # model has a strong few-shot anchor.
-    assert "Practice factoring problems" in SUGGESTION_CHIP_INSTRUCTION
+    # The "Good" example must demonstrate naming the topic — looser binding
+    # than a hard-coded grade-specific example to avoid LLM mimicry.
+    assert "Practice" in SUGGESTION_CHIP_INSTRUCTION
+    assert "topic" in SUGGESTION_CHIP_INSTRUCTION
 
 
 def test_system_prompt_has_stay_on_topic_directive() -> None:
