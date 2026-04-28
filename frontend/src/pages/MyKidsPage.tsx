@@ -774,6 +774,15 @@ export function MyKidsPage() {
             <PageSkeleton />
           ) : (
             <div className="dashboard-redesign">
+              {/* #4349 Stream M — Daily Digest now leads (was below Class Materials). */}
+              <EmailDigestCard
+                hasIntegration={hasEmailDigestIntegration}
+                onSetup={() => setShowEmailDigestWizard(true)}
+                onOpenDigest={() => navigate('/email-digest')}
+                aggregate
+                showRecentHistory
+              />
+
               {/* ── Class Materials (all children) — always-expanded bridge card (#4129 S3) ───────── */}
               <article className="bridge-card">
                 <header className="bridge-card-head">
@@ -810,13 +819,6 @@ export function MyKidsPage() {
                   </footer>
                 )}
               </article>
-
-              <EmailDigestCard
-                hasIntegration={hasEmailDigestIntegration}
-                onSetup={() => setShowEmailDigestWizard(true)}
-                onOpenDigest={() => navigate('/email-digest')}
-                aggregate
-              />
 
 
               {/* ── Unassigned Classes ─────────────────── */}
@@ -935,6 +937,7 @@ export function MyKidsPage() {
                       navigate(firstName ? `/email-digest?kid=${encodeURIComponent(firstName)}` : '/email-digest');
                     }}
                     childName={childName}
+                    showRecentHistory
                   />
                   <ListCard
                     kicker="Content library"

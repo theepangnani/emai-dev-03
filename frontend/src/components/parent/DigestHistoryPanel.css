@@ -1,0 +1,157 @@
+/* DigestHistoryPanel — reusable digest delivery history list (#4349 Stream A).
+ * `dhp-*` prefix avoids collisions with the existing `ed-*` classes used in
+ * the legacy inline section in EmailDigestPage.css. Visual style is adapted
+ * from `.ed-history-section` etc. so the panel looks at home both inside a
+ * bridge-card AND on EmailDigestPage. */
+
+.dhp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dhp-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.dhp-heading--button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-ink);
+}
+
+.dhp-heading.dhp-heading--collapsible {
+  margin: 0;
+  padding: 0;
+}
+
+.dhp-heading-text {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dhp-loading {
+  text-align: center;
+  padding: 24px 0;
+  color: var(--color-ink-muted);
+}
+
+.dhp-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+}
+
+.dhp-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dhp-log-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.dhp-log-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  color: inherit;
+}
+.dhp-log-header:hover {
+  background: var(--color-surface-alt);
+}
+
+.dhp-log-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dhp-log-date {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.dhp-log-count {
+  font-size: 0.8125rem;
+  color: var(--color-ink-muted);
+}
+
+.dhp-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.dhp-status--delivered {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.dhp-status--failed {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.dhp-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--color-ink-muted);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.dhp-chevron--open {
+  transform: rotate(180deg);
+}
+
+.dhp-log-content {
+  padding: 0 16px 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.dhp-digest-text {
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding-top: 12px;
+}
+
+.dhp-no-content {
+  font-size: 0.875rem;
+  color: var(--color-ink-muted);
+  font-style: italic;
+  padding-top: 12px;
+  margin: 0;
+}
+
+.dhp-log-channels {
+  font-size: 0.75rem;
+  color: var(--color-ink-muted);
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
