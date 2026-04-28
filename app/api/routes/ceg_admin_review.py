@@ -346,11 +346,12 @@ def reject_expectation(
 # ---------------------------------------------------------------------------
 
 
-# Whitelist of editable column names on CEGExpectation. ``topic`` is
-# accepted in the request body for forward compatibility but is NOT in
-# this set — it's silently ignored until the column lands. ``review_notes``
-# is editable here so the reviewer can attach notes during a paraphrase
-# pass without having to call /reject.
+# Whitelist of editable column names on CEGExpectation. Must mirror
+# the ``EditExpectationRequest`` schema — drift between the two would be
+# a no-op silent drop, which the schema's ``extra='forbid'`` is meant to
+# prevent at the API boundary. ``review_notes`` is editable so the
+# reviewer can attach notes during a paraphrase pass without having to
+# call /reject.
 _EDITABLE_FIELDS = {
     "description",
     "ministry_code",
