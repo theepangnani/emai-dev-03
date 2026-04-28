@@ -962,6 +962,7 @@ async def send_unified_digest_for_parent(
             "status": "skipped",
             "email_count": 0,
             "attribution_counts": {},
+            "channel_status": None,
             "message": "Parent not found",
             "reason": "parent_missing",
         }
@@ -986,6 +987,7 @@ async def send_unified_digest_for_parent(
             "status": "skipped",
             "email_count": 0,
             "attribution_counts": {},
+            "channel_status": None,
             "message": "No active integrations for parent",
             "reason": "no_integrations",
         }
@@ -1017,6 +1019,7 @@ async def send_unified_digest_for_parent(
                 "status": "skipped",
                 "email_count": 0,
                 "attribution_counts": {},
+                "channel_status": None,
                 "message": "Already delivered today",
                 "reason": "already_delivered",
             }
@@ -1140,6 +1143,7 @@ async def send_unified_digest_for_parent(
             "status": "skipped",
             "email_count": 0,
             "attribution_counts": attribution_counts,
+            "channel_status": None,
             "message": "No new emails",
             "reason": "no_new_emails",
         }
@@ -1395,10 +1399,23 @@ async def send_unified_digest_for_parent(
         if overall_status == "delivered"
         else f"Unified digest {overall_status} ({email_count} emails)"
     )
+    # #4449 — surface per-channel delivery status (mirrors the legacy
+    # send_digest_for_integration contract) so the manual "Send Now" UI
+    # can keep showing per-channel indicators when V2 dispatches. Only
+    # include keys for channels the parent's preferences actually
+    # selected (matches the ``outcomes`` filter above).
+    channel_status: dict[str, bool | None] = {}
+    if "in_app" in channels:
+        channel_status["in_app"] = in_app_ok
+    if "email" in channels:
+        channel_status["email"] = email_ok
+    if "whatsapp" in channels:
+        channel_status["whatsapp"] = whatsapp_ok
     return {
         "status": overall_status,
         "email_count": email_count,
         "attribution_counts": attribution_counts,
+        "channel_status": channel_status,
         "message": message,
     }
 
