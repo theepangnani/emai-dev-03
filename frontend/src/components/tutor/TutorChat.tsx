@@ -10,6 +10,8 @@
  *     outer chrome via DashboardLayout).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import ReactMarkdown from 'react-markdown';
 import { ArcMascot } from '../arc';
 import { getArcVariant } from '../arc/util';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +21,7 @@ import { TutorInputBar } from './TutorInputBar';
 import { useTutorChat } from './useTutorChat';
 import type { TutorMessage as TutorMessageType } from './useTutorChat';
 import type { FileUploadResponse } from '../../api/asgf';
+import { downloadAsPdf } from '../../utils/exportUtils';
 import './TutorChat.css';
 
 export interface TutorChatProps {
@@ -46,7 +49,7 @@ export function TutorChat({
   conversationId: externalConversationId,
   setConversationId: externalSetConversationId,
 }: TutorChatProps) {
-  const { messages, sendMessage, isStreaming, cancel, error } = useTutorChat({
+  const { messages, sendMessage, requestFull, isStreaming, cancel, error } = useTutorChat({
     externalMessages,
     externalSetMessages,
     externalConversationId,
@@ -92,6 +95,30 @@ export function TutorChat({
     [],
   );
 
+  const handleDownloadPdf = useCallback(async (message: TutorMessageType) => {
+    const ts = message.timestamp instanceof Date ? message.timestamp : new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const stamp = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
+    const filename = `Arc-tutor-${stamp}.pdf`;
+
+    // Render the markdown to static HTML inside an off-DOM container that
+    // html2pdf can consume. We attach it to the body briefly (off-screen)
+    // because html2canvas requires an in-DOM element.
+    const bodyHtml = renderToStaticMarkup(<ReactMarkdown>{message.content}</ReactMarkdown>);
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.left = '-99999px';
+    wrapper.style.top = '0';
+    wrapper.style.width = '720px';
+    wrapper.innerHTML = `<h1>Arc — ClassBridge tutor reply</h1>${bodyHtml}`;
+    document.body.appendChild(wrapper);
+    try {
+      await downloadAsPdf(wrapper, filename);
+    } finally {
+      wrapper.remove();
+    }
+  }, []);
+
   const greeting = useMemo(() => {
     const name = firstName?.trim() ? firstName.split(' ')[0] : 'friend';
     return name;
@@ -134,6 +161,9 @@ export function TutorChat({
               key={m.id}
               message={m}
               isLatest={idx === messages.length - 1}
+              isStreaming={isStreaming}
+              onRequestFull={requestFull}
+              onDownloadPdf={handleDownloadPdf}
             />
           ))}
 

@@ -15,9 +15,21 @@ export interface TutorMessageProps {
   message: TutorMessageType;
   /** True when this is the most recent message (used for entrance animation). */
   isLatest?: boolean;
+  /** True while a stream is in flight anywhere in the chat — disables actions. */
+  isStreaming?: boolean;
+  /** Replay the user prompt that produced this message in mode:'full'. */
+  onRequestFull?: (id: string) => void;
+  /** Download this assistant message as PDF. */
+  onDownloadPdf?: (message: TutorMessageType) => void;
 }
 
-export function TutorMessage({ message, isLatest = false }: TutorMessageProps) {
+export function TutorMessage({
+  message,
+  isLatest = false,
+  isStreaming = false,
+  onRequestFull,
+  onDownloadPdf,
+}: TutorMessageProps) {
   const { role, content, safety, streaming } = message;
   const isUser = role === 'user';
 
@@ -29,6 +41,10 @@ export function TutorMessage({ message, isLatest = false }: TutorMessageProps) {
   ]
     .filter(Boolean)
     .join(' ');
+
+  const showActions =
+    !isUser && !streaming && !safety && content.trim() !== '';
+  const showFullButton = showActions && message.mode !== 'full';
 
   return (
     <article
@@ -62,6 +78,27 @@ export function TutorMessage({ message, isLatest = false }: TutorMessageProps) {
           </div>
         )}
       </div>
+      {showActions && (
+        <div className="tutor-msg__actions">
+          {showFullButton && (
+            <button
+              type="button"
+              className="tutor-msg__action"
+              onClick={() => onRequestFull?.(message.id)}
+              disabled={isStreaming}
+            >
+              Get the full version
+            </button>
+          )}
+          <button
+            type="button"
+            className="tutor-msg__action"
+            onClick={() => onDownloadPdf?.(message)}
+          >
+            Download PDF
+          </button>
+        </div>
+      )}
     </article>
   );
 }

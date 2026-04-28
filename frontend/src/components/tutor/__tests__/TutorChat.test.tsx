@@ -1,6 +1,13 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// Mock the PDF export helper so we can assert it was invoked without
+// actually loading html2pdf.js in jsdom.
+vi.mock('../../../utils/exportUtils', () => ({
+  downloadAsPdf: vi.fn().mockResolvedValue(undefined),
+  printElement: vi.fn(),
+}));
+
 // Stream A (#4312) wraps ArcMascot in a data-arc={getArcVariant(user?.id)}
 // element which calls useAuth(). Mock AuthContext so the pre-existing
 // TutorChat tests don't require an AuthProvider.
@@ -33,6 +40,7 @@ vi.mock('../../../context/AuthContext', () => ({
 }));
 
 import { TutorChat } from '../TutorChat';
+import { downloadAsPdf } from '../../../utils/exportUtils';
 
 // Helpers to build an SSE ReadableStream the component-under-test will consume.
 function makeSSEStream(lines: string[]): ReadableStream<Uint8Array> {
@@ -238,6 +246,184 @@ describe('TutorChat', () => {
     const userBubble = container.querySelector('.tutor-msg--user');
     expect(userBubble).not.toBeNull();
     expect(userBubble?.getAttribute('aria-live')).toBeNull();
+  });
+
+  it('shows action buttons under a settled assistant bubble', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"Sure thing."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'tell me{Enter}',
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /get the full version/i }),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: /download pdf/i })).toBeInTheDocument();
+  });
+
+  it('does NOT show action buttons while a bubble is still streaming', async () => {
+    // Provide tokens but no done frame for the duration of the assertion.
+    let resolveDone: (() => void) | null = null;
+    const longStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('data: {"type":"token","text":"streaming..."}\n\n'));
+        // Don't enqueue done — leave the stream open until the test resolves it.
+        resolveDone = () => {
+          controller.enqueue(encoder.encode('data: {"type":"done"}\n\n'));
+          controller.close();
+        };
+      },
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, body: longStream }));
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'tell me{Enter}',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/streaming\.\.\./i)).toBeInTheDocument();
+    });
+
+    // Mid-stream: actions must be hidden.
+    expect(
+      screen.queryByRole('button', { name: /get the full version/i }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: /download pdf/i })).toBeNull();
+
+    // Cleanly close the stream so the test/component can settle.
+    resolveDone?.();
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /download pdf/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('does NOT show action buttons on a safety bubble', async () => {
+    mockFetchOk([
+      'data: {"type":"safety","text":"Heads up, that one falls outside what I can help with."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'risky question{Enter}',
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Heads up, that one falls outside/i)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /get the full version/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /download pdf/i })).toBeNull();
+  });
+
+  it('does NOT show action buttons on an empty-content bubble', async () => {
+    // Fetch resolves with no token frames + immediate done — bubble has empty content.
+    mockFetchOk(['data: {"type":"done"}\n\n']);
+
+    const user = userEvent.setup();
+    const { container } = render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    await waitFor(() => {
+      const arc = container.querySelector('.tutor-msg--arc');
+      expect(arc).not.toBeNull();
+    });
+
+    expect(screen.queryByRole('button', { name: /download pdf/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /get the full version/i })).toBeNull();
+  });
+
+  it('hides "Get the full version" once a message has been replayed in mode:"full"', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"short"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"long structured"}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'topic{Enter}',
+    );
+
+    const fullBtn = await screen.findByRole('button', { name: /get the full version/i });
+    await user.click(fullBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/long structured/i)).toBeInTheDocument();
+    });
+
+    // The freshly-arrived assistant bubble was sent in mode:'full' →
+    // "Get the full version" must not render under it.
+    const fullModeBubble = screen
+      .getByText(/long structured/i)
+      .closest('.tutor-msg');
+    expect(fullModeBubble).not.toBeNull();
+    expect(
+      within(fullModeBubble as HTMLElement).queryByRole('button', {
+        name: /get the full version/i,
+      }),
+    ).toBeNull();
+    // Download PDF still shows.
+    expect(
+      within(fullModeBubble as HTMLElement).getByRole('button', {
+        name: /download pdf/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('clicking "Download PDF" invokes the downloadAsPdf helper', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+    const [, filename] = vi.mocked(downloadAsPdf).mock.calls[0];
+    expect(filename).toMatch(/^Arc-tutor-\d{8}-\d{4}\.pdf$/);
   });
 
   it('renders a readable error banner (not a raw error code) on failure', async () => {
