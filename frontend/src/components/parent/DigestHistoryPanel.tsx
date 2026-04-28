@@ -18,6 +18,8 @@ export interface DigestHistoryPanelProps {
   defaultCollapsed?: boolean;
   /** Optional className for the outer wrapper */
   className?: string;
+  /** Custom copy for the empty state. Defaults to "No digests delivered yet." */
+  emptyState?: ReactNode;
 }
 
 function formatDate(iso: string): string {
@@ -42,6 +44,7 @@ export function DigestHistoryPanel({
   collapsible = false,
   defaultCollapsed = false,
   className,
+  emptyState = 'No digests delivered yet.',
 }: DigestHistoryPanelProps): JSX.Element {
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<boolean>(collapsible && defaultCollapsed);
@@ -91,7 +94,7 @@ export function DigestHistoryPanel({
         <>
           {isLoading && <div className="dhp-loading">Loading history…</div>}
           {!isLoading && logs.length === 0 && (
-            <div className="dhp-empty">No digests delivered yet.</div>
+            <div className="dhp-empty">{emptyState}</div>
           )}
           {!isLoading && logs.length > 0 && (
             <div className="dhp-log-list">

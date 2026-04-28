@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { ReactNode } from 'react';
 import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { renderWithProviders } from '../../test/helpers';
 import { EmailDigestPage } from './EmailDigestPage';
@@ -85,8 +86,12 @@ vi.mock('../../components/DashboardLayout', () => ({
 // the panel's own behavior (loading/empty/expand/sanitize) is covered by
 // `frontend/src/components/parent/DigestHistoryPanel.test.tsx`.
 vi.mock('../../components/parent/DigestHistoryPanel', () => ({
-  DigestHistoryPanel: ({ limit }: { limit?: number }) => (
-    <div data-testid="digest-history-panel" data-limit={String(limit ?? '')}>
+  DigestHistoryPanel: ({ limit, emptyState }: { limit?: number; emptyState?: ReactNode }) => (
+    <div
+      data-testid="digest-history-panel"
+      data-limit={String(limit ?? '')}
+      data-empty-state={typeof emptyState === 'string' ? emptyState : ''}
+    >
       Digest History
     </div>
   ),
@@ -1744,12 +1749,16 @@ describe('EmailDigestPage — unified Digest History (#4056, #4349 Stream E)', (
     mockListMonitoredSenders.mockResolvedValue({ data: [] });
   });
 
-  it('renders the shared DigestHistoryPanel with limit=50', async () => {
+  it('renders the shared DigestHistoryPanel with limit=50 and the original empty-state copy', async () => {
     renderWithProviders(<EmailDigestPage />);
 
     const panel = await screen.findByTestId('digest-history-panel');
     expect(panel).toBeInTheDocument();
     expect(panel).toHaveAttribute('data-limit', '50');
+    expect(panel).toHaveAttribute(
+      'data-empty-state',
+      'No digests delivered yet. Your first digest will appear here after the next scheduled run.',
+    );
   });
 });
 

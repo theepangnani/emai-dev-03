@@ -763,7 +763,10 @@ function EmailDigestPageLegacy() {
             </div>
 
             {/* Digest History — shared panel (#4349 Stream E). */}
-            <DigestHistoryPanel limit={50} />
+            <DigestHistoryPanel
+              limit={50}
+              emptyState="No digests delivered yet. Your first digest will appear here after the next scheduled run."
+            />
           </>
         )}
       </div>
@@ -2087,7 +2090,12 @@ function EmailDigestPageUnified() {
         </div>
 
         {/* 4. Digest History (#4056, #4349 Stream E) — shared panel. */}
-        {activeIntegration && <DigestHistoryPanel limit={50} />}
+        {activeIntegration && (
+          <DigestHistoryPanel
+            limit={50}
+            emptyState="No digests delivered yet. Your first digest will appear here after the next scheduled run."
+          />
+        )}
 
         {(addSenderOpen || editSenderTarget) && (
           <AddSenderModal
