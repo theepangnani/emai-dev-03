@@ -2,11 +2,17 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 
 // Mock the PDF export helper so we can assert it was invoked without
-// actually loading html2pdf.js in jsdom.
-vi.mock('../../../utils/exportUtils', () => ({
-  downloadAsPdf: vi.fn().mockResolvedValue(undefined),
-  printElement: vi.fn(),
-}));
+// actually loading html2pdf.js in jsdom. Use importActual + spread so we
+// only override `downloadAsPdf` — any other export the SUT happens to
+// pick up (printElement, future helpers) keeps its real implementation
+// (SUGG-8 mock-shadow hardening).
+vi.mock('../../../utils/exportUtils', async () => {
+  const actual = await vi.importActual<typeof import('../../../utils/exportUtils')>('../../../utils/exportUtils');
+  return {
+    ...actual,
+    downloadAsPdf: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 // Stream A (#4312) wraps ArcMascot in a data-arc={getArcVariant(user?.id)}
 // element which calls useAuth(). Mock AuthContext so the pre-existing
@@ -256,6 +262,40 @@ describe('TutorChat', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondBody.mode).toBe('worksheet');
+  });
+
+  it('routes a chip with the bare word "problems" through worksheet mode (regex limitation, documented) — #4382', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Here you go."}\n\n',
+        'data: {"type":"chips","suggestions":["Walk me through inverse problem-solving steps"]}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"1. ..."}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Sam" />);
+    await user.type(screen.getByRole('textbox', { name: /message arc/i }), 'topic{Enter}');
+    const chipList = await screen.findByRole('list', { name: /suggested follow-up/i });
+    await user.click(within(chipList).getByText('Walk me through inverse problem-solving steps'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    // Documents that the boundary regex still matches the bare word "problem".
+    // This is a known limitation — true intent detection would need an action verb.
     const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(secondBody.mode).toBe('worksheet');
   });
@@ -640,6 +680,70 @@ describe('TutorChat', () => {
     });
     const [, filename] = vi.mocked(downloadAsPdf).mock.calls[0];
     expect(filename).toMatch(/^Arc-tutor-\d{8}-\d{4}\.pdf$/);
+  });
+
+  it('sanitizes HTML in assistant content before passing to PDF (IMPORTANT-3 XSS guard)', async () => {
+    // Stream an assistant reply with a payload that would execute via inline HTML.
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content <img src=x onerror=\\"window.__pwn=true\\"> end."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    // Make sure the global is clean before the test.
+    // @ts-expect-error -- test-only marker
+    delete window.__pwn;
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+
+    // The wrapper element passed to downloadAsPdf MUST NOT contain the
+    // dangerous attributes — DOMPurify strips onerror + drops the img,
+    // or rewrites it. Either way, no event handler survives.
+    const wrapper = vi.mocked(downloadAsPdf).mock.calls[0][0] as HTMLElement;
+    expect(wrapper.innerHTML).not.toContain('onerror');
+    expect(wrapper.innerHTML).not.toContain('window.__pwn');
+
+    // Confirm sanitization didn't have a side effect (i.e. the inline
+    // handler was never executed during DOM attach).
+    // @ts-expect-error -- test-only marker
+    expect(window.__pwn).toBeUndefined();
+  });
+
+  it('logs and swallows when downloadAsPdf rejects (IMPORTANT-1 catch path)', async () => {
+    vi.mocked(downloadAsPdf).mockRejectedValueOnce(new Error('boom'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(screen.getByRole('textbox', { name: /message arc/i }), 'hello{Enter}');
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('PDF download failed'),
+        expect.any(Error),
+      );
+    });
+
+    warnSpy.mockRestore();
   });
 
   it('renders a readable error banner (not a raw error code) on failure', async () => {

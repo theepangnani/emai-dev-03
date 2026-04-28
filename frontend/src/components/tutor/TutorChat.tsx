@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { ArcMascot } from '../arc';
 import { getArcVariant } from '../arc/util';
 import { useAuth } from '../../context/AuthContext';
@@ -104,9 +105,16 @@ export function TutorChat({
     // Render the markdown to static HTML inside an off-DOM container that
     // html2pdf can consume. We attach it to the body briefly (off-screen)
     // because html2canvas requires an in-DOM element.
-    // `marked.parse` returns a string in v15+ default mode; coerce defensively
-    // in case a future config swaps in the async return shape.
-    const bodyHtml = String(marked.parse(message.content));
+    // `marked.parse` returns a string in v15+ default mode; throw defensively
+    // if a future config swaps in the async return shape so we never feed a
+    // Promise into innerHTML. Sanitize with DOMPurify to neutralize any
+    // inline event handlers / scripts before attaching to the live DOM
+    // (IMPORTANT-3 + SUGG-9 XSS guard).
+    const raw = marked.parse(message.content);
+    if (typeof raw !== 'string') {
+      throw new Error('marked unexpectedly returned a non-string');
+    }
+    const bodyHtml = DOMPurify.sanitize(raw);
     const wrapper = document.createElement('div');
     wrapper.style.position = 'fixed';
     wrapper.style.left = '-99999px';
