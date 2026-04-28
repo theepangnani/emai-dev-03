@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Flag-key constants — keep in sync with `feature_seed_service.per_key_seeds`.
 DCI_V1_ENABLED = "dci_v1_enabled"
+CMCP_ENABLED = "cmcp.enabled"
 
 
 def is_feature_enabled(key: str, db: Optional[Session] = None) -> bool:
