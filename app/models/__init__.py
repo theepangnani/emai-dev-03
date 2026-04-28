@@ -72,6 +72,12 @@ from app.models.dci import (
     CheckinStreakSummary,
     CheckinConsent,
 )
+from app.models.curriculum import (
+    CEGSubject,
+    CEGStrand,
+    CEGExpectation,
+    CurriculumVersion,
+)
 
 
 __all__ = [
@@ -173,4 +179,8 @@ __all__ = [
     "ConversationStarter",
     "CheckinStreakSummary",
     "CheckinConsent",
+    "CEGSubject",
+    "CEGStrand",
+    "CEGExpectation",
+    "CurriculumVersion",
 ]
