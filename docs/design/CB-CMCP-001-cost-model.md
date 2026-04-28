@@ -124,7 +124,7 @@ Single board scaled across ~50 teachers actively producing 100 artifacts/month e
 | Worksheet | 500 | $0.00087 | $0.44 |
 | **Subtotal — generation only** | **5,000** | — | **$238.13 / month** |
 
-Plus embedding refresh ($5/mo amortized) + GCP infra ($340/mo, see §6) → **~$583 / month**.
+Plus embedding refresh ($5/mo buffer — see §5) + GCP infra ($340/mo, see §6) → **~$583 / month**.
 
 Annualized: **~$7,000 / yr** for a single-board pilot at sustained mid-pilot volume.
 
@@ -144,7 +144,7 @@ Annualized: **~$7,000 / yr** for a single-board pilot at sustained mid-pilot vol
 | Worksheet | 5,000 | $0.00087 | $4.35 |
 | **Subtotal — generation only** | **50,000** | — | **$2,381.10 / month** |
 
-Plus embedding refresh ($15/mo amortized) + GCP infra ($1,150/mo, see §6) → **~$3,546 / month**.
+Plus embedding refresh ($15/mo buffer — see §5) + GCP infra ($1,150/mo, see §6) → **~$3,546 / month**.
 
 Annualized: **~$42,500 / yr** at Year 1 target volume.
 
@@ -156,7 +156,7 @@ Annualized: **~$42,500 / yr** at Year 1 target volume.
 | B — Single-board | 5,000 | $238 | $5 | $340 | **~$583** | $0.117 |
 | C — Multi-board | 50,000 | $2,381 | $15 | $1,150 | **~$3,546** | $0.071 |
 
-[^1]: Embedding **actual** spend rounds to ~$0.20/yr at all tiers (see §5). The "embed buffer" column is a conservative budget placeholder for unforeseen re-embed work (e.g., mid-year Ministry curriculum revision affecting >25% of expectations); it is **not** a recurring AI spend line. Drop these lines from year-2+ budget once telemetry confirms refresh cadence.
+[^1]: Embedding **actual** spend rounds to ~$0.20/yr at all tiers (see §5). The "embed buffer" column is a conservative budget placeholder for unforeseen re-embed work (e.g., mid-year Ministry curriculum revision affecting >25% of expectations); it is **not** a recurring AI spend line. The **Total $/mo** column **includes** the buffer for budget-conservative planning — true forecast spend is ~$5-15/mo lower per tier. Drop these lines from year-2+ budget once telemetry confirms refresh cadence.
 
 **Per-artifact blended cost decreases with scale** — fixed GCP infra amortizes across more generations. The pilot tier looks expensive per-artifact but the absolute spend is trivial; the multi-board tier is where unit economics start to matter.
 
@@ -310,7 +310,7 @@ if estimated_cost > $0.12:
 
 ### 8.4 Bail-out telemetry
 
-`cmcp.spend_cap.bailout_count` metric stamped with `content_type` + `teacher_id` + `estimated_cost`. M1-E dashboard shows weekly bail-out rate by content type. **Acceptance threshold:** bail-out rate ≤1% per content type at steady state. Above 1% indicates the cap is too tight for the prompt design and needs re-tuning (or the prompt is bloated and needs fixing — the dashboard makes the right call obvious).
+`cmcp.spend_cap.bailout_count` metric stamped with `content_type` + `board_id` + `estimated_cost` (board_id has cardinality ≤5, no PII concerns; per-teacher detail lives in audit logs not metrics). M1-E dashboard shows weekly bail-out rate by content type. **Acceptance threshold:** bail-out rate ≤1% per content type at steady state. Above 1% indicates the cap is too tight for the prompt design and needs re-tuning (or the prompt is bloated and needs fixing — the dashboard makes the right call obvious).
 
 ---
 
@@ -325,7 +325,7 @@ Below is the **expanded** mitigation chain that backs that row.
 | Risk | Likelihood | Impact | Mitigation chain (this doc) |
 |---|---|---|---|
 | Sonnet rate increase (provider-side) | Low | Medium | §2 rate card re-validated at every M-gate; M1-E dashboard alerts on $/artifact >1.5× baseline; routing fallback to Haiku for non-voice-critical artifacts evaluated at M3 |
-| Prompt bloat (envelope grows over time) | Medium | Medium | §8 per-artifact $0.10 cap with bail-out telemetry; envelope-resolver size cap of 800 tokens (M1-B-2); weekly review of average input tokens vs §3.1 baseline |
+| Prompt bloat (envelope grows over time) | Medium | Medium | §8 per-artifact $0.12 cap with bail-out telemetry; envelope-resolver size cap of 800 tokens (M1-B-2); weekly review of average input tokens vs §3.1 baseline |
 | Per-student amortization breaks (teachers regen per-student variants) | Medium | Medium-High | §7.3 — would push AI cost % from 36% → ~41%. Mitigation: M1-E surfaces per-class regeneration count; product decision needed before allowing >2 regenerations per artifact |
 | Volume forecast wrong (multi-board ramps faster than Year 1 target) | Low | Medium | Cloud SQL bump triggered at 30k/mo (75% of Tier C); Cloud Run autoscale max 20 already in place per plan §10 row 5 |
 | Embedding refresh becomes more frequent than 2/yr | Low | Low | §5 — even 12 refreshes/yr stays under $0.05/yr; not a real risk |
@@ -357,6 +357,7 @@ The numbers above are **good enough to commit M0 → M1**. They are not load-tes
 |---|---|---|
 | 2026-04-27 | Engineering | Initial draft (M0-D 0D-1) — covers per-content-type cost, 3 volume tiers, embedding refresh, GCP infra, AI-% anchor, spend cap, risks, open questions |
 | 2026-04-27 | Engineering (PR #4418 review pass 1) | Raised spend cap $0.10 → **$0.12** to give 15% headroom above Study Guide P95 ($0.1041); reconciled §4.4 embed-buffer column with §5 (footnote labels it as buffer, not real spend); class-size assumption (~25 students) called out explicitly in §7.2; §7.3 cross-reference clarified between $0.007 and $0.01 rounding; §6 shared-infra accounting note (incremental cost is ~30-50% lower than full table); Open Question #8 added (voice overlay real token sizes); §2 rate card pinned to 2026-04-27 |
+| 2026-04-27 | Engineering (PR #4418 review pass 2) | §9 risk row: stale $0.10 cap reference fixed → $0.12; §4.2/§4.3 narrative "amortized" → "buffer (see §5)" to match §4.4 footnote framing; §4.4 footnote clarifies that Total $/mo column includes buffer for conservative planning; §8.4 telemetry label `teacher_id` → `board_id` (lower cardinality + no PII concerns) |
 
 ---
 
