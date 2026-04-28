@@ -24,7 +24,7 @@ This document closes that gap. It is the cost-overrun mitigation referenced in p
 
 ## 2. Provider rate card (baseline)
 
-All figures USD per 1M tokens. Source: Anthropic + OpenAI public pricing pages, current as of doc date. **These rates change** — re-validate at every M-gate.
+All figures USD per 1M tokens. Source: Anthropic + OpenAI public pricing pages, current as of **2026-04-27** (doc date). **These rates change** — re-validate at every M-gate.
 
 | Model | Input | Output | Notes |
 |---|---|---|---|
@@ -74,13 +74,13 @@ Formula: `(input_tokens × input_rate) + (output_tokens × output_rate)`, all pe
 
 **Observations:**
 - Sonnet long-form artifacts are **~70× more expensive** per call than GPT-4o-mini short-form. This validates the locked routing rule.
-- Study Guide P95 ($0.10) is the most expensive single artifact and sits **right at** the proposed $0.10 spend cap (§7) — tight margin; M1-E dashboard must alert at $0.085 typical to leave room for prompt drift.
+- Study Guide P95 (**$0.1041**) **exceeds** the originally-considered $0.10 cap — the recommended cap (§8) is therefore **$0.12** to provide ~15% headroom above Study Guide P95. M1-E dashboard alerts at $0.10 typical → $0.12 hard cap.
 - Parent Companion ($0.034) is cheaper than Study Guide because output is shorter and structured. A2 derivative cost is ~45% of the parent artifact — well within the locked plan's "≤60s, no extra surface" envelope.
 - Quiz + Worksheet costs are **negligible** at <$0.002 each — they could be regenerated freely (e.g., new variant per student) with no material spend impact.
 
 ### 3.3 Sanity check vs CB-ASGF-001 anchor
 
-CB-ASGF-001 = $0.106 per session. ASGF wraps **slide generation + concept extraction + intent classification + Flash Tutor quiz handoff** in a single user-visible flow. CB-CMCP-001 single-artifact Study Guide P95 = $0.104 — within 2% of the ASGF anchor, which suggests the input + output token assumptions are well-calibrated. If real-world telemetry (M1-E) shows CMCP-001 spend ≥1.5× the ASGF anchor, prompt-bloat is the most likely cause; investigate envelope-resolver output size first.
+CB-ASGF-001 = $0.106 per session. ASGF wraps **slide generation + concept extraction + intent classification + Flash Tutor quiz handoff** in a single user-visible flow. CB-CMCP-001 single-artifact Study Guide P95 = $0.1041 — within 2% of the ASGF anchor, which suggests the input + output token assumptions are well-calibrated. If real-world telemetry (M1-E) shows CMCP-001 spend ≥1.5× the ASGF anchor, prompt-bloat is the most likely cause; investigate envelope-resolver output size first.
 
 ---
 
@@ -106,7 +106,7 @@ Single-board pilot. ~5 schools × ~15 teachers × ~7 artifacts each over the pil
 
 Plus embedding refresh (one-time at pilot start, ~$0.40 per §5) + GCP infra (per §6 below, ~$120/mo in pilot) → **~$144 total for pilot window** (call it $200 to absorb retries + voice-audit re-runs).
 
-**Per-artifact average:** ~$0.05 (well under $0.10 cap).
+**Per-artifact average:** ~$0.05 (well under $0.12 cap; see §8).
 
 ### 4.2 Tier B — Single-board (~5,000 artifacts/month, mid-pilot ramp)
 
@@ -150,11 +150,13 @@ Annualized: **~$42,500 / yr** at Year 1 target volume.
 
 ### 4.4 Tier summary
 
-| Tier | Artifacts/mo | Generation $/mo | Embed $/mo | GCP $/mo | **Total $/mo** | $/artifact blended |
+| Tier | Artifacts/mo | Generation $/mo | Embed buffer $/mo[^1] | GCP $/mo | **Total $/mo** | $/artifact blended |
 |---|---|---|---|---|---|---|
 | A — Pilot | 500 (window) | $24 | $0.40 | $120 | **~$144** | $0.29 (front-loaded fixed cost) |
 | B — Single-board | 5,000 | $238 | $5 | $340 | **~$583** | $0.117 |
 | C — Multi-board | 50,000 | $2,381 | $15 | $1,150 | **~$3,546** | $0.071 |
+
+[^1]: Embedding **actual** spend rounds to ~$0.20/yr at all tiers (see §5). The "embed buffer" column is a conservative budget placeholder for unforeseen re-embed work (e.g., mid-year Ministry curriculum revision affecting >25% of expectations); it is **not** a recurring AI spend line. Drop these lines from year-2+ budget once telemetry confirms refresh cadence.
 
 **Per-artifact blended cost decreases with scale** — fixed GCP infra amortizes across more generations. The pilot tier looks expensive per-artifact but the absolute spend is trivial; the multi-board tier is where unit economics start to matter.
 
@@ -229,6 +231,8 @@ Estimates assume locked plan §M2-A architecture: Cloud Run for CGP (Curriculum 
 
 **Note on Cloud SQL sizing:** the existing `classbridge` Cloud SQL instance already serves dev-03 and is HA — Tier A/B can reuse it without bumping the SKU. Tier C **does** need a SKU bump (db-custom-4-15360), called out as a Year 1 capex item in §8.
 
+**Note on shared-infra accounting:** §6 prices Cloud SQL HA, Cloud Monitoring base tier, and a portion of Cloud Run cold-start at on-demand list price. Some of this is **already paid** by dev-03's existing classbridge service — the **incremental** GCP cost from CMCP-001 at Tier B is closer to **~$80-100/mo** (just CGP + MCP Cloud Run + storage delta + log volume), not the full $340/mo. The §4.4 blended $/artifact figures conservatively allocate the full GCP line; true marginal CMCP-001 cost is ~30-50% lower at Tier B and ~25-35% lower at Tier C. Use §4.4 totals for budget planning; use the marginal estimate for unit-economics conversations with finance.
+
 ---
 
 ## 7. AI cost as % of B2C revenue
@@ -245,7 +249,11 @@ The 36% number sets a **soft ceiling** for the CB-CMCP-001 rollout: any feature 
 
 ### 7.2 CB-CMCP-001 projection — added AI cost per active student/month
 
-Assumption: an active student in M4+ pilot consumes CMCP-001 artifacts via teacher-published Bridge cards / DCI nudges / PEDI digest (per A4 surface delivery). Average exposure:
+Assumption: an active student in M4+ pilot consumes CMCP-001 artifacts via teacher-published Bridge cards / DCI nudges / PEDI digest (per A4 surface delivery).
+
+**Class-size amortization assumption:** ~25 students per class (Ontario Gr 4-8 average; Gr 1-3 cap is 20). Per-student cost scales inversely with this number — smaller classes = higher per-student cost.
+
+Average exposure:
 
 - 4 Study Guides / month consumed (1/wk) — most are reused across students, so per-student amortized cost is the artifact cost ÷ ~25 students consuming it = $0.0741 / 25 = **$0.0030 / student**
 - 4 Quizzes / month — short-form, near-zero cost — **$0.0001 / student**
@@ -253,7 +261,7 @@ Assumption: an active student in M4+ pilot consumes CMCP-001 artifacts via teach
 - 1 Sample Test / month — $0.0666 / 25 = **$0.0027 / student**
 - 4 Parent Companions / month (one per study guide for parent-side delivery) — $0.0336 amortized = **$0.0013 / student**
 
-**Added AI cost per active student/month from CB-CMCP-001:** ~**$0.007**.
+**Added AI cost per active student/month from CB-CMCP-001:** ~**$0.007** (sum of bullets above; rounded up to **~$0.01** in the §7.3 table for combined-cost reporting).
 
 This is **deliberately small** because the locked plan amortizes generation across classrooms — a Study Guide generated once for a Grade 5 Math class is consumed by ~25 students at zero marginal AI cost.
 
@@ -275,21 +283,23 @@ The CMCP-001 additive cost is **<1% of the existing baseline**. The 36%-of-reven
 
 ### 8.1 Recommended cap
 
-**$0.10 hard cap per artifact generation.** Bail-out logic in the guardrail engine (M1-A-1) before the LLM call:
+**$0.12 hard cap per artifact generation.** Bail-out logic in the guardrail engine (M1-A-1) before the LLM call:
 
 ```
 estimated_cost = (estimated_input_tokens × input_rate) + (max_output_tokens × output_rate)
-if estimated_cost > $0.10:
+if estimated_cost > $0.12:
     return AlignmentReport(
         state=BAILED_OUT_SPEND_CAP,
-        reason="Estimated spend $X.XX exceeds $0.10 cap. Reduce envelope or split request.",
+        reason="Estimated spend $X.XX exceeds $0.12 cap. Reduce envelope or split request.",
     )
 ```
 
+> **Note on `BAILED_OUT_SPEND_CAP` state:** This state is **not yet** in the locked DD §6.1 state machine. Adding it is a follow-up requirement for M1-A-3 (state machine implementation). Track as part of M1-A-3 stripe scope.
+
 ### 8.2 Rationale
 
-- **$0.10 ≈ Study Guide P95.** This is the most expensive artifact at the upper end of typical token usage. A request that exceeds it implies prompt bloat (envelope is too large) or output expansion (model is verbose), both of which warrant manual review before spend.
-- **At Tier C volume (50k/mo), even a 5% bail-out rate saves ~$120/mo** — small in absolute terms but a meaningful early-warning signal that prompts are drifting.
+- **$0.12 = Study Guide P95 ($0.1041) + ~15% headroom.** This is the most expensive artifact at the upper end of typical token usage; the cap leaves room for normal P95 generations to complete while flagging prompt bloat or runaway output. (An earlier draft proposed $0.10, but Study Guide P95 = $0.1041 sits above that — every typical-fullness Study Guide would have bailed out, breaking the most common path. The $0.12 cap fixes this.)
+- **At Tier C volume (50k/mo), even a 5% bail-out rate saves ~$140/mo** — small in absolute terms but a meaningful early-warning signal that prompts are drifting.
 - **Hard cap, not soft warning.** A soft warning + log entry is insufficient because the LLM call has already happened and the money is spent. The cap must be checked **before** the API call.
 
 ### 8.3 Cap enforcement points
@@ -337,6 +347,7 @@ The numbers above are **good enough to commit M0 → M1**. They are not load-tes
 5. **Per-board service-account traffic for end-user MCP.** §6 Tier C MCP line ($200/mo) is a guess based on D1=C scoping (board MCP deferred, end-user MCP only). If D1 reverses post-M2, MCP line could 3-5× to $600-1000/mo. Tracked under plan §10 row 5 (MCP rate-limit risk).
 6. **Cache-hit assumptions for Sonnet prompts.** Sonnet prompt caching can reduce input-token cost by up to 90% for stable system prompts + voice overlays. §3.2 figures **do not assume any caching** (worst-case cost). If M1-A wires caching correctly, real Tier C generation cost may drop from $2,381 → $1,400-1,800 / month. Deferred until M1 telemetry confirms cache-hit rates.
 7. **OCT reviewer cost (M0-C-1).** This is a non-LLM cost not modeled here; tracked under plan §M0-C-1 ("hire / contract paid OCT-certified curriculum reviewer ~80h Phase 1"). Founder-owned line item, not engineering budget.
+8. **Voice-overlay real token sizes.** §3.1 assumes 250 tokens for the active voice variant. Existing CB-TUTOR-001/002 voice files (`arc_voice_v1.txt`, `professional_v1.txt`, `parent_coach_v1.txt`) per locked plan §1C-1 may be larger (600-1000 tokens for richer voice prompts is common). Measure at M1-C-1 stripe; if average is materially higher, all input-cost figures need a +5-10% bump and Sonnet prompt-caching (Open Question #6) becomes more attractive.
 
 ---
 
@@ -344,7 +355,8 @@ The numbers above are **good enough to commit M0 → M1**. They are not load-tes
 
 | Date | Author | Change |
 |---|---|---|
-| 2026-04-27 | Engineering | Initial draft (M0-D 0D-1) — covers per-content-type cost, 3 volume tiers, embedding refresh, GCP infra, AI-% anchor, $0.10 spend cap, risks, open questions |
+| 2026-04-27 | Engineering | Initial draft (M0-D 0D-1) — covers per-content-type cost, 3 volume tiers, embedding refresh, GCP infra, AI-% anchor, spend cap, risks, open questions |
+| 2026-04-27 | Engineering (PR #4418 review pass 1) | Raised spend cap $0.10 → **$0.12** to give 15% headroom above Study Guide P95 ($0.1041); reconciled §4.4 embed-buffer column with §5 (footnote labels it as buffer, not real spend); class-size assumption (~25 students) called out explicitly in §7.2; §7.3 cross-reference clarified between $0.007 and $0.01 rounding; §6 shared-infra accounting note (incremental cost is ~30-50% lower than full table); Open Question #8 added (voice overlay real token sizes); §2 rate card pinned to 2026-04-27 |
 
 ---
 
