@@ -105,48 +105,54 @@ export function TutorChat({
     // Render the markdown to static HTML inside an off-DOM container that
     // html2pdf can consume. We attach it to the body briefly (off-screen)
     // because html2canvas requires an in-DOM element.
-    // `marked.parse` returns a string in v15+ default mode; throw defensively
-    // if a future config swaps in the async return shape so we never feed a
-    // Promise into innerHTML. Sanitize with DOMPurify to neutralize any
-    // inline event handlers / scripts before attaching to the live DOM
-    // (IMPORTANT-3 + SUGG-9 XSS guard).
-    const raw = marked.parse(message.content);
-    if (typeof raw !== 'string') {
-      throw new Error('marked unexpectedly returned a non-string');
-    }
-    const bodyHtml = DOMPurify.sanitize(raw);
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'fixed';
-    wrapper.style.left = '-99999px';
-    wrapper.style.top = '0';
-    wrapper.style.width = '720px';
-    wrapper.innerHTML = `
-      <style>
-        .arc-pdf { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; padding: 24px; max-width: 720px; line-height: 1.55; }
-        .arc-pdf h1 { font-size: 22px; border-bottom: 2px solid #d97706; padding-bottom: 6px; margin-top: 0; }
-        .arc-pdf h2 { font-size: 18px; margin-top: 1.4em; color: #6c3eb8; }
-        .arc-pdf h3 { font-size: 15px; margin-top: 1em; }
-        .arc-pdf table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-        .arc-pdf th, .arc-pdf td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
-        .arc-pdf th { background: #f5f5f5; font-weight: 600; }
-        .arc-pdf code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
-        .arc-pdf pre { background: #f6f6f6; padding: 10px; border-radius: 6px; overflow-x: auto; }
-        .arc-pdf pre code { background: none; padding: 0; }
-        .arc-pdf ul, .arc-pdf ol { padding-left: 1.4em; }
-        .arc-pdf p { margin: 0.6em 0; }
-      </style>
-      <div class="arc-pdf">
-        <h1>Arc — ClassBridge tutor reply</h1>
-        ${bodyHtml}
-      </div>
-    `;
-    document.body.appendChild(wrapper);
+    // The whole body lives inside one try/catch so any throw from
+    // `marked.parse`, DOMPurify, the DOM mutation, or `downloadAsPdf` is
+    // captured — IMPORTANT-5 (#4401): pre-fix, only `downloadAsPdf` was
+    // wrapped, which let the defensive `throw` from a non-string `marked`
+    // return escape the click handler.
+    let wrapper: HTMLDivElement | null = null;
     try {
+      // `marked.parse` returns a string in v15+ default mode; throw defensively
+      // if a future config swaps in the async return shape so we never feed a
+      // Promise into innerHTML. Sanitize with DOMPurify to neutralize any
+      // inline event handlers / scripts before attaching to the live DOM
+      // (IMPORTANT-3 + SUGG-9 XSS guard).
+      const raw = marked.parse(message.content);
+      if (typeof raw !== 'string') {
+        throw new Error('marked unexpectedly returned a non-string');
+      }
+      const bodyHtml = DOMPurify.sanitize(raw);
+      wrapper = document.createElement('div');
+      wrapper.style.position = 'fixed';
+      wrapper.style.left = '-99999px';
+      wrapper.style.top = '0';
+      wrapper.style.width = '720px';
+      wrapper.innerHTML = `
+        <style>
+          .arc-pdf { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; padding: 24px; max-width: 720px; line-height: 1.55; }
+          .arc-pdf h1 { font-size: 22px; border-bottom: 2px solid #d97706; padding-bottom: 6px; margin-top: 0; }
+          .arc-pdf h2 { font-size: 18px; margin-top: 1.4em; color: #6c3eb8; }
+          .arc-pdf h3 { font-size: 15px; margin-top: 1em; }
+          .arc-pdf table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+          .arc-pdf th, .arc-pdf td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+          .arc-pdf th { background: #f5f5f5; font-weight: 600; }
+          .arc-pdf code { background: #f3f3f3; padding: 1px 4px; border-radius: 3px; font-family: 'SF Mono', Menlo, monospace; font-size: 0.92em; }
+          .arc-pdf pre { background: #f6f6f6; padding: 10px; border-radius: 6px; overflow-x: auto; }
+          .arc-pdf pre code { background: none; padding: 0; }
+          .arc-pdf ul, .arc-pdf ol { padding-left: 1.4em; }
+          .arc-pdf p { margin: 0.6em 0; }
+        </style>
+        <div class="arc-pdf">
+          <h1>Arc — ClassBridge tutor reply</h1>
+          ${bodyHtml}
+        </div>
+      `;
+      document.body.appendChild(wrapper);
       await downloadAsPdf(wrapper, filename);
     } catch (err) {
       console.warn('[TutorChat] PDF download failed:', err);
     } finally {
-      wrapper.remove();
+      wrapper?.remove();
     }
   }, []);
 

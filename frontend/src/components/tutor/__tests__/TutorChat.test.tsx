@@ -746,6 +746,37 @@ describe('TutorChat', () => {
     warnSpy.mockRestore();
   });
 
+  it('logs and swallows when marked.parse throws (IMPORTANT-5 catch path)', async () => {
+    // Spy on marked.parse and force it to throw — exercises the new outer try/catch.
+    const markedModule = await import('marked');
+    const parseSpy = vi.spyOn(markedModule.marked, 'parse').mockImplementation(() => {
+      throw new Error('marked-boom');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    mockFetchOk([
+      'data: {"type":"token","text":"some content"}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(screen.getByRole('textbox', { name: /message arc/i }), 'hi{Enter}');
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('PDF download failed'),
+        expect.any(Error),
+      );
+    });
+
+    parseSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
   it('renders a readable error banner (not a raw error code) on failure', async () => {
     mockFetchFail(500);
 

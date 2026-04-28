@@ -191,3 +191,19 @@ def test_system_prompt_worksheet_mode_keeps_grade_tone() -> None:
     """Worksheet mode must still be shaped by grade level (#4382)."""
     prompt = build_system_prompt(grade_level=4, mode="worksheet")
     assert "grade 4" in prompt.lower()
+
+
+def test_worksheet_mode_chip_directive_steers_away_from_more_practice() -> None:
+    """Worksheet replies should suggest non-practice next steps to avoid
+    chip-induced infinite worksheet loops (#4397 SUGG-10 / #4401)."""
+    prompt = build_system_prompt(grade_level=10, mode="worksheet")
+    lower = prompt.lower()
+    # Steering directive must appear (any of the three phrasings is fine).
+    assert (
+        "point away" in lower
+        or "steer away" in lower
+        or "do not suggest more practice" in lower
+    )
+    # Sanity: the original worksheet directive (numbered list + answer key) still present.
+    assert "numbered list" in lower
+    assert "answer key" in lower
