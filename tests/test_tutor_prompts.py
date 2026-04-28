@@ -97,3 +97,42 @@ def test_build_user_prompt_skips_empty_sections() -> None:
     assert "Recent conversation" not in out
     assert "Context:" not in out
     assert "Hello" in out
+
+
+def test_system_prompt_mode_default_is_quick() -> None:
+    """Regression: omitting `mode` must produce the same prompt as `mode='quick'` (#4375)."""
+    default = build_system_prompt(grade_level=7)
+    quick = build_system_prompt(grade_level=7, mode="quick")
+    assert default == quick
+
+
+def test_system_prompt_full_mode_includes_structure_directives() -> None:
+    """`mode='full'` adds the structured-artifact instructions (#4375)."""
+    prompt = build_system_prompt(grade_level=7, mode="full")
+    lower = prompt.lower()
+    # Markdown-structure directives.
+    assert "##" in prompt
+    assert "table" in lower
+    assert "code" in lower  # fenced code blocks
+    assert "worked example" in lower or "examples" in lower
+    assert "summary" in lower
+    # Chip instruction is still present (full mode keeps the suffix).
+    assert SUGGESTION_CHIP_INSTRUCTION in prompt
+
+
+def test_system_prompt_full_mode_keeps_grade_tone() -> None:
+    """Full mode must still be shaped by grade level (same age-tone profile)."""
+    prompt = build_system_prompt(grade_level=4, mode="full")
+    assert "grade 4" in prompt.lower()
+
+
+def test_system_prompt_full_mode_chip_instruction_is_last() -> None:
+    """The CHIPS suffix must come AFTER the structured-artifact block."""
+    prompt = build_system_prompt(grade_level=7, mode="full")
+    # CHIPS instruction must appear after the structure block — i.e. near the end.
+    chips_idx = prompt.find(SUGGESTION_CHIP_INSTRUCTION)
+    assert chips_idx != -1
+    # Find a structure-directive marker that should precede the chips line.
+    summary_idx = prompt.lower().find("summary")
+    assert summary_idx != -1
+    assert summary_idx < chips_idx
