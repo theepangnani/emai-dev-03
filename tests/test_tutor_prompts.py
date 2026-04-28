@@ -136,3 +136,18 @@ def test_system_prompt_full_mode_chip_instruction_is_last() -> None:
     summary_idx = prompt.lower().find("summary")
     assert summary_idx != -1
     assert summary_idx < chips_idx
+
+
+def test_chip_instruction_demands_self_contained_topic_named_chips() -> None:
+    """Chips must be self-contained prompts that name the topic (#4381 Bug 2a)."""
+    assert "self-contained" in SUGGESTION_CHIP_INSTRUCTION
+    # The "Good" example must carry a concrete topic-named chip so the
+    # model has a strong few-shot anchor.
+    assert "Practice factoring problems" in SUGGESTION_CHIP_INSTRUCTION
+
+
+def test_system_prompt_has_stay_on_topic_directive() -> None:
+    """Short follow-ups ("examples", "more", "another") must continue the
+    same topic — not switch subjects (#4381 Bug 2b)."""
+    prompt = build_system_prompt(grade_level=7)
+    assert "continue on the same topic" in prompt

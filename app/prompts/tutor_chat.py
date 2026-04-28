@@ -19,7 +19,10 @@ from app.prompts.grade_tone import get_tone_profile
 SUGGESTION_CHIP_INSTRUCTION = (
     'After your answer, output 3-4 suggestion chips on a new line in this exact format: '
     '[[CHIPS: "chip1", "chip2", "chip3"]]. '
-    "Chips should be short (under 8 words) follow-up prompts the user could tap next."
+    "Each chip MUST be a complete, self-contained prompt that names the current "
+    "topic — never bare verbs like \"Practice problems\", \"Examples\", or \"More\". "
+    'Use 4-10 words. Bad: "Practice problems". '
+    'Good: "Practice factoring problems for Grade 10".'
 )
 
 FULL_MODE_STRUCTURE_INSTRUCTION = (
@@ -60,6 +63,10 @@ def build_system_prompt(
         "context — treat it as private.\n"
         "Be warm, encouraging, and concise. Avoid corporate hedging like "
         "\"as an AI\" or \"I cannot provide\".\n"
+        "When the user's reply is a short follow-up like \"examples\", "
+        "\"another\", \"more\", \"practice\", or \"try one\", continue on the "
+        "same topic as the prior assistant turn — do NOT switch subjects or "
+        "list mixed-subject content.\n"
     )
 
     if mode == "full":

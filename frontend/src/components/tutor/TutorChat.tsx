@@ -88,11 +88,11 @@ export function TutorChat({
 
   const handleChipSelect = useCallback(
     (text: string) => {
-      // Drop the chip text directly into the draft so the user can edit
-      // before sending — less jarring than an auto-send.
-      setDraft(text);
+      if (isStreaming) return;
+      setDraft('');
+      void sendMessage(text);
     },
-    [],
+    [isStreaming, sendMessage],
   );
 
   const handleDownloadPdf = useCallback(async (message: TutorMessageType) => {

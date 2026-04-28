@@ -176,6 +176,103 @@ describe('TutorChat', () => {
     });
   });
 
+  it('clicking a suggestion chip auto-sends the chip text (no Send click required) — #4381', async () => {
+    const fetchMock = vi.fn();
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Here you go."}\n\n',
+        'data: {"type":"chips","suggestions":["Practice factoring problems for Grade 10"]}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      body: makeSSEStream([
+        'data: {"type":"token","text":"Sure, here is one."}\n\n',
+        'data: {"type":"done"}\n\n',
+      ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Sam" />);
+
+    const input = screen.getByRole('textbox', { name: /message arc/i });
+    await user.type(input, 'Tell me about factoring{Enter}');
+
+    const chipList = await screen.findByRole('list', {
+      name: /suggested follow-up/i,
+    });
+    const chip = within(chipList).getByText(
+      'Practice factoring problems for Grade 10',
+    );
+    await user.click(chip);
+
+    // The chip click must auto-send → fetch fired a SECOND time with the
+    // chip text in the body. No Send click needed.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+    const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(secondBody.message).toBe(
+      'Practice factoring problems for Grade 10',
+    );
+  });
+
+  it('clicking a chip during an active stream is a no-op — #4381', async () => {
+    // Stream stays open (no done frame) so isStreaming=true throughout.
+    let resolveDone: (() => void) | null = null;
+    const longStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        controller.enqueue(encoder.encode('data: {"type":"token","text":"thinking..."}\n\n'));
+        // Emit chips mid-stream — abnormal but the simplest way to get a
+        // chip in the DOM while isStreaming is still true. (`showChips`
+        // also requires !lastAssistant.streaming, so the chips will not
+        // actually render — that's the point: the guard is defense-in-depth
+        // for both DOM-visibility and the handler-level check.)
+        controller.enqueue(
+          encoder.encode(
+            'data: {"type":"chips","suggestions":["Practice factoring problems for Grade 10"]}\n\n',
+          ),
+        );
+        resolveDone = () => {
+          controller.enqueue(encoder.encode('data: {"type":"done"}\n\n'));
+          controller.close();
+        };
+      },
+    });
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, body: longStream });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Sam" />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'topic{Enter}',
+    );
+
+    // Streaming begins; only ONE fetch so far.
+    await waitFor(() => {
+      expect(screen.getByText(/thinking\.\.\./i)).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Chips don't render mid-stream (showChips guard), so there's nothing
+    // for the user to click — but if the chip somehow fires onSelect, the
+    // handler's `if (isStreaming) return` keeps the fetch count at 1.
+    // Assert the chip list is NOT in the DOM right now.
+    expect(screen.queryByRole('list', { name: /suggested follow-up/i })).toBeNull();
+
+    // Settle and confirm the count never went past 1.
+    resolveDone?.();
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('round-trips conversation_id from done frame on the next request', async () => {
     // First turn — backend issues conversation_id in done frame.
     const fetchMock = vi.fn();
