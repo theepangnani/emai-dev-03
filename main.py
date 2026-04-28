@@ -95,6 +95,98 @@ from app.models.checkin_settings import CheckinSettings  # noqa: F401 — CB-DCI
 Base.metadata.create_all(bind=engine)
 logger.info("Database tables created/verified")
 
+# ============================================================================
+# MIGRATION PATTERN REFERENCE  (CB-CMCP-001 0A-4 / #4427)
+# ============================================================================
+# Every synchronous startup migration block below MUST follow this pattern.
+# The contract is enforced by ``tests/test_main_migrations.py``.
+#
+# Why this pattern exists
+# -----------------------
+# Cloud Run can leave a previous revision's instance alive long enough to
+# hold an exclusive advisory lock past the new revision's cold-start
+# window. A bare ``pg_advisory_lock(...)`` call in startup deadlocks the
+# new instance forever; Cloud Run never gets a healthy ``/health`` response
+# and traffic never shifts (#3425). The pattern below is the recovery:
+# probe with ``pg_try_advisory_lock`` (non-blocking), retry 3× with 5s
+# sleeps, and run the migration anyway on the third failure with a
+# warning log (the migrations themselves are written to be idempotent
+# via ``IF NOT EXISTS`` / ``ADD VALUE IF NOT EXISTS`` / PRAGMA probes).
+#
+# Canonical block shape
+# ---------------------
+#     _<tag>_lock_conn = None
+#     _<tag>_lock_acquired = False
+#     try:
+#         if _is_pg:                                  # SQLite gating
+#             _<tag>_lock_conn = engine.connect()
+#             for _<tag>_attempt in range(1, 4):      # 3 attempts
+#                 _r = _<tag>_lock_conn.execute(
+#                     text("SELECT pg_try_advisory_lock(<id>)")
+#                 )
+#                 _<tag>_lock_acquired = _r.scalar()
+#                 if _<tag>_lock_acquired:
+#                     logger.info("Acquired advisory lock <id> ...")
+#                     break
+#                 logger.warning("Advisory lock <id> held ... retrying in 5s")
+#                 time.sleep(5)                       # 5s between attempts
+#             if not _<tag>_lock_acquired:
+#                 logger.warning(
+#                     "Could not acquire advisory lock <id> after 3 "
+#                     "attempts — running ... without lock"
+#                 )
+#
+#         with engine.connect() as _conn:             # Per-block conn
+#             try:
+#                 if _is_pg:
+#                     _conn.execute(text("ALTER TABLE ... IF NOT EXISTS ..."))
+#                 else:
+#                     # SQLite: probe via PRAGMA (no IF NOT EXISTS)
+#                     ...
+#                 _conn.commit()
+#                 logger.info("<table> migration completed (#<issue>)")
+#             except Exception as _col_err:
+#                 _conn.rollback()                    # Don't poison conn
+#                 logger.warning("<table> migration note: %s", _col_err)
+#     except Exception as _err:
+#         logger.warning("<table> migration outer note: %s", _err)
+#     finally:
+#         if _<tag>_lock_conn is not None:
+#             if _<tag>_lock_acquired:
+#                 try:
+#                     _<tag>_lock_conn.execute(
+#                         text("SELECT pg_advisory_unlock(<id>)")
+#                     )
+#                     _<tag>_lock_conn.commit()
+#                 except Exception:
+#                     pass
+#             _<tag>_lock_conn.close()
+#
+# Hard rules (non-negotiable — see CLAUDE.md "Migration locking")
+# ---------------------------------------------------------------
+# 1. Use ``pg_try_advisory_lock`` (non-blocking) — NEVER ``pg_advisory_lock``.
+# 2. 3 attempts, 5s sleep between each — no longer waits, no more retries.
+# 3. PG-only paths (``ALTER TYPE``, ``JSONB``, ``IF NOT EXISTS`` on ALTER)
+#    must be gated on ``_is_pg`` (SQLite re-creates schema via
+#    ``Base.metadata.create_all``).
+# 4. Outer try/except MUST swallow exceptions — startup must never crash.
+# 5. Failed inner ALTER MUST ``rollback()`` so the next block isn't poisoned.
+# 6. Reserve a unique advisory-lock ID (we use the GitHub issue number).
+# 7. Idempotency: every statement must be safe to re-run on cold start.
+#
+# Reserved lock IDs (extend as new stripes ship)
+# ----------------------------------------------
+# 3391 learning_history table (#3391)
+# 3600 demo_sessions table (#3600)
+# 3913 tasks source-attribution columns (#3913)
+# 4063 tutor_conversations / tutor_messages (#4063)
+# 4067 learning_cycle_* (#4067)
+# 4140 dci.* tables (#4140)
+# 4301 students.profile_photo_url (#4301)
+# 4413 study_guides CMCP extension columns (#4413)
+# 4414 userrole enum extension (#4414)
+# ============================================================================
+
 # CRITICAL: Add UTDF columns synchronously before any request can hit the model.
 # Background migrations may be blocked by advisory lock from previous instance.
 # These are idempotent (try/except on "column already exists").
