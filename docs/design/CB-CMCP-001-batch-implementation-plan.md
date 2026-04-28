@@ -679,17 +679,18 @@ off → internal_only → staff → on_5 → on_25 → on_100 → on_for_all
 
 ### 8.3 Telemetry per amendment
 
-| Amendment | Metric | Target |
-|---|---|---|
-| A1 | % of generations with envelope_size > 0 | ≥70% by M3 |
-| A1 | Cited_source_count per artifact | ≥1 average |
-| A2 | Parent Companion adoption (DCI/Digest open + click) | ≥30% in 7d |
-| A2 | Parent Companion render correctness (no answer key leak) | 100% |
-| A3 | Voice module hash present on student-facing | 100% |
-| A3 | Voice consistency audit (sample 50) | ≥90% inter-rater |
-| A4 | Approved artifacts surfaced in DCI within 24h | ≥80% |
-| A4 | Bridge entry CTR | ≥15% |
-| A4 | Digest summary block render rate | ≥95% |
+| Amendment | Metric | Target | Source |
+|---|---|---|---|
+| A1 | % of generations with envelope_size > 0 | ≥70% by M3 | — |
+| A1 | Cited_source_count per artifact | ≥1 average | — |
+| A2 | Parent Companion adoption (DCI/Digest open + click) | ≥30% in 7d | — |
+| A2 | Parent Companion render correctness (no answer key leak) | 100% | — |
+| A3 | Voice module hash present on student-facing | 100% | — |
+| A3 | Voice consistency audit (sample 50) | ≥90% inter-rater | — |
+| A4 | Approved artifacts surfaced in DCI within 24h | ≥80% | — |
+| A4 | Bridge entry CTR | ≥15% | — |
+| A4 | Digest summary block render rate | ≥95% | — |
+| (Cross-cutting) | Generation latency P95 by content_type | per-type SLA: Quiz < 8s · Worksheet < 12s · Study Guide < 25s · Sample Test < 40s · Assignment < 30s | Cloud Run request latency + custom metric stamped with `content_type` at request time |
 
 ### 8.4 Kill-switch
 
@@ -702,8 +703,8 @@ If `cmcp.enabled` is flipped OFF mid-ramp, all generation requests fall back to 
 | Gate | Unlocks | Required |
 |---|---|---|
 | **M0 → M1** | Generation pipeline build | CEG live (Gr 1–8, ≥99% accuracy); cost model published; reviewer onboarded; D1/D2/D3/D5/D7/D11 confirmed |
-| **M1 → M2** | MCP server build | E2E generation works; alignment validator ≥80%; voice audit passes; envelope ≥70% on test corpus |
-| **M2 → M3** | Workflow + surfaces | MCP live on Cloud Run; #2191 closed; internal QA pass |
+| **M1 → M2** | MCP server build | E2E generation works; alignment validator ≥80%; voice audit passes; envelope ≥70% on test corpus; **per-content-type latency P95 SLAs holding (Cloud Monitoring dashboard live + alerts firing on 10%-over-target sustained 5 min)** |
+| **M2 → M3** | Workflow + surfaces | **End-user MCP** live on Cloud Run (per D1=C, board MCP deferred); #2191 closed; internal QA pass |
 | **M3 → M4** | Pilot opens | Teacher review functional; Bridge/DCI/Digest integration live; flag ramped to staff; A4 surface KPIs hit |
 | **M4 → M5** | Phase 2 expansion | Pilot success criteria met; on_for_all ramp |
 
@@ -721,8 +722,9 @@ If `cmcp.enabled` is flipped OFF mid-ramp, all generation requests fall back to 
 | Board never signs DSA — CB-MCP value unrealized | Medium | High | D11 — interviews in parallel with M0; B2C value via Authenticity Layer is independent |
 | Curriculum revision floods teacher re-review queue | Medium | Medium | D9=B severity classifier; only `scope_substantive` flags |
 | Streaming SSE breaks for slow networks | Low | Medium | `cmcp.streaming.enabled` sub-flag; sync fallback for short artifacts |
+| Latency SLA breach goes unnoticed | Medium | Medium | M1-E 1E-2 ships an SLO alert (10% over target sustained 5 min) → page on-call. Streaming sub-flag `cmcp.streaming.enabled` allows fallback to sync UX if SSE infra issues arise. |
 | Cost overrun mid-M1 | Medium | Medium | D8=B cost model; per-artifact spend cap as backstop |
-| User decides D2 differently mid-M0 | Low | High | Decide D2 BEFORE M0 batch 0a opens (hard precondition) |
+| User changes D2 (study_guides extension vs new content_artifacts) after M0 starts | Low (gated) | High | D2 is a hard precondition for M0 batch 0a; once locked, this risk is moot. If reversed mid-flight, dual-write window required during table migration; cost is multi-week. |
 
 ---
 
