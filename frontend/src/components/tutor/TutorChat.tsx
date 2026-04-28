@@ -102,9 +102,13 @@ export function TutorChat({
     const stamp = `${ts.getFullYear()}${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
     const filename = `Arc-tutor-${stamp}.pdf`;
 
-    // Render the markdown to static HTML inside an off-DOM container that
-    // html2pdf can consume. We attach it to the body briefly (off-screen)
-    // because html2canvas requires an in-DOM element.
+    // Render the markdown to static HTML inside a wrapper that html2pdf can
+    // consume. We attach it to the body briefly because html2canvas requires
+    // an in-DOM element — but we keep it ON-SCREEN (top:0/left:0) and hide it
+    // via opacity:0 + pointer-events:none + z-index:-1 instead of parking it
+    // off-screen. Off-screen positioning (e.g. left:-99999px) lets browsers
+    // defer layout/paint, so html2canvas captures an empty/zero-size snapshot
+    // in production (#4431).
     // The whole body lives inside one try/catch so any throw from
     // `marked.parse`, DOMPurify, the DOM mutation, or `downloadAsPdf` is
     // captured — IMPORTANT-5 (#4401): pre-fix, only `downloadAsPdf` was
@@ -124,9 +128,12 @@ export function TutorChat({
       const bodyHtml = DOMPurify.sanitize(raw);
       wrapper = document.createElement('div');
       wrapper.style.position = 'fixed';
-      wrapper.style.left = '-99999px';
       wrapper.style.top = '0';
+      wrapper.style.left = '0';
       wrapper.style.width = '720px';
+      wrapper.style.opacity = '0';
+      wrapper.style.pointerEvents = 'none';
+      wrapper.style.zIndex = '-1';
       wrapper.innerHTML = `
         <style>
           .arc-pdf { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a2e; padding: 24px; max-width: 720px; line-height: 1.55; }
@@ -148,6 +155,11 @@ export function TutorChat({
         </div>
       `;
       document.body.appendChild(wrapper);
+      // Let the browser lay out the new element before html2canvas measures it.
+      // Without this, html2canvas runs in the same task and may capture an empty
+      // (zero-size) snapshot. Single rAF is enough — html2canvas reads computed
+      // styles after layout has been performed.
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
       await downloadAsPdf(wrapper, filename);
     } catch (err) {
       console.warn('[TutorChat] PDF download failed:', err);
