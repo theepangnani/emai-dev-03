@@ -143,6 +143,11 @@ class SendDigestResponse(BaseModel):
     # or None when status != "skipped". Frontends use this to gate UI — e.g.,
     # the "Open preferences" link only makes sense for "no_eligible_channels".
     reason: str | None = None
+    # #4434: present only on the unified V2 path. Counts of how each email was
+    # attributed to a kid (school_email / sender_tag / applies_to_all /
+    # parent_direct / sender_tag_ambiguous / unattributed). Legacy path leaves
+    # this null.
+    attribution_counts: dict[str, int] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -757,8 +762,6 @@ async def send_digest_now(
     # Ensure digest_settings is loaded on the integration object
     integration.digest_settings = digest_settings
 
-    from app.jobs.parent_email_digest_job import send_digest_for_integration
-
     if create_tasks:
         logger.warning(
             "task_sync.test_override | user_id=%s integration_id=%s — "
@@ -768,14 +771,45 @@ async def send_digest_now(
         )
 
     since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
-    result = await send_digest_for_integration(
+
+    # #4434: dispatch on the same flag the scheduled job uses (see
+    # process_parent_email_digests in app/jobs/parent_email_digest_job.py).
+    # Before this fix, the manual "Send Now" trigger always ran the legacy
+    # per-integration path even after PR #4104 retired it as the default,
+    # producing wall-of-text WhatsApp + per-integration emails that mixed
+    # forwarded mail from multiple kids.
+    from app.services.feature_flag_service import is_feature_enabled
+
+    if is_feature_enabled("parent.unified_digest_v2", db=db):
+        from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+        # The unified path doesn't accept create_tasks — the #3929 task-sync
+        # pilot only exists on the legacy worker. Warn so callers passing
+        # ?create_tasks=true notice it's a no-op under V2.
+        if create_tasks:
+            logger.warning(
+                "send_digest_now: ignoring create_tasks=true on unified V2 path "
+                "| user_id=%s integration_id=%s",
+                current_user.id,
+                integration.id,
+            )
+
+        return await send_unified_digest_for_parent(
+            db,
+            current_user.id,
+            skip_dedup=True,
+            since=since_24h,
+        )
+
+    from app.jobs.parent_email_digest_job import send_digest_for_integration
+
+    return await send_digest_for_integration(
         db,
         integration,
         skip_dedup=True,
         since=since_24h,
         create_tasks=create_tasks,
     )
-    return result
 
 
 @router.post("/integrations/{integration_id}/sync")

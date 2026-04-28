@@ -49,6 +49,28 @@ def _set_task_sync_flag(db_session, enabled: bool) -> None:
     db_session.commit()
 
 
+def _set_unified_v2_flag(db_session, enabled: bool) -> None:
+    """Force `parent.unified_digest_v2` to a known state for tests that need
+    to pin the dispatch to a specific path (#4434).
+
+    Default in production is ON; tests that exercise the legacy per-integration
+    path's task-sync pilot (#3929) must opt out of V2 since the unified worker
+    does not accept ``create_tasks`` and never invokes ``extract_digest_items``.
+    """
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "parent.unified_digest_v2")
+        .first()
+    )
+    assert flag is not None
+    flag.enabled = enabled
+    db_session.commit()
+
+
 def _digest_item(title: str, due: datetime, confidence: float = 0.9, msg_id: str = "<m1>"):
     from app.services.parent_digest_ai_service import DigestTaskItem
 
@@ -271,6 +293,9 @@ def test_send_digest_now_without_param_does_NOT_create_tasks(
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, True)
+    # #4434 — pin to legacy path so this test keeps exercising the #3929
+    # task-sync pilot wiring (which does not exist on the V2 worker).
+    _set_unified_v2_flag(db_session, False)
     env = digest_env
 
     with patch(
@@ -317,6 +342,9 @@ def test_send_digest_now_with_create_tasks_true_creates_tasks(
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, True)
+    # #4434 — task-sync pilot only fires on the legacy worker; V2 ignores
+    # the create_tasks query param.
+    _set_unified_v2_flag(db_session, False)
     env = digest_env
 
     items = [
@@ -362,6 +390,9 @@ def test_send_digest_now_override_respects_feature_flag(
     from app.models.task import Task
 
     _set_task_sync_flag(db_session, False)
+    # #4434 — pin to legacy path. This test asserts the legacy pilot
+    # honors task_sync_enabled=False; V2 never creates tasks regardless.
+    _set_unified_v2_flag(db_session, False)
     env = digest_env
 
     with patch(
@@ -407,6 +438,10 @@ def test_send_digest_now_override_logs_warning(
     import logging
 
     _set_task_sync_flag(db_session, True)
+    # #4434 — log assertion is path-agnostic (the override warning fires
+    # before dispatch), but pin legacy here for parity with the other
+    # pilot-pathway tests in this section.
+    _set_unified_v2_flag(db_session, False)
     env = digest_env
 
     with patch(
@@ -587,3 +622,128 @@ def test_notification_sent_on_upgrade(db_session, digest_env):
     assert upgrade_calls[0].kwargs.get("channels") == ["app_notification"]
     # #3947 — upgrade must be tagged TASK_UPGRADED, not TASK_DUE.
     assert upgrade_calls[0].kwargs.get("notification_type") == NotificationType.TASK_UPGRADED
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 8. #4434 — manual "Send Now" endpoint dispatches on the V2 flag.
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_send_digest_now_dispatches_to_unified_when_v2_flag_on(
+    client, db_session, digest_env
+):
+    """V2 flag ON → endpoint calls send_unified_digest_for_parent, NOT legacy."""
+    _set_unified_v2_flag(db_session, True)
+    env = digest_env
+
+    unified_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 2,
+            "attribution_counts": {"school_email": 2},
+            "message": "Unified digest delivered with 2 emails",
+        }
+    )
+    legacy_mock = AsyncMock(
+        return_value={"status": "delivered", "email_count": 0, "message": "legacy"}
+    )
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
+    ):
+        resp = client.post(
+            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest",
+            headers=_auth(client, env["parent"].email),
+        )
+
+    assert resp.status_code == 200, resp.text
+    unified_mock.assert_awaited_once()
+    legacy_mock.assert_not_awaited()
+    # The unified-shape attribution_counts field must round-trip through
+    # SendDigestResponse (#4434 widened the schema).
+    body = resp.json()
+    assert body["status"] == "delivered"
+    assert body["email_count"] == 2
+    assert body["attribution_counts"] == {"school_email": 2}
+
+
+def test_send_digest_now_dispatches_to_legacy_when_v2_flag_off(
+    client, db_session, digest_env
+):
+    """V2 flag OFF → endpoint calls send_digest_for_integration, NOT unified."""
+    _set_unified_v2_flag(db_session, False)
+    env = digest_env
+
+    unified_mock = AsyncMock(
+        return_value={"status": "delivered", "email_count": 0, "message": "unified"}
+    )
+    legacy_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 1,
+            "message": "Email digest delivered with 1 emails",
+            "channel_status": {"in_app": True, "email": None, "whatsapp": None},
+            "reason": None,
+        }
+    )
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
+    ):
+        resp = client.post(
+            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest",
+            headers=_auth(client, env["parent"].email),
+        )
+
+    assert resp.status_code == 200, resp.text
+    legacy_mock.assert_awaited_once()
+    unified_mock.assert_not_awaited()
+
+
+def test_send_digest_now_v2_branch_warns_and_ignores_create_tasks(
+    client, db_session, digest_env, caplog
+):
+    """V2 flag ON + ?create_tasks=true → unified path is called; create_tasks
+    is NOT forwarded (V2 worker doesn't accept it) and a warning is logged."""
+    import logging
+
+    _set_unified_v2_flag(db_session, True)
+    env = digest_env
+
+    unified_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 0,
+            "attribution_counts": {},
+            "message": "unified",
+        }
+    )
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ):
+        with caplog.at_level(logging.WARNING, logger="app.api.routes.parent_email_digest"):
+            resp = client.post(
+                f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest?create_tasks=true",
+                headers=_auth(client, env["parent"].email),
+            )
+
+    assert resp.status_code == 200, resp.text
+    unified_mock.assert_awaited_once()
+    # call signature check — V2 worker is called with parent_id, NOT integration,
+    # and create_tasks is NOT in its kwargs.
+    call_kwargs = unified_mock.await_args.kwargs
+    assert "create_tasks" not in call_kwargs
+    assert call_kwargs.get("skip_dedup") is True
+    # Both warnings should have fired: the legacy override-noticed warning
+    # (kept for parity) and the V2-specific ignore warning.
+    msgs = [rec.getMessage() for rec in caplog.records]
+    assert any("ignoring create_tasks=true on unified V2 path" in m for m in msgs), msgs
