@@ -116,6 +116,19 @@ def seed_features(db: Session) -> int:
             "variant": "on_100",
         },
         {
+            "key": "cmcp.enabled",
+            "name": "Curriculum Management & Content Platform (CB-CMCP-001)",
+            "description": (
+                "CB-CMCP-001 M0 — gates the Ontario curriculum REST API "
+                "(GET /api/curriculum/*) and downstream CMCP stripes "
+                "(CEG extraction, study-guide alignment, board surface). "
+                "Default OFF; flip ON in the feature_flags table during M0 "
+                "validation. Other CB-CMCP-001 stripes reuse this same flag."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
+        {
             "key": "theme.bridge_default",
             "name": "Bridge Theme (Force-Apply Default)",
             "description": (
