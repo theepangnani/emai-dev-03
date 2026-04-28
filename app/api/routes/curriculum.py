@@ -154,6 +154,12 @@ def list_curriculum_courses(
     # surfaced as a SQLAlchemy deprecation warning in tests. Replacing
     # it with GROUP BY + COUNT keeps cross-DB parity (PG + SQLite) and
     # collapses the N+1 to a single round-trip.
+    #
+    # Semantics note: `func.max(grade_level)` assumes each course_code
+    # maps 1:1 to a grade_level (the canonical CEG data model). If
+    # dirty data ever has multiple grade_levels per course, phase-2
+    # returned an arbitrary first row; this returns the max — more
+    # deterministic, aligned with the data invariant.
     model = _require_model()
     rows = (
         db.query(
