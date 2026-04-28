@@ -574,6 +574,17 @@ def test_get_course_with_multiple_grades_returns_max_grade(
             e["code"] for e in strands["Data Management"]["expectations"]
         }
         assert "D1.1" in codes
+        # /courses must also report the max grade for this subject
+        # (mutation-test guard: catches a regression that swaps
+        # ``func.max`` for ``func.min`` in list_curriculum_courses).
+        list_resp = client.get("/api/curriculum/courses", headers=headers)
+        assert list_resp.status_code == 200, list_resp.text
+        list_codes = {
+            item["course_code"]: item for item in list_resp.json()
+        }
+        assert list_codes[math_code]["grade_level"] == 10
+        # And expectation_count picks up the extra row (3 base + 1 extra).
+        assert list_codes[math_code]["expectation_count"] == 4
     finally:
         db_session.delete(extra_exp)
         db_session.delete(extra_version)
