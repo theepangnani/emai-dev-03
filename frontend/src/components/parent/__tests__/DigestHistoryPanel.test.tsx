@@ -62,6 +62,15 @@ describe('DigestHistoryPanel', () => {
     });
   });
 
+  it('renders custom emptyState when provided', async () => {
+    mockGetLogs.mockResolvedValue({ data: [] });
+    renderPanel({ emptyState: 'Custom empty copy here' });
+    await waitFor(() => {
+      expect(screen.getByText('Custom empty copy here')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/no digests delivered yet/i)).not.toBeInTheDocument();
+  });
+
   it('renders 5 log rows when API returns 5 logs (verify limit=5 was passed)', async () => {
     const logs = [1, 2, 3, 4, 5].map((i) =>
       makeLog({ id: i, email_count: i, delivered_at: `2026-04-2${i}T08:00:00Z` }),
