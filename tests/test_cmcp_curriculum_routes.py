@@ -1,82 +1,37 @@
-"""Tests for the CB-CMCP-001 M0-B 0B-1 curriculum REST API (#4415).
+"""Tests for the CB-CMCP-001 M0-B 0B-1 curriculum REST API (#4415, #4426).
+
+After the schema bridge in #4426, these tests run against the real
+normalized CEG schema (``CEGSubject`` + ``CEGStrand`` + ``CEGExpectation``
++ ``CurriculumVersion`` from stripe 0A-1) — no stub model.
 
 Covers
 ------
 - ``cmcp.enabled`` flag is seeded as default-OFF.
 - Endpoints return 401 when called without a token.
 - Endpoints return 403 when the flag is OFF (and short-circuit before any
-  DB / model work — verified by leaving the live model unset).
-- When the flag is ON and a stub ``CurriculumExpectation`` model is
-  monkey-patched into the routes module, the three endpoints serve the
-  expected payloads:
-    * ``GET /api/curriculum/courses`` — list shape with course code,
+  DB work — verified by leaving the seed data empty).
+- When the flag is ON and CEG rows are seeded, the three endpoints
+  serve the expected payloads:
+    * ``GET /api/curriculum/courses`` — list shape with subject code,
       grade level, and expectation count.
-    * ``GET /api/curriculum/{course_code}`` — strands grouping.
+    * ``GET /api/curriculum/{course_code}`` — strands grouping (where
+      ``course_code`` resolves to ``CEGSubject.code``).
     * ``GET /api/curriculum/{course_code}/search?q=...`` — keyword
       filter; empty-match returns the course shell with empty strands
       (NOT 404).
 - ``GET /api/curriculum/{course_code}`` returns 404 for an unknown
-  course code (when the stub model is in place but no rows match).
-- When the model is absent (the natural state before stripe 0A-1
-  lands) the routes return 503 — the contract that lets this PR be
-  independently testable.
-
-The tests inject a tiny in-memory stub model rather than relying on
-0A-1's full schema. See ``_StubExpectation`` below — it captures only
-the columns the routes touch (``course_code``, ``grade_level``,
-``strand``, ``expectation_code``, ``description``, ``expectation_type``)
-plus a ``description.ilike`` / ``expectation_code.ilike`` shape that
-SQLAlchemy can compile.
+  subject code.
+- JOIN-related edge cases: subject with multiple grades returns the
+  max grade; subject with no expectations is omitted from /courses;
+  multiple strands group correctly under one subject.
 """
 from __future__ import annotations
 
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Column, Integer, String, Text
 
 from conftest import PASSWORD, _auth
-
-
-# ── Stub model (mimics 0A-1 columns the routes actually use) ───────────
-
-
-def _build_stub_model(metadata):
-    """Build a tiny ``CurriculumExpectation`` stand-in bound to test metadata.
-
-    Defined as a factory so each test session creates the table fresh
-    against its own SQLite file. The columns mirror the names the route
-    handlers query (``course_code``, ``grade_level``, ``strand``,
-    ``expectation_code``, ``description``, ``expectation_type``).
-    """
-    from app.db.database import Base
-
-    class StubExpectation(Base):  # type: ignore[misc, valid-type]
-        __tablename__ = "cmcp_test_curriculum_expectations"
-        __table_args__ = {"extend_existing": True}
-
-        id = Column(Integer, primary_key=True)
-        course_code = Column(String(20), index=True, nullable=False)
-        grade_level = Column(Integer, nullable=False)
-        strand = Column(String(100), nullable=False)
-        expectation_code = Column(String(20), nullable=False)
-        description = Column(Text, nullable=False)
-        expectation_type = Column(String(20), nullable=False)
-
-    return StubExpectation
-
-
-@pytest.fixture(scope="module")
-def stub_expectation_model(app):
-    """Create the stub table once per test module and return the class."""
-    from app.db.database import Base, engine
-
-    model = _build_stub_model(Base.metadata)
-    # Create just this table — calling create_all on the full metadata
-    # is harmless because every other table already exists from the
-    # session-scoped `app` fixture.
-    model.__table__.create(bind=engine, checkfirst=True)
-    return model
 
 
 # ── Flag toggle helpers ────────────────────────────────────────────────
@@ -122,26 +77,6 @@ def cmcp_flag_on(db_session):
     db_session.refresh(flag)
     flag.enabled = False
     db_session.commit()
-
-
-@pytest.fixture()
-def patch_live_model(stub_expectation_model, monkeypatch):
-    """Wire the stub model into the curriculum route module.
-
-    The route module captures ``CurriculumExpectation`` at import time
-    (or sets it to ``None`` if the import fails). Tests need to swap in
-    the stub for the duration of the test; we restore the original
-    binding via ``monkeypatch`` to keep tests independent.
-    """
-    from app.api.routes import curriculum as curriculum_routes
-
-    monkeypatch.setattr(
-        curriculum_routes,
-        "_EXPECTATION_MODEL",
-        stub_expectation_model,
-        raising=False,
-    )
-    return stub_expectation_model
 
 
 # ── User fixtures ──────────────────────────────────────────────────────
@@ -201,53 +136,150 @@ def teacher_user(db_session):
     return user
 
 
+# ── CEG seed fixtures ──────────────────────────────────────────────────
+
+
 @pytest.fixture()
-def seeded_curriculum(db_session, stub_expectation_model):
-    """Insert two courses (MTH1W with 3 expectations across 2 strands,
-    SNC1D with 1 expectation) and clean up after the test.
+def seeded_curriculum(db_session):
+    """Seed a small CEG corpus that covers the three endpoints' query paths.
+
+    Layout (subject codes use a uuid suffix to keep this fixture isolated
+    from sibling fixtures in other test files — ``test_cmcp_ceg_schema.py``
+    seeds ``MATH``/``SCI``/``LANG`` etc. on the same session-scoped DB
+    and never cleans up)::
+
+        MATH-XXXX (subject "Mathematics")
+            B "Number Sense" (strand)
+                B1.1 — overall — "Demonstrate understanding of fractions" (G9)
+                B1.2 — specific — "Apply integer operations" (G9)
+            C "Algebra" (strand)
+                C1.1 — overall — "Solve linear equations using fractions" (G9)
+        SCI-XXXX (subject "Science")
+            A "Biology" (strand)
+                A1.1 — overall — "Cellular processes and energy transfer" (G9)
+
+    Yields a dict with the resolved subject codes (so test bodies can use
+    them in URLs) plus the seeded model instances. Cleans up everything
+    on teardown (subjects included — they're newly created per fixture
+    invocation so the cleanup is unambiguous).
     """
-    rows = [
-        stub_expectation_model(
-            course_code="MTH1W",
-            grade_level=9,
-            strand="Number",
-            expectation_code="B1.1",
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+        EXPECTATION_TYPE_SPECIFIC,
+    )
+
+    # Use unique-per-test subject codes + version slugs so we don't
+    # collide with other test files' seeds (the DB is session-scoped).
+    # The fixture exposes the resolved codes via the yielded dict —
+    # tests pull them from there rather than hard-coding "MATH"/"SCI".
+    suffix = uuid4().hex[:6].upper()
+    math_code = f"M{suffix}"
+    sci_code = f"S{suffix}"
+    version_slug = f"test-{uuid4().hex[:6]}"
+
+    math = CEGSubject(code=math_code, name="Mathematics")
+    sci = CEGSubject(code=sci_code, name="Science")
+    db_session.add_all([math, sci])
+    db_session.flush()
+
+    math_b = CEGStrand(subject_id=math.id, code="B", name="Number Sense")
+    math_c = CEGStrand(subject_id=math.id, code="C", name="Algebra")
+    sci_a = CEGStrand(subject_id=sci.id, code="A", name="Biology")
+    db_session.add_all([math_b, math_c, sci_a])
+    db_session.flush()
+
+    math_v = CurriculumVersion(
+        subject_id=math.id,
+        grade=9,
+        version=version_slug,
+        change_severity=None,
+        notes="test seed",
+    )
+    sci_v = CurriculumVersion(
+        subject_id=sci.id,
+        grade=9,
+        version=version_slug,
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add_all([math_v, sci_v])
+    db_session.flush()
+
+    expectations = [
+        CEGExpectation(
+            ministry_code="B1.1",
+            cb_code=f"CB-G9-{math_code}-B1-OE1",
+            subject_id=math.id,
+            strand_id=math_b.id,
+            grade=9,
+            expectation_type=EXPECTATION_TYPE_OVERALL,
             description="Demonstrate understanding of fractions",
-            expectation_type="overall",
+            curriculum_version_id=math_v.id,
         ),
-        stub_expectation_model(
-            course_code="MTH1W",
-            grade_level=9,
-            strand="Number",
-            expectation_code="B1.2",
+        CEGExpectation(
+            ministry_code="B1.2",
+            cb_code=f"CB-G9-{math_code}-B1-SE2",
+            subject_id=math.id,
+            strand_id=math_b.id,
+            grade=9,
+            expectation_type=EXPECTATION_TYPE_SPECIFIC,
             description="Apply integer operations",
-            expectation_type="specific",
+            curriculum_version_id=math_v.id,
         ),
-        stub_expectation_model(
-            course_code="MTH1W",
-            grade_level=9,
-            strand="Algebra",
-            expectation_code="C1.1",
+        CEGExpectation(
+            ministry_code="C1.1",
+            cb_code=f"CB-G9-{math_code}-C1-OE1",
+            subject_id=math.id,
+            strand_id=math_c.id,
+            grade=9,
+            expectation_type=EXPECTATION_TYPE_OVERALL,
             description="Solve linear equations using fractions",
-            expectation_type="overall",
+            curriculum_version_id=math_v.id,
         ),
-        stub_expectation_model(
-            course_code="SNC1D",
-            grade_level=9,
-            strand="Biology",
-            expectation_code="B1.1",
+        CEGExpectation(
+            ministry_code="A1.1",
+            cb_code=f"CB-G9-{sci_code}-A1-OE1",
+            subject_id=sci.id,
+            strand_id=sci_a.id,
+            grade=9,
+            expectation_type=EXPECTATION_TYPE_OVERALL,
             description="Cellular processes and energy transfer",
-            expectation_type="overall",
+            curriculum_version_id=sci_v.id,
         ),
     ]
-    for r in rows:
+    for r in expectations:
         db_session.add(r)
     db_session.commit()
-    inserted_ids = [r.id for r in rows]
-    yield rows
-    # Best-effort cleanup so re-runs / sibling tests get a clean slate.
-    db_session.query(stub_expectation_model).filter(
-        stub_expectation_model.id.in_(inserted_ids)
+
+    expectation_ids = [e.id for e in expectations]
+    strand_ids = [math_b.id, math_c.id, sci_a.id]
+    version_ids = [math_v.id, sci_v.id]
+    subject_ids = [math.id, sci.id]
+
+    yield {
+        "math_code": math_code,
+        "sci_code": sci_code,
+        "subjects": {"MATH": math, "SCI": sci},
+        "expectations": expectations,
+    }
+
+    # Cleanup. Order matters (FK chain): expectations → versions →
+    # strands → subjects.
+    db_session.query(CEGExpectation).filter(
+        CEGExpectation.id.in_(expectation_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CurriculumVersion).filter(
+        CurriculumVersion.id.in_(version_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CEGStrand).filter(
+        CEGStrand.id.in_(strand_ids)
+    ).delete(synchronize_session=False)
+    db_session.query(CEGSubject).filter(
+        CEGSubject.id.in_(subject_ids)
     ).delete(synchronize_session=False)
     db_session.commit()
 
@@ -280,12 +312,12 @@ def test_courses_without_auth_returns_401(client):
 
 
 def test_course_detail_without_auth_returns_401(client):
-    resp = client.get("/api/curriculum/MTH1W")
+    resp = client.get("/api/curriculum/MATH")
     assert resp.status_code == 401
 
 
 def test_search_without_auth_returns_401(client):
-    resp = client.get("/api/curriculum/MTH1W/search?q=fraction")
+    resp = client.get("/api/curriculum/MATH/search?q=fraction")
     assert resp.status_code == 401
 
 
@@ -301,112 +333,68 @@ def test_courses_flag_off_returns_403(client, parent_user, cmcp_flag_off):
 
 def test_course_detail_flag_off_returns_403(client, parent_user, cmcp_flag_off):
     headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W", headers=headers)
+    resp = client.get("/api/curriculum/MATH", headers=headers)
     assert resp.status_code == 403
 
 
 def test_search_flag_off_returns_403(client, parent_user, cmcp_flag_off):
     headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W/search?q=fraction", headers=headers)
+    resp = client.get("/api/curriculum/MATH/search?q=fraction", headers=headers)
     assert resp.status_code == 403
 
 
-# ── 503 when the live model is absent (pre-0A-1 contract) ──────────────
-
-
-def test_courses_returns_503_when_model_absent(
-    client, parent_user, cmcp_flag_on, monkeypatch
-):
-    """When stripe 0A-1 hasn't merged, the import-guard sets
-    ``_EXPECTATION_MODEL`` to ``None`` and every endpoint must return 503
-    rather than 500. We simulate the un-merged state by patching it back
-    to None for this test.
-    """
-    from app.api.routes import curriculum as curriculum_routes
-
-    monkeypatch.setattr(
-        curriculum_routes, "_EXPECTATION_MODEL", None, raising=False
-    )
-    headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/courses", headers=headers)
-    assert resp.status_code == 503
-    assert "0A-1" in resp.json()["detail"]
-
-
-def test_course_detail_returns_503_when_model_absent(
-    client, parent_user, cmcp_flag_on, monkeypatch
-):
-    from app.api.routes import curriculum as curriculum_routes
-
-    monkeypatch.setattr(
-        curriculum_routes, "_EXPECTATION_MODEL", None, raising=False
-    )
-    headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W", headers=headers)
-    assert resp.status_code == 503
-
-
-def test_search_returns_503_when_model_absent(
-    client, parent_user, cmcp_flag_on, monkeypatch
-):
-    from app.api.routes import curriculum as curriculum_routes
-
-    monkeypatch.setattr(
-        curriculum_routes, "_EXPECTATION_MODEL", None, raising=False
-    )
-    headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W/search?q=x", headers=headers)
-    assert resp.status_code == 503
-
-
-# ── Happy paths (flag ON + stub model) ─────────────────────────────────
+# ── Happy paths (flag ON + seeded CEG corpus) ──────────────────────────
 
 
 def test_list_courses_returns_seeded_codes(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
+    math_code = seeded_curriculum["math_code"]
+    sci_code = seeded_curriculum["sci_code"]
     headers = _auth(client, parent_user.email)
     resp = client.get("/api/curriculum/courses", headers=headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     codes = {item["course_code"]: item for item in body}
-    assert "MTH1W" in codes
-    assert "SNC1D" in codes
-    assert codes["MTH1W"]["grade_level"] == 9
-    assert codes["MTH1W"]["expectation_count"] == 3
-    assert codes["SNC1D"]["expectation_count"] == 1
+    assert math_code in codes
+    assert sci_code in codes
+    assert codes[math_code]["grade_level"] == 9
+    assert codes[math_code]["expectation_count"] == 3
+    assert codes[sci_code]["expectation_count"] == 1
 
 
 def test_get_course_groups_by_strand(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W", headers=headers)
+    resp = client.get(f"/api/curriculum/{math_code}", headers=headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["course_code"] == "MTH1W"
+    assert body["course_code"] == math_code
     assert body["grade_level"] == 9
     strands = {s["name"]: s for s in body["strands"]}
-    assert set(strands) == {"Number", "Algebra"}
-    number_codes = {e["code"] for e in strands["Number"]["expectations"]}
+    assert set(strands) == {"Number Sense", "Algebra"}
+    number_codes = {e["code"] for e in strands["Number Sense"]["expectations"]}
     assert number_codes == {"B1.1", "B1.2"}
     # ``type`` must be projected from the model's ``expectation_type``.
-    types = {e["type"] for e in strands["Number"]["expectations"]}
+    types = {e["type"] for e in strands["Number Sense"]["expectations"]}
     assert types == {"overall", "specific"}
 
 
 def test_get_course_lowercases_input_and_uppercases_output(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
-    """Course-code casing is normalized (``mth1w`` → ``MTH1W``)."""
+    """Course-code casing is normalized (``mXXXXXX`` → ``MXXXXXX``)."""
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/mth1w", headers=headers)
+    resp = client.get(f"/api/curriculum/{math_code.lower()}", headers=headers)
     assert resp.status_code == 200, resp.text
-    assert resp.json()["course_code"] == "MTH1W"
+    assert resp.json()["course_code"] == math_code
 
 
 def test_get_course_returns_404_for_unknown(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
     headers = _auth(client, parent_user.email)
     resp = client.get("/api/curriculum/UNKNOWN1", headers=headers)
@@ -418,32 +406,35 @@ def test_get_course_returns_404_for_unknown(
 
 
 def test_search_filters_by_description(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
     resp = client.get(
-        "/api/curriculum/MTH1W/search?q=fraction", headers=headers
+        f"/api/curriculum/{math_code}/search?q=fraction", headers=headers
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["course_code"] == "MTH1W"
-    # Two MTH1W rows mention "fraction": B1.1 (Number) and C1.1 (Algebra)
+    assert body["course_code"] == math_code
+    # Two MATH rows mention "fraction": B1.1 (Number Sense) and C1.1 (Algebra)
     flat = [
         (s["name"], e["code"])
         for s in body["strands"]
         for e in s["expectations"]
     ]
-    assert ("Number", "B1.1") in flat
+    assert ("Number Sense", "B1.1") in flat
     assert ("Algebra", "C1.1") in flat
-    assert ("Number", "B1.2") not in flat
+    assert ("Number Sense", "B1.2") not in flat
 
 
-def test_search_filters_by_expectation_code(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+def test_search_filters_by_ministry_code(
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
+    """Search matches against the ministry code (e.g., ``B1.2``)."""
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
     resp = client.get(
-        "/api/curriculum/MTH1W/search?q=B1.2", headers=headers
+        f"/api/curriculum/{math_code}/search?q=B1.2", headers=headers
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -454,27 +445,28 @@ def test_search_filters_by_expectation_code(
 
 
 def test_search_no_match_returns_empty_strands_not_404(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
     """Per #4415 acceptance: search with no matches returns the course
     shell with an empty ``strands`` array — not a 404 — so the UI can
     render a "no matches" state."""
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
     resp = client.get(
-        "/api/curriculum/MTH1W/search?q=zzznotfound", headers=headers
+        f"/api/curriculum/{math_code}/search?q=zzznotfound", headers=headers
     )
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert body["course_code"] == "MTH1W"
+    assert body["course_code"] == math_code
     assert body["grade_level"] == 9
     assert body["strands"] == []
 
 
 def test_search_unknown_course_returns_404(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
-    """When the course itself is unknown, search still 404s — the empty-
-    strands-fallback only kicks in for known courses with no matches.
+    """When the subject itself is unknown, search still 404s — the empty-
+    strands-fallback only kicks in for known subjects with no matches.
     """
     headers = _auth(client, parent_user.email)
     resp = client.get(
@@ -484,7 +476,7 @@ def test_search_unknown_course_returns_404(
 
 
 def test_search_empty_query_falls_through_to_full_course(
-    client, parent_user, cmcp_flag_on, patch_live_model, seeded_curriculum
+    client, parent_user, cmcp_flag_on, seeded_curriculum
 ):
     """An empty (or whitespace-only) ``q`` should return the full course
     listing — same behavior as the phase-2 source.
@@ -492,11 +484,136 @@ def test_search_empty_query_falls_through_to_full_course(
     FastAPI rejects ``?q=`` with 422 because of ``min_length=1``; this
     test exercises the in-handler fallback by calling without ``q``.
     """
+    math_code = seeded_curriculum["math_code"]
     headers = _auth(client, parent_user.email)
-    resp = client.get("/api/curriculum/MTH1W/search", headers=headers)
+    resp = client.get(f"/api/curriculum/{math_code}/search", headers=headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    assert {s["name"] for s in body["strands"]} == {"Number", "Algebra"}
+    assert {s["name"] for s in body["strands"]} == {"Number Sense", "Algebra"}
+
+
+# ── JOIN edge cases (#4426) ────────────────────────────────────────────
+
+
+def test_courses_omits_subjects_with_no_expectations(
+    client, parent_user, cmcp_flag_on, seeded_curriculum, db_session
+):
+    """A ``CEGSubject`` row with no ``CEGExpectation`` children must NOT
+    appear in ``GET /courses`` — the inner JOIN drops it.
+    """
+    from app.models.curriculum import CEGSubject
+
+    empty_code = f"EMPTY{uuid4().hex[:4].upper()}"
+    empty_subject = CEGSubject(code=empty_code, name="Empty subject")
+    db_session.add(empty_subject)
+    db_session.commit()
+    try:
+        headers = _auth(client, parent_user.email)
+        resp = client.get("/api/curriculum/courses", headers=headers)
+        assert resp.status_code == 200, resp.text
+        codes = [item["course_code"] for item in resp.json()]
+        assert empty_code not in codes
+    finally:
+        db_session.delete(empty_subject)
+        db_session.commit()
+
+
+def test_get_course_with_multiple_grades_returns_max_grade(
+    client, parent_user, cmcp_flag_on, seeded_curriculum, db_session
+):
+    """A subject with expectations across multiple grades reports the
+    max grade (deterministic per the API-contract decision in #4426).
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    math = seeded_curriculum["subjects"]["MATH"]
+    math_code = seeded_curriculum["math_code"]
+
+    # Add a G10 expectation under a new strand + version pair.
+    extra_strand = CEGStrand(
+        subject_id=math.id, code="D", name="Data Management"
+    )
+    db_session.add(extra_strand)
+    db_session.flush()
+    extra_version = CurriculumVersion(
+        subject_id=math.id,
+        grade=10,
+        version=f"test-extra-{uuid4().hex[:6]}",
+        change_severity=None,
+        notes="test seed (G10)",
+    )
+    db_session.add(extra_version)
+    db_session.flush()
+    extra_exp = CEGExpectation(
+        ministry_code="D1.1",
+        cb_code=f"CB-G10-{math_code}-D1-OE1",
+        subject_id=math.id,
+        strand_id=extra_strand.id,
+        grade=10,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="Interpret data displays",
+        curriculum_version_id=extra_version.id,
+    )
+    db_session.add(extra_exp)
+    db_session.commit()
+    try:
+        headers = _auth(client, parent_user.email)
+        resp = client.get(f"/api/curriculum/{math_code}", headers=headers)
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["grade_level"] == 10
+        # And the new strand + expectation appear in the response.
+        strands = {s["name"]: s for s in body["strands"]}
+        assert "Data Management" in strands
+        codes = {
+            e["code"] for e in strands["Data Management"]["expectations"]
+        }
+        assert "D1.1" in codes
+        # /courses must also report the max grade for this subject
+        # (mutation-test guard: catches a regression that swaps
+        # ``func.max`` for ``func.min`` in list_curriculum_courses).
+        list_resp = client.get("/api/curriculum/courses", headers=headers)
+        assert list_resp.status_code == 200, list_resp.text
+        list_codes = {
+            item["course_code"]: item for item in list_resp.json()
+        }
+        assert list_codes[math_code]["grade_level"] == 10
+        # And expectation_count picks up the extra row (3 base + 1 extra).
+        assert list_codes[math_code]["expectation_count"] == 4
+    finally:
+        db_session.delete(extra_exp)
+        db_session.delete(extra_version)
+        db_session.delete(extra_strand)
+        db_session.commit()
+
+
+def test_get_course_groups_strands_correctly_under_one_subject(
+    client, parent_user, cmcp_flag_on, seeded_curriculum
+):
+    """The seeded MATH subject has two strands (Number Sense + Algebra);
+    each must contain exactly the expectations seeded under it (JOIN
+    correctness check).
+    """
+    math_code = seeded_curriculum["math_code"]
+    headers = _auth(client, parent_user.email)
+    resp = client.get(f"/api/curriculum/{math_code}", headers=headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    strands = {s["name"]: s for s in body["strands"]}
+
+    number_codes = sorted(
+        e["code"] for e in strands["Number Sense"]["expectations"]
+    )
+    algebra_codes = sorted(
+        e["code"] for e in strands["Algebra"]["expectations"]
+    )
+    assert number_codes == ["B1.1", "B1.2"]
+    assert algebra_codes == ["C1.1"]
 
 
 # ── Role-agnostic read access (M0) ─────────────────────────────────────
@@ -506,8 +623,7 @@ def test_search_empty_query_falls_through_to_full_course(
     "user_fixture", ["parent_user", "student_user", "teacher_user"]
 )
 def test_every_authenticated_role_can_read(
-    request, client, cmcp_flag_on, patch_live_model, seeded_curriculum,
-    user_fixture,
+    request, client, cmcp_flag_on, seeded_curriculum, user_fixture,
 ):
     """M0 scope: any authenticated user can read curriculum data when
     the flag is ON. Restrictive board/admin RBAC arrives in later
