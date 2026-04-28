@@ -723,7 +723,7 @@ If `cmcp.enabled` is flipped OFF mid-ramp, all generation requests fall back to 
 | Curriculum revision floods teacher re-review queue | Medium | Medium | D9=B severity classifier; only `scope_substantive` flags |
 | Streaming SSE breaks for slow networks | Low | Medium | `cmcp.streaming.enabled` sub-flag; sync fallback for short artifacts |
 | Latency SLA breach goes unnoticed | Medium | Medium | M1-E 1E-2 ships an SLO alert (10% over target sustained 5 min) → page on-call. Streaming sub-flag `cmcp.streaming.enabled` allows fallback to sync UX if SSE infra issues arise. |
-| Cost overrun mid-M1 | Medium | Medium | D8=B cost model; per-artifact spend cap as backstop |
+| Cost overrun mid-M1 | Medium | Medium | D8=B cost model — see [`docs/design/CB-CMCP-001-cost-model.md`](CB-CMCP-001-cost-model.md) (per-content-type token cost, 3 volume tiers, **$0.12/artifact spend cap** backstop). |
 | User changes D2 (study_guides extension vs new content_artifacts) after M0 starts | Low (gated) | High | D2 is a hard precondition for M0 batch 0a; once locked, this risk is moot. If reversed mid-flight, dual-write window required during table migration; cost is multi-week. |
 
 ---
