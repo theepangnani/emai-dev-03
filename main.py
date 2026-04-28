@@ -165,7 +165,8 @@ logger.info("Database tables created/verified")
 # Hard rules (non-negotiable — see CLAUDE.md "Migration locking")
 # ---------------------------------------------------------------
 # 1. Use ``pg_try_advisory_lock`` (non-blocking) — NEVER ``pg_advisory_lock``.
-# 2. 3 attempts, 5s sleep between each — no longer waits, no more retries.
+# 2. Exactly 3 attempts with 5s sleep between each — no longer total wait,
+#    no extra retries beyond the third.
 # 3. PG-only paths (``ALTER TYPE``, ``JSONB``, ``IF NOT EXISTS`` on ALTER)
 #    must be gated on ``_is_pg`` (SQLite re-creates schema via
 #    ``Base.metadata.create_all``).

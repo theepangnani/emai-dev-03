@@ -23,7 +23,7 @@ CREATE INDEX block is a no-op). Together they cover both halves of the
 """
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -387,6 +387,22 @@ class TestExistingMigrationBlocksConformToPattern:
         block = main_py_source[start:end]
         assert "if _is_pg" in block, (
             "0A-3 block missing _is_pg gate — ALTER TYPE is PG-only"
+        )
+
+    def test_0a2_block_calls_rollback_on_alter_failure(self, main_py_source):
+        """0A-2's inner except branch must call ``_conn.rollback()``.
+
+        Source-line conformance counterpart to ``TestMigrationRollback``
+        (which tests the contract behaviourally). Per migration-pattern
+        rule #5: failed inner ALTER MUST rollback so the next block
+        isn't poisoned.
+        """
+        start = main_py_source.find("CB-CMCP-001 0A-2 (#4413)")
+        end = main_py_source.find("Lightweight schema migration", start)
+        block = main_py_source[start:end]
+        assert "_conn.rollback()" in block, (
+            "0A-2 block must call _conn.rollback() in inner except — "
+            "see migration pattern reference rule #5"
         )
 
     def test_no_blocking_pg_advisory_lock_anywhere(self, main_py_source):
