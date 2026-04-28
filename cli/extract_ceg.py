@@ -38,7 +38,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import re
 import sys
 from dataclasses import dataclass
@@ -123,6 +122,9 @@ Approach this as a fresh, independent pass — not a review of any previous outp
 
 Be thorough. Do not skip codes that appear in the document.
 
+For overall expectations, set "type" to "overall" and leave "parent_oe_code" as null.
+Use null (not the string "null") for missing fields.
+
 Return ONLY a valid JSON array of objects with this exact shape:
 [
   {{
@@ -135,7 +137,7 @@ Return ONLY a valid JSON array of objects with this exact shape:
   }}
 ]
 
-Use null for missing fields. No prose, no markdown, no code fences. JSON only.
+No prose, no markdown, no code fences. JSON only.
 
 DOCUMENT TEXT:
 ---
@@ -229,16 +231,28 @@ def parse_pdf(pdf_path: Path) -> ParsedPDF:
 # ---------------------------------------------------------------------------
 
 
-def _truncate_for_prompt(document_text: str, limit: int = MAX_PROMPT_CHARS) -> str:
-    if len(document_text) <= limit:
-        return document_text
+def _truncate_for_prompt(
+    document_text: str, limit: int | None = None
+) -> tuple[str, bool]:
+    """Slice document text to fit within `limit` chars.
+
+    Returns (text, truncated). When `limit` is None, the module-level
+    MAX_PROMPT_CHARS is used at call time (so monkeypatching the module
+    constant from tests works as expected). Tracking the truncation flag
+    keeps the metadata auditable so a downstream reviewer can refuse to
+    mark a partial extraction as "complete" without explicit override
+    (#4416 ≥99% accuracy gate).
+    """
+    effective_limit = MAX_PROMPT_CHARS if limit is None else limit
+    if len(document_text) <= effective_limit:
+        return document_text, False
     logger.warning(
         "PDF text truncated from %d to %d chars for single-pass prompt; "
         "full-document chunking is deferred to stripe 0B-5.",
         len(document_text),
-        limit,
+        effective_limit,
     )
-    return document_text[:limit]
+    return document_text[:effective_limit], True
 
 
 def _strip_code_fence(raw: str) -> str:
@@ -285,17 +299,17 @@ async def run_pass(
     subject: str,
     user_prompt_template: str,
     system_prompt: str,
-) -> tuple[list[dict[str, Any]], str]:
+) -> tuple[list[dict[str, Any]], str, bool]:
     """Run a single Claude extraction pass.
 
-    Returns (parsed_items, raw_response).
+    Returns (parsed_items, raw_response, was_truncated).
     """
     # Lazy import so unit tests can mock at the module path without paying
     # the import-cost of FastAPI/SQLAlchemy at CLI import time, and so the
     # mock applies cleanly.
     from app.services.ai_service import generate_content
 
-    prompt_text = _truncate_for_prompt(document_text)
+    prompt_text, truncated = _truncate_for_prompt(document_text)
     user_prompt = user_prompt_template.format(
         grade=grade,
         subject=subject,
@@ -310,7 +324,7 @@ async def run_pass(
         temperature=0.1,
     )
     parsed = parse_pass_output(raw)
-    return parsed, raw
+    return parsed, raw, truncated
 
 
 # ---------------------------------------------------------------------------
@@ -439,14 +453,14 @@ async def extract_ceg(
     """Run the full two-pass extraction and return the result dict."""
     parsed = parse_pdf(pdf_path)
 
-    pass1_items, _raw1 = await run_pass(
+    pass1_items, _raw1, truncated_1 = await run_pass(
         document_text=parsed.text,
         grade=grade,
         subject=subject,
         user_prompt_template=PASS1_USER_PROMPT_TEMPLATE,
         system_prompt=PASS1_SYSTEM_PROMPT,
     )
-    pass2_items, _raw2 = await run_pass(
+    pass2_items, _raw2, truncated_2 = await run_pass(
         document_text=parsed.text,
         grade=grade,
         subject=subject,
@@ -455,6 +469,8 @@ async def extract_ceg(
     )
 
     diffs, consensus = diff_passes(pass1_items, pass2_items)
+
+    chars_used = min(len(parsed.text), MAX_PROMPT_CHARS)
 
     return {
         "pass1_output": pass1_items,
@@ -470,6 +486,12 @@ async def extract_ceg(
             "ministry_version": ministry_version,
             "grade": grade,
             "subject": subject,
+            # Truncation flag — the reviewer-side tooling in 0B-3a should
+            # refuse to mark a truncated extraction as "complete" without
+            # explicit override. Full-document chunking is deferred to 0B-5.
+            "source_text_chars": len(parsed.text),
+            "source_text_chars_used": chars_used,
+            "source_text_truncated": truncated_1 or truncated_2,
         },
     }
 
@@ -567,6 +589,14 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"NOTE: {diff_count} item(s) differ between passes — prioritize "
             f"these for OCT-reviewer attention."
+        )
+    if result["metadata"].get("source_text_truncated"):
+        used = result["metadata"]["source_text_chars_used"]
+        total = result["metadata"]["source_text_chars"]
+        print(
+            f"WARNING: PDF text was truncated ({used:,}/{total:,} chars used). "
+            f"Extraction is partial — full-document chunking is stripe 0B-5. "
+            f"Reviewer must NOT mark this output as complete."
         )
     return 0
 

@@ -371,6 +371,10 @@ async def test_extract_ceg_round_trip_with_mocked_claude(tmp_path: Path):
     assert len(md["source_pdf_sha256"]) == 64
     assert "extraction_date" in md
     assert "model" in md
+    # Truncation tracking — synthetic fixture is well under 60K chars
+    assert md["source_text_truncated"] is False
+    assert md["source_text_chars"] > 0
+    assert md["source_text_chars_used"] == md["source_text_chars"]
 
     # Round-trip write
     ec.write_output(result, out_path)
@@ -394,7 +398,7 @@ async def test_run_pass_invokes_generate_content_with_correct_args():
         return ('[{"code": "B1", "type": "overall"}]', "end_turn")
 
     with patch("app.services.ai_service.generate_content", side_effect=fake_generate_content):
-        items, _raw = await ec.run_pass(
+        items, _raw, truncated = await ec.run_pass(
             document_text="Strand B: Number Sense\nB1 ...",
             grade=5,
             subject="MATH",
@@ -403,6 +407,7 @@ async def test_run_pass_invokes_generate_content_with_correct_args():
         )
 
     assert items == [{"code": "B1", "type": "overall"}]
+    assert truncated is False  # short input — no truncation
     assert captured["system_prompt"] == ec.PASS1_SYSTEM_PROMPT
     assert "Grade: 5" in captured["prompt"]
     assert "Subject: MATH" in captured["prompt"]
@@ -410,6 +415,58 @@ async def test_run_pass_invokes_generate_content_with_correct_args():
     assert captured["max_tokens"] == ec.EXTRACTION_MAX_TOKENS
     # Low temperature for reproducible structured output
     assert captured["temperature"] == 0.1
+
+
+# ---------------------------------------------------------------------------
+# Truncation behaviour — silent truncation must surface in metadata.
+# ---------------------------------------------------------------------------
+
+
+class TestTruncation:
+    def test_short_text_not_truncated(self):
+        text, truncated = ec._truncate_for_prompt("hello", limit=100)
+        assert truncated is False
+        assert text == "hello"
+
+    def test_long_text_is_truncated_and_flagged(self):
+        long_text = "x" * 1000
+        text, truncated = ec._truncate_for_prompt(long_text, limit=100)
+        assert truncated is True
+        assert len(text) == 100
+
+    def test_text_exactly_at_limit_not_truncated(self):
+        text, truncated = ec._truncate_for_prompt("y" * 50, limit=50)
+        assert truncated is False
+        assert len(text) == 50
+
+
+@pytest.mark.asyncio
+async def test_truncation_surfaces_in_metadata(tmp_path: Path, monkeypatch):
+    """Force a tiny prompt cap so the synthetic fixture exceeds it; verify
+    the truncation flag lands in metadata rather than silently failing."""
+    # Lower the cap to force truncation on a short fixture.
+    monkeypatch.setattr(ec, "MAX_PROMPT_CHARS", 50)
+
+    responses = iter([
+        ('[{"code": "B1", "type": "overall"}]', "end_turn"),
+        ('[{"code": "B1", "type": "overall"}]', "end_turn"),
+    ])
+
+    async def fake_generate_content(*_args, **_kwargs):
+        return next(responses)
+
+    with patch("app.services.ai_service.generate_content", side_effect=fake_generate_content):
+        result = await ec.extract_ceg(
+            pdf_path=SYNTHETIC_PDF,
+            grade=5,
+            subject="MATH",
+            ministry_version=None,
+        )
+
+    md = result["metadata"]
+    assert md["source_text_truncated"] is True
+    assert md["source_text_chars"] > md["source_text_chars_used"]
+    assert md["source_text_chars_used"] == 50
 
 
 # ---------------------------------------------------------------------------
