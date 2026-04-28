@@ -27,6 +27,7 @@ openai>=1.0.0
 # Embeddings / knowledge base
 numpy>=1.26.0
 pyyaml>=6.0
+pgvector>=0.4.0  # CB-CMCP-001 0A-1: vector(1536) on PG; SQLite uses JSON fallback
 
 # File Processing (OCR and document extraction)
 PyPDF2>=3.0.0
