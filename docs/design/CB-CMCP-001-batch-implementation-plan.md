@@ -354,7 +354,7 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 
 | Stripe | Scope | Reuses |
 |---|---|---|
-| 0A-1 | DDL: `ceg_subjects`, `ceg_strands`, `ceg_expectations`, `curriculum_versions` (with `change_severity`) — pgvector ext if Postgres, fallback if SQLite (gate `if "sqlite" not in settings.database_url`) | phase-2 `CurriculumExpectation` model (extend) |
+| 0A-1 | DDL: `ceg_subjects`, `ceg_strands`, `ceg_expectations`, `curriculum_versions` (with `change_severity`). Embedding column: `vector(1536)` on PG via pgvector ext; on SQLite, store as `JSON` column with the embedding as a list of floats. Semantic-search query path uses `pgvector <=> ` operator on PG and a Python-side cosine-similarity computation on SQLite (acceptable for dev/test where corpus is small — Phase 1 ≤ ~2,000 expectations). Migration gates pgvector creation with `if "sqlite" not in settings.database_url`. Acceptance criteria for 0A-1 include round-trip test on BOTH PG + SQLite. | phase-2 `CurriculumExpectation` model (extend) |
 | 0A-2 | Extend `study_guides` per D2: add `se_codes` JSONB, `alignment_score`, `ceg_version`, `state`, `board_id`, `voice_module_hash`, `class_context_envelope_summary`, `requested_persona` | dev-03 `study_guide.py` |
 | 0A-3 | Auth: add `BOARD_ADMIN` + `CURRICULUM_ADMIN` to `UserRole` enum; RBAC matrix updates | dev-03 `app/api/deps.py` |
 | 0A-4 | Idempotent migrations in `main.py` startup using existing `pg_try_advisory_lock` pattern; advisory lock IDs reserved (e.g., 4351) | dev-03 main.py migration block pattern |
@@ -366,12 +366,13 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 | Stripe | Scope | Reuses |
 |---|---|---|
 | 0B-1 | Port phase-2 `app/api/routes/curriculum.py` REST API (read-only) under feature flag | phase-2 |
-| 0B-2 | Two-pass extractor (D5=B): `cli/extract_ceg.py` — runs Claude twice with different prompts, diffs results, writes pending-review JSON | phase-2 `curriculum_seed.py` (pattern) |
-| 0B-3 | Curriculum-Admin review interface: `/admin/ceg/review` — accept / reject / edit each extracted SE | New (dev-03 admin pattern) |
+| 0B-2 | Two-pass extractor (D5=B, **AI-side check only**): `cli/extract_ceg.py` — runs Claude twice with different prompts, diffs results, writes pending-review JSON. Note: this is the AI-side quality check; the OCT-certified curriculum-reviewer human-side check happens separately in stripe 0C-1. **Both are required** per D5=B; neither alone is sufficient for the ≥99% Ministry-code accuracy gate. | phase-2 `curriculum_seed.py` (pattern) |
+| 0B-3a | Backend: `/api/ceg/admin/review/*` endpoints — list pending, accept, reject, edit (with audit log entries); RBAC requires `CURRICULUM_ADMIN` role | dev-03 admin route patterns |
+| 0B-3b | Frontend: `/admin/ceg/review` page — table view of pending SEs, accept / reject / inline-edit; uses Bridge token styling | New (dev-03 admin patterns) |
 | 0B-4 | Embedding generation backfill job: `cli/embed_ceg.py` — `text-embedding-3-small` per expectation; pgvector index | phase-2 mapping service (pattern) |
 | 0B-5 | Phase-1 seed run: Gr 1–8 Math, Lang, Sci, Soc Studies — store source PDFs in private GCS bucket; commit extracted JSON to repo for audit | New |
 
-**Stripe count:** 5. **Tests:** extractor round-trip on a small sample; review-interface RBAC; embedding lookup match accuracy (≥95% on sample queries).
+**Stripe count:** 6. **Tests:** extractor round-trip on a small sample; review-interface RBAC; embedding lookup match accuracy (≥95% on sample queries).
 
 #### Batch M0-C — Quality SLA + reviewer onboarding (process, not code)
 
@@ -470,6 +471,8 @@ Goal: First curriculum-aligned artifacts generated end-to-end with all four auth
 
 Goal: MCP server live, internal testing complete. **Per D1=C: end-user MCP only; board MCP deferred.**
 
+**Sequencing flexibility:** Batch M2-A (port phase-2 MCP scaffold) has no dependency on the M1 generation pipeline — it can be developed in parallel with M1 to reduce critical path. Only batch M2-B (CB-CMCP-specific MCP tools) depends on M1-A. If parallelism is available, start M2-A as soon as M0 lands.
+
 #### Batch M2-A — Port phase-2 MCP scaffold (#2191)
 
 | Stripe | Scope | Reuses |
@@ -498,6 +501,8 @@ Goal: MCP server live, internal testing complete. **Per D1=C: end-user MCP only;
 ### M3 — Workflow + Surface Integration (target: September 2026)
 
 Goal: Teacher review workflow live; Bridge / DCI / Digest integration shipped; first user-visible flag ramp.
+
+**Sequencing flexibility:** Batch M3-B (Self-study path implementation, D3=C) only depends on the M1 state machine — not on the M3-A teacher-review queue. It can ship as early as late M2 to derisk the D3 decision and validate the SELF_STUDY state-machine path before M3-A is built.
 
 #### Batch M3-A — Teacher Review Queue UI
 
