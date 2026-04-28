@@ -102,15 +102,17 @@ Each aggregate has a **root entity** (transactional consistency boundary) and **
 
 Cross-context communication is via these events. Each is a published record with `event_id`, `occurred_at`, `payload`. We do **not** introduce a message broker; events are emitted in-process as DB-backed work items, polled by a background worker (matches existing dev-03 task-sync pattern).
 
+> **Telemetry note:** all domain events listed below are also tee'd to a cross-cutting telemetry sink (Cloud Logging / Cloud Monitoring). Telemetry is not a bounded context; it observes every event uniformly and is therefore not enumerated in the per-event consumer column.
+
 | Event | Producer context | Consumer contexts | Trigger |
 |---|---|---|---|
 | `ExpectationVersioned` | Curriculum | Generation, Authoring | New `CurriculumVersion` row + diff against prior version |
 | `ClassContextAvailable` | (External: ASGF + course_contents) | Generation | Teacher uploads new course material; new course content tagged to a class |
 | `ArtifactGenerated` | Generation | Authoring | CGP run completes (DRAFT or PENDING_REVIEW state) |
-| `AlignmentScored` | Generation | Authoring (validator dashboard) | Post-gen validator finishes |
-| `ArtifactApproved` | Authoring | Surface, Distribution | Teacher approves → state APPROVED |
+| `AlignmentScored` | Generation | Authoring | Post-gen validator finishes — score is rendered inline in the Teacher Review Queue (M3-A); no separate validator dashboard. |
+| `ArtifactApproved` | Authoring | Surface (Distribution queries by state at request time; no event subscription needed. If a catalog cache is later introduced, add a cache-invalidation event then.) | Teacher approves → state APPROVED |
 | `ArtifactReClassified` | Curriculum | Authoring | CEG version cascade: a tagged SE changed; flag affected artifacts (only `change_severity = scope_substantive`) |
-| `BoardCatalogQueried` | Distribution | (telemetry) | Audit + rate-limit signal |
+| `BoardCatalogQueried` | Distribution | — | Audit + rate-limit signal |
 
 ### 3.4 Anti-corruption layers
 
@@ -214,7 +216,7 @@ This is the load-bearing claim that lets CB-CMCP-001 ship in 9 months instead of
 | `app/mcp/__init__.py` | 125 | MCP server scaffold | M2 batch 2a |
 | `app/mcp/auth.py` | 155 | MCP JWT + RBAC | M2 batch 2a (extend with BOARD_ADMIN/CURRICULUM_ADMIN) |
 | `app/mcp/resources/student.py` | 779 | A1 student-context envelope | M1 batch 1b |
-| `app/mcp/tools/study.py` | 459 | Dedup + rate-limit pattern; replace endpoints with curriculum-guardrailed | M2 batch 2c |
+| `app/mcp/tools/study.py` | 459 | Dedup (SHA-256 content-hash) + per-user rate-limit (10/min in-memory) pattern is reusable BUT is currently in-line per-endpoint, not extracted as a utility. **Port step:** extract to `app/services/cmcp/dedup_and_ratelimit.py` first, then call from M1-A request handler. Replace the endpoints with curriculum-guardrailed equivalents in M2 batch 2C. | M2 batch 2c |
 | `app/mcp/tools/tutor.py` | 611 | Defer (relevant to end-user MCP, not board) | Out of M0–M4 scope |
 | `app/mcp/tools/import_tools.py` | 403 | Out of CB-CMCP-001 scope | (covered by #2196) |
 
@@ -225,7 +227,10 @@ This is the load-bearing claim that lets CB-CMCP-001 ship in 9 months instead of
 | `app/services/ai_service.py` | Engine router; extend with envelope + voice |
 | `app/models/study_guide.py` | Becomes `ContentArtifact` per D2 |
 | `app/models/course_content.py` | Class-context source (A1) |
-| `app/services/asgf_*` services | Class-context ingestion source (A1) |
+| ASGF ingestion services — `app/services/asgf_ingestion_service.py`, `app/services/asgf_service.py`, `app/services/asgf_assignment_service.py` | Class-context ingestion source (A1) — **primary integration point** (the entry path that turns uploads into class-context envelope material) |
+| ASGF slide service — `app/services/asgf_slide_service.py` | Class-context ingestion source (A1) — **primary integration point** (slide-deck parsing feeds the envelope alongside ingestion) |
+| ASGF pedi + learning-history services — `app/services/asgf_pedi_service.py`, `app/services/asgf_learning_history_service.py` | Class-context ingestion source (A1) — **primary integration point** (pedagogical signals + learning history shape envelope content) |
+| ASGF cost / OCR / quiz / save services — `app/services/asgf_cost_service.py`, `app/services/asgf_ocr_service.py`, `app/services/asgf_quiz_service.py`, `app/services/asgf_save_service.py` | Class-context ingestion source (A1) — tangential (OCR + cost accounting + quiz/save flows are read-only references, not primary integration points) |
 | `app/services/pedi_*` services | Email Digest summary block target (A4) |
 | `app/services/dci_*` services | Daily Check-In coach card target (A4) |
 | Bridge components (`frontend/src/components/bridge/*`) | Bridge entry render target (A4) |
@@ -325,11 +330,13 @@ These apply to every new surface; reviewed at each stripe's `/pr-review` pass.
 
 ### 6.6 When to invoke `/bencium-innovative-ux-designer` and `/frontend-design`
 
-Both skills are about distinctive production-grade UI. They overlap with `/ui-ux-pro-max`. To avoid overlap:
+Both skills are about distinctive production-grade UI and have **identical stated descriptions**, so the choice between them is operator preference — not a principled assignment. Either is appropriate at any of the high-stakes UI stripes; pairing with `/ui-ux-pro-max` (which covers patterns, tokens, accessibility, layout) is the load-bearing call.
 
-- Invoke `/ui-ux-pro-max` first on every UI stripe (covers patterns, tokens, accessibility, layout).
-- Invoke `/bencium-innovative-ux-designer` **only** for the Board Admin Dashboard stripe (M3 batch 3h) — that surface has the most freedom for distinctive layouts (heatmaps, executive summaries, export flows).
-- Invoke `/frontend-design` **only** for the Parent Companion render stripe (M1 batch 1f) — that surface is the brand-defining moment for parents and deserves distinctive visual treatment.
+Recommended pairing pattern:
+
+- Always invoke `/ui-ux-pro-max` first on every UI stripe.
+- Invoke EITHER `/bencium-innovative-ux-designer` OR `/frontend-design` (operator pick) at brand-defining stripes — primarily **M1-F Parent Companion render** (the brand-defining moment for parents) and **M3-H Board Admin Dashboard** (most freedom for distinctive layouts).
+- If the surface is high-stakes and time allows, invoke both and pick the stronger output.
 
 ---
 
@@ -347,7 +354,7 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 
 | Stripe | Scope | Reuses |
 |---|---|---|
-| 0A-1 | DDL: `ceg_subjects`, `ceg_strands`, `ceg_expectations`, `curriculum_versions` (with `change_severity`) — pgvector ext if Postgres, fallback if SQLite (gate `if "sqlite" not in settings.database_url`) | phase-2 `CurriculumExpectation` model (extend) |
+| 0A-1 | DDL: `ceg_subjects`, `ceg_strands`, `ceg_expectations`, `curriculum_versions` (with `change_severity`). Embedding column: `vector(1536)` on PG via pgvector ext; on SQLite, store as `JSON` column with the embedding as a list of floats. Semantic-search query path uses `pgvector <=> ` operator on PG and a Python-side cosine-similarity computation on SQLite (acceptable for dev/test where corpus is small — Phase 1 ≤ ~2,000 expectations). Migration gates pgvector creation with `if "sqlite" not in settings.database_url`. Acceptance criteria for 0A-1 include round-trip test on BOTH PG + SQLite. | phase-2 `CurriculumExpectation` model (extend) |
 | 0A-2 | Extend `study_guides` per D2: add `se_codes` JSONB, `alignment_score`, `ceg_version`, `state`, `board_id`, `voice_module_hash`, `class_context_envelope_summary`, `requested_persona` | dev-03 `study_guide.py` |
 | 0A-3 | Auth: add `BOARD_ADMIN` + `CURRICULUM_ADMIN` to `UserRole` enum; RBAC matrix updates | dev-03 `app/api/deps.py` |
 | 0A-4 | Idempotent migrations in `main.py` startup using existing `pg_try_advisory_lock` pattern; advisory lock IDs reserved (e.g., 4351) | dev-03 main.py migration block pattern |
@@ -359,12 +366,13 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 | Stripe | Scope | Reuses |
 |---|---|---|
 | 0B-1 | Port phase-2 `app/api/routes/curriculum.py` REST API (read-only) under feature flag | phase-2 |
-| 0B-2 | Two-pass extractor (D5=B): `cli/extract_ceg.py` — runs Claude twice with different prompts, diffs results, writes pending-review JSON | phase-2 `curriculum_seed.py` (pattern) |
-| 0B-3 | Curriculum-Admin review interface: `/admin/ceg/review` — accept / reject / edit each extracted SE | New (dev-03 admin pattern) |
+| 0B-2 | Two-pass extractor (D5=B, **AI-side check only**): `cli/extract_ceg.py` — runs Claude twice with different prompts, diffs results, writes pending-review JSON. Note: this is the AI-side quality check; the OCT-certified curriculum-reviewer human-side check happens separately in stripe 0C-1. **Both are required** per D5=B; neither alone is sufficient for the ≥99% Ministry-code accuracy gate. | phase-2 `curriculum_seed.py` (pattern) |
+| 0B-3a | Backend: `/api/ceg/admin/review/*` endpoints — list pending, accept, reject, edit (with audit log entries); RBAC requires `CURRICULUM_ADMIN` role | dev-03 admin route patterns |
+| 0B-3b | Frontend: `/admin/ceg/review` page — table view of pending SEs, accept / reject / inline-edit; uses Bridge token styling | New (dev-03 admin patterns) |
 | 0B-4 | Embedding generation backfill job: `cli/embed_ceg.py` — `text-embedding-3-small` per expectation; pgvector index | phase-2 mapping service (pattern) |
 | 0B-5 | Phase-1 seed run: Gr 1–8 Math, Lang, Sci, Soc Studies — store source PDFs in private GCS bucket; commit extracted JSON to repo for audit | New |
 
-**Stripe count:** 5. **Tests:** extractor round-trip on a small sample; review-interface RBAC; embedding lookup match accuracy (≥95% on sample queries).
+**Stripe count:** 6. **Tests:** extractor round-trip on a small sample; review-interface RBAC; embedding lookup match accuracy (≥95% on sample queries).
 
 #### Batch M0-C — Quality SLA + reviewer onboarding (process, not code)
 
@@ -463,6 +471,8 @@ Goal: First curriculum-aligned artifacts generated end-to-end with all four auth
 
 Goal: MCP server live, internal testing complete. **Per D1=C: end-user MCP only; board MCP deferred.**
 
+**Sequencing flexibility:** Batch M2-A (port phase-2 MCP scaffold) has no dependency on the M1 generation pipeline — it can be developed in parallel with M1 to reduce critical path. Only batch M2-B (CB-CMCP-specific MCP tools) depends on M1-A. If parallelism is available, start M2-A as soon as M0 lands.
+
 #### Batch M2-A — Port phase-2 MCP scaffold (#2191)
 
 | Stripe | Scope | Reuses |
@@ -491,6 +501,8 @@ Goal: MCP server live, internal testing complete. **Per D1=C: end-user MCP only;
 ### M3 — Workflow + Surface Integration (target: September 2026)
 
 Goal: Teacher review workflow live; Bridge / DCI / Digest integration shipped; first user-visible flag ramp.
+
+**Sequencing flexibility:** Batch M3-B (Self-study path implementation, D3=C) only depends on the M1 state machine — not on the M3-A teacher-review queue. It can ship as early as late M2 to derisk the D3 decision and validate the SELF_STUDY state-machine path before M3-A is built.
 
 #### Batch M3-A — Teacher Review Queue UI
 
@@ -667,17 +679,18 @@ off → internal_only → staff → on_5 → on_25 → on_100 → on_for_all
 
 ### 8.3 Telemetry per amendment
 
-| Amendment | Metric | Target |
-|---|---|---|
-| A1 | % of generations with envelope_size > 0 | ≥70% by M3 |
-| A1 | Cited_source_count per artifact | ≥1 average |
-| A2 | Parent Companion adoption (DCI/Digest open + click) | ≥30% in 7d |
-| A2 | Parent Companion render correctness (no answer key leak) | 100% |
-| A3 | Voice module hash present on student-facing | 100% |
-| A3 | Voice consistency audit (sample 50) | ≥90% inter-rater |
-| A4 | Approved artifacts surfaced in DCI within 24h | ≥80% |
-| A4 | Bridge entry CTR | ≥15% |
-| A4 | Digest summary block render rate | ≥95% |
+| Amendment | Metric | Target | Source |
+|---|---|---|---|
+| A1 | % of generations with envelope_size > 0 | ≥70% by M3 | — |
+| A1 | Cited_source_count per artifact | ≥1 average | — |
+| A2 | Parent Companion adoption (DCI/Digest open + click) | ≥30% in 7d | — |
+| A2 | Parent Companion render correctness (no answer key leak) | 100% | — |
+| A3 | Voice module hash present on student-facing | 100% | — |
+| A3 | Voice consistency audit (sample 50) | ≥90% inter-rater | — |
+| A4 | Approved artifacts surfaced in DCI within 24h | ≥80% | — |
+| A4 | Bridge entry CTR | ≥15% | — |
+| A4 | Digest summary block render rate | ≥95% | — |
+| (Cross-cutting) | Generation latency P95 by content_type | per-type SLA: Quiz < 8s · Worksheet < 12s · Study Guide < 25s · Sample Test < 40s · Assignment < 30s | Cloud Run request latency + custom metric stamped with `content_type` at request time |
 
 ### 8.4 Kill-switch
 
@@ -690,8 +703,8 @@ If `cmcp.enabled` is flipped OFF mid-ramp, all generation requests fall back to 
 | Gate | Unlocks | Required |
 |---|---|---|
 | **M0 → M1** | Generation pipeline build | CEG live (Gr 1–8, ≥99% accuracy); cost model published; reviewer onboarded; D1/D2/D3/D5/D7/D11 confirmed |
-| **M1 → M2** | MCP server build | E2E generation works; alignment validator ≥80%; voice audit passes; envelope ≥70% on test corpus |
-| **M2 → M3** | Workflow + surfaces | MCP live on Cloud Run; #2191 closed; internal QA pass |
+| **M1 → M2** | MCP server build | E2E generation works; alignment validator ≥80%; voice audit passes; envelope ≥70% on test corpus; **per-content-type latency P95 SLAs holding (Cloud Monitoring dashboard live + alerts firing on 10%-over-target sustained 5 min)** |
+| **M2 → M3** | Workflow + surfaces | **End-user MCP** live on Cloud Run (per D1=C, board MCP deferred); #2191 closed; internal QA pass |
 | **M3 → M4** | Pilot opens | Teacher review functional; Bridge/DCI/Digest integration live; flag ramped to staff; A4 surface KPIs hit |
 | **M4 → M5** | Phase 2 expansion | Pilot success criteria met; on_for_all ramp |
 
@@ -709,8 +722,9 @@ If `cmcp.enabled` is flipped OFF mid-ramp, all generation requests fall back to 
 | Board never signs DSA — CB-MCP value unrealized | Medium | High | D11 — interviews in parallel with M0; B2C value via Authenticity Layer is independent |
 | Curriculum revision floods teacher re-review queue | Medium | Medium | D9=B severity classifier; only `scope_substantive` flags |
 | Streaming SSE breaks for slow networks | Low | Medium | `cmcp.streaming.enabled` sub-flag; sync fallback for short artifacts |
+| Latency SLA breach goes unnoticed | Medium | Medium | M1-E 1E-2 ships an SLO alert (10% over target sustained 5 min) → page on-call. Streaming sub-flag `cmcp.streaming.enabled` allows fallback to sync UX if SSE infra issues arise. |
 | Cost overrun mid-M1 | Medium | Medium | D8=B cost model; per-artifact spend cap as backstop |
-| User decides D2 differently mid-M0 | Low | High | Decide D2 BEFORE M0 batch 0a opens (hard precondition) |
+| User changes D2 (study_guides extension vs new content_artifacts) after M0 starts | Low (gated) | High | D2 is a hard precondition for M0 batch 0a; once locked, this risk is moot. If reversed mid-flight, dual-write window required during table migration; cost is multi-week. |
 
 ---
 
