@@ -90,7 +90,8 @@ export function TutorChat({
     (text: string) => {
       if (isStreaming) return;
       setDraft('');
-      void sendMessage(text);
+      const isWorksheet = /practice|problem|exercise|worksheet/i.test(text);
+      void sendMessage(text, isWorksheet ? { mode: 'worksheet' } : undefined);
     },
     [isStreaming, sendMessage],
   );

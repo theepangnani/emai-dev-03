@@ -28,7 +28,7 @@ export interface TutorMessage {
   streaming?: boolean;
   timestamp: Date;
   /** Tutor reply mode that produced this assistant message. */
-  mode?: 'quick' | 'full';
+  mode?: 'quick' | 'full' | 'worksheet';
   /** The user-prompt text that produced this assistant message. Stored on the
    *  assistant stub so a later "Get the full version" action can replay the
    *  same prompt with mode: 'full'. */
@@ -37,7 +37,10 @@ export interface TutorMessage {
 
 export interface UseTutorChatResult {
   messages: TutorMessage[];
-  sendMessage: (text: string, opts?: { mode?: 'quick' | 'full' }) => Promise<void>;
+  sendMessage: (
+    text: string,
+    opts?: { mode?: 'quick' | 'full' | 'worksheet' },
+  ) => Promise<void>;
   /** Re-fire the user prompt that produced `assistantId` with mode:'full'. */
   requestFull: (assistantId: string) => void;
   isStreaming: boolean;
@@ -145,7 +148,7 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string, opts?: { mode?: 'quick' | 'full' }) => {
+    async (text: string, opts?: { mode?: 'quick' | 'full' | 'worksheet' }) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 

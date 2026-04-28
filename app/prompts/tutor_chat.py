@@ -38,9 +38,23 @@ FULL_MODE_STRUCTURE_INSTRUCTION = (
     "not feel like a textbook."
 )
 
+WORKSHEET_MODE_INSTRUCTION = (
+    "The user asked for practice problems, so produce a worksheet on the "
+    "most recent topic from the conversation. Output a numbered list of "
+    "5-10 practice problems (use exactly the count the user asked for if "
+    "they specified one) using Markdown numbering (`1.`, `2.`, `3.`, ...). "
+    "Order the problems by difficulty progression — easier first, harder "
+    "last — so the learner ramps up. After the problem list, render a "
+    "clearly-separated section with the heading `## Answer key` followed "
+    "by the worked solutions in matching numbered order (`1.`, `2.`, "
+    "`3.`, ...) so the answers line up one-to-one with the problems. Keep "
+    "the warm, age-appropriate Arc voice throughout."
+)
+
 
 def build_system_prompt(
-    grade_level: int | None, mode: Literal["quick", "full"] = "quick"
+    grade_level: int | None,
+    mode: Literal["quick", "full", "worksheet"] = "quick",
 ) -> str:
     """Return the Arc tutor system prompt, shaped by grade level and mode."""
     effective_grade = grade_level if grade_level is not None else 7
@@ -71,6 +85,8 @@ def build_system_prompt(
 
     if mode == "full":
         return f"{base}{FULL_MODE_STRUCTURE_INSTRUCTION}\n{SUGGESTION_CHIP_INSTRUCTION}"
+    if mode == "worksheet":
+        return f"{base}{WORKSHEET_MODE_INSTRUCTION}\n{SUGGESTION_CHIP_INSTRUCTION}"
     return f"{base}{SUGGESTION_CHIP_INSTRUCTION}"
 
 

@@ -151,3 +151,41 @@ def test_system_prompt_has_stay_on_topic_directive() -> None:
     same topic — not switch subjects (#4381 Bug 2b)."""
     prompt = build_system_prompt(grade_level=7)
     assert "continue on the same topic" in prompt
+
+
+def test_system_prompt_worksheet_mode_includes_directive() -> None:
+    """`mode='worksheet'` must add the worksheet directives (#4382)."""
+    prompt = build_system_prompt(grade_level=10, mode="worksheet")
+    lower = prompt.lower()
+    # Worksheet directive markers.
+    assert "numbered list" in lower
+    assert "answer key" in lower
+    # Chip instruction is still present (worksheet mode keeps the suffix).
+    assert SUGGESTION_CHIP_INSTRUCTION in prompt
+
+
+def test_system_prompt_worksheet_mode_excludes_full_structure() -> None:
+    """Worksheet mode must NOT include the full-mode structure block —
+    worksheet has its own shape (#4382)."""
+    prompt = build_system_prompt(grade_level=10, mode="worksheet")
+    # The full-mode "## Summary" section + cheat-sheet wording are full-only.
+    assert "cheat-sheet" not in prompt.lower()
+    assert "## Summary" not in prompt
+    # And the marker phrase that appears only in the full-mode instruction.
+    assert "structured Markdown artifact" not in prompt
+
+
+def test_system_prompt_default_arg_still_quick() -> None:
+    """Default arg (no `mode`) must still produce quick output, unchanged
+    by the worksheet addition (#4382)."""
+    default = build_system_prompt(grade_level=10)
+    quick = build_system_prompt(grade_level=10, mode="quick")
+    assert default == quick
+    # And the worksheet directive must NOT appear in the quick prompt.
+    assert "answer key" not in default.lower()
+
+
+def test_system_prompt_worksheet_mode_keeps_grade_tone() -> None:
+    """Worksheet mode must still be shaped by grade level (#4382)."""
+    prompt = build_system_prompt(grade_level=4, mode="worksheet")
+    assert "grade 4" in prompt.lower()

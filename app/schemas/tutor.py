@@ -19,7 +19,7 @@ class TutorChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
     conversation_id: str | None = None
     context_override: TutorChatContextOverride | None = None
-    mode: Literal["quick", "full"] = "quick"
+    mode: Literal["quick", "full", "worksheet"] = "quick"
 
 
 class TutorChatDoneResponse(BaseModel):
