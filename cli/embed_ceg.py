@@ -108,10 +108,29 @@ class MalformedExpectationError(ValueError):
 
 # Module-level cache for the AsyncOpenAI client. Re-instantiating per row
 # means a fresh TLS handshake per row; for a 2,000-row corpus that's a real
-# cost. We memoize the client on first use within this CLI invocation. Tests
-# mock ``_create_embedding`` directly, so this cache never holds a real
-# client during CI.
+# cost. We memoize the client on first use within this CLI invocation.
+#
+# Lifecycle contract:
+#   - The CLI is one-shot (``python cli/embed_ceg.py`` exits after the
+#     run), so process-lifetime caching is functionally per-invocation.
+#   - Tests mock ``_create_embedding`` directly — the cache is never
+#     touched during CI. The ``_wipe_ceg_tables`` autouse fixture resets
+#     the cache on every test entry/exit anyway as defence-in-depth.
+#   - Any consumer that imports this module and triggers the un-mocked
+#     path (currently none) MUST call ``_reset_openai_client_cache()``
+#     before/after to avoid cross-context leakage.
 _async_openai_client: Any | None = None
+
+
+def _reset_openai_client_cache() -> None:
+    """Clear the cached ``AsyncOpenAI`` client.
+
+    Public seam for test fixtures and any future consumer that imports
+    this module from a long-running context (e.g., a server-lifetime
+    process that calls ``backfill_embeddings`` more than once).
+    """
+    global _async_openai_client
+    _async_openai_client = None
 
 
 def _get_async_openai_client() -> Any:
@@ -198,10 +217,11 @@ def _persist_embedding(row: Any, vector: list[float]) -> None:
 
     On PG the column is a pgvector ``vector(1536)`` — the SQLAlchemy
     pgvector binding accepts a Python list of floats and serialises it
-    client-side to the pgvector wire format, so the Python-side
-    assignment is identical on both dialects. We keep this helper as a
-    single seam so any future dialect-specific encoding (e.g., binary
-    protocol for big rows) lives in one place.
+    client-side (in the pgvector SQLAlchemy dialect handler) to the
+    pgvector wire format, so the Python-side assignment is identical
+    on both dialects. We keep this helper as a single seam so any
+    future dialect-specific encoding (e.g., binary protocol for big
+    rows) lives in one place.
     """
     if len(vector) != EMBEDDING_DIM:
         raise EmbeddingAPIError(
@@ -277,25 +297,27 @@ def _query_pending_rows(
     if limit is not None:
         query = query.limit(limit)
 
-    # Python-side belt-and-suspenders: SQL filter is authoritative, but
-    # if a future SQLite/SQLAlchemy quirk encodes None differently, this
-    # second pass is cheap insurance on the already-truncated result set.
-    return [row for row in query.all() if _needs_embedding(row.embedding)]
+    # SQL predicate is authoritative — we do NOT post-filter in Python.
+    # Doing so would silently drop rows that the SQL ``LIMIT`` already
+    # picked but Python's ``_needs_embedding`` rejected, masking real
+    # divergences between the two predicates. If a future SQLite or
+    # SQLAlchemy version subtly changes the storage format for ``None``
+    # in a JSON column, we want loud test failures rather than a quietly
+    # empty result set.
+    return query.all()
 
 
 def _needs_embedding(value: Any) -> bool:
     """True iff the column value indicates "no embedding yet".
 
-    Handles both PG (SQL NULL → Python None) and SQLite-JSON (which stores
-    Python None as the JSON literal ``'null'`` string in some setups, plus
-    the genuinely-unset SQL NULL when the row was inserted before the
-    JSON serializer ran). We treat an empty list as "no embedding" too —
+    Handles both PG (SQL NULL → Python None) and SQLite-JSON (Python None
+    encoded as JSON literal). Treats an empty list as "no embedding" —
     an empty 1536-dim vector is meaningless.
 
-    Used by ``_query_pending_rows`` as a Python-side post-filter belt-and-
-    suspenders against the SQL predicate, in case a future SQLite version
-    or SQLAlchemy upgrade subtly changes how Python ``None`` is encoded
-    into the JSON column.
+    Kept as a documented utility for future use (e.g., a follow-up worker
+    that re-checks rows post-write or a one-off migration script). Not
+    currently called by ``_query_pending_rows`` — the SQL predicate there
+    is authoritative; see the comment in that function.
     """
     if value is None:
         return True
@@ -469,7 +491,7 @@ async def backfill_embeddings(
             db_session.rollback()
             skipped_malformed += 1
             logger.warning(
-                "[%d/%d] SKIP id=%s — malformed expectation_text: %s",
+                "[%d/%d] SKIP id=%s — malformed description: %s",
                 idx,
                 total,
                 row.id,
@@ -631,6 +653,10 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_GENERIC_ERROR
     finally:
         db_session.close()
+        # Always release the cached client at end of run so that repeated
+        # in-process invocations of ``main()`` (e.g., from tests or a
+        # future host process) start with a clean cache.
+        _reset_openai_client_cache()
 
     print(
         f"embed_ceg: found={stats['found']} embedded={stats['embedded']} "

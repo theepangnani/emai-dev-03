@@ -5,7 +5,7 @@ Per acceptance criteria:
 - Idempotent: re-running skips already-embedded rows
 - Dry-run: no API calls, no writes
 - Rate-limit honoured (mock verifies call timing >= min interval)
-- Error handling for malformed expectation_text (str/empty)
+- Error handling for malformed description text (str/empty)
 - Scope filters work (--grade --subject)
 
 OpenAI API is fully mocked at the single ``_create_embedding`` seam — no
@@ -49,10 +49,10 @@ def _wipe_ceg_tables(db_session):
     # Reset the module-level OpenAI client cache so it never leaks state
     # between tests. Tests mock ``_create_embedding`` directly (the cache
     # is only touched by the un-mocked path), but resetting is cheap
-    # defence-in-depth.
-    ec._async_openai_client = None
+    # defence-in-depth via the public reset helper.
+    ec._reset_openai_client_cache()
     yield
-    ec._async_openai_client = None
+    ec._reset_openai_client_cache()
     from app.models.curriculum import (
         CEGExpectation,
         CEGStrand,
@@ -361,6 +361,47 @@ class TestBackfillBatchedCommit:
         assert len(commit_calls) == 3, (
             f"expected 3 commits with batch_size=2 over 5 rows, got {len(commit_calls)}"
         )
+
+    def test_batch_size_one_commits_per_row(self, db_session):
+        # batch_size=1 reproduces the original per-row commit behaviour —
+        # 3 rows -> 3 commits + 0 trailing flush.
+        subject, strand, version = _seed_subject_strand_version(db_session)
+        for i in range(3):
+            _make_expectation(
+                db_session,
+                subject=subject,
+                strand=strand,
+                version=version,
+                ministry_code=f"B2.{i}",
+                description=f"Expectation {i}.",
+            )
+        db_session.commit()
+
+        commit_calls = []
+        original_commit = db_session.commit
+
+        def _spy_commit():
+            commit_calls.append(len(commit_calls))
+            return original_commit()
+
+        fake_create = AsyncMock(return_value=_fake_vector(0))
+        with patch.object(ec, "_create_embedding", fake_create):
+            with patch.object(db_session, "commit", side_effect=_spy_commit):
+                stats = asyncio.run(
+                    ec.backfill_embeddings(
+                        db_session,
+                        grade=None,
+                        subject=None,
+                        limit=None,
+                        dry_run=False,
+                        min_interval_s=0.0,
+                        batch_size=1,
+                    )
+                )
+        assert stats["embedded"] == 3
+        # batch_size=1 with 3 rows: each row triggers a commit at threshold,
+        # no trailing flush needed.
+        assert len(commit_calls) == 3
 
     def test_default_batch_size_emits_single_trailing_commit_for_small_run(
         self, db_session
