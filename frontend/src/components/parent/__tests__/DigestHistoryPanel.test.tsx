@@ -200,10 +200,11 @@ describe('DigestHistoryPanel', () => {
   });
 
   // S-7: stale expandedLogId reset
-  it('resets expandedLogId when the expanded row disappears after a refetch', async () => {
-    const log42 = makeLog({ id: 42, digest_content: '<p>Forty-two</p>' });
-    mockGetLogs.mockResolvedValue({ data: [log42] });
-    const { rerender, queryClient } = renderPanel();
+  it('resets expandedLogId when the expanded row disappears after a refetch (S-7)', async () => {
+    const log42 = makeLog({ id: 42, email_count: 42, digest_content: '<p>Forty-two</p>' });
+    const log99 = makeLog({ id: 99, email_count: 99 });
+    mockGetLogs.mockResolvedValueOnce({ data: [log42] });
+    const { queryClient } = renderPanel();
     await waitFor(() => {
       expect(screen.getByRole('button', { expanded: false })).toBeInTheDocument();
     });
@@ -213,25 +214,23 @@ describe('DigestHistoryPanel', () => {
       expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
     });
 
-    // Simulate refetch returning logs WITHOUT id=42.
-    const log99 = makeLog({ id: 99, digest_content: '<p>Ninety-nine</p>' });
-    mockGetLogs.mockResolvedValue({ data: [log99] });
+    // Stage 2: refetch returns logs WITHOUT id=42. Without S-7, expandedLogId
+    // stays as 42 (invisible — log42 isn't in the list to render).
+    mockGetLogs.mockResolvedValueOnce({ data: [log99] });
     await queryClient.invalidateQueries({ queryKey: ['email-digest', 'logs', 'panel'] });
-
-    function Wrapper({ children }: { children: ReactNode }) {
-      return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-    }
-    rerender(
-      <Wrapper>
-        <DigestHistoryPanel />
-      </Wrapper>,
-    );
-
-    // After the refetch, no row is expanded — id=42 is gone, id=99 is collapsed.
     await waitFor(() => {
-      expect(screen.queryByRole('button', { expanded: true })).not.toBeInTheDocument();
+      expect(screen.getByText(/99 emails/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { expanded: false })).toBeInTheDocument();
+
+    // Stage 3: refetch RE-ADDS id=42. WITHOUT S-7, expandedLogId is still 42 →
+    // log42 auto-expands (visible regression). WITH S-7, expandedLogId was
+    // reset to null when log42 disappeared → log42 renders collapsed.
+    mockGetLogs.mockResolvedValueOnce({ data: [log42, log99] });
+    await queryClient.invalidateQueries({ queryKey: ['email-digest', 'logs', 'panel'] });
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(2);
+    });
+    expect(screen.queryByRole('button', { expanded: true })).not.toBeInTheDocument();
   });
 
   // S-9: aria-controls on heading button matches list id
@@ -288,19 +287,28 @@ describe('DigestHistoryPanel', () => {
     expect(mockGetLogs).toHaveBeenCalledTimes(1);
   });
 
-  // S-12: lazy DOMPurify — Loading content... shows briefly before sanitized HTML appears
-  it('shows transient "Loading content..." between expand-click and DOMPurify resolution (S-12)', async () => {
-    const log = makeLog({ id: 5, digest_content: '<p>lazy</p>' });
+  // S-12: lazy DOMPurify — Loading content placeholder MUST appear synchronously
+  // before the dynamic import resolves. With eager DOMPurify, purify would be
+  // set on first render and the placeholder would never appear — making this
+  // assertion fail. That's the intended mutation-test guard.
+  it('does NOT load DOMPurify until first row expand (S-12 contract)', async () => {
+    const log = makeLog({ id: 5, digest_content: '<p>lazy-content</p>' });
     mockGetLogs.mockResolvedValue({ data: [log] });
     renderPanel();
     await waitFor(() => {
       expect(screen.getByRole('button', { expanded: false })).toBeInTheDocument();
     });
     fireEvent.click(screen.getByRole('button', { expanded: false }));
-    // Either the loader is briefly visible OR DOMPurify is already resolved —
-    // both are valid; the contract is that the sanitized text eventually appears.
+
+    // Synchronously after click — purify state is still null because dynamic
+    // import hasn't resolved yet. The placeholder MUST be visible.
+    expect(screen.getByText('Loading content...')).toBeInTheDocument();
+    expect(screen.queryByText(/lazy-content/)).not.toBeInTheDocument();
+
+    // Then DOMPurify resolves and the sanitized content replaces the placeholder.
     await waitFor(() => {
-      expect(screen.getByText(/lazy/i)).toBeInTheDocument();
+      expect(screen.getByText(/lazy-content/)).toBeInTheDocument();
     });
+    expect(screen.queryByText('Loading content...')).not.toBeInTheDocument();
   });
 });
