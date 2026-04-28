@@ -72,6 +72,7 @@ export function DigestHistoryPanel({
   // `collapsed` + `onToggle` props instead of mutating the initializer.
   const [collapsed, setCollapsed] = useState<boolean>(collapsible && defaultCollapsed);
   const [purify, setPurify] = useState<DOMPurifyType | null>(null);
+  const [purifyError, setPurifyError] = useState(false);
 
   const { data: logs = [], isLoading } = useQuery<DigestDeliveryLog[]>({
     queryKey: ['email-digest', 'logs', 'panel', limit],
@@ -89,12 +90,12 @@ export function DigestHistoryPanel({
 
   // S-12: lazy-load DOMPurify only when a row gets expanded.
   useEffect(() => {
-    if (expandedLogId !== null && !purify) {
+    if (expandedLogId !== null && !purify && !purifyError) {
       import('dompurify')
         .then((m) => setPurify(() => m.default))
-        .catch(() => {});
+        .catch(() => setPurifyError(true));
     }
-  }, [expandedLogId, purify]);
+  }, [expandedLogId, purify, purifyError]);
 
   const wrapperClass = ['dhp-panel', className].filter(Boolean).join(' ');
   const showList = !collapsible || !collapsed;
@@ -109,7 +110,7 @@ export function DigestHistoryPanel({
             className="dhp-heading--button"
             onClick={() => setCollapsed((c) => !c)}
             aria-expanded={!collapsed}
-            aria-controls={listId}
+            aria-controls={showList ? listId : undefined}
           >
             <span className="dhp-heading-text">{heading}</span>
             <Chevron open={!collapsed} />
@@ -168,6 +169,8 @@ export function DigestHistoryPanel({
                                 __html: purify.sanitize(log.digest_content),
                               }}
                             />
+                          ) : purifyError ? (
+                            <p className="dhp-no-content">Could not load digest content. Please refresh.</p>
                           ) : (
                             <div className="dhp-digest-text">Loading content...</div>
                           )
