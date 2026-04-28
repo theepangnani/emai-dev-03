@@ -2175,6 +2175,8 @@ The original v2 MVP (PR #4045) shipped with WhatsApp deferred to "Stream 5" — 
 
 **Effect:** Multi-kid parents now receive exactly ONE digest envelope across in_app + email + WhatsApp, with correct kid attribution everywhere (subject "Email Digest for your kids", per-kid sections inline). When Meta approves the V2 Twilio template (#3987), flipping the env var swaps the V1 `•`-flat formatting for properly sectioned multi-variable rendering — zero further code changes.
 
+**Follow-up — manual "Send Now" endpoint dispatch (#4434):** PR #4104 (the legacy-path retirement that landed alongside this stream) flipped `send_unified_digest_for_parent()` to be the default for the scheduled job but missed the manual trigger at `POST /api/parent/email-digest/integrations/{integration_id}/send-digest`, which kept hard-coding the legacy per-integration path. #4434 closes the gap by routing the endpoint through the same `is_feature_enabled("parent.unified_digest_v2")` check the scheduler uses. Behavioral consequence: when V2 is ON, clicking "Send Now" on any single integration delivers ONE parent-wide digest covering all of that parent's integrations (matches V2's "one digest per parent" semantics — the integration_id in the URL becomes a triggering identity, not a scoping filter). The `create_tasks` query param remains a per-integration legacy concept from the #3929 task-sync pilot; the V2 branch ignores it and emits a warning log, defaults False, and will be removed before public launch per #3929.
+
 
 #### 6.142.3 Phase 1 round-3 + pass-4 review (2026-04-24 evening)
 
