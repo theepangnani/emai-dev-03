@@ -187,6 +187,7 @@ logger.info("Database tables created/verified")
 # 4301 students.profile_photo_url (#4301)
 # 4413 study_guides CMCP extension columns (#4413)
 # 4414 userrole enum extension (#4414)
+# 4428 ceg_expectations curriculum-admin review columns (#4428)
 # ============================================================================
 
 # CRITICAL: Add UTDF columns synchronously before any request can hit the model.
