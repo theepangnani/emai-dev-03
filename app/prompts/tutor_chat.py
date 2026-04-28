@@ -19,10 +19,10 @@ from app.prompts.grade_tone import get_tone_profile
 SUGGESTION_CHIP_INSTRUCTION = (
     'After your answer, output 3-4 suggestion chips on a new line in this exact format: '
     '[[CHIPS: "chip1", "chip2", "chip3"]]. '
-    "Each chip MUST be a complete, self-contained prompt that names the current "
-    "topic — never bare verbs like \"Practice problems\", \"Examples\", or \"More\". "
-    'Use 4-10 words. Bad: "Practice problems". '
-    'Good: "Practice factoring problems for Grade 10".'
+    "Each chip MUST be a complete, self-contained prompt that names the topic the user "
+    "is currently learning — never bare verbs like \"Practice problems\", \"Examples\", "
+    'or \"More\". Use 4-10 words. Bad: "Practice problems". '
+    'Good: "Practice problems on the topic above" or "Show worked examples of this concept".'
 )
 
 FULL_MODE_STRUCTURE_INSTRUCTION = (
