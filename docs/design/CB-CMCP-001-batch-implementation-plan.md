@@ -446,7 +446,7 @@ Goal: First curriculum-aligned artifacts generated end-to-end with all four auth
 | Stripe | Scope | Reuses |
 |---|---|---|
 | 1E-1 | SSE endpoint per content type: long-form (study guide, sample test, assignment) streams; short-form (quiz, worksheet) sync | dev-03 SSE pattern from tutor.py |
-| 1E-2 | Per-content-type latency SLA telemetry (< 8s quiz, < 25s study guide, etc.); alert at SLO violation | dev-03 telemetry patterns |
+| 1E-2 | Per-content-type latency SLA telemetry (Quiz < 8s, Worksheet < 12s, Study Guide < 25s, Sample Test < 40s, Assignment < 30s); Cloud Monitoring dashboard + SLO alert (10% over target sustained 5 min) paging on-call. Acceptance: dashboard live + alert firing in staging before stripe closes. | dev-03 telemetry patterns |
 | 1E-3 | Frontend streaming consumer hook + skeleton fallback that respects `prefers-reduced-motion` | dev-03 streaming hooks |
 
 **Stripe count:** 3.
