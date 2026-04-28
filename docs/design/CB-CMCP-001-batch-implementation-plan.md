@@ -102,15 +102,17 @@ Each aggregate has a **root entity** (transactional consistency boundary) and **
 
 Cross-context communication is via these events. Each is a published record with `event_id`, `occurred_at`, `payload`. We do **not** introduce a message broker; events are emitted in-process as DB-backed work items, polled by a background worker (matches existing dev-03 task-sync pattern).
 
+> **Telemetry note:** all domain events listed below are also tee'd to a cross-cutting telemetry sink (Cloud Logging / Cloud Monitoring). Telemetry is not a bounded context; it observes every event uniformly and is therefore not enumerated in the per-event consumer column.
+
 | Event | Producer context | Consumer contexts | Trigger |
 |---|---|---|---|
 | `ExpectationVersioned` | Curriculum | Generation, Authoring | New `CurriculumVersion` row + diff against prior version |
 | `ClassContextAvailable` | (External: ASGF + course_contents) | Generation | Teacher uploads new course material; new course content tagged to a class |
 | `ArtifactGenerated` | Generation | Authoring | CGP run completes (DRAFT or PENDING_REVIEW state) |
-| `AlignmentScored` | Generation | Authoring (validator dashboard) | Post-gen validator finishes |
-| `ArtifactApproved` | Authoring | Surface, Distribution | Teacher approves → state APPROVED |
+| `AlignmentScored` | Generation | Authoring | Post-gen validator finishes — score is rendered inline in the Teacher Review Queue (M3-A); no separate validator dashboard. |
+| `ArtifactApproved` | Authoring | Surface (Distribution queries by state at request time; no event subscription needed. If a catalog cache is later introduced, add a cache-invalidation event then.) | Teacher approves → state APPROVED |
 | `ArtifactReClassified` | Curriculum | Authoring | CEG version cascade: a tagged SE changed; flag affected artifacts (only `change_severity = scope_substantive`) |
-| `BoardCatalogQueried` | Distribution | (telemetry) | Audit + rate-limit signal |
+| `BoardCatalogQueried` | Distribution | — | Audit + rate-limit signal |
 
 ### 3.4 Anti-corruption layers
 
