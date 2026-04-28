@@ -160,16 +160,22 @@ export function CEGReviewPage() {
   async function handleAccept(row: CEGPendingExpectation) {
     markBusy(row.id, true);
     setError(null);
-    // Optimistic: remove from pending list immediately, snapshot to roll back
-    // if the request fails.
-    const snapshot = items;
+    // Optimistic: remove from pending list immediately. Roll back by
+    // re-inserting THIS specific row (functional update) rather than
+    // restoring a closure-captured snapshot of the whole array — that way
+    // concurrent accept/reject calls on different rows don't undo each
+    // other's optimistic updates on failure.
     removePending(row.id);
     try {
       const updated = await cegAdminReviewApi.accept(row.id);
       setAccepted((prev) => [updated, ...prev]);
     } catch (e) {
-      // Roll back optimistic removal.
-      setItems(snapshot);
+      // Roll back: re-insert this single row at the head of the pending
+      // list. We don't try to preserve the original sort position — the
+      // row is back, that's the contract.
+      setItems((prev) =>
+        prev.some((r) => r.id === row.id) ? prev : [row, ...prev],
+      );
       const msg =
         e && typeof e === 'object' && 'message' in e
           ? String((e as { message: unknown }).message)
@@ -183,13 +189,16 @@ export function CEGReviewPage() {
   async function handleReject(row: CEGPendingExpectation) {
     markBusy(row.id, true);
     setError(null);
-    const snapshot = items;
     removePending(row.id);
     try {
       const updated = await cegAdminReviewApi.reject(row.id);
       setRejected((prev) => [updated, ...prev]);
     } catch (e) {
-      setItems(snapshot);
+      // See handleAccept — single-row rollback to avoid stomping on
+      // concurrent optimistic updates.
+      setItems((prev) =>
+        prev.some((r) => r.id === row.id) ? prev : [row, ...prev],
+      );
       const msg =
         e && typeof e === 'object' && 'message' in e
           ? String((e as { message: unknown }).message)
@@ -249,7 +258,14 @@ export function CEGReviewPage() {
           <div className="ceg-review-kicker">CB-CMCP-001 / Curriculum Review</div>
           <h1 className="ceg-review-title">CEG expectation review</h1>
         </div>
-        <div className="ceg-review-counts" aria-label="Review counts">
+        {/* aria-live="polite" announces count changes after accept/reject so a
+         * screen reader user hears confirmation of the action without needing
+         * to navigate back to the row that disappeared. */}
+        <div
+          className="ceg-review-counts"
+          aria-label="Review counts"
+          aria-live="polite"
+        >
           <div className="ceg-review-count">
             <span>Pending</span>
             <span className="ceg-review-count-value">{items.length}</span>

@@ -122,7 +122,10 @@ describe('CEGReviewPage', () => {
     mockListPending.mockResolvedValue([]);
     renderPage(<CEGReviewPage />);
 
-    expect(screen.getByText(/Loading/)).toBeInTheDocument();
+    // Tight match against the early-return loading copy so a future
+    // "Loading pending expectations…" message in the dataset path can't
+    // trick the assertion into passing for the wrong branch.
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
   });
 
   it('renders empty state when there are no pending expectations', async () => {
