@@ -682,6 +682,80 @@ describe('TutorChat', () => {
     expect(filename).toMatch(/^Arc-tutor-\d{8}-\d{4}\.pdf$/);
   });
 
+  it('attaches the PDF wrapper just below the viewport (NOT off-screen at -99999px, NOT opacity:0) — #4431/#4438', async () => {
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+
+    // Wrapper must be positioned just BELOW the viewport (top: 100vh) so the
+    // browser performs full layout/paint and html2canvas can capture it, but
+    // the user never sees it.
+    const wrapper = vi.mocked(downloadAsPdf).mock.calls[0][0] as HTMLElement;
+    expect(wrapper.style.top).toBe('100vh');
+    expect(wrapper.style.left).toBe('0px');
+    expect(wrapper.style.pointerEvents).toBe('none');
+    // SUGG-2 — accessibility hygiene
+    expect(wrapper.getAttribute('aria-hidden')).toBe('true');
+    // Anti-regression — broken values must NOT be present.
+    expect(wrapper.style.left).not.toBe('-99999px');
+    expect(wrapper.style.opacity).not.toBe('0');  // opacity-inherit risk
+  });
+
+  it('invokes requestAnimationFrame BEFORE downloadAsPdf in the download flow — #4431/#4438', async () => {
+    const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+    mockFetchOk([
+      'data: {"type":"token","text":"Some content."}\n\n',
+      'data: {"type":"done"}\n\n',
+    ]);
+
+    const user = userEvent.setup();
+    render(<TutorChat firstName="Maya" />);
+    await user.type(
+      screen.getByRole('textbox', { name: /message arc/i }),
+      'hello{Enter}',
+    );
+
+    // Snapshot rAF call count BEFORE the download click — any prior calls
+    // (auto-scroll, React internals) shouldn't influence the assertion.
+    const rafCallsBeforeClick = rafSpy.mock.calls.length;
+
+    const dl = await screen.findByRole('button', { name: /download pdf/i });
+    await user.click(dl);
+
+    await waitFor(() => {
+      expect(downloadAsPdf).toHaveBeenCalledTimes(1);
+    });
+
+    // At least one NEW rAF call after the click (our explicit settle await).
+    // Acknowledged limitation: React 19 batching / userEvent may also call
+    // rAF post-click — this is a directional guard, not absolute proof. Pair
+    // with the positioning test for full mutation coverage.
+    expect(rafSpy.mock.calls.length).toBeGreaterThan(rafCallsBeforeClick);
+
+    // Stronger ordering check: the FIRST downloadAsPdf invocation must come
+    // AFTER at least one post-click rAF.
+    const dlOrder = vi.mocked(downloadAsPdf).mock.invocationCallOrder[0];
+    const postClickRafs = rafSpy.mock.invocationCallOrder.slice(rafCallsBeforeClick);
+    expect(postClickRafs.some((order) => order < dlOrder)).toBe(true);
+
+    rafSpy.mockRestore();
+  });
+
   it('sanitizes HTML in assistant content before passing to PDF (IMPORTANT-3 XSS guard)', async () => {
     // Stream an assistant reply with a payload that would execute via inline HTML.
     mockFetchOk([
