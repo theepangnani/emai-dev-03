@@ -3,6 +3,9 @@
  * Verifies the new `showRecentHistory` prop renders the
  * DigestHistoryPanel below the footer when an integration exists,
  * and stays hidden otherwise (back-compat with existing callers).
+ *
+ * #4399 (Stream J) — also verifies the `description` prop is forwarded
+ * only in single-kid mode (`aggregate=false`).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
@@ -67,5 +70,36 @@ describe('EmailDigestCard — showRecentHistory', () => {
   it('renders the "Open daily digest →" button when an integration exists', () => {
     renderWithProviders(<EmailDigestCard {...baseProps} aggregate showRecentHistory />);
     expect(screen.getByRole('button', { name: /open daily digest/i })).toBeInTheDocument();
+  });
+
+  // S-6: description prop wiring
+  it('passes description hint to DigestHistoryPanel in single-kid mode (aggregate=false)', async () => {
+    renderWithProviders(
+      <EmailDigestCard
+        {...baseProps}
+        aggregate={false}
+        childName="Aiden"
+        showRecentHistory
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByText('These digests cover all your kids.'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('omits description in all-kids mode (aggregate=true)', async () => {
+    const { container } = renderWithProviders(
+      <EmailDigestCard {...baseProps} aggregate showRecentHistory />,
+    );
+    // Wait for panel to render so we know the absence is real (not a timing race).
+    await waitFor(() => {
+      expect(screen.getByText(/digest history/i)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText('These digests cover all your kids.'),
+    ).not.toBeInTheDocument();
+    expect(container.querySelector('.dhp-description')).toBeNull();
   });
 });
