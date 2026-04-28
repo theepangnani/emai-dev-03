@@ -68,7 +68,7 @@ class StudyGuide(Base):
     se_codes = Column(_CMCPJSONType, nullable=True)  # array of CB-format SE codes
     alignment_score = Column(Numeric(4, 3), nullable=True)  # validator score [0.000–1.000]
     ceg_version = Column(Integer, nullable=True)  # curriculum_versions.id stamp (loose, no FK in MVP)
-    state = Column(String(30), nullable=False, default="DRAFT", server_default="DRAFT")
+    state = Column(String(30), nullable=False, server_default="DRAFT")
     # state ∈ {DRAFT, PENDING_REVIEW, IN_REVIEW, APPROVED, APPROVED_VERIFIED,
     # REJECTED, ARCHIVED, SELF_STUDY (D3=C hybrid)}
     board_id = Column(String(50), nullable=True)  # board-scoped artifact visibility (M3-E)
