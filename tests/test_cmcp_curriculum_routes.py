@@ -803,6 +803,89 @@ def test_search_excludes_pending_and_rejected_expectations(
     assert flat == ["R1.1"]
 
 
+def test_routes_filter_on_review_state_independently_of_active(
+    client, parent_user, cmcp_flag_on, db_session
+):
+    """Defense-in-depth: even if a row has ``active=True`` but
+    ``review_state != 'accepted'`` (a hypothetical model-invariant
+    violation from a buggy admin workflow), the public routes must
+    still hide it. Mutation-test guard for the ``review_state ==
+    'accepted'`` filter specifically — the ``active=True`` filter alone
+    would let this row through.
+    """
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+    )
+
+    suffix = uuid4().hex[:6].upper()
+    bad_code = f"X{suffix}"
+    subj = CEGSubject(code=bad_code, name="Bad-state Subject")
+    db_session.add(subj)
+    db_session.flush()
+    strand = CEGStrand(subject_id=subj.id, code="X", name="Bad Strand")
+    db_session.add(strand)
+    db_session.flush()
+    ver = CurriculumVersion(
+        subject_id=subj.id,
+        grade=9,
+        version=f"test-bad-{uuid4().hex[:6]}",
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(ver)
+    db_session.flush()
+    # Inconsistent row: active=True (bypasses active filter) but
+    # review_state='rejected' (must still be filtered out by the
+    # review_state guard).
+    bad_row = CEGExpectation(
+        ministry_code="X1.1",
+        cb_code=f"CB-G9-{bad_code}-X1-OE1",
+        subject_id=subj.id,
+        strand_id=strand.id,
+        grade=9,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="should never appear",
+        curriculum_version_id=ver.id,
+        active=True,
+        review_state="rejected",
+    )
+    db_session.add(bad_row)
+    db_session.commit()
+    try:
+        headers = _auth(client, parent_user.email)
+
+        # /courses must omit the subject (no accepted rows).
+        list_resp = client.get("/api/curriculum/courses", headers=headers)
+        assert list_resp.status_code == 200
+        codes = {item["course_code"] for item in list_resp.json()}
+        assert bad_code not in codes
+
+        # /{course_code} must 404.
+        detail_resp = client.get(
+            f"/api/curriculum/{bad_code}", headers=headers
+        )
+        assert detail_resp.status_code == 404
+
+        # /{course_code}/search must also 404 (no accepted rows under
+        # this subject — the empty-strands fallback only fires for
+        # subjects with at least one accepted row).
+        search_resp = client.get(
+            f"/api/curriculum/{bad_code}/search?q=should",
+            headers=headers,
+        )
+        assert search_resp.status_code == 404
+    finally:
+        db_session.delete(bad_row)
+        db_session.delete(ver)
+        db_session.delete(strand)
+        db_session.delete(subj)
+        db_session.commit()
+
+
 def test_get_course_404_when_only_pending_or_rejected_rows_exist(
     client, parent_user, cmcp_flag_on, db_session
 ):
