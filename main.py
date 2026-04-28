@@ -43,6 +43,7 @@ from app.api.routes import dci_streak  # CB-DCI-001 M0-8 (#4145)
 from app.api.routes import dci_consent  # CB-DCI-001 M0-11 (#4148)
 from app.api.routes import dci  # CB-DCI-001 M0-4 (#4139)
 from app.api.routes import curriculum  # CB-CMCP-001 M0-B 0B-1 (#4415)
+from app.api.routes import ceg_admin_review  # CB-CMCP-001 M0-B 0B-3a (#4428)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1304,6 +1305,116 @@ finally:
         _cmcp_sg_lock_conn.close()
 
 
+# CB-CMCP-001 0B-3a (#4428) — extend ceg_expectations with curriculum-admin
+# review workflow columns: review_state, reviewed_by_user_id, reviewed_at,
+# review_notes, updated_at. Default ``review_state='accepted'`` so any
+# already-active legacy rows do NOT show up in the pending-review queue.
+# Rows that were inserted with ``active=False`` BEFORE this column landed
+# are extractor-pending (0B-2's contract is "extracted but not yet
+# reviewed"), so the migration also runs a one-shot UPDATE to set them
+# to ``review_state='pending'``. The extractor (stripe 0B-2) inserts
+# future rows with ``review_state='pending'`` directly.
+#
+# Note: PG 11+ optimizes ``ALTER TABLE ADD COLUMN ... NOT NULL DEFAULT
+# <constant>`` to a metadata-only operation (no full table rewrite under
+# ACCESS EXCLUSIVE lock). NOW() qualifies because it's evaluated once
+# per ALTER. ClassBridge runs on Cloud SQL PG 14+, so this is safe;
+# verify before back-porting to clusters older than PG 11.
+#
+# Idempotent. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries x 5s — see CLAUDE.md migration-locking section).
+_cmcp_review_lock_conn = None
+_cmcp_review_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _cmcp_review_time
+        _cmcp_review_lock_conn = engine.connect()
+        for _cmcp_review_attempt in range(1, 4):
+            _cmcp_review_result = _cmcp_review_lock_conn.execute(text("SELECT pg_try_advisory_lock(4428)"))
+            _cmcp_review_lock_acquired = _cmcp_review_result.scalar()
+            if _cmcp_review_lock_acquired:
+                logger.info("Acquired advisory lock 4428 for ceg_expectations review-columns migration (attempt %d)", _cmcp_review_attempt)
+                break
+            logger.warning("Advisory lock 4428 held by another instance (attempt %d/3), retrying in 5s...", _cmcp_review_attempt)
+            _cmcp_review_time.sleep(5)
+        if not _cmcp_review_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4428 after 3 attempts — running ceg_expectations review-columns migration without lock")
+
+    # Per-dialect column type list. ``TIMESTAMPTZ`` on PG / ``DATETIME``
+    # on SQLite (memory rule). ``review_state`` defaults to ``accepted``
+    # so legacy rows are not surfaced as pending.
+    _cmcp_review_cols_pg = [
+        ("review_state", "VARCHAR(20) NOT NULL DEFAULT 'accepted'"),
+        ("reviewed_by_user_id", "INTEGER REFERENCES users(id) ON DELETE SET NULL"),
+        ("reviewed_at", "TIMESTAMPTZ"),
+        ("review_notes", "TEXT"),
+        ("updated_at", "TIMESTAMPTZ NOT NULL DEFAULT NOW()"),
+    ]
+    _cmcp_review_cols_sqlite = [
+        ("review_state", "VARCHAR(20) NOT NULL DEFAULT 'accepted'"),
+        # SQLite cannot add a column with a non-constant default like
+        # CURRENT_TIMESTAMP after-the-fact in some configurations; use
+        # NULL-safe ADD then leave server_default to the model. For
+        # ``updated_at`` we accept a NULL-able fallback in dev/test.
+        ("reviewed_by_user_id", "INTEGER REFERENCES users(id)"),
+        ("reviewed_at", "DATETIME"),
+        ("review_notes", "TEXT"),
+        ("updated_at", "DATETIME"),
+    ]
+    _cmcp_review_cols = _cmcp_review_cols_pg if _is_pg else _cmcp_review_cols_sqlite
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                for _col, _typ in _cmcp_review_cols:
+                    _conn.execute(text(
+                        f"ALTER TABLE ceg_expectations ADD COLUMN IF NOT EXISTS {_col} {_typ}"
+                    ))
+            else:
+                _existing = {
+                    row[1]
+                    for row in _conn.execute(text("PRAGMA table_info(ceg_expectations)")).fetchall()
+                }
+                for _col, _typ in _cmcp_review_cols:
+                    if _col in _existing:
+                        continue
+                    _conn.execute(text(
+                        f"ALTER TABLE ceg_expectations ADD COLUMN {_col} {_typ}"
+                    ))
+            # Backfill: rows already in ``active=False`` predate this
+            # column and are extractor-pending — promote them to
+            # ``review_state='pending'`` so they surface in the queue.
+            # Idempotent on second run (already-pending rows are a
+            # no-op). Cross-dialect: PG uses ``FALSE`` literal, SQLite
+            # uses ``0`` (Boolean is stored as integer).
+            if _is_pg:
+                _conn.execute(text(
+                    "UPDATE ceg_expectations SET review_state='pending' "
+                    "WHERE active = FALSE AND review_state = 'accepted'"
+                ))
+            else:
+                _conn.execute(text(
+                    "UPDATE ceg_expectations SET review_state='pending' "
+                    "WHERE active = 0 AND review_state = 'accepted'"
+                ))
+            _conn.commit()
+            logger.info("ceg_expectations review-columns migration completed (#4428)")
+        except Exception as _cmcp_review_col_err:
+            _conn.rollback()
+            logger.warning("ceg_expectations review-columns migration note: %s", _cmcp_review_col_err)
+except Exception as _cmcp_review_err:
+    logger.warning("ceg_expectations review-columns migration outer note: %s", _cmcp_review_err)
+finally:
+    if _cmcp_review_lock_conn is not None:
+        if _cmcp_review_lock_acquired:
+            try:
+                _cmcp_review_lock_conn.execute(text("SELECT pg_advisory_unlock(4428)"))
+                _cmcp_review_lock_conn.commit()
+            except Exception:
+                pass
+        _cmcp_review_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 
@@ -1550,6 +1661,7 @@ app.include_router(dci_streak.router, prefix="/api")  # CB-DCI-001 M0-8 (#4145)
 app.include_router(dci_consent.router, prefix="/api")  # CB-DCI-001 M0-11 (#4148)
 app.include_router(dci.router, prefix="/api")  # CB-DCI-001 M0-4 (#4139)
 app.include_router(curriculum.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-1 (#4415)
+app.include_router(ceg_admin_review.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-3a (#4428)
 
 logger.info("API routes registered at /api")
 
