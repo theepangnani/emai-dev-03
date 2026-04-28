@@ -48,7 +48,11 @@ WORKSHEET_MODE_INSTRUCTION = (
     "clearly-separated section with the heading `## Answer key` followed "
     "by the worked solutions in matching numbered order (`1.`, `2.`, "
     "`3.`, ...) so the answers line up one-to-one with the problems. Keep "
-    "the warm, age-appropriate Arc voice throughout."
+    "the warm, age-appropriate Arc voice throughout. "
+    "Your suggestion chips MUST point AWAY from more practice — suggest "
+    "learning the next concept, asking for a hint on a problem, or "
+    "exploring a related topic. Do NOT suggest more practice / more "
+    "problems / another worksheet."
 )
 
 

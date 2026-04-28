@@ -68,6 +68,19 @@ export interface UseTutorChatOptions {
 /** Last 3 (user, assistant) pairs = 6 messages. */
 const HISTORY_TURNS = 3;
 
+/** Generate a collision-resistant message ID. Prefers `crypto.randomUUID()`
+ *  (available in modern browsers + Node 19+ + jsdom 22+) and falls back to a
+ *  timestamp + random-suffix for older test environments. SUGGESTION-11
+ *  (#4401): two messages created in the same millisecond used to share an
+ *  `id` under the old `Date.now()` scheme, which broke the `m.id ===
+ *  assistantId` lookup during streaming. */
+function genId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function lastTurns(messages: TutorMessage[], limit = HISTORY_TURNS) {
   // Walk backwards collecting complete pairs.
   const pairs: TutorMessage[][] = [];
@@ -169,12 +182,12 @@ export function useTutorChat(options?: UseTutorChatOptions): UseTutorChatResult 
 
       const mode = opts?.mode;
       const userMessage: TutorMessage = {
-        id: `u-${Date.now()}`,
+        id: genId('u'),
         role: 'user',
         content: trimmed,
         timestamp: new Date(),
       };
-      const assistantId = `a-${Date.now()}`;
+      const assistantId = genId('a');
       const assistantStub: TutorMessage = {
         id: assistantId,
         role: 'assistant',
