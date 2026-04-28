@@ -1,26 +1,48 @@
 """Ontario Curriculum Management REST API (CB-CMCP-001 M0-B 0B-1, #4415).
 
-Direct port of phase-2's ``app/api/routes/curriculum.py`` adapted to the
-dev-03 feature-flag system. Three read-only endpoints expose seeded
-Ontario curriculum expectations to the prompt builder and (eventually)
-the board surface (per locked decision D7=B):
+Three read-only endpoints expose the seeded Ontario curriculum graph
+(per locked decision D7=B) to the prompt builder and (eventually) the
+board surface:
 
-    GET /api/curriculum/courses                  — list seeded course codes
+    GET /api/curriculum/courses                  — list seeded subject codes
     GET /api/curriculum/{course_code}            — expectations grouped by strand
     GET /api/curriculum/{course_code}/search?q=  — keyword search within a course
 
-Cross-stripe dependency
------------------------
-The SQLAlchemy model ``CEGExpectation`` (a.k.a. ``CurriculumExpectation``)
-is owned by stripe **0A-1**. To keep this PR independently testable
-before 0A-1 lands on the integration branch, the model import lives
-behind a ``try/except ImportError`` guard — if the model is absent the
-routes return 503 (feature unavailable) so callers see a clean failure
-mode instead of an opaque AttributeError.
+Schema bridge (#4426)
+---------------------
+The original 0B-1 port targeted the phase-2 flat ``CurriculumExpectation``
+model (single table with ``course_code`` + ``strand`` strings). That
+model never landed in dev-03; stripe 0A-1 (#4425) shipped the new
+normalized CEG schema instead:
+
+    CEGSubject ── 1:N ── CEGStrand ── 1:N ── CEGExpectation
+
+This module now queries the normalized schema directly. The forward-
+declared try/except import guard + 503 fallback are gone — ``CEGExpectation``
+is a hard import like any other model.
+
+API contract / mapping decision
+-------------------------------
+The phase-2 ``course_code`` was an Ontario course code (e.g., "MTH1W")
+that encoded subject + grade + stream into one identifier. The new CEG
+schema separates ``CEGSubject.code`` (e.g., "MATH") from
+``CEGExpectation.grade``. To minimize URL-contract churn and preserve
+the response shape, we map:
+
+    course_code  ← CEGSubject.code      (e.g., "MATH", "LANG")
+    grade_level  ← max(CEGExpectation.grade) per subject
+
+Rationale: the issue (#4426) explicitly suggests this mapping. The
+multi-grade subjects (e.g., MATH covers G1-G8) report the highest grade
+seeded; this is deterministic and aligned with the data invariant the
+seed pipeline assumes (one active subject row per code). Future stripes
+that need finer-grained "course" semantics (e.g., MTH1W vs MPM2D) can
+extend the URL to ``/courses/{subject}/{grade}`` without breaking
+existing callers.
 
 Feature flag
 ------------
-Gated by ``cmcp.enabled`` (default OFF). Other CB-CMCP-001 stripes will
+Gated by ``cmcp.enabled`` (default OFF). Other CB-CMCP-001 stripes
 reuse the same flag. When the flag is OFF every endpoint returns 403
 *before* any DB work, mirroring the DCI gating pattern.
 """
@@ -36,6 +58,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.database import get_db
+from app.models.curriculum import CEGExpectation, CEGStrand, CEGSubject
 from app.models.user import User
 from app.services.feature_flag_service import is_feature_enabled
 
@@ -64,47 +87,6 @@ def require_cmcp_enabled(
     if not is_feature_enabled(CMCP_FEATURE_FLAG_KEY, db=db):
         raise HTTPException(status_code=403, detail="CB-CMCP-001 is not enabled")
     return current_user
-
-
-# ---------------------------------------------------------------------------
-# Forward-declared model import (Option A from #4415)
-# ---------------------------------------------------------------------------
-#
-# Stripe 0A-1 will land ``app/models/curriculum.py`` with the canonical
-# ``CEGExpectation`` SQLAlchemy model. Until that ships we keep this
-# stripe importable + testable by guarding the import. When the model is
-# absent every endpoint returns 503 — chosen over a hard import error so
-# the rest of the app keeps booting in CI.
-#
-# When 0A-1 merges, this stripe rebases cleanly: the import succeeds and
-# the routes start serving live data with no further code changes.
-
-_EXPECTATION_MODEL: Optional[type] = None
-try:  # pragma: no cover — exercised in integration once 0A-1 lands
-    from app.models.curriculum import CurriculumExpectation as _LiveExpectationModel
-    _EXPECTATION_MODEL = _LiveExpectationModel
-except ImportError:
-    logger.info(
-        "CB-CMCP-001: app.models.curriculum.CurriculumExpectation not present "
-        "(stripe 0A-1 not merged yet) — endpoints will return 503 until model lands"
-    )
-
-
-def _require_model() -> type:
-    """Return the live ``CurriculumExpectation`` model or raise 503.
-
-    Centralizing the check keeps the handlers readable: they can assume
-    the model exists once this returns.
-    """
-    if _EXPECTATION_MODEL is None:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                "Curriculum data model is not available "
-                "(CB-CMCP-001 stripe 0A-1 must merge before this endpoint serves)"
-            ),
-        )
-    return _EXPECTATION_MODEL
 
 
 # ---------------------------------------------------------------------------
@@ -147,28 +129,22 @@ def list_curriculum_courses(
     _user: User = Depends(require_cmcp_enabled),
     db: Session = Depends(get_db),
 ):
-    """Return all course codes that have seeded curriculum expectations."""
-    # Aggregate in a single query so we don't issue O(N) COUNT subqueries
-    # over the course list. Phase-2 used `distinct(model.course_code)`
-    # which is PG-specific (DISTINCT ON) and silently no-ops on SQLite —
-    # surfaced as a SQLAlchemy deprecation warning in tests. Replacing
-    # it with GROUP BY + COUNT keeps cross-DB parity (PG + SQLite) and
-    # collapses the N+1 to a single round-trip.
-    #
-    # Semantics note: `func.max(grade_level)` assumes each course_code
-    # maps 1:1 to a grade_level (the canonical CEG data model). If
-    # dirty data ever has multiple grade_levels per course, phase-2
-    # returned an arbitrary first row; this returns the max — more
-    # deterministic, aligned with the data invariant.
-    model = _require_model()
+    """Return all subject codes that have seeded curriculum expectations.
+
+    One row per ``CEGSubject`` that has at least one expectation. The
+    aggregation runs in a single query — JOIN ``CEGExpectation`` to
+    ``CEGSubject`` then GROUP BY subject code — so the round-trip count
+    is O(1) regardless of subject count.
+    """
     rows = (
         db.query(
-            model.course_code,
-            func.max(model.grade_level).label("grade_level"),
-            func.count(model.id).label("expectation_count"),
+            CEGSubject.code.label("course_code"),
+            func.max(CEGExpectation.grade).label("grade_level"),
+            func.count(CEGExpectation.id).label("expectation_count"),
         )
-        .group_by(model.course_code)
-        .order_by(model.course_code)
+        .join(CEGExpectation, CEGExpectation.subject_id == CEGSubject.id)
+        .group_by(CEGSubject.code)
+        .order_by(CEGSubject.code)
         .all()
     )
     return [
@@ -187,31 +163,44 @@ def list_curriculum_courses(
 
 
 def _load_course_expectations(db: Session, course_code: str):
-    """Fetch ordered expectation rows for a course, raising 404 if empty."""
-    model = _require_model()
+    """Fetch ordered ``(expectation, strand_name, grade)`` tuples for a
+    subject code, raising 404 if no rows exist.
+
+    Returns a tuple ``(course_code, rows)`` where ``rows`` is a list of
+    ``(CEGExpectation, strand_name, grade)`` triples ordered by strand
+    code then ministry code — matches the phase-2 ``ORDER BY strand,
+    expectation_code`` semantics under the new schema.
+    """
     course_code = course_code.upper()
-    expectations = (
-        db.query(model)
-        .filter(model.course_code == course_code)
-        .order_by(model.strand, model.expectation_code)
+    rows = (
+        db.query(
+            CEGExpectation,
+            CEGStrand.name.label("strand_name"),
+        )
+        .join(CEGStrand, CEGExpectation.strand_id == CEGStrand.id)
+        .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
+        .filter(CEGSubject.code == course_code)
+        .order_by(CEGStrand.code, CEGExpectation.ministry_code)
         .all()
     )
-    if not expectations:
+    if not rows:
         raise HTTPException(
             status_code=404,
             detail=f"No curriculum data found for course {course_code}",
         )
-    return course_code, expectations
+    return course_code, rows
 
 
-def _group_by_strand(expectations) -> list[StrandGroup]:
-    """Group an ordered list of expectation rows into ``StrandGroup`` records."""
+def _group_by_strand(rows) -> list[StrandGroup]:
+    """Group an ordered list of ``(expectation, strand_name)`` rows into
+    ``StrandGroup`` records, preserving insertion (== query) order.
+    """
     strands: dict[str, list[ExpectationItem]] = {}
-    for exp in expectations:
-        if exp.strand not in strands:
-            strands[exp.strand] = []
-        strands[exp.strand].append(ExpectationItem(
-            code=exp.expectation_code,
+    for exp, strand_name in rows:
+        if strand_name not in strands:
+            strands[strand_name] = []
+        strands[strand_name].append(ExpectationItem(
+            code=exp.ministry_code,
             description=exp.description,
             type=exp.expectation_type,
         ))
@@ -225,15 +214,17 @@ def _build_course_response(db: Session, course_code: str) -> CurriculumCourseRes
     """Shared core for ``GET /{course_code}`` and the empty-query fallback in
     ``GET /{course_code}/search``. Kept as a plain helper so the search
     route can reuse it without re-triggering FastAPI dependency
-    injection (calling a ``@router.get``-decorated function directly
-    would still work but is brittle and confusing).
+    injection.
     """
-    course_code, expectations = _load_course_expectations(db, course_code)
-    grade_level = expectations[0].grade_level
+    course_code, rows = _load_course_expectations(db, course_code)
+    # Use the max grade across the subject's expectations (matches the
+    # /courses aggregation choice). Phase-2 used the first row's grade
+    # under the same 1:1 invariant.
+    grade_level = max(exp.grade for exp, _ in rows)
     return CurriculumCourseResponse(
         course_code=course_code,
         grade_level=grade_level,
-        strands=_group_by_strand(expectations),
+        strands=_group_by_strand(rows),
     )
 
 
@@ -243,7 +234,7 @@ def get_curriculum_for_course(
     _user: User = Depends(require_cmcp_enabled),
     db: Session = Depends(get_db),
 ):
-    """Return all expectations for a course, grouped by strand.
+    """Return all expectations for a subject, grouped by strand.
 
     Returns ``{ course_code, grade_level, strands: [{ name, expectations: [{code, description, type}] }] }``.
     """
@@ -262,16 +253,15 @@ def search_curriculum_expectations(
     _user: User = Depends(require_cmcp_enabled),
     db: Session = Depends(get_db),
 ):
-    """Search expectations for a course by keyword (case-insensitive substring match).
+    """Search expectations for a subject by keyword (case-insensitive substring match).
 
     Returns the same grouped structure as ``GET /{course_code}``, but
-    only including expectations whose description **or** expectation
-    code contains the query string. An empty / missing ``q`` falls
-    through to the un-filtered course view. A query that matches no
-    expectations returns the course shell with an empty ``strands``
-    list — *not* a 404 — so the UI can render a "no matches" state.
+    only including expectations whose description **or** ministry code
+    contains the query string. An empty / missing ``q`` falls through
+    to the un-filtered course view. A query that matches no expectations
+    returns the course shell with an empty ``strands`` list — *not* a
+    404 — so the UI can render a "no matches" state.
     """
-    model = _require_model()
     course_code = course_code.upper()
 
     if not q or not q.strip():
@@ -279,41 +269,49 @@ def search_curriculum_expectations(
 
     q_lower = q.strip().lower()
 
-    expectations = (
-        db.query(model)
+    rows = (
+        db.query(
+            CEGExpectation,
+            CEGStrand.name.label("strand_name"),
+        )
+        .join(CEGStrand, CEGExpectation.strand_id == CEGStrand.id)
+        .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
         .filter(
-            model.course_code == course_code,
+            CEGSubject.code == course_code,
             or_(
-                model.description.ilike(f"%{q_lower}%"),
-                model.expectation_code.ilike(f"%{q_lower}%"),
+                CEGExpectation.description.ilike(f"%{q_lower}%"),
+                CEGExpectation.ministry_code.ilike(f"%{q_lower}%"),
             ),
         )
-        .order_by(model.strand, model.expectation_code)
+        .order_by(CEGStrand.code, CEGExpectation.ministry_code)
         .all()
     )
 
-    if not expectations:
-        # Empty result on a known course — return the shell with empty
-        # strands. 404 only when the course itself has no seeded data.
-        all_exp = (
-            db.query(model)
-            .filter(model.course_code == course_code)
+    if not rows:
+        # Empty result on a possibly-known subject — distinguish "subject
+        # exists but no matches" (200 + empty strands) from "subject does
+        # not exist" (404).
+        any_row = (
+            db.query(CEGExpectation.grade)
+            .join(CEGSubject, CEGExpectation.subject_id == CEGSubject.id)
+            .filter(CEGSubject.code == course_code)
+            .order_by(CEGExpectation.grade.desc())
             .first()
         )
-        if not all_exp:
+        if not any_row:
             raise HTTPException(
                 status_code=404,
                 detail=f"No curriculum data found for course {course_code}",
             )
         return CurriculumCourseResponse(
             course_code=course_code,
-            grade_level=all_exp.grade_level,
+            grade_level=any_row.grade,
             strands=[],
         )
 
-    grade_level = expectations[0].grade_level
+    grade_level = max(exp.grade for exp, _ in rows)
     return CurriculumCourseResponse(
         course_code=course_code,
         grade_level=grade_level,
-        strands=_group_by_strand(expectations),
+        strands=_group_by_strand(rows),
     )
