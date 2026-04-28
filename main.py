@@ -1073,6 +1073,90 @@ finally:
         _kp_lock_conn.close()
 
 
+# CB-CMCP-001 0A-2 (#4413) — extend study_guides per locked decision D2=B with
+# 8 curriculum-aware columns (se_codes, alignment_score, ceg_version, state,
+# board_id, voice_module_hash, class_context_envelope_summary, requested_persona).
+# All nullable / defaulted so existing rows + non-CMCP code paths continue to
+# work unchanged. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries x 5s — see CLAUDE.md migration-locking section). Idempotent.
+_cmcp_sg_lock_conn = None
+_cmcp_sg_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _cmcp_sg_time
+        _cmcp_sg_lock_conn = engine.connect()
+        for _cmcp_sg_attempt in range(1, 4):
+            _cmcp_sg_result = _cmcp_sg_lock_conn.execute(text("SELECT pg_try_advisory_lock(4413)"))
+            _cmcp_sg_lock_acquired = _cmcp_sg_result.scalar()
+            if _cmcp_sg_lock_acquired:
+                logger.info("Acquired advisory lock 4413 for study_guides CMCP-extension migration (attempt %d)", _cmcp_sg_attempt)
+                break
+            logger.warning("Advisory lock 4413 held by another instance (attempt %d/3), retrying in 5s...", _cmcp_sg_attempt)
+            _cmcp_sg_time.sleep(5)
+        if not _cmcp_sg_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4413 after 3 attempts — running study_guides CMCP-extension migration without lock")
+
+    # Per-dialect column type list. JSON columns map to JSONB on PG, JSON on
+    # SQLite (memory rule: gate per-DB-dialect via settings.database_url).
+    _cmcp_sg_cols_pg = [
+        ("se_codes", "JSONB"),
+        ("alignment_score", "NUMERIC(4,3)"),
+        ("ceg_version", "INTEGER"),
+        ("state", "VARCHAR(30) DEFAULT 'DRAFT'"),
+        ("board_id", "VARCHAR(50)"),
+        ("voice_module_hash", "VARCHAR(64)"),
+        ("class_context_envelope_summary", "JSONB"),
+        ("requested_persona", "VARCHAR(20)"),
+    ]
+    _cmcp_sg_cols_sqlite = [
+        ("se_codes", "JSON"),
+        ("alignment_score", "NUMERIC(4,3)"),
+        ("ceg_version", "INTEGER"),
+        ("state", "VARCHAR(30) DEFAULT 'DRAFT'"),
+        ("board_id", "VARCHAR(50)"),
+        ("voice_module_hash", "VARCHAR(64)"),
+        ("class_context_envelope_summary", "JSON"),
+        ("requested_persona", "VARCHAR(20)"),
+    ]
+    _cmcp_sg_cols = _cmcp_sg_cols_pg if _is_pg else _cmcp_sg_cols_sqlite
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                for _col, _typ in _cmcp_sg_cols:
+                    _conn.execute(text(
+                        f"ALTER TABLE study_guides ADD COLUMN IF NOT EXISTS {_col} {_typ}"
+                    ))
+            else:
+                # SQLite has no ADD COLUMN IF NOT EXISTS — probe via PRAGMA.
+                _existing = {
+                    row[1]
+                    for row in _conn.execute(text("PRAGMA table_info(study_guides)")).fetchall()
+                }
+                for _col, _typ in _cmcp_sg_cols:
+                    if _col in _existing:
+                        continue
+                    _conn.execute(text(
+                        f"ALTER TABLE study_guides ADD COLUMN {_col} {_typ}"
+                    ))
+            _conn.commit()
+            logger.info("study_guides CMCP-extension migration completed (#4413)")
+        except Exception as _cmcp_sg_col_err:
+            _conn.rollback()
+            logger.warning("study_guides CMCP-extension migration note: %s", _cmcp_sg_col_err)
+except Exception as _cmcp_sg_err:
+    logger.warning("study_guides CMCP-extension migration outer note: %s", _cmcp_sg_err)
+finally:
+    if _cmcp_sg_lock_conn is not None:
+        if _cmcp_sg_lock_acquired:
+            try:
+                _cmcp_sg_lock_conn.execute(text("SELECT pg_advisory_unlock(4413)"))
+                _cmcp_sg_lock_conn.commit()
+            except Exception:
+                pass
+        _cmcp_sg_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 

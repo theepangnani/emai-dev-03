@@ -1,8 +1,20 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Index
+from sqlalchemy import Boolean, Column, Integer, Numeric, String, ForeignKey, DateTime, Text, Index
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
+from sqlalchemy.types import JSON
 
+from app.core.config import settings
 from app.db.database import Base
+
+
+# CB-CMCP-001 0A-2 (#4413) — JSONB on PG, JSON on SQLite for portable JSON columns
+_IS_PG = "sqlite" not in settings.database_url
+if _IS_PG:
+    from sqlalchemy.dialects.postgresql import JSONB
+
+    _CMCPJSONType = JSONB
+else:
+    _CMCPJSONType = JSON
 
 
 class StudyGuide(Base):
@@ -49,6 +61,20 @@ class StudyGuide(Base):
     shared_at = Column(DateTime(timezone=True), nullable=True)
     viewed_at = Column(DateTime(timezone=True), nullable=True)
     viewed_count = Column(Integer, default=0)
+
+    # CB-CMCP-001 0A-2 (#4413) — curriculum-aware columns per locked decision D2=B.
+    # All nullable / defaulted so existing rows + non-CMCP code paths continue
+    # to work unchanged. Columns are populated by M1+ generation pipelines.
+    se_codes = Column(_CMCPJSONType, nullable=True)  # array of CB-format SE codes
+    alignment_score = Column(Numeric(4, 3), nullable=True)  # validator score [0.000–1.000]
+    ceg_version = Column(Integer, nullable=True)  # curriculum_versions.id stamp (loose, no FK in MVP)
+    state = Column(String(30), nullable=False, default="DRAFT", server_default="DRAFT")
+    # state ∈ {DRAFT, PENDING_REVIEW, IN_REVIEW, APPROVED, APPROVED_VERIFIED,
+    # REJECTED, ARCHIVED, SELF_STUDY (D3=C hybrid)}
+    board_id = Column(String(50), nullable=True)  # board-scoped artifact visibility (M3-E)
+    voice_module_hash = Column(String(64), nullable=True)  # Arc voice module hash (M1-C)
+    class_context_envelope_summary = Column(_CMCPJSONType, nullable=True)  # captured envelope (M1-B)
+    requested_persona = Column(String(20), nullable=True)  # student | parent | teacher | admin
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
