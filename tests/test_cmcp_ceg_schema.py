@@ -180,6 +180,32 @@ class TestCEGSchemaSQLite:
             db_session.commit()
         db_session.rollback()
 
+    def test_expectation_type_rejects_invalid_value(self, db_session):
+        """The ``expectation_type`` column has a CHECK constraint pinning
+        the value to ``('overall', 'specific')``. This guard test ensures
+        the CHECK is enforced — a future code change that drops the
+        constraint would fail this test.
+        """
+        from app.models.curriculum import CEGExpectation
+
+        subject, strand, version = _seed_subject_strand_version(
+            db_session, subject_code="MUS"
+        )
+
+        bad = CEGExpectation(
+            ministry_code="X1",
+            subject_id=subject.id,
+            strand_id=strand.id,
+            grade=2,
+            expectation_type="meta",  # not in the locked enum
+            description="bad expectation type",
+            curriculum_version_id=version.id,
+        )
+        db_session.add(bad)
+        with pytest.raises(IntegrityError):
+            db_session.commit()
+        db_session.rollback()
+
     def test_parent_oe_self_fk(self, db_session):
         from app.models.curriculum import (
             CEGExpectation,

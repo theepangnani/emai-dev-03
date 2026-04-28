@@ -247,12 +247,19 @@ class CurriculumVersion(Base):
         Integer,
         ForeignKey("ceg_subjects.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
+        # No standalone index — the composite
+        # ix_curriculum_versions_subject_grade below already serves
+        # subject_id-only lookups via the leftmost-prefix rule.
     )
     grade = Column(Integer, nullable=False)
     version = Column(String(40), nullable=False)  # e.g., "2020-rev1", "2005"
     effective_date = Column(DateTime(timezone=True), nullable=True)
-    change_severity = Column(String(20), nullable=True)  # nullable for the seed version
+    # ``change_severity IS NULL`` is the seed-version sentinel: there is
+    # no prior version to diff against, so no severity has been computed
+    # yet. Subsequent versions are populated by the M3-G classifier with
+    # one of ``wording_only`` (no artifact reflag) or ``scope_substantive``
+    # (drives ``ArtifactReClassified`` domain event).
+    change_severity = Column(String(20), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
