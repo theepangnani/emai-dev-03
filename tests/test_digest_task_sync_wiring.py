@@ -677,7 +677,13 @@ def test_send_digest_now_dispatches_to_unified_when_v2_flag_on(
 def test_send_digest_now_dispatches_to_legacy_when_v2_flag_off(
     client, db_session, digest_env
 ):
-    """V2 flag OFF → endpoint calls send_digest_for_integration, NOT unified."""
+    """V2 flag OFF → endpoint calls send_digest_for_integration, NOT unified.
+
+    Note: this is a parallel correctness check, not the regression guard for
+    #4434. The flag-ON test above is the actual regression guard — it would
+    fail if the dispatch fix were reverted. This flag-OFF test passes either
+    way (legacy is what the buggy code called too).
+    """
     _set_unified_v2_flag(db_session, False)
     env = digest_env
 
@@ -729,10 +735,16 @@ def test_send_digest_now_v2_branch_warns_and_ignores_create_tasks(
             "message": "unified",
         }
     )
+    legacy_mock = AsyncMock(
+        return_value={"status": "delivered", "email_count": 0, "message": "legacy"}
+    )
 
     with patch(
         "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
         new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
     ):
         with caplog.at_level(logging.WARNING, logger="app.api.routes.parent_email_digest"):
             resp = client.post(
@@ -742,12 +754,64 @@ def test_send_digest_now_v2_branch_warns_and_ignores_create_tasks(
 
     assert resp.status_code == 200, resp.text
     unified_mock.assert_awaited_once()
+    # Symmetric guard with the other dispatch tests — V2 must not double-dispatch.
+    legacy_mock.assert_not_awaited()
     # call signature check — V2 worker is called with parent_id, NOT integration,
     # and create_tasks is NOT in its kwargs.
     call_kwargs = unified_mock.await_args.kwargs
     assert "create_tasks" not in call_kwargs
     assert call_kwargs.get("skip_dedup") is True
-    # Both warnings should have fired: the legacy override-noticed warning
-    # (kept for parity) and the V2-specific ignore warning.
+    # The V2-specific ignore warning must fire; the legacy `task_sync.test_override`
+    # warning must NOT (it's now scoped to the legacy branch only — #4450).
     msgs = [rec.getMessage() for rec in caplog.records]
     assert any("ignoring create_tasks=true on unified V2 path" in m for m in msgs), msgs
+    assert not any("task_sync.test_override" in m for m in msgs), msgs
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 9. #4450 — pre-dispatch validation must scope to the chosen path.
+# ──────────────────────────────────────────────────────────────────────────
+
+def test_send_digest_now_v2_dispatches_when_url_integration_inactive(
+    client, db_session, digest_env
+):
+    """#4450 — V2 treats integration_id as triggering identity, not scope.
+    An inactive URL integration must NOT 400 the request when other
+    integrations are active."""
+    _set_unified_v2_flag(db_session, True)
+    env = digest_env
+    # Mark the URL integration inactive — V2 should still dispatch.
+    env["integration"].is_active = False
+    db_session.commit()
+
+    unified_mock = AsyncMock(return_value={
+        "status": "delivered", "email_count": 1,
+        "attribution_counts": {}, "message": "ok",
+    })
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ):
+        resp = client.post(
+            f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest",
+            headers=_auth(client, env["parent"].email),
+        )
+    assert resp.status_code == 200, resp.text
+    unified_mock.assert_awaited_once()
+
+
+def test_send_digest_now_legacy_400s_when_url_integration_inactive(
+    client, db_session, digest_env
+):
+    """#4450 regression guard — legacy path keeps the per-integration
+    is_active check (was the original behavior)."""
+    _set_unified_v2_flag(db_session, False)
+    env = digest_env
+    env["integration"].is_active = False
+    db_session.commit()
+    resp = client.post(
+        f"/api/parent/email-digest/integrations/{env['integration'].id}/send-digest",
+        headers=_auth(client, env["parent"].email),
+    )
+    assert resp.status_code == 400
+    assert "not active" in resp.json()["detail"].lower()

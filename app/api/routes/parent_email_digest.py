@@ -744,7 +744,52 @@ async def send_digest_now(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.PARENT)),
 ) -> SendDigestResponse:
+    # Ownership check applies to BOTH branches — `_get_owned_integration` is the
+    # authz boundary (404 if not owned by current_user). Per-integration state
+    # checks (is_active, digest_settings) are deferred into the legacy branch
+    # (see #4450).
     integration = _get_owned_integration(db, integration_id, current_user.id)
+
+    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    # #4434: dispatch on the same flag the scheduled job uses (see
+    # process_parent_email_digests in app/jobs/parent_email_digest_job.py).
+    # Before this fix, the manual "Send Now" trigger always ran the legacy
+    # per-integration path even after PR #4104 retired it as the default,
+    # producing wall-of-text WhatsApp + per-integration emails that mixed
+    # forwarded mail from multiple kids.
+    from app.services.feature_flag_service import is_feature_enabled
+
+    if is_feature_enabled("parent.unified_digest_v2", db=db):
+        # #4450: under V2 the URL `integration_id` is a *triggering identity*,
+        # not a scope — the unified worker covers ALL the parent's active
+        # integrations. Don't gate on this integration's per-row `is_active`
+        # or settings; a stale UI sending an inactive integration_id must
+        # still succeed if other integrations are active.
+        from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+        # The unified path doesn't accept create_tasks — the #3929 task-sync
+        # pilot only exists on the legacy worker. Warn so callers passing
+        # ?create_tasks=true notice it's a no-op under V2. The
+        # `task_sync.test_override` warning lives only on the legacy branch
+        # below — it shouldn't double-log when create_tasks isn't honored.
+        if create_tasks:
+            logger.warning(
+                "send_digest_now: ignoring create_tasks=true on unified V2 path "
+                "| user_id=%s integration_id=%s",
+                current_user.id,
+                integration.id,
+            )
+
+        return await send_unified_digest_for_parent(
+            db,
+            current_user.id,
+            skip_dedup=True,
+            since=since_24h,
+        )
+
+    # Legacy branch: per-integration semantics still apply — validate THIS
+    # integration specifically (#4450 keeps these checks here only).
     if not integration.is_active:
         raise HTTPException(
             status_code=400,
@@ -768,37 +813,6 @@ async def send_digest_now(
             "TEMPORARY: remove post-pilot (#3929)",
             current_user.id,
             integration.id,
-        )
-
-    since_24h = datetime.now(timezone.utc) - timedelta(hours=24)
-
-    # #4434: dispatch on the same flag the scheduled job uses (see
-    # process_parent_email_digests in app/jobs/parent_email_digest_job.py).
-    # Before this fix, the manual "Send Now" trigger always ran the legacy
-    # per-integration path even after PR #4104 retired it as the default,
-    # producing wall-of-text WhatsApp + per-integration emails that mixed
-    # forwarded mail from multiple kids.
-    from app.services.feature_flag_service import is_feature_enabled
-
-    if is_feature_enabled("parent.unified_digest_v2", db=db):
-        from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
-
-        # The unified path doesn't accept create_tasks — the #3929 task-sync
-        # pilot only exists on the legacy worker. Warn so callers passing
-        # ?create_tasks=true notice it's a no-op under V2.
-        if create_tasks:
-            logger.warning(
-                "send_digest_now: ignoring create_tasks=true on unified V2 path "
-                "| user_id=%s integration_id=%s",
-                current_user.id,
-                integration.id,
-            )
-
-        return await send_unified_digest_for_parent(
-            db,
-            current_user.id,
-            skip_dedup=True,
-            since=since_24h,
         )
 
     from app.jobs.parent_email_digest_job import send_digest_for_integration
