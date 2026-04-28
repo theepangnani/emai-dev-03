@@ -1073,6 +1073,59 @@ finally:
         _kp_lock_conn.close()
 
 
+# CB-CMCP-001 M0-A 0A-3 (#4414) — extend the ``userrole`` PG enum type with two
+# new values for the Curriculum + Master Content Plan: BOARD_ADMIN and
+# CURRICULUM_ADMIN. SQLAlchemy ``Enum(UserRole)`` creates a native PG enum and
+# ``create_all`` does NOT add new values to an existing enum type — that
+# requires ``ALTER TYPE``. SQLite uses VARCHAR + CHECK constraint refreshed by
+# ``create_all`` so no migration is needed there. ``IF NOT EXISTS`` on
+# ``ADD VALUE`` requires PG 9.6+ and makes this idempotent. Wrapped in
+# pg_try_advisory_lock for Cloud Run safety (3 retries × 5s — see CLAUDE.md
+# migration-locking section).
+_ur_lock_conn = None
+_ur_lock_acquired = False
+try:
+    if _is_pg:
+        _ur_lock_conn = engine.connect()
+        for _ur_attempt in range(1, 4):
+            _ur_result = _ur_lock_conn.execute(text("SELECT pg_try_advisory_lock(4414)"))
+            _ur_lock_acquired = _ur_result.scalar()
+            if _ur_lock_acquired:
+                logger.info("Acquired advisory lock 4414 for userrole enum migration (attempt %d)", _ur_attempt)
+                break
+            logger.warning("Advisory lock 4414 held by another instance (attempt %d/3), retrying in 5s...", _ur_attempt)
+            time.sleep(5)
+        if not _ur_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4414 after 3 attempts — running userrole enum migration without lock")
+
+        # ALTER TYPE ... ADD VALUE cannot run inside a transaction block in
+        # older PG, so use AUTOCOMMIT isolation. Each value gets its own
+        # statement; ``IF NOT EXISTS`` makes both idempotent.
+        try:
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as _ur_conn:
+                for _ur_value in ("BOARD_ADMIN", "CURRICULUM_ADMIN"):
+                    try:
+                        _ur_conn.execute(text(
+                            f"ALTER TYPE userrole ADD VALUE IF NOT EXISTS '{_ur_value}'"
+                        ))
+                    except Exception as _ur_value_err:
+                        logger.warning("userrole enum ADD VALUE %s note: %s", _ur_value, _ur_value_err)
+                logger.info("userrole enum migration completed (#4414)")
+        except Exception as _ur_inner_err:
+            logger.warning("userrole enum migration note: %s", _ur_inner_err)
+except Exception as _ur_err:
+    logger.warning("userrole enum migration outer note: %s", _ur_err)
+finally:
+    if _ur_lock_conn is not None:
+        if _ur_lock_acquired:
+            try:
+                _ur_lock_conn.execute(text("SELECT pg_advisory_unlock(4414)"))
+                _ur_lock_conn.commit()
+            except Exception:
+                pass
+        _ur_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 

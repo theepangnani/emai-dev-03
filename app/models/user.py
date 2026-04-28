@@ -11,6 +11,12 @@ class UserRole(str, enum.Enum):
     STUDENT = "student"
     TEACHER = "teacher"
     ADMIN = "admin"
+    # CB-CMCP-001 M0-A 0A-3 (#4414): curriculum/board admin roles for the
+    # Curriculum + Master Content Plan. Actual RBAC gating for these values
+    # ships in M2/M3 stripes — exposing the enum members here so dependencies
+    # like require_role(UserRole.BOARD_ADMIN) can compile against them.
+    BOARD_ADMIN = "BOARD_ADMIN"
+    CURRICULUM_ADMIN = "CURRICULUM_ADMIN"
 
 
 class User(Base):
