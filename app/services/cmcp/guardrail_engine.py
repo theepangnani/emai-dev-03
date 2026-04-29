@@ -193,6 +193,21 @@ class GuardrailEngine:
         se_codes = [se.ministry_code for se in ses]
         return system_prompt, se_codes
 
+    def get_target_se_codes(self, request: GenerationRequest) -> list[str]:
+        """Return the ordered SE ministry codes for the request.
+
+        Light-additive helper introduced in M1-B 1B-3 so the route layer
+        can drive the ``ClassContextResolver`` without having to call
+        ``build_prompt`` first (the resolver's input (d) — teacher
+        library artifacts — needs the SE list to compute overlap).
+
+        Returns an empty list when no CEG SEs match (the route maps that
+        to a 422 via the same ``NoCurriculumMatchError`` path
+        ``build_prompt`` raises).
+        """
+        ses, _oes = self._fetch_curriculum_rows(request)
+        return [se.ministry_code for se in ses]
+
     # -- internal helpers --------------------------------------------------
 
     def _fetch_curriculum_rows(
@@ -276,24 +291,106 @@ class GuardrailEngine:
     ) -> str | None:
         """Render the optional class-context envelope.
 
-        Recognized keys: ``"summary"`` and ``"cited_sources"``. Anything
-        else is ignored — the full envelope schema lands in M1-B 1B-2.
+        Two envelope shapes are supported, in order of preference:
+
+        1. The M1-B 1B-2 ``ClassContextEnvelope`` shape (preferred): keys
+           ``course_contents``, ``classroom_announcements``,
+           ``teacher_digest_summary``, ``teacher_library_artifacts``, plus
+           audit metadata (``envelope_size``, ``cited_source_count``,
+           ``fallback_used``). Each populated category is rendered as a
+           short bulleted excerpt under a labelled subheading so the
+           downstream model can ground its output in the teacher's own
+           class materials.
+        2. The legacy 1A-1 stub shape: keys ``summary`` and
+           ``cited_sources``. Preserved for back-compat with callers that
+           pass a hand-built dict; the new resolver-fed callers should
+           prefer shape 1.
+
+        When neither shape carries content (empty envelope, or
+        ``fallback_used=True`` with all four input lists empty), a stable
+        placeholder string is returned so the block still appears in the
+        prompt — useful as a debugging signal that a caller signalled
+        intent to inject context but had nothing to inject.
         """
         if envelope is None:
             return None
-        summary = envelope.get("summary") or ""
-        cited = envelope.get("cited_sources") or []
+
         lines: list[str] = []
-        if summary:
-            lines.append(f"Summary: {summary}")
-        if cited:
-            lines.append("Cited sources:")
-            for src in cited:
-                lines.append(f"- {src}")
+
+        # Shape 1: ClassContextEnvelope (1B-2). We probe by key presence
+        # rather than by isinstance() so the engine stays decoupled from
+        # the resolver's Pydantic model — callers can pass either the
+        # model's ``.model_dump()`` or a dict of the same shape.
+        course_contents = envelope.get("course_contents") or []
+        announcements = envelope.get("classroom_announcements") or []
+        digest = envelope.get("teacher_digest_summary")
+        library = envelope.get("teacher_library_artifacts") or []
+
+        if course_contents:
+            lines.append("Course materials (teacher uploads):")
+            for cc in course_contents:
+                title = cc.get("title") or "(untitled)"
+                summary = cc.get("summary") or ""
+                if summary:
+                    lines.append(f"- {title}: {summary}")
+                else:
+                    lines.append(f"- {title}")
+
+        if announcements:
+            if lines:
+                lines.append("")
+            lines.append("Recent classroom announcements:")
+            for ann in announcements:
+                creator = ann.get("creator_name") or "(unknown)"
+                text = ann.get("text") or ""
+                lines.append(f"- {creator}: {text}")
+
+        if digest:
+            if lines:
+                lines.append("")
+            count = digest.get("count", 0)
+            window_days = digest.get("window_days", 30)
+            lines.append(
+                f"Teacher email digest (last {window_days} days, {count} items):"
+            )
+            for item in (digest.get("items") or []):
+                subject = item.get("subject") or "(no subject)"
+                ai_summary = item.get("ai_summary") or ""
+                if ai_summary:
+                    lines.append(f"- {subject} — {ai_summary}")
+                else:
+                    lines.append(f"- {subject}")
+
+        if library:
+            if lines:
+                lines.append("")
+            lines.append("Approved library artifacts (matching SEs):")
+            for art in library:
+                title = art.get("title") or "(untitled)"
+                guide_type = art.get("guide_type") or "(unknown)"
+                matched = art.get("matched_se_codes") or []
+                lines.append(
+                    f"- {title} [{guide_type}] — SEs: {', '.join(matched)}"
+                )
+
+        # Shape 2: legacy 1A-1 stub (summary + cited_sources). Only used
+        # when shape 1 didn't render any content — keeps the legacy path
+        # free of duplicated headings when a caller mixes shapes.
         if not lines:
-            # Empty dict provided — return a stable placeholder so the
-            # block still appears in the prompt (caller signalled intent).
-            return "(envelope provided but empty — placeholder until 1B-2 ships)"
+            summary = envelope.get("summary") or ""
+            cited = envelope.get("cited_sources") or []
+            if summary:
+                lines.append(f"Summary: {summary}")
+            if cited:
+                lines.append("Cited sources:")
+                for src in cited:
+                    lines.append(f"- {src}")
+
+        if not lines:
+            # Empty envelope provided — return a stable placeholder so
+            # the block still appears in the prompt (caller signalled
+            # intent to inject context but had nothing to inject).
+            return "(envelope provided but empty — fallback to CEG-only grounding)"
         return "\n".join(lines)
 
     def _render_voice_block(
