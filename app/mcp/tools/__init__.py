@@ -51,6 +51,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
+# CB-CMCP-001 M2-B 2B-2 (#4553) — concrete handler for ``get_artifact``.
+from app.mcp.tools.get_artifact import get_artifact_handler
+
 # ---------------------------------------------------------------------------
 # Stub error
 # ---------------------------------------------------------------------------
@@ -212,8 +215,21 @@ TOOLS: dict[str, ToolDescriptor] = {
             "required": ["artifact_id"],
             "additionalProperties": False,
         },
-        roles=("PARENT", "STUDENT", "TEACHER", "ADMIN"),
-        handler=_stub_handler("get_artifact"),
+        # 2B-2 (#4553) — extended to BOARD_ADMIN + CURRICULUM_ADMIN per
+        # the issue's role scope: those roles need read access for
+        # catalog + curriculum work. The handler enforces per-row
+        # visibility (board scoping for BOARD_ADMIN, all-access for
+        # CURRICULUM_ADMIN), so the catalog allowlist can safely
+        # include them.
+        roles=(
+            "PARENT",
+            "STUDENT",
+            "TEACHER",
+            "BOARD_ADMIN",
+            "CURRICULUM_ADMIN",
+            "ADMIN",
+        ),
+        handler=get_artifact_handler,
     ),
     "list_catalog": ToolDescriptor(
         name="list_catalog",

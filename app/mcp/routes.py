@@ -70,6 +70,10 @@ from app.mcp.tools import (
     get_tool,
     list_tools_for_role,
 )
+from app.mcp.tools.get_artifact import (
+    MCPArtifactAccessDeniedError,
+    MCPArtifactNotFoundError,
+)
 from app.models.user import User
 from app.services.feature_flag_service import is_feature_enabled
 
@@ -295,6 +299,25 @@ def call_tool(
         )
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=str(exc),
+        ) from exc
+    except MCPArtifactNotFoundError as exc:
+        # 2B-2 (#4553) — ``get_artifact`` couldn't find the requested
+        # row (or rejected an invalid arguments shape). 404 is the
+        # right code for both cases on the authenticated MCP surface;
+        # the handler already gates by id existence and the catalog
+        # filter has already gated role access to the tool itself.
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except MCPArtifactAccessDeniedError as exc:
+        # 2B-2 (#4553) — caller's role allowlists the tool but the
+        # per-row visibility check denied access. Distinct 403 from
+        # the catalog-level role check above so operators can
+        # telemetry per-row denials.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
         ) from exc
 

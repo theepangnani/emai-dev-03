@@ -1,0 +1,341 @@
+"""MCP tool: ``get_artifact`` — role-scoped artifact retrieval.
+
+CB-CMCP-001 M2-B 2B-2 (#4553) — fetch a single ``study_guides`` row by id
+with FR-05-aligned visibility checks.
+
+Storage note (M3 dependency)
+----------------------------
+Per locked decision D2=B and ``requirements/features-part7.md §6.150``,
+**M1 is no-persistence**: there are NO CMCP-generated ``study_guides``
+rows yet — generation pipelines compose + return artifacts in-memory.
+Persistence lands in M3. This tool MUST therefore work for *non-CMCP
+study_guides too* (existing CB-ASGF-001 / CB-UTDF-001 artifacts already
+in the table) — visibility scoping uses the existing ``StudyGuide``
+columns + parent/student/course relationships rather than CMCP-specific
+markers.
+
+The full row dict returned to the caller includes every M0/M1-stamped
+column (``se_codes``, ``alignment_score``, ``state``, ``board_id``,
+``voice_module_hash``, ``ai_engine``, etc.) so MCP clients can drive
+both legacy and CMCP-aware UI surfaces from one tool result.
+
+Failure modes
+-------------
+- Unknown ``artifact_id``                         → :class:`MCPArtifactNotFoundError`
+  (the route layer maps to 404).
+- Caller's role lacks visibility to the artifact  → :class:`MCPArtifactAccessDeniedError`
+  (the route layer maps to 403).
+
+We intentionally raise distinct exceptions (rather than returning the
+same ``404 not found`` for both unknown-id and access-denied) because the
+MCP transport surface is for authenticated callers with already-vetted
+role allowlists — the catalog filter has already gated which roles can
+even invoke ``get_artifact``. Differentiating 403 vs 404 inside the
+authenticated surface gives operators clean telemetry on access-denied
+events without leaking artifact-existence to anonymous probers (which
+the ``mcp.enabled`` flag + auth dependency already block).
+
+Visibility matrix
+-----------------
+======================  ================================================
+Role                    Access
+======================  ================================================
+PARENT                   own artifacts (``user_id == self.id``) OR any
+                         artifact whose ``user_id`` is one of the
+                         caller's linked-children user_ids (via the
+                         ``parent_students`` join)
+STUDENT                  own artifacts only (``user_id == self.id``)
+TEACHER                  own artifacts, OR artifacts whose ``course_id``
+                         is a course the caller teaches (matched via
+                         ``courses.teacher_id == teachers.id`` for the
+                         caller's ``Teacher`` row, or
+                         ``courses.created_by_user_id == self.id``)
+BOARD_ADMIN              artifacts whose ``board_id`` matches the
+                         caller's board. ``board_id`` is M3-E and may be
+                         ``None`` on legacy rows — to avoid a permissive
+                         "BOARD_ADMIN sees everything unscoped" failure
+                         mode, BOARD_ADMINs are *denied* artifacts with
+                         ``board_id IS NULL`` until M3-E ships per-row
+                         board stamping. CURRICULUM_ADMIN / ADMIN remain
+                         the catch-all "see everything" roles.
+CURRICULUM_ADMIN         all artifacts (catalog + curriculum work needs
+                         cross-board read).
+ADMIN                    all artifacts.
+======================  ================================================
+"""
+from __future__ import annotations
+
+import logging
+from typing import Any, Mapping
+
+from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Tool-specific exceptions — translated to HTTP statuses by the route layer.
+# ---------------------------------------------------------------------------
+
+
+class MCPArtifactNotFoundError(LookupError):
+    """Raised when no ``study_guides`` row matches ``artifact_id``."""
+
+
+class MCPArtifactAccessDeniedError(PermissionError):
+    """Raised when the caller's role disallows visibility to the artifact."""
+
+
+# ---------------------------------------------------------------------------
+# BOARD_ADMIN board-resolver
+# ---------------------------------------------------------------------------
+
+
+def _resolve_caller_board_id(user: Any) -> str | None:
+    """Best-effort lookup of the caller's board id.
+
+    ``User`` does not currently carry a ``board_id`` column (board
+    affiliation is a CB-CMCP-001 M3-E concern). Until that lands, prefer
+    a ``board_id`` attribute on the user row if a downstream stripe adds
+    it; otherwise return ``None``. With ``None`` resolved, BOARD_ADMINs
+    will be denied access to every artifact via the matrix below — a
+    safe, conservative default that mirrors the rest of the app's
+    "deny by default until the data shape catches up" pattern (see
+    ``can_access_parent_companion`` in ``app/api/deps.py``).
+    """
+    return getattr(user, "board_id", None)
+
+
+# ---------------------------------------------------------------------------
+# Visibility matrix
+# ---------------------------------------------------------------------------
+
+
+def _user_can_view(artifact: Any, user: Any, db: Session) -> bool:
+    """Apply the FR-05-aligned visibility matrix.
+
+    ``user`` is expected to be a ``User`` row (with ``has_role`` /
+    ``role`` / ``id``). ``artifact`` is a ``StudyGuide`` row. We rely on
+    ``user.has_role(...)`` so multi-role users get the union of their
+    roles' permissions (matches the existing
+    :func:`can_access_parent_companion` semantics).
+    """
+    # Lazy imports — keep the tool module importable without dragging in
+    # the SQLAlchemy model layer at import time, mirrors how
+    # ``app/mcp/tools/__init__.py`` keeps the registry decoupled.
+    from app.models.course import Course
+    from app.models.student import Student, parent_students
+    from app.models.teacher import Teacher
+    from app.models.user import UserRole
+
+    # ADMIN + CURRICULUM_ADMIN are the catch-all "see everything" roles.
+    # Checked first so multi-role admins skip the heavier joins below.
+    if user.has_role(UserRole.ADMIN):
+        return True
+    if user.has_role(UserRole.CURRICULUM_ADMIN):
+        return True
+
+    # Creator always sees their own artifact, irrespective of role —
+    # matches every existing study_guide route's first-pass check (see
+    # ``app/api/routes/study.py``).
+    if artifact.user_id == user.id:
+        return True
+
+    # PARENT — visibility extends to artifacts created by the caller's
+    # linked children (the user_id on the artifact is the child's
+    # User row id, which Student.user_id maps back to).
+    if user.has_role(UserRole.PARENT):
+        child_student_ids = [
+            row[0]
+            for row in db.query(parent_students.c.student_id)
+            .filter(parent_students.c.parent_id == user.id)
+            .all()
+        ]
+        if child_student_ids:
+            child_user_ids = [
+                row[0]
+                for row in db.query(Student.user_id)
+                .filter(Student.id.in_(child_student_ids))
+                .all()
+            ]
+            if artifact.user_id in child_user_ids:
+                return True
+
+    # TEACHER — visibility via the artifact's course. Two valid links:
+    # 1) ``courses.teacher_id`` references a Teacher row whose
+    #    ``user_id`` is the caller, OR
+    # 2) ``courses.created_by_user_id`` is the caller (parent-first
+    #    teachers who created the course manually).
+    if user.has_role(UserRole.TEACHER) and artifact.course_id is not None:
+        course = (
+            db.query(Course).filter(Course.id == artifact.course_id).first()
+        )
+        if course is not None:
+            if course.created_by_user_id == user.id:
+                return True
+            teacher = (
+                db.query(Teacher).filter(Teacher.user_id == user.id).first()
+            )
+            if teacher is not None and course.teacher_id == teacher.id:
+                return True
+
+    # BOARD_ADMIN — visibility scoped to the caller's board. ``board_id``
+    # is nullable today (M3-E hasn't stamped legacy rows) so we
+    # conservatively deny access to ``board_id IS NULL`` rows; otherwise
+    # a BOARD_ADMIN with no resolvable board_id (the common case until
+    # M3-E ships) would be granted blanket read on every legacy
+    # artifact, which is the wrong direction for a least-privilege role.
+    if user.has_role(UserRole.BOARD_ADMIN):
+        caller_board = _resolve_caller_board_id(user)
+        if caller_board is not None and artifact.board_id is not None:
+            if str(caller_board) == str(artifact.board_id):
+                return True
+
+    # STUDENT — owned artifacts only. Already handled by the
+    # ``artifact.user_id == user.id`` short-circuit above; falling
+    # through here means the student is requesting someone else's row,
+    # which is denied.
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Row → dict serializer
+# ---------------------------------------------------------------------------
+
+# Columns surfaced in the response. Listed explicitly (rather than
+# ``__table__.columns``) so the public shape stays stable as new columns
+# land in M3+ — adding a column to ``StudyGuide`` should be an explicit
+# decision to expose it via MCP, not an automatic side effect.
+_ARTIFACT_FIELDS: tuple[str, ...] = (
+    "id",
+    "user_id",
+    "assignment_id",
+    "course_id",
+    "course_content_id",
+    "title",
+    "content",
+    "guide_type",
+    "focus_prompt",
+    "is_truncated",
+    "version",
+    "parent_guide_id",
+    "content_hash",
+    "relationship_type",
+    "generation_context",
+    "template_key",
+    "num_questions",
+    "difficulty",
+    "answer_key_markdown",
+    "weak_topics",
+    "ai_engine",
+    "parent_summary",
+    "curriculum_codes",
+    "suggestion_topics",
+    "shared_with_user_id",
+    "shared_at",
+    "viewed_at",
+    "viewed_count",
+    # CB-CMCP-001 M0/M1-stamped curriculum columns
+    "se_codes",
+    "alignment_score",
+    "ceg_version",
+    "state",
+    "board_id",
+    "voice_module_hash",
+    "class_context_envelope_summary",
+    "requested_persona",
+    "created_at",
+    "archived_at",
+)
+
+
+def _serialize(artifact: Any) -> dict[str, Any]:
+    """Project a ``StudyGuide`` row to a JSON-serializable dict.
+
+    Datetime + Decimal fields are coerced to JSON-friendly forms
+    (ISO-8601 / float) so the route layer's response model can encode
+    the result without a custom encoder. ``None`` columns pass through
+    unchanged so callers can distinguish "not yet stamped" (M0/M1
+    columns on legacy rows) from explicit values.
+    """
+    from datetime import datetime
+    from decimal import Decimal
+
+    out: dict[str, Any] = {}
+    for field in _ARTIFACT_FIELDS:
+        value = getattr(artifact, field, None)
+        if isinstance(value, datetime):
+            out[field] = value.isoformat()
+        elif isinstance(value, Decimal):
+            # Numeric(4,3) — float is fine for JSON; preserves precision
+            # to the column's defined scale.
+            out[field] = float(value)
+        else:
+            out[field] = value
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Handler
+# ---------------------------------------------------------------------------
+
+
+def get_artifact_handler(
+    arguments: Mapping[str, Any],
+    current_user: Any,
+    db: Session,
+) -> dict[str, Any]:
+    """Dispatch entry for the ``get_artifact`` MCP tool.
+
+    Validates the arguments shape (``artifact_id`` must be an int — the
+    registry's JSON Schema already enforces this for normal callers, but
+    we re-check here so unit tests calling the handler directly cannot
+    sidestep validation), looks up the artifact, applies the visibility
+    matrix, and returns a ``{"artifact": {...}}`` envelope.
+
+    The envelope (rather than returning the row dict directly) leaves
+    room for non-breaking additions in later stripes — e.g. a
+    ``provenance`` block surfacing CMCP generation metadata, or a
+    ``related`` block linking sibling versions.
+    """
+    from app.models.study_guide import StudyGuide
+
+    raw_id = arguments.get("artifact_id") if arguments else None
+    if not isinstance(raw_id, int) or isinstance(raw_id, bool):
+        # ``bool`` is a subclass of ``int`` in Python; reject it
+        # explicitly so ``True``/``False`` doesn't silently become
+        # ``1``/``0`` row lookups.
+        raise MCPArtifactNotFoundError(
+            "Argument 'artifact_id' must be an integer"
+        )
+
+    artifact = (
+        db.query(StudyGuide).filter(StudyGuide.id == raw_id).first()
+    )
+    if artifact is None:
+        raise MCPArtifactNotFoundError(
+            f"No artifact with id={raw_id}"
+        )
+
+    if not _user_can_view(artifact, current_user, db):
+        # Log at INFO so ops can spot access-denied events without
+        # routing them to WARN/ERROR (the user is authenticated; this
+        # is an authorization-layer outcome, not a bug).
+        logger.info(
+            "mcp.get_artifact.denied artifact_id=%s user_id=%s role=%s",
+            raw_id,
+            current_user.id,
+            getattr(current_user.role, "value", None),
+        )
+        raise MCPArtifactAccessDeniedError(
+            f"Access denied to artifact {raw_id}"
+        )
+
+    return {"artifact": _serialize(artifact)}
+
+
+__all__ = [
+    "MCPArtifactAccessDeniedError",
+    "MCPArtifactNotFoundError",
+    "get_artifact_handler",
+]
