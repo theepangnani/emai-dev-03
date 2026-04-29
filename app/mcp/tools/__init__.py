@@ -57,6 +57,9 @@ from app.mcp.tools.get_artifact import get_artifact_handler
 # CB-CMCP-001 M2-B 2B-4 (#4555) — concrete handler for ``generate_content``.
 from app.mcp.tools.generate_content import generate_content_handler
 
+# CB-CMCP-001 M2-B 2B-1 (#4552) — concrete handler for ``get_expectations``.
+from app.mcp.tools.get_expectations import get_expectations_handler
+
 # ---------------------------------------------------------------------------
 # Stub error
 # ---------------------------------------------------------------------------
@@ -202,7 +205,7 @@ TOOLS: dict[str, ToolDescriptor] = {
             "additionalProperties": False,
         },
         roles=("PARENT", "STUDENT", "TEACHER", "ADMIN"),
-        handler=_stub_handler("get_expectations"),
+        handler=get_expectations_handler,
     ),
     "get_artifact": ToolDescriptor(
         name="get_artifact",

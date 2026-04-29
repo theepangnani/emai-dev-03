@@ -292,16 +292,19 @@ def test_call_tool_stub_returns_501(client, teacher_user, mcp_flag_on):
     The detail must name the tool so MCP clients can tell which stub
     blocked them (helpful during M2 → M3 rollout when 2B-* land
     incrementally).
+
+    NOTE: ``get_expectations`` (2B-1, #4552) is now a concrete handler;
+    ``list_catalog`` is the remaining read-only stub used here.
     """
     headers = _auth(client, teacher_user.email)
     resp = client.post(
         "/mcp/call_tool",
-        json={"name": "get_expectations", "arguments": {}},
+        json={"name": "list_catalog", "arguments": {}},
         headers=headers,
     )
     assert resp.status_code == 501
     detail = resp.json()["detail"]
-    assert "get_expectations" in detail
+    assert "list_catalog" in detail
     assert "not yet implemented" in detail
 
 
@@ -328,11 +331,15 @@ def test_call_tool_default_arguments(client, teacher_user, mcp_flag_on):
 
     Verifies the schema's ``default_factory=dict`` so MCP clients don't
     have to send an empty dict explicitly.
+
+    NOTE: ``get_expectations`` (2B-1, #4552) is now a concrete handler;
+    ``list_catalog`` is the remaining read-only stub used here so the
+    501 assertion still exercises the stub path.
     """
     headers = _auth(client, teacher_user.email)
     resp = client.post(
         "/mcp/call_tool",
-        json={"name": "get_expectations"},
+        json={"name": "list_catalog"},
         headers=headers,
     )
     # Stub raises 501 — confirms the dispatcher reached the handler.
