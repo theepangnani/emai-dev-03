@@ -50,7 +50,7 @@ class ParentDigestSettings(Base):
     digest_enabled = Column(Boolean, server_default=text("true"), default=True)
     delivery_time = Column(String(5), default="07:00")
     timezone = Column(String(50), default="America/Toronto")
-    digest_format = Column(String(20), default="full")
+    digest_format = Column(String(20), default="sectioned")
     delivery_channels = Column(String(50), default="in_app,email")
     notify_on_empty = Column(Boolean, server_default=text("false"), default=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

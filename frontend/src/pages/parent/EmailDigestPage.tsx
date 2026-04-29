@@ -8,6 +8,7 @@ import {
   updateSettings,
   triggerSync,
   sendDigestNow,
+  sendDigestNowForParent,
   listMonitoredEmails,
   addMonitoredEmail,
   removeMonitoredEmail,
@@ -1221,8 +1222,12 @@ function EmailDigestPageUnified() {
     },
   });
 
+  // #4483 (D2/D3): unified UI is the multi-kid surface — call the parent-
+  // scoped /send-now endpoint so the V2 flag dispatches once across all
+  // integrations and produces multi-kid subject + body. Legacy view (single-
+  // integration) keeps using the per-integration `sendDigestNow`.
   const sendDigestMutation = useMutation({
-    mutationFn: (id: number) => sendDigestNow(id),
+    mutationFn: () => sendDigestNowForParent(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-digest'] });
     },
@@ -1750,7 +1755,8 @@ function EmailDigestPageUnified() {
                 className="ed-primary-btn"
                 onClick={() => {
                   sendDigestMutation.reset();
-                  sendDigestMutation.mutate(activeIntegration.id);
+                  // #4483: parent-scoped — no integration_id needed.
+                  sendDigestMutation.mutate();
                 }}
                 disabled={sendDigestMutation.isPending || !activeIntegration.is_active}
               >
@@ -1811,7 +1817,8 @@ function EmailDigestPageUnified() {
                         className="ed-digest-status__retry"
                         onClick={() => {
                           sendDigestMutation.reset();
-                          sendDigestMutation.mutate(activeIntegration.id);
+                          // #4483: parent-scoped — no integration_id needed.
+                          sendDigestMutation.mutate();
                         }}
                         disabled={sendDigestMutation.isPending}
                       >
