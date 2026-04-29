@@ -1,18 +1,29 @@
 """
 CB-CMCP-001 — Pydantic schemas for the Curriculum-Mapped Content Pipeline.
 
-This stripe (M1-A 1A-1) ships the minimal ``GenerationRequest`` shape
-needed by ``GuardrailEngine.build_prompt()``. Stripe M1-A 1A-2 will
-extend this module with ``GenerationResult`` + ``AlignmentReport`` and
-the ``/api/cmcp/generate`` route schemas.
+Stripe scope
+------------
+- 1A-1 shipped the engine-facing ``GenerationRequest`` (``subject_id`` +
+  ``strand_id`` + lowercase content-type literals) — what
+  ``GuardrailEngine.build_prompt()`` consumes.
+- 1A-2 (this stripe) adds the *HTTP-facing* schemas for the
+  ``POST /api/cmcp/generate`` route:
 
-Per the locked plan §7 M1-A:
-- ``GenerationRequest`` carries the dimensions used to query the CEG
-  (``grade``, ``subject_id``, ``strand_id``, optional ``topic``) plus
-  the artifact-level knobs (``content_type``, ``difficulty``).
-- The full request schema (with output formatting, length, source-doc
-  pointers, etc.) is intentionally deferred to 1A-2 — keep this stripe
-  self-contained per the issue body.
+  * ``CMCPGenerateRequest`` — request body. Mirrors DD §3.2 wording
+    (``subject_code`` / ``strand_code`` / uppercase content-type
+    literals / ``GRADE_LEVEL`` difficulty / optional
+    ``target_persona``). The route resolves these into a
+    ``GenerationRequest`` for the engine — the engine's contract is
+    unchanged in this stripe.
+  * ``GenerationPreview`` — response model returning the constructed
+    prompt + targeted SE codes + persona + voice-module pointer. No
+    Claude/OpenAI call yet (M1-E 1E-1 wires that).
+
+The id-based ``GenerationRequest`` and the code-based
+``CMCPGenerateRequest`` are intentionally kept distinct: the engine is
+a pure function over CEG IDs, and the route is a stable HTTP contract
+with human-readable subject/strand codes. Translation lives in the
+route handler, not in either schema.
 """
 from __future__ import annotations
 
@@ -81,4 +92,129 @@ class GenerationRequest(BaseModel):
             "None, the engine targets the rows with ``active=True`` for the "
             "given (grade, subject_id) — i.e., the live curriculum slice."
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 1A-2: HTTP-facing schemas for POST /api/cmcp/generate
+# ---------------------------------------------------------------------------
+
+# HTTP-side content-type literal (uppercase, per DD §3.2 + the issue body).
+# Distinct from the engine-side ``ContentType`` so the API can carry the
+# canonical artifact-type identifiers (STUDY_GUIDE, PARENT_COMPANION, etc.)
+# while the engine keeps its prompt-template-friendly lowercase form. The
+# route maps between the two — see ``app/api/routes/cmcp_generate.py``.
+HTTPContentType = Literal[
+    "STUDY_GUIDE",
+    "WORKSHEET",
+    "QUIZ",
+    "SAMPLE_TEST",
+    "ASSIGNMENT",
+    "PARENT_COMPANION",
+]
+
+
+# HTTP-side difficulty band. ``GRADE_LEVEL`` is the default (matches the
+# Ontario "at grade" tier); ``APPROACHING`` and ``EXTENDING`` cover the
+# below/above tiers used by the curriculum-aligned content surface. The
+# route maps these to the engine-side easy/medium/hard band.
+HTTPDifficulty = Literal["APPROACHING", "GRADE_LEVEL", "EXTENDING"]
+
+
+# Persona literal — lowercase to match the engine's persona-block keys.
+# When the request omits ``target_persona`` the route derives it from
+# ``current_user.role`` (parent → "parent", student → "student",
+# teacher → "teacher"; everyone else falls back to "student").
+TargetPersona = Literal["student", "parent", "teacher"]
+
+
+class CMCPGenerateRequest(BaseModel):
+    """Request body for ``POST /api/cmcp/generate``.
+
+    Carries the human-readable subject/strand codes (per DD §3.2). The
+    route handler resolves these to the CEG IDs the engine needs, then
+    delegates to ``GuardrailEngine.build_prompt()``.
+
+    ``target_persona`` is optional: when ``None``, the route derives it
+    from ``current_user.role``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    grade: int = Field(..., ge=1, le=12, description="Ontario grade level (1-12).")
+    subject_code: str = Field(
+        ...,
+        min_length=1,
+        max_length=32,
+        description=(
+            "CEG subject code (e.g., 'MATH', 'LANG'). Resolved against "
+            "``CEGSubject.code`` case-insensitively."
+        ),
+    )
+    strand_code: str | None = Field(
+        default=None,
+        max_length=32,
+        description=(
+            "Optional CEG strand code (e.g., 'B'). When provided, the engine "
+            "narrows the SE list to that strand under the resolved subject. "
+            "When None, the route 422s — strand is required by the 1A-1 "
+            "engine contract; future stripes may relax this once cross-"
+            "strand prompts are supported."
+        ),
+    )
+    topic: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Optional coarse topic substring filter applied to SE descriptions."
+        ),
+    )
+    content_type: HTTPContentType = Field(
+        ..., description="Artifact type (STUDY_GUIDE, WORKSHEET, etc.)."
+    )
+    difficulty: HTTPDifficulty = Field(
+        default="GRADE_LEVEL",
+        description="Difficulty tier (APPROACHING / GRADE_LEVEL / EXTENDING).",
+    )
+    target_persona: TargetPersona | None = Field(
+        default=None,
+        description=(
+            "Optional override for the prompt's persona overlay. When None, "
+            "the route derives the persona from ``current_user.role``."
+        ),
+    )
+
+
+class GenerationPreview(BaseModel):
+    """Response body for ``POST /api/cmcp/generate`` in the 1A-2 stripe.
+
+    The route does NOT call Claude in this stripe (M1-E 1E-1 wires that)
+    — it returns the constructed system prompt + the targeted SE codes
+    + the persona that was resolved + the voice-module pointer (None
+    for 1A-2; M1-C 1C-2 will populate this).
+
+    Returning the prompt verbatim is intentional for this stripe: it
+    lets integration tests and the upcoming 1E-1 streaming worker share
+    one preview surface without branching on "preview vs. live" code
+    paths. Once 1E-1 ships, the route will switch to a streaming
+    response and this preview model becomes the body of a future
+    ``POST /api/cmcp/generate/preview`` debug endpoint.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(..., description="Constructed system prompt.")
+    se_codes_targeted: list[str] = Field(
+        default_factory=list,
+        description="Ordered list of SE ministry codes anchored in the prompt.",
+    )
+    voice_module_id: str | None = Field(
+        default=None,
+        description=(
+            "Voice-module identifier resolved for this generation. None for "
+            "1A-2 — the registry-backed loader lands in M1-C 1C-1."
+        ),
+    )
+    persona: TargetPersona = Field(
+        ..., description="The persona overlay used to build the prompt."
     )
