@@ -46,6 +46,7 @@ from app.api.routes import curriculum  # CB-CMCP-001 M0-B 0B-1 (#4415)
 from app.api.routes import ceg_admin_review  # CB-CMCP-001 M0-B 0B-3a (#4428)
 from app.api.routes import cmcp_generate  # CB-CMCP-001 M1-A 1A-2 (#4471)
 from app.api.routes import cmcp_generate_stream  # CB-CMCP-001 M1-E 1E-1 (#4481)
+from app.mcp.routes import router as mcp_router  # CB-CMCP-001 M2-A 2A-2 (#4550)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1720,6 +1721,11 @@ app.include_router(curriculum.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-1 (#
 app.include_router(ceg_admin_review.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-3a (#4428)
 app.include_router(cmcp_generate.router, prefix="/api")  # CB-CMCP-001 M1-A 1A-2 (#4471)
 app.include_router(cmcp_generate_stream.router, prefix="/api")  # CB-CMCP-001 M1-E 1E-1 (#4481)
+# CB-CMCP-001 M2-A 2A-2 (#4550): MCP transport router. Mounted at the
+# top-level /mcp prefix (not /api/mcp) so MCP clients can target the
+# canonical MCP path. Per-route guard ``require_mcp_enabled`` returns
+# 401 unauth / 403 when ``mcp.enabled`` flag is OFF (default).
+app.include_router(mcp_router)  # CB-CMCP-001 M2-A 2A-2 (#4550)
 
 logger.info("API routes registered at /api")
 

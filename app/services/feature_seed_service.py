@@ -129,6 +129,20 @@ def seed_features(db: Session) -> int:
             "variant": "off",
         },
         {
+            "key": "mcp.enabled",
+            "name": "MCP Transport (CB-CMCP-001 M2)",
+            "description": (
+                "CB-CMCP-001 M2-A 2A-2 (#4550): gates the Model Context Protocol "
+                "transport router (POST /mcp/initialize, GET /mcp/list_tools, "
+                "POST /mcp/call_tool) so LLM clients (Claude Desktop etc.) can "
+                "invoke ClassBridge tools. Separate from cmcp.enabled because the "
+                "MCP transport is a distinct trust boundary from the REST surface. "
+                "Default OFF; flip ON during M2 validation."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
+        {
             "key": "theme.bridge_default",
             "name": "Bridge Theme (Force-Apply Default)",
             "description": (
