@@ -28,7 +28,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     full_name = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=True, index=True)  # Nullable for users pending onboarding
-    roles = Column(String(50), nullable=True)  # comma-separated: "parent,teacher"
+    roles = Column(String(120), nullable=True)  # comma-separated: "parent,teacher,BOARD_ADMIN,CURRICULUM_ADMIN" (#4452)
     needs_onboarding = Column(Boolean, default=False)
     onboarding_completed = Column(Boolean, default=False)
     email_verified = Column(Boolean, default=False)
