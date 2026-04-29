@@ -400,6 +400,12 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 
 Goal: First curriculum-aligned artifacts generated end-to-end with all four authenticity amendments wired up. Internal-only flag; not yet user-visible.
 
+> **M1 invariant: NO PERSISTENCE.** Generation is in-memory only — no writes to
+> `study_guides`, `content_artifacts`, audit log, or any other table. The
+> streaming endpoint returns the artifact in the SSE completion event.
+> Persistence lands in M3 (Workflow + Integration). Stripes that depend on
+> artifact-by-ID fetch must be gated until M3.
+
 #### Batch M1-A — Guardrail Engine + prompt builders
 
 | Stripe | Scope | Reuses |
