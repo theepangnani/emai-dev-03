@@ -304,6 +304,7 @@ def test_generate_happy_path_returns_prompt_and_se_codes(
         "prompt",
         "se_codes_targeted",
         "voice_module_id",
+        "voice_module_hash",
         "persona",
     }
 
@@ -318,8 +319,11 @@ def test_generate_happy_path_returns_prompt_and_se_codes(
     assert "B2.1" in body["prompt"]
     assert "B2.2" in body["prompt"]
 
-    # 1A-2 doesn't wire the voice registry — pointer must be None.
-    assert body["voice_module_id"] is None
+    # 1C-2 wires the voice registry — parent persona resolves to
+    # parent_coach_v1 and the hash is stamped from VoiceRegistry.
+    assert body["voice_module_id"] == "parent_coach_v1"
+    assert body["voice_module_hash"] is not None
+    assert len(body["voice_module_hash"]) == 64  # SHA-256 hex digest
 
 
 def test_generate_subject_code_is_case_insensitive(

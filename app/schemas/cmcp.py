@@ -211,8 +211,19 @@ class GenerationPreview(BaseModel):
     voice_module_id: str | None = Field(
         default=None,
         description=(
-            "Voice-module identifier resolved for this generation. None for "
-            "1A-2 — the registry-backed loader lands in M1-C 1C-1."
+            "Voice-module identifier resolved for this generation. Populated "
+            "from ``VoiceRegistry.active_module_id(persona)`` once 1C-2 wires "
+            "the registry-backed loader; pre-1C-2 callers may still see None."
+        ),
+    )
+    voice_module_hash: str | None = Field(
+        default=None,
+        description=(
+            "SHA-256 hex digest of the voice-module contents used for this "
+            "generation (M1-C 1C-2 / #4480). Stamped on the artifact so the "
+            "wave-3 audit job (1C-3) can flag artifacts whose voice no longer "
+            "matches the active module. ``None`` when ``voice_module_id`` is "
+            "also ``None``."
         ),
     )
     persona: TargetPersona = Field(

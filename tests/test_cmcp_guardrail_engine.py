@@ -123,9 +123,11 @@ class TestSeOnlyPrompt:
         )
 
         engine = GuardrailEngine(db_session)
-        prompt, se_codes = engine.build_prompt(request)
+        prompt, se_codes, voice_hash = engine.build_prompt(request)
 
         assert se_codes == ["B2.1", "B2.2"]
+        # No voice_module_id supplied — hash must be None (1C-2 contract).
+        assert voice_hash is None
         # SE codes must appear inside the curriculum guardrail block.
         assert "[CURRICULUM_GUARDRAIL]" in prompt
         assert "B2.1" in prompt
@@ -165,7 +167,7 @@ class TestEnvelopeInjection:
         }
 
         engine = GuardrailEngine(db_session)
-        prompt, _ = engine.build_prompt(
+        prompt, _, _ = engine.build_prompt(
             request, class_context_envelope=envelope
         )
 
@@ -199,7 +201,7 @@ class TestVoiceOverlay:
         voice_path.write_text(voice_text, encoding="utf-8")
 
         engine = GuardrailEngine(db_session)
-        prompt, _ = engine.build_prompt(
+        prompt, _, _ = engine.build_prompt(
             request, voice_module_path=str(voice_path)
         )
 
@@ -219,7 +221,7 @@ class TestVoiceOverlay:
 
         missing = tmp_path / "does_not_exist.txt"
         engine = GuardrailEngine(db_session)
-        prompt, _ = engine.build_prompt(
+        prompt, _, _ = engine.build_prompt(
             request, voice_module_path=str(missing)
         )
 
@@ -245,10 +247,10 @@ class TestPersonaOverlay:
         )
 
         engine = GuardrailEngine(db_session)
-        student_prompt, _ = engine.build_prompt(
+        student_prompt, _, _ = engine.build_prompt(
             request, target_persona="student"
         )
-        parent_prompt, _ = engine.build_prompt(
+        parent_prompt, _, _ = engine.build_prompt(
             request, target_persona="parent"
         )
 
@@ -276,7 +278,7 @@ class TestPersonaOverlay:
         )
 
         engine = GuardrailEngine(db_session)
-        prompt, _ = engine.build_prompt(request, target_persona="teacher")
+        prompt, _, _ = engine.build_prompt(request, target_persona="teacher")
         assert "TEACHER" in prompt
         assert "neutral-professional" in prompt
 
@@ -362,7 +364,7 @@ class TestTopicFilter:
             topic="fractions",
         )
         engine = GuardrailEngine(db_session)
-        prompt, codes = engine.build_prompt(request)
+        prompt, codes, _ = engine.build_prompt(request)
 
         assert codes == ["B2.1"]
         assert "B2.1" in prompt

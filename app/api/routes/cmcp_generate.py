@@ -25,7 +25,9 @@ Out of scope (deferred to later stripes)
 ----------------------------------------
 - Calling Claude/OpenAI for actual generation — M1-E 1E-1 (streaming).
 - Validator composition (alignment scoring) — M1-D 1D-2.
-- Voice-module hash + registry-backed loader — M1-C 1C-1 / 1C-2.
+- Voice-module registry-backed prompt-text loader — M1-C 1C-2 wave 3
+  (this stripe stamps the hash; embedding the module text via the
+  registry comes next).
 - Persisting an artifact row — M1-A 1A-3 (state machine).
 - Frontend invocation — M3-A teacher review queue + 1F-4 parent
   companion render.
@@ -62,6 +64,7 @@ from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
 )
+from app.services.cmcp.voice_registry import VoiceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -235,12 +238,20 @@ def generate_cmcp_preview(
         payload, subject_id=subject.id, strand_id=strand.id
     )
 
+    # Resolve the active voice module for the persona so the engine can
+    # stamp its hash on the response (#4480 / M1-C 1C-2). The lookup is
+    # in-memory (per-process) until 1C-3 lands DB-backed persistence.
+    # ``active_module_id`` is total over the locked persona set, so the
+    # ``persona`` literal validated above guarantees a hit.
+    voice_module_id = VoiceRegistry.active_module_id(persona)
+
     engine = GuardrailEngine(db)
     try:
-        prompt, se_codes = engine.build_prompt(
+        prompt, se_codes, voice_module_hash = engine.build_prompt(
             engine_request,
             class_context_envelope=None,
             voice_module_path=None,
+            voice_module_id=voice_module_id,
             target_persona=persona,
         )
     except NoCurriculumMatchError as exc:
@@ -261,6 +272,7 @@ def generate_cmcp_preview(
     return GenerationPreview(
         prompt=prompt,
         se_codes_targeted=se_codes,
-        voice_module_id=None,
+        voice_module_id=voice_module_id,
+        voice_module_hash=voice_module_hash,
         persona=persona,
     )

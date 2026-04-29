@@ -43,6 +43,7 @@ from app.models.curriculum import (
     EXPECTATION_TYPE_SPECIFIC,
 )
 from app.schemas.cmcp import GenerationRequest
+from app.services.cmcp.voice_registry import VoiceRegistry
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +102,7 @@ class GuardrailEngine:
     Example
     -------
     >>> engine = GuardrailEngine(db)
-    >>> prompt, se_codes = engine.build_prompt(request)
+    >>> prompt, se_codes, voice_hash = engine.build_prompt(request)
     """
 
     def __init__(self, db: Session) -> None:
@@ -115,8 +116,9 @@ class GuardrailEngine:
         *,
         class_context_envelope: dict | None = None,
         voice_module_path: str | None = None,
+        voice_module_id: str | None = None,
         target_persona: str = "student",
-    ) -> tuple[str, list[str]]:
+    ) -> tuple[str, list[str], str | None]:
         """Build the system prompt + SE-code list for a generation request.
 
         Parameters
@@ -134,16 +136,31 @@ class GuardrailEngine:
         voice_module_path:
             Optional path to a voice-overlay module file (M1-C registry).
             When supplied + readable, the file's text is embedded verbatim.
-            Hash stamping (``voice_module_hash`` artifact column) is
-            1C-2's job, not this stripe's.
+            Trusted-caller-only — see ``_render_voice_block`` docstring.
+            Tests pass paths produced by ``tmp_path`` fixtures; production
+            callers prefer ``voice_module_id`` (looked up via the registry).
+        voice_module_id:
+            Optional voice-module identifier (e.g., ``"arc_voice_v1"``)
+            registered in :class:`VoiceRegistry`. When supplied, the
+            engine returns the SHA-256 ``voice_module_hash`` for that
+            module as the third tuple element so the caller (1A-2 route)
+            can stamp it on the artifact response (#4480 / DD §3.2).
+            ``voice_module_path`` and ``voice_module_id`` are
+            independent — the path drives prompt-text embedding (1A-1
+            placeholder until 1C-2 wires the registry-backed loader),
+            and the id drives hash stamping (this stripe). Callers will
+            usually pass both, but missing either is non-fatal.
         target_persona:
             ``"student"`` (default), ``"parent"``, or ``"teacher"``. Other
             values raise ``ValueError`` — keeps the persona space pinned.
 
         Returns
         -------
-        tuple[str, list[str]]
-            (system_prompt, ordered list of SE ministry codes targeted).
+        tuple[str, list[str], str | None]
+            (system_prompt,
+             ordered list of SE ministry codes targeted,
+             SHA-256 hex digest of the voice module's contents — or
+             ``None`` when ``voice_module_id`` was not supplied).
 
         Raises
         ------
@@ -152,6 +169,13 @@ class GuardrailEngine:
         NoCurriculumMatchError
             If zero SE rows match the request dimensions (after optional
             topic filter).
+        FileNotFoundError
+            If ``voice_module_id`` is supplied but the registry can't
+            find the corresponding ``.txt`` file. Surfaces straight
+            from :py:meth:`VoiceRegistry.module_hash` — fail fast rather
+            than silently returning ``None``, since the artifact's
+            voice-consistency audit (1C-3) relies on every artifact
+            carrying a valid hash when an id was specified.
         """
         if target_persona not in _VALID_PERSONAS:
             raise ValueError(
@@ -191,7 +215,18 @@ class GuardrailEngine:
 
         system_prompt = "\n\n".join(sections)
         se_codes = [se.ministry_code for se in ses]
-        return system_prompt, se_codes
+
+        # Voice hash stamping (#4480, M1-C 1C-2). We delegate the digest
+        # to the registry rather than re-hashing here so the wave-3
+        # audit job (1C-3) and this route always see the same hash for
+        # the same module bytes. ``module_hash`` reads the file at call
+        # time (no caching) — that's deliberate: voice modules are tiny
+        # and a fresh read keeps hot-swap (FR-02.7) consistent.
+        voice_module_hash: str | None = None
+        if voice_module_id is not None:
+            voice_module_hash = VoiceRegistry.module_hash(voice_module_id)
+
+        return system_prompt, se_codes, voice_module_hash
 
     # -- internal helpers --------------------------------------------------
 
