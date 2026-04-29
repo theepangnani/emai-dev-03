@@ -347,9 +347,10 @@ def call_tool(
         # clients can highlight the offending field — that matches
         # FastAPI's own 422 body shape.
         logger.info(
-            "mcp.call_tool.validation_error name=%s user_id=%s",
+            "mcp.call_tool.validation_error name=%s user_id=%s role=%s",
             payload.name,
             current_user.id,
+            (current_user.role.value if current_user.role else None),
         )
         detail: Any
         if exc.details is not None:
