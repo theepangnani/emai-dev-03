@@ -1360,3 +1360,141 @@ async def test_unified_digest_whatsapp_ai_failure_partial_not_full_failure(db_se
     assert log is not None
     assert log.whatsapp_delivery_status == "failed"
     assert log.email_delivery_status == "sent"
+
+
+# ---------------------------------------------------------------------------
+# #4502 — V2 sectioned WhatsApp variable sanitisation
+#
+# Twilio's Content API rejects \n in template variables (HTTP 400 "Content
+# Variables parameter is invalid"). #3941 fixed this for V1; these tests
+# guard the V2 send-boundary sanitisation so a regression cannot silently
+# reintroduce the failure mode.
+# ---------------------------------------------------------------------------
+
+
+def test_send_sectioned_whatsapp_v2_strips_newlines_from_variables():
+    """Mutation-test guard: every variable passed to Twilio must be \\n-free.
+
+    If the V2 sanitisation is reverted, ``urgent_block`` (and the other two
+    section blocks) will contain ``\\n`` bullet separators emitted by
+    ``_sectioned_section_block``, and this test will fail.
+    """
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    sectioned = {
+        "urgent": ["item one", "item two", "item three"],
+        "announcements": ["news alpha", "news beta"],
+        "action_items": ["sign form", "pay fee", "rsvp"],
+        "overflow": {"urgent": 2, "announcements": 1, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        result = _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat Parent", sectioned
+        )
+
+    assert result is True
+    mock_send.assert_called_once()
+    # Variables dict is the third positional arg.
+    variables = mock_send.call_args[0][2]
+    assert set(variables.keys()) == {"1", "2", "3", "4"}
+    for key, value in variables.items():
+        assert "\n" not in value, f"variable {key!r} contains \\n: {value!r}"
+        assert "\r" not in value, f"variable {key!r} contains \\r: {value!r}"
+        assert "\t" not in value, f"variable {key!r} contains \\t: {value!r}"
+    # Real content survives the flattening.
+    assert "item one" in variables["2"]
+    assert "item two" in variables["2"]
+    assert "And 2 more" in variables["2"]
+    assert "news alpha" in variables["3"]
+    assert "And 1 more" in variables["3"]
+    assert "rsvp" in variables["4"]
+
+
+def test_send_sectioned_whatsapp_v2_caps_each_variable_at_1024_chars():
+    """Per-variable 1024-char Twilio cap: long blocks truncate with ``...``."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    long_item = "x" * 2000  # forces overflow past Twilio's per-variable cap
+    sectioned = {
+        "urgent": [long_item],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    urgent_var = variables["2"]
+    assert len(urgent_var) <= 1024
+    assert urgent_var.endswith("...")
+
+
+def test_send_sectioned_whatsapp_v2_empty_sections_render_as_none():
+    """Empty section round-trips to literal ``(none)`` (V2 template requires
+    non-empty variables)."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    sectioned = {
+        "urgent": [],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    assert variables["2"] == "(none)"
+    assert variables["3"] == "(none)"
+    assert variables["4"] == "(none)"
+
+
+def test_send_sectioned_whatsapp_v2_strips_control_chars():
+    """ASCII control chars (0x00-0x1f) get stripped from section variables."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    # Inject a NUL, BEL, vertical tab, and form feed inside a bullet.
+    dirty_item = "alpha\x00beta\x07gamma\x0bdelta\x0cend"
+    sectioned = {
+        "urgent": [dirty_item],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    urgent_var = variables["2"]
+    # No control chars survive.
+    for ch in urgent_var:
+        assert ord(ch) >= 0x20, f"control char {ch!r} leaked through"
+    # Real content survives.
+    assert "alpha" in urgent_var
+    assert "beta" in urgent_var
+    assert "gamma" in urgent_var
+    assert "delta" in urgent_var
+    assert "end" in urgent_var
