@@ -45,18 +45,35 @@ function extractError(err: unknown): ErrorShape {
 }
 
 /**
- * Empty content guard — if all five sections are empty / blank we treat the
- * artifact as empty rather than showing an awkward shell. This keeps the page
- * resilient to a 200-with-stub-payload response shape during 1F-3 ramp.
+ * Empty content guard — treat the artifact as empty when both the
+ * SE explanation AND the talking_points list are blank, since the
+ * Pydantic schema requires `talking_points` (min_length=3) and a real
+ * artifact will always have at least the SE explanation. Narrowing
+ * to those two anchors prevents a real-but-thin response (e.g. only
+ * coaching_prompts populated during 1F-3 ramp) from being silently
+ * suppressed. (Pass-1 review I-2.)
  */
 function isEmptyContent(content: ParentCompanionContent): boolean {
   const hasExplanation = !!content.se_explanation?.trim();
   const hasTalking = (content.talking_points || []).some((t) => !!t?.trim());
-  const hasPrompts = (content.coaching_prompts || []).some(
-    (p) => !!p?.trim(),
-  );
-  const hasHowTo = !!content.how_to_help_without_giving_answer?.trim();
-  return !hasExplanation && !hasTalking && !hasPrompts && !hasHowTo;
+  return !hasExplanation && !hasTalking;
+}
+
+/**
+ * Sanitize the model-provided deep-link target before rendering it as a
+ * router link. Only same-origin relative paths (must start with `/` and not
+ * with `//`) are honored — anything else (absolute URLs, `javascript:`,
+ * protocol-relative) is dropped, and the CTA falls through to the disabled
+ * fallback. Defense-in-depth against a future caller of the 1F-2 service
+ * passing an attacker-controlled `deep_link_target`. (Pass-1 review I-1.)
+ */
+function sanitizeDeepLinkTarget(target: string | null | undefined): string | null {
+  if (!target) return null;
+  const trimmed = target.trim();
+  if (!trimmed) return null;
+  // Reject protocol-relative ("//evil.com/..."), absolute, javascript:, etc.
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+  return trimmed;
 }
 
 function LoadingState() {
@@ -122,7 +139,7 @@ interface DeepLinkCTAProps {
 }
 
 function DeepLinkCTA({ payload }: DeepLinkCTAProps) {
-  const target = payload?.deep_link_target?.trim() || null;
+  const target = sanitizeDeepLinkTarget(payload?.deep_link_target);
   const summary = payload?.week_summary?.trim() || null;
 
   return (
@@ -266,10 +283,11 @@ function CompanionBody({ content }: CompanionBodyProps) {
 
 export function ParentCompanionPage() {
   const { artifact_id: artifactId } = useParams<{ artifact_id: string }>();
+  const missingId = !artifactId;
+
   // Initialize state derivation off `artifactId` synchronously so we never
   // call setState inside the effect for the missing-id branch (lint rule
   // `react-hooks/set-state-in-effect`).
-  const missingId = !artifactId;
   const [state, setState] = useState<LoadState>(
     missingId ? 'error' : 'loading',
   );
@@ -277,6 +295,19 @@ export function ParentCompanionPage() {
   const [error, setError] = useState<ErrorShape | null>(
     missingId ? { message: 'Missing artifact id in URL.' } : null,
   );
+
+  // Reset-on-id-change pattern (React 19 docs: "Resetting state when a prop
+  // changes"): derive a "previous artifactId" from state and reset during
+  // render — not inside a useEffect — when the URL param changes. Avoids
+  // both the cascading-renders lint warning and the stale-content flash
+  // when navigating from artifact A to B. (Pass-1 review S-3.)
+  const [prevArtifactId, setPrevArtifactId] = useState(artifactId);
+  if (prevArtifactId !== artifactId) {
+    setPrevArtifactId(artifactId);
+    setState(missingId ? 'error' : 'loading');
+    setContent(null);
+    setError(missingId ? { message: 'Missing artifact id in URL.' } : null);
+  }
 
   useEffect(() => {
     if (!artifactId) {

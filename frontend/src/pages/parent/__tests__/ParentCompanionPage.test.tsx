@@ -219,4 +219,65 @@ describe('ParentCompanionPage', () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/network down/i)).toBeInTheDocument();
   });
+
+  it('renders the 401 error state when the session has expired', async () => {
+    mockGet.mockRejectedValue({
+      response: { status: 401, data: { detail: 'Unauthorized' } },
+    });
+    renderWithProviders(<ParentCompanionPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('parent-companion-error')).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('heading', { name: /please sign in again/i }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['absolute URL', 'https://evil.com/phish'],
+    ['protocol-relative URL', '//evil.com/phish'],
+    ['javascript: pseudo-protocol', 'javascript:alert(1)'],
+    ['relative path without leading slash', 'evil/path'],
+  ])(
+    'rejects unsafe deep-link target (%s) and falls back to the disabled CTA',
+    async (_label, deepLinkTarget) => {
+      mockGet.mockResolvedValue(
+        makeContent({
+          bridge_deep_link_payload: {
+            child_id: 42,
+            week_summary: 'Week of Apr 27',
+            deep_link_target: deepLinkTarget,
+          },
+        }),
+      );
+      renderWithProviders(<ParentCompanionPage />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('parent-companion-deeplink')).toBeInTheDocument(),
+      );
+      expect(screen.queryByTestId('parent-companion-deeplink-link')).toBeNull();
+      expect(
+        screen.getByTestId('parent-companion-deeplink-disabled'),
+      ).toBeDisabled();
+    },
+  );
+
+  it('hides the empty state when only se_explanation is present (#4498 review I-2)', async () => {
+    // Narrowed empty check should NOT consider the page empty when the
+    // explanation is populated, even if other arrays are short/missing.
+    mockGet.mockResolvedValue(
+      makeContent({
+        talking_points: [],
+        coaching_prompts: [],
+        how_to_help_without_giving_answer: 'Coach, do not solve.',
+      }),
+    );
+    renderWithProviders(<ParentCompanionPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('parent-companion-explanation')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('parent-companion-empty')).toBeNull();
+  });
 });
