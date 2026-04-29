@@ -141,6 +141,104 @@ def test_verify_mcp_token_empty_token_raises_401(app):
     assert excinfo.value.status_code == 401
 
 
+@pytest.mark.parametrize(
+    "wrong_type",
+    ["refresh", "password_reset", "email_verify", "unsubscribe", "account_deletion"],
+)
+def test_verify_mcp_token_rejects_non_access_token_types(wrong_type, app):
+    """Tokens minted with another ``type`` claim must be rejected (PR #4557).
+
+    dev-03 mints multiple JWT types with the same secret + algorithm. A
+    leaked refresh / password-reset / unsubscribe / email-verify /
+    account-deletion token must NOT authenticate an MCP transport
+    session — that would be a token-confusion attack. ``verify_mcp_token``
+    enforces ``type=access`` strictly.
+    """
+    from app.mcp.auth import verify_mcp_token
+
+    token = _make_token(
+        sub="42",
+        extra_claims={"type": wrong_type},  # overrides the default "access"
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        verify_mcp_token(token)
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_mcp_token_rejects_token_without_type_claim(app):
+    """A signed JWT lacking ``type`` is rejected (defence-in-depth).
+
+    All dev-03 token mints set ``type=access`` (or another known type).
+    A token that signs cleanly but has no ``type`` claim is either an
+    external token we don't trust, or a malformed in-house token — either
+    way, reject.
+    """
+    from app.core.config import settings
+    from app.mcp.auth import verify_mcp_token
+
+    payload = {
+        "sub": "42",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=30),
+        # no "type" key
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+
+    with pytest.raises(HTTPException) as excinfo:
+        verify_mcp_token(token)
+    assert excinfo.value.status_code == 401
+
+
+def test_verify_mcp_token_returns_fresh_exception_per_call(app):
+    """Each rejection raises a *new* ``HTTPException`` instance (no shared state).
+
+    A module-level singleton would risk cross-request mutation if any
+    handler attaches context to ``.detail`` / ``.headers``. Mirrors the
+    per-call pattern in ``app.api.deps.get_current_user``.
+    """
+    from app.mcp.auth import verify_mcp_token
+
+    excs: list[HTTPException] = []
+    for _ in range(2):
+        try:
+            verify_mcp_token("")
+        except HTTPException as e:
+            excs.append(e)
+
+    assert len(excs) == 2
+    # Distinct instances — verifies the per-call factory contract.
+    assert excs[0] is not excs[1]
+
+
+def test_verify_mcp_token_role_claim_typically_none_in_production(app):
+    """Production access tokens carry no ``role`` claim → ``MCPSession.role is None``.
+
+    Documents the dev-03 reality (``create_access_token`` only emits
+    ``sub`` + ``onboarding_completed`` + ``type`` + ``exp`` + ``jti``).
+    Downstream stripes (2A-2) MUST resolve the role from the ``User`` row
+    rather than relying on ``MCPSession.role``. This test pins that
+    contract so a future PR that starts emitting ``role`` claims has to
+    update this expectation deliberately.
+    """
+    from app.core.config import settings
+    from app.core.security import create_access_token
+    from app.mcp.auth import verify_mcp_token
+
+    # Mint a real production-shape token (mirrors auth.py login path).
+    token = create_access_token(data={"sub": "42", "onboarding_completed": True})
+    session = verify_mcp_token(token)
+
+    assert session.user_id == "42"
+    assert session.role is None
+    # The payload still carries the prod claims for downstream consumers.
+    assert session.payload["onboarding_completed"] is True
+    assert session.payload["type"] == "access"
+    assert "role" not in session.payload
+    # Reference settings to keep the import valid even if future test
+    # refactors add an explicit settings assertion.
+    assert settings.algorithm
+
+
 # ── authenticate_mcp_request: dependency wiring ────────────────
 
 

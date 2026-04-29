@@ -12,7 +12,7 @@ later stripes:
 
 1. :func:`verify_mcp_token` — decode-only JWT validation suitable for the
    MCP transport endpoint (no DB hit). Returns an :class:`MCPSession`
-   containing the user id, role, and raw payload.
+   containing the user id, role claim (if any), and raw payload.
 2. :func:`authenticate_mcp_request` — FastAPI dependency wrapper around
    :func:`verify_mcp_token` for use as ``AuthConfig.dependencies``.
 3. :data:`ROLE_TOOLS` + :func:`get_tools_for_role` — per-role allowlist of
@@ -29,6 +29,26 @@ Per-tool calls in production still go through the existing
 validation (user lookup, deletion check, blacklist check). The lightweight
 check here is intentionally fast so the MCP transport can reject obviously
 invalid tokens without a DB round-trip.
+
+Token-type hardening (PR #4557 review pass-1)
+---------------------------------------------
+dev-03 mints multiple JWT *types* with the same secret + algorithm
+(``access``, ``refresh``, ``email_verify``, ``password_reset``,
+``unsubscribe``, ``account_deletion``). Phase-2's port did not gate on
+``type``; this implementation rejects everything except ``type=access``
+to prevent token-confusion attacks (e.g. a leaked unsubscribe token
+authenticating an MCP transport session).
+
+Role-claim caveat (PR #4557 review pass-1)
+------------------------------------------
+``MCPSession.role`` reflects the JWT ``role`` claim, which dev-03
+*does not currently emit* in :func:`app.core.security.create_access_token`.
+For production tokens, ``MCPSession.role`` will be ``None``. Callers that
+need the authoritative role for tool authorization MUST resolve it from
+the ``User`` row (e.g. via :func:`app.api.deps.get_current_user`) and
+pass that role string into :func:`assert_role_can_use_tool` rather than
+relying on ``MCPSession.role``. Stripe 2A-2 wires this via the per-tool
+``get_current_user`` dependency.
 """
 from __future__ import annotations
 
@@ -59,6 +79,14 @@ class MCPSession:
     ``CURRICULUM_ADMIN`` in 2A-3) does not require a code change to the
     decode path — :func:`get_tools_for_role` is the single point of
     role-vs-tools validation.
+
+    .. warning::
+       In dev-03, :func:`app.core.security.create_access_token` does not
+       emit a ``role`` claim, so ``role`` is typically ``None`` for
+       production tokens. Authoritative role-based authorization must
+       resolve the role from the ``User`` row (via
+       :func:`app.api.deps.get_current_user`) and pass that string into
+       :func:`assert_role_can_use_tool`. See module docstring.
     """
 
     user_id: str
@@ -74,19 +102,35 @@ class MCPSession:
 _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-_CREDENTIALS_EXCEPTION = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Invalid or missing authentication token",
-    headers={"WWW-Authenticate": "Bearer"},
-)
+# JWT ``type`` claim values that dev-03 mints (see ``app/core/security.py``).
+# Only ``access`` tokens are valid for MCP transport authentication; any other
+# type signed with the same secret (refresh / password_reset / unsubscribe /
+# email_verify / account_deletion) MUST be rejected to avoid token confusion.
+_ACCESS_TOKEN_TYPE = "access"
+
+
+def _credentials_exception() -> HTTPException:
+    """Build a fresh 401 ``HTTPException`` for each rejected request.
+
+    A new instance per call avoids any risk of cross-request mutation if a
+    handler later attaches context to ``.detail`` / ``.headers``. Mirrors
+    the pattern used by :func:`app.api.deps.get_current_user`.
+    """
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing authentication token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def verify_mcp_token(token: str) -> MCPSession:
     """Decode + validate a JWT for the MCP transport.
 
     Raises :class:`fastapi.HTTPException` with status 401 when the token is
-    missing the required ``sub`` claim, fails signature verification, or
-    has expired.
+    empty, fails signature verification, has expired, lacks the required
+    ``sub`` claim, or carries a non-``access`` ``type`` claim (e.g. a
+    refresh / password-reset / unsubscribe / email-verify / account-
+    deletion token signed with the same secret).
 
     The check is decode-only: it does NOT verify the token-blacklist or
     that the user row still exists. Per-tool calls (which are normal
@@ -94,7 +138,7 @@ def verify_mcp_token(token: str) -> MCPSession:
     those cases.
     """
     if not token:
-        raise _CREDENTIALS_EXCEPTION
+        raise _credentials_exception()
 
     try:
         payload = jwt.decode(
@@ -103,11 +147,18 @@ def verify_mcp_token(token: str) -> MCPSession:
             algorithms=[settings.algorithm],
         )
     except JWTError:
-        raise _CREDENTIALS_EXCEPTION
+        raise _credentials_exception()
 
     user_id = payload.get("sub")
     if user_id is None:
-        raise _CREDENTIALS_EXCEPTION
+        raise _credentials_exception()
+
+    # Reject non-access tokens (refresh / email_verify / password_reset /
+    # unsubscribe / account_deletion all share the secret + algorithm).
+    # ``create_access_token`` (app/core/security.py) always sets
+    # ``type=access``; any token without that claim is treated as untrusted.
+    if payload.get("type") != _ACCESS_TOKEN_TYPE:
+        raise _credentials_exception()
 
     return MCPSession(
         user_id=str(user_id),
