@@ -66,6 +66,7 @@ from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
 )
+from app.services.cmcp.voice_registry import VoiceRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -151,12 +152,19 @@ def generate_cmcp_stream(
         payload, subject_id=subject.id, strand_id=strand.id
     )
 
+    # Resolve the active voice module for the persona so the engine can
+    # stamp its hash on the completion frame (#4480 / M1-C 1C-2). Mirrors
+    # the 1A-2 sync route — keeps the streaming + sync surfaces aligned
+    # until 1C-3 lands DB-backed persistence.
+    voice_module_id = VoiceRegistry.active_module_id(persona)
+
     engine = GuardrailEngine(db)
     try:
-        prompt, se_codes = engine.build_prompt(
+        prompt, se_codes, voice_module_hash = engine.build_prompt(
             engine_request,
             class_context_envelope=None,
             voice_module_path=None,
+            voice_module_id=voice_module_id,
             target_persona=persona,
         )
     except NoCurriculumMatchError as exc:
@@ -174,7 +182,8 @@ def generate_cmcp_stream(
 
     completion_payload: dict = {
         "se_codes_targeted": list(se_codes),
-        "voice_module_id": None,
+        "voice_module_id": voice_module_id,
+        "voice_module_hash": voice_module_hash,
         "persona": persona,
         "content_type": payload.content_type,
     }
