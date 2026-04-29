@@ -1,0 +1,221 @@
+"""CB-CMCP-001 M1-E 1E-1 — POST /api/cmcp/generate/stream (#4481).
+
+SSE-streaming sibling of the 1A-2 sync ``/api/cmcp/generate`` route.
+Long-form content types (Study Guide, Sample Test, Assignment) stream
+their AI generation back to the caller progressively as Server-Sent
+Events; short-form content types (Quiz, Worksheet, Parent Companion)
+are routed to the existing sync endpoint and return ``400`` here with
+a redirect message.
+
+Stripe scope (per #4481 + plan §7 M1-E 1E-1)
+--------------------------------------------
+- Reuse the 1A-2 prompt-build flow:
+  * Resolve subject + strand codes against ``CEGSubject`` / ``CEGStrand``.
+  * Derive persona from ``current_user.role`` when omitted.
+  * Build the system prompt via ``GuardrailEngine.build_prompt()``.
+- Stream the AI response via ``app.services.ai_service.generate_content_stream``
+  (the existing dev-03 Claude-streaming primitive used by Study Guide
+  generation — same yield envelope, same retry/error semantics).
+- Wrap each chunk as an SSE ``data: {chunk}`` frame and emit a final
+  ``event: complete`` frame carrying the targeted SE codes + persona
+  + voice-module pointer (None until 1C-1).
+- On stream errors yield ``event: error`` with a user-safe message.
+
+Out of scope (deferred)
+-----------------------
+- Per-content-type latency telemetry — 1E-2 wave 3.
+- Frontend streaming hook — 1E-3 wave 3.
+- Validation pipeline composition into the stream — handled in 1D-2 /
+  later stripe; this route makes the basic Claude call only.
+- Voice-module registry hookup — 1C-1 / 1C-2.
+- Persisting an artifact row — 1A-3 state machine.
+
+SSE wire format
+---------------
+The frontend stream-reader (1E-3) parses each frame as either:
+- ``data: <chunk-text>\\n\\n``                 — token / sub-token chunk
+- ``event: complete\\ndata: <json>\\n\\n``     — final completion payload
+- ``event: error\\ndata: <message>\\n\\n``     — terminal error frame
+
+The ``data: <chunk-text>`` line on token frames carries the raw chunk
+text (matches the issue body's ``data: {chunk}\\n\\n`` shape). The
+``event: complete`` payload is JSON so 1D-2's validation result + the
+voice hash can be carried verbatim once those wires land.
+"""
+from __future__ import annotations
+
+import json
+import logging
+from typing import AsyncIterator
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+
+from app.api.routes.cmcp_generate import (
+    _derive_persona,
+    _resolve_subject_and_strand,
+    _to_engine_request,
+)
+from app.api.routes.curriculum import require_cmcp_enabled
+from app.db.database import get_db
+from app.models.user import User
+from app.schemas.cmcp import CMCPGenerateRequest, TargetPersona
+from app.services.ai_service import generate_content_stream
+from app.services.cmcp.guardrail_engine import (
+    GuardrailEngine,
+    NoCurriculumMatchError,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/cmcp", tags=["CMCP Generation"])
+
+
+# Long-form content types stream (the artifact is multi-paragraph and
+# benefits from progressive rendering). Short-form types are
+# small-response single-shots — the sync ``/api/cmcp/generate`` route is
+# the right surface for them and streaming would just add SSE framing
+# overhead with no UX win.
+_LONG_FORM_CONTENT_TYPES: frozenset[str] = frozenset(
+    {"STUDY_GUIDE", "SAMPLE_TEST", "ASSIGNMENT"}
+)
+_SHORT_FORM_REDIRECT_MESSAGE = (
+    "Use /api/cmcp/generate (sync) for short-form content types"
+)
+
+
+def _sse_chunk(text: str) -> str:
+    """Format a token-chunk SSE frame.
+
+    Matches the issue's wire shape ``data: {chunk}\\n\\n``. Newlines
+    inside the chunk text are escaped to keep the SSE framing intact —
+    a literal ``\\n`` would otherwise terminate the ``data:`` line and
+    confuse client-side stream readers.
+    """
+    safe = text.replace("\r", "").replace("\n", "\\n")
+    return f"data: {safe}\n\n"
+
+
+def _sse_event(event: str, data: dict | str) -> str:
+    """Format an SSE frame with an explicit ``event:`` line.
+
+    JSON-encodes dict payloads so the completion frame can carry the
+    structured ``GenerationPreview``-shaped result without bespoke
+    escape rules; string payloads pass through with the same newline
+    sanitization as ``_sse_chunk``.
+    """
+    if isinstance(data, str):
+        payload = data.replace("\r", "").replace("\n", "\\n")
+    else:
+        payload = json.dumps(data)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+@router.post("/generate/stream")
+def generate_cmcp_stream(
+    payload: CMCPGenerateRequest,
+    current_user: User = Depends(require_cmcp_enabled),
+    db: Session = Depends(get_db),
+) -> StreamingResponse:
+    """Stream a CEG-anchored generation as Server-Sent Events.
+
+    The request body matches 1A-2's ``CMCPGenerateRequest``. Long-form
+    content types stream their AI response chunk-by-chunk; short-form
+    content types return ``400`` with a redirect to the sync endpoint.
+
+    Resolution + prompt build happens synchronously up-front so subject
+    / strand / curriculum-match errors surface as ``422`` (matching the
+    sync endpoint) rather than as an SSE error frame buried mid-stream.
+    """
+    if payload.content_type not in _LONG_FORM_CONTENT_TYPES:
+        # Short-form content types never enter the streaming path — the
+        # sync route is the correct surface. Returning a structured 400
+        # with the canonical redirect message keeps the frontend's
+        # decision logic ("which endpoint?") testable without probing
+        # the stream itself.
+        raise HTTPException(
+            status_code=400,
+            detail=_SHORT_FORM_REDIRECT_MESSAGE,
+        )
+
+    subject, strand = _resolve_subject_and_strand(
+        db, payload.subject_code, payload.strand_code
+    )
+
+    persona: TargetPersona = payload.target_persona or _derive_persona(
+        current_user
+    )
+
+    engine_request = _to_engine_request(
+        payload, subject_id=subject.id, strand_id=strand.id
+    )
+
+    engine = GuardrailEngine(db)
+    try:
+        prompt, se_codes = engine.build_prompt(
+            engine_request,
+            class_context_envelope=None,
+            voice_module_path=None,
+            target_persona=persona,
+        )
+    except NoCurriculumMatchError as exc:
+        # Mirror the sync route's 422 — surface CEG-empty before
+        # opening a stream so callers always see the failure mode in
+        # the same shape regardless of which endpoint they hit.
+        logger.info(
+            "CMCP stream 422 — no CEG match for grade=%s subject=%s strand=%s topic=%r",
+            engine_request.grade,
+            subject.code,
+            strand.code,
+            engine_request.topic,
+        )
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    completion_payload: dict = {
+        "se_codes_targeted": list(se_codes),
+        "voice_module_id": None,
+        "persona": persona,
+        "content_type": payload.content_type,
+    }
+
+    async def event_stream() -> AsyncIterator[str]:
+        """Yield SSE frames for the duration of the Claude stream.
+
+        The ``ai_service.generate_content_stream`` helper already
+        encodes the retry / mid-stream-fail semantics we want — it
+        yields ``{"event": "chunk"|"done"|"error", "data": ...}`` dicts
+        and never raises mid-stream. We re-frame those into the SSE
+        wire format the issue specifies.
+        """
+        try:
+            async for ai_event in generate_content_stream(
+                prompt="Generate the requested content per the system prompt.",
+                system_prompt=prompt,
+            ):
+                ev_type = ai_event.get("event")
+                if ev_type == "chunk":
+                    yield _sse_chunk(ai_event.get("data", ""))
+                elif ev_type == "done":
+                    # Stream finished cleanly — emit the completion
+                    # event with the curriculum metadata so the client
+                    # can finalize the artifact view in one frame.
+                    yield _sse_event("complete", completion_payload)
+                    return
+                elif ev_type == "error":
+                    yield _sse_event(
+                        "error",
+                        str(ai_event.get("data", "Generation failed")),
+                    )
+                    return
+        except Exception:
+            # Defense-in-depth: the helper is documented as never
+            # raising mid-stream, but an unexpected exception must not
+            # leak to the client as a 500 with a partial body. Log +
+            # emit a terminal error frame so the connection closes
+            # cleanly.
+            logger.exception("CMCP stream unexpected error")
+            yield _sse_event("error", "Generation failed")
+            return
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
