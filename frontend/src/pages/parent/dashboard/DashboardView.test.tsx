@@ -14,9 +14,18 @@ import type { DashboardResponse } from './types';
 
 const mockGetDashboard = vi.fn();
 
-vi.mock('../../../api/parentEmailDigest', () => ({
-  getDashboard: (...args: unknown[]) => mockGetDashboard(...args),
-}));
+// Use `vi.importActual` + spread (mock-shadow guard, #4277): mocking the
+// whole module would shadow every other export to `undefined` the moment a
+// future stripe imports a second symbol from `parentEmailDigest` here.
+vi.mock('../../../api/parentEmailDigest', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/parentEmailDigest')>(
+    '../../../api/parentEmailDigest',
+  );
+  return {
+    ...actual,
+    getDashboard: (...args: unknown[]) => mockGetDashboard(...args),
+  };
+});
 
 /* ── Stub sibling components (E2-E5 ship in parallel PRs) ── */
 
@@ -215,8 +224,12 @@ describe('DashboardView', () => {
     });
 
     const events = window.__cb_telemetry__ ?? [];
-    expect(events.length).toBeGreaterThanOrEqual(1);
-    expect(events[0].event).toBe('dashboard.page_view');
+    expect(events.some((e) => e.event === 'dashboard.page_view')).toBe(true);
+    // Mutation-test guard: `page_view` must fire exactly once per mount, not
+    // re-fire on refetch. Catches regressions where the emit() is moved out
+    // of the empty-deps effect and accidentally double-fires.
+    const pageViewEvents = events.filter((e) => e.event === 'dashboard.page_view');
+    expect(pageViewEvents).toHaveLength(1);
   });
 
   it('renders an error state when the request fails', async () => {
