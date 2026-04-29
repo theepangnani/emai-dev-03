@@ -156,8 +156,19 @@ def _sanitise_whatsapp_section_block(text: str) -> str:
     bulleted with leading ``- `` markers, so the V1 paragraph-break-to-bullet
     substitution (``\\n{2,}`` → `` • ``) would inject a redundant separator.
     Here every newline (single or repeated) collapses to a space.
+
+    Defensive HTML scrub mirrors ``_sanitise_whatsapp_var`` (per #4006): catches
+    HTML tag fragments / unterminated tags / lone angle brackets that may have
+    survived upstream sanitisation in source AI output before they reach
+    Twilio's variable-content policy.
     """
-    s = text.replace('\r\n', '\n').replace('\r', '\n')
+    s = text
+    # #4006 defensive HTML scrub (first step) — strip tag fragments,
+    # unterminated tags, and lone angle brackets that indicate tag residue.
+    s = re.sub(r'<[^>]*>?', '', s)
+    s = re.sub(r'</[^\s]*', '', s)
+    s = s.replace('<', '').replace('>', '')
+    s = s.replace('\r\n', '\n').replace('\r', '\n')
     # Single \n / \t → space (V2 blocks own their own bullet markers).
     s = re.sub(r'[\n\r\t]', ' ', s)
     # Strip all remaining control chars (ASCII 0-31).
@@ -557,8 +568,9 @@ async def send_digest_for_integration(
                     # delivery silently failed whenever Twilio rejected the V2
                     # send. Each layer now catches and logs its own exceptions
                     # so a Twilio-side error doesn't break the chain.
+                    # Transitions logged at WARNING — silent fallback would mask
+                    # systemic V2/V1 failures from ops dashboards/alerts.
                     wa_success = False
-                    flattened = _flatten_sectioned_to_bullets(sectioned_content)
 
                     # 1) V2 sectioned 4-variable template (when configured).
                     if v2_sid:
@@ -577,10 +589,15 @@ async def send_digest_for_integration(
                             )
                             wa_success = False
                         if not wa_success:
-                            logger.info(
+                            logger.warning(
                                 "Legacy V2 sectioned WhatsApp returned failure — falling back to V1 | integration_id=%s",
                                 integration.id,
                             )
+
+                    # Compute `flattened` once for V1 + freeform fallback paths
+                    # (lazy — skipped entirely when V2 succeeds, the common case).
+                    if not wa_success:
+                        flattened = _flatten_sectioned_to_bullets(sectioned_content)
 
                     # 2) V1 single-variable template fallback.
                     if not wa_success and v1_sid:
@@ -602,7 +619,7 @@ async def send_digest_for_integration(
                             )
                             wa_success = False
                         if not wa_success:
-                            logger.info(
+                            logger.warning(
                                 "Legacy V1 WhatsApp returned failure — falling back to freeform | integration_id=%s",
                                 integration.id,
                             )
@@ -1364,6 +1381,8 @@ async def send_unified_digest_for_parent(
                     # variables → HTTP 400). Each layer now catches and logs
                     # its own exceptions so a Twilio-side error doesn't break
                     # the chain.
+                    # Transitions logged at WARNING — silent fallback would mask
+                    # systemic V2/V1 failures from ops dashboards/alerts.
                     wa_success = False
 
                     # 1) V2 sectioned 4-variable template (when configured and
@@ -1385,22 +1404,26 @@ async def send_unified_digest_for_parent(
                             )
                             wa_success = False
                         if not wa_success:
-                            logger.info(
+                            logger.warning(
                                 "Unified V2 sectioned WhatsApp returned failure — falling back to V1 | parent_id=%s",
                                 parent_id,
                             )
 
-                    # 2) V1 single-variable template fallback.
-                    if not wa_success and v1_sid:
+                    # Compute `plain_text` once for V1 + freeform fallback paths
+                    # (lazy — skipped entirely when V2 succeeds, the common case).
+                    if not wa_success:
                         if sectioned_for_wa.get("legacy_blob"):
                             plain_text = re.sub(
                                 r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
                             )
-                            sanitised_text = _sanitise_whatsapp_var(plain_text)
                         else:
-                            sanitised_text = _sanitise_whatsapp_var(
-                                _flatten_sectioned_to_bullets(sectioned_for_wa)
+                            plain_text = _flatten_sectioned_to_bullets(
+                                sectioned_for_wa
                             )
+
+                    # 2) V1 single-variable template fallback.
+                    if not wa_success and v1_sid:
+                        sanitised_text = _sanitise_whatsapp_var(plain_text)
                         sanitised_parent_name = re.sub(
                             r'[\x00-\x1f]', ' ', parent_name
                         ).strip()
@@ -1421,21 +1444,13 @@ async def send_unified_digest_for_parent(
                             )
                             wa_success = False
                         if not wa_success:
-                            logger.info(
+                            logger.warning(
                                 "Unified V1 WhatsApp returned failure — falling back to freeform | parent_id=%s",
                                 parent_id,
                             )
 
                     # 3) Freeform body fallback (always available — last layer).
                     if not wa_success:
-                        if sectioned_for_wa.get("legacy_blob"):
-                            plain_text = re.sub(
-                                r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
-                            )
-                        else:
-                            plain_text = _flatten_sectioned_to_bullets(
-                                sectioned_for_wa
-                            )
                         header = (
                             f"Hi {parent_name}, here's your kids' daily school "
                             f"email summary:\n\n"
