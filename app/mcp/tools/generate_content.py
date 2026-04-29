@@ -64,6 +64,17 @@ from sqlalchemy.orm import Session
 from app.api.routes.cmcp_generate import generate_cmcp_preview_sync
 from app.models.user import User
 from app.schemas.cmcp import CMCPGenerateRequest
+from app.services.feature_flag_service import is_feature_enabled
+
+# Flag key the REST route gates on (see ``app.api.routes.curriculum``'s
+# ``require_cmcp_enabled``). The MCP transport gates on its own
+# ``mcp.enabled`` flag, but the curriculum-content surface this tool
+# wraps is the *same* surface the REST route guards — so an admin
+# turning ``cmcp.enabled`` OFF must disable BOTH transports, not just
+# the REST one. Re-check it here instead of duplicating the route's
+# ``require_cmcp_enabled`` dependency machinery (the dispatcher already
+# resolved auth + ``mcp.enabled``; we only need the curriculum flag).
+_CMCP_FEATURE_FLAG_KEY = "cmcp.enabled"
 
 
 def generate_content_handler(
@@ -100,12 +111,40 @@ def generate_content_handler(
         ``voice_module_id``, ``voice_module_hash``, ``persona``.
 
     Raises:
-        HTTPException: 422 on input-validation / curriculum-resolution
-            failures (re-raised from :func:`generate_cmcp_preview_sync`).
-            Other HTTP errors propagate verbatim. Non-HTTP errors
-            (e.g., DB failure) bubble up so the MCP route layer's 500
-            path catches them.
+        HTTPException: 403 when ``cmcp.enabled`` is OFF. 422 on
+            input-validation / curriculum-resolution failures
+            (re-raised from :func:`generate_cmcp_preview_sync`). Other
+            HTTP errors propagate verbatim. Non-HTTP errors (e.g., DB
+            failure) bubble up so the MCP route layer's 500 path
+            catches them.
     """
+    # Curriculum-flag gate — defense-in-depth over the route's
+    # ``require_cmcp_enabled`` (#4561 review pass-1). The MCP
+    # dispatcher only checks ``mcp.enabled``; without this re-check an
+    # admin flipping ``cmcp.enabled`` OFF would disable the REST
+    # surface but leave the MCP path serving content. We mirror the
+    # route's 403 status so the failure looks identical on both
+    # transports.
+    if not is_feature_enabled(_CMCP_FEATURE_FLAG_KEY, db=db):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "CB-CMCP-001 generation is disabled (cmcp.enabled OFF)"
+            ),
+        )
+
+    # Type guard — ``CMCPGenerateRequest.model_validate`` accepts
+    # ``Any`` and would surface a confusing per-field error if the
+    # caller sent a list or scalar instead of a JSON object. The MCP
+    # transport's ``CallToolRequest.arguments`` is already typed
+    # ``dict``, but defending here keeps direct service-layer callers
+    # honest (#4561 review pass-1).
+    if not isinstance(arguments, Mapping):
+        raise HTTPException(
+            status_code=422,
+            detail="arguments must be a JSON object",
+        )
+
     # Input validation via the existing Pydantic schema. We deliberately
     # round-trip through ``model_validate`` rather than the route's
     # automatic body-parse path — the MCP transport hands us a dict
@@ -125,11 +164,15 @@ def generate_content_handler(
         current_user=current_user,
         db=db,
     )
-    # ``model_dump()`` (not ``.dict()``) — Pydantic v2 idiom and matches
-    # the route layer's serialization. ``mode='json'`` would coerce
-    # nested types (e.g., enum → str) but the GenerationPreview shape
-    # is already JSON-native, so the default mode is fine + faster.
-    return preview.model_dump()
+    # ``model_dump(mode='json')`` (not the default mode) — coerces any
+    # non-JSON-native types (datetime, UUID, Decimal, enum) to JSON
+    # primitives at the service-layer boundary. ``GenerationPreview``
+    # is JSON-native today, but the cost on a 5-field model is
+    # negligible and it future-proofs the boundary against schema
+    # evolution: a future field that's e.g. ``datetime`` would
+    # otherwise fail at FastAPI's response-serialization layer with a
+    # 500 instead of being coerced cleanly here (#4561 review pass-1).
+    return preview.model_dump(mode="json")
 
 
 __all__ = ["generate_content_handler"]

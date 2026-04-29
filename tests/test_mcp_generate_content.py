@@ -35,7 +35,15 @@ from conftest import PASSWORD, _auth
 
 @pytest.fixture()
 def mcp_flag_on(db_session):
-    """Force ``mcp.enabled`` ON for the test, OFF after."""
+    """Force ``mcp.enabled`` ON for the test; restore prior state after.
+
+    Captures the flag's pre-test value rather than blindly committing
+    ``False`` post-yield (#4561 review pass-1) — a copy-paste of this
+    fixture into a parallel-execution context (e.g., pytest-xdist)
+    would otherwise silently disable the flag for tests that expect
+    it ON. Today's tests share a session-scoped SQLite DB so the bug
+    is theoretical, but the pattern is the safe one.
+    """
     from app.models.feature_flag import FeatureFlag
     from app.services.feature_seed_service import seed_features
 
@@ -46,21 +54,25 @@ def mcp_flag_on(db_session):
         .first()
     )
     assert flag is not None, "mcp.enabled flag must be seeded"
+    original = flag.enabled
     flag.enabled = True
     db_session.commit()
     yield flag
     db_session.refresh(flag)
-    flag.enabled = False
+    flag.enabled = original
     db_session.commit()
 
 
 @pytest.fixture()
 def cmcp_flag_on(db_session):
-    """Force ``cmcp.enabled`` ON. The MCP ``generate_content`` tool
-    delegates to the route layer's service helper, which itself routes
-    through ``require_cmcp_enabled`` only at the HTTP edge — but the
-    helper queries the same CEG tables ``cmcp.enabled`` gates, so we
-    keep the flag ON to mirror production wiring.
+    """Force ``cmcp.enabled`` ON; restore prior state after.
+
+    The MCP ``generate_content`` tool re-checks ``cmcp.enabled`` (see
+    #4561 review pass-1) — the curriculum-content surface is gated
+    independently of the MCP transport flag, so an admin can roll
+    back the curriculum surface without touching ``mcp.enabled``. The
+    fixture restores the pre-test value so tests that toggle the flag
+    don't pollute siblings.
     """
     from app.models.feature_flag import FeatureFlag
     from app.services.feature_seed_service import seed_features
@@ -72,11 +84,38 @@ def cmcp_flag_on(db_session):
         .first()
     )
     assert flag is not None, "cmcp.enabled flag must be seeded"
+    original = flag.enabled
     flag.enabled = True
     db_session.commit()
     yield flag
     db_session.refresh(flag)
+    flag.enabled = original
+    db_session.commit()
+
+
+@pytest.fixture()
+def cmcp_flag_off(db_session):
+    """Force ``cmcp.enabled`` OFF; restore prior state after.
+
+    Companion to ``cmcp_flag_on`` for the new
+    test_cmcp_flag_off_returns_403 case (#4561 review pass-1).
+    """
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "cmcp.enabled")
+        .first()
+    )
+    assert flag is not None, "cmcp.enabled flag must be seeded"
+    original = flag.enabled
     flag.enabled = False
+    db_session.commit()
+    yield flag
+    db_session.refresh(flag)
+    flag.enabled = original
     db_session.commit()
 
 
@@ -359,6 +398,44 @@ def test_target_persona_override_beats_role_default(
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["content"]["persona"] == "parent"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Curriculum-flag gate — cmcp.enabled OFF returns 403 even when
+# mcp.enabled is ON (defense-in-depth: #4561 review pass-1).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_cmcp_flag_off_returns_403(
+    client,
+    teacher_user,
+    mcp_flag_on,
+    cmcp_flag_off,
+    seeded_cmcp_curriculum,
+):
+    """``cmcp.enabled`` OFF + ``mcp.enabled`` ON → 403.
+
+    The MCP transport gates only on ``mcp.enabled``; without an
+    explicit re-check inside the handler, an admin flipping
+    ``cmcp.enabled`` OFF would disable the REST surface but leave the
+    MCP path serving content. Pinned here so a future refactor that
+    drops the curriculum-flag check immediately fails this test.
+
+    Note: 403 (not 404) — matches the REST route's
+    ``require_cmcp_enabled`` semantics so a misconfigured rollback
+    looks identical on both transports.
+    """
+    headers = _auth(client, teacher_user.email)
+    resp = client.post(
+        "/mcp/call_tool",
+        json={
+            "name": "generate_content",
+            "arguments": _arguments(seeded_cmcp_curriculum),
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 403
+    assert "cmcp.enabled" in resp.json()["detail"]
 
 
 # ─────────────────────────────────────────────────────────────────────
