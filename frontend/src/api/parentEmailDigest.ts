@@ -130,6 +130,15 @@ export const sendDigestNow = (integrationId: number) =>
     `/api/parent/email-digest/integrations/${integrationId}/send-digest`
   );
 
+// #4483: parent-scoped Send-Digest-Now. Used by the unified multi-kid UI so
+// the V2 flag can route to `send_unified_digest_for_parent` (one envelope
+// across all integrations) and produce multi-kid framing in subject + body.
+// Single-kid / legacy callers still use `sendDigestNow` above.
+export const sendDigestNowForParent = (sinceHours = 24) =>
+  api.post<SendDigestResponse>('/api/parent/email-digest/send-now', null, {
+    params: { since_hours: sinceHours },
+  });
+
 // Monitored emails (#3178)
 export const listMonitoredEmails = (integrationId: number) =>
   api.get<MonitoredEmail[]>(`/api/parent/email-digest/integrations/${integrationId}/monitored-emails`);
