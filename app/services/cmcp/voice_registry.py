@@ -49,8 +49,6 @@ _ACTIVE_MODULES: dict[str, str] = {
     "parent": "parent_coach_v1",
 }
 
-_SUPPORTED_PERSONAS: frozenset[str] = frozenset(_ACTIVE_MODULES.keys())
-
 
 class VoiceRegistry:
     """Static-method registry for versioned voice-overlay prompt modules.
@@ -61,6 +59,12 @@ class VoiceRegistry:
     (``from app.services.cmcp.voice_registry import VoiceRegistry``) and so
     the future DB-backed implementation can swap to instance methods without
     breaking call sites.
+
+    Concurrency: in stripe 1C-1 the registry is in-memory only and reads /
+    writes go through the GIL-protected dict, so a single-process uvicorn
+    deployment is safe without an explicit lock. Wave 3 (1C-3) backs the
+    active-module map with a DB row + admin endpoint; that implementation
+    will need its own row-level locking.
     """
 
     # ------------------------------------------------------------------
@@ -79,7 +83,7 @@ class VoiceRegistry:
         if persona not in _ACTIVE_MODULES:
             raise KeyError(
                 f"Unknown voice persona {persona!r}; "
-                f"expected one of {sorted(_SUPPORTED_PERSONAS)}"
+                f"expected one of {sorted(_ACTIVE_MODULES.keys())}"
             )
         return _ACTIVE_MODULES[persona]
 
@@ -106,7 +110,7 @@ class VoiceRegistry:
         if persona not in _ACTIVE_MODULES:
             raise KeyError(
                 f"Unknown voice persona {persona!r}; "
-                f"expected one of {sorted(_SUPPORTED_PERSONAS)}"
+                f"expected one of {sorted(_ACTIVE_MODULES.keys())}"
             )
         # Validate before mutating — a swap that points at a nonexistent file
         # would silently break the next artifact for this persona.
