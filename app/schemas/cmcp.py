@@ -6,7 +6,7 @@ Stripe scope
 - 1A-1 shipped the engine-facing ``GenerationRequest`` (``subject_id`` +
   ``strand_id`` + lowercase content-type literals) — what
   ``GuardrailEngine.build_prompt()`` consumes.
-- 1A-2 (this stripe) adds the *HTTP-facing* schemas for the
+- 1A-2 added the *HTTP-facing* schemas for the
   ``POST /api/cmcp/generate`` route:
 
   * ``CMCPGenerateRequest`` — request body. Mirrors DD §3.2 wording
@@ -18,6 +18,11 @@ Stripe scope
   * ``GenerationPreview`` — response model returning the constructed
     prompt + targeted SE codes + persona + voice-module pointer. No
     Claude/OpenAI call yet (M1-E 1E-1 wires that).
+- 1F-3 (this stripe, #4497) adds the typed schema for the streaming
+  route's ``event: complete`` payload, including the optional
+  ``parent_companion`` field auto-emitted alongside student-facing
+  artifacts. Persistence + DCI/Bridge surfacing remains M3 territory —
+  this stripe ships the inline auto-emit only.
 
 The id-based ``GenerationRequest`` and the code-based
 ``CMCPGenerateRequest`` are intentionally kept distinct: the engine is
@@ -242,4 +247,69 @@ class GenerationPreview(BaseModel):
     )
     persona: TargetPersona = Field(
         ..., description="The persona overlay used to build the prompt."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 1F-3 (#4497): streaming route completion-event schema
+# ---------------------------------------------------------------------------
+
+
+# Student-facing content types per #4497 + plan §7 M1-F 1F-3 + Amendment A2.
+# When the streaming route generates one of these for ``persona='student'``,
+# it auto-emits a Parent Companion derivative inline on the completion event.
+# QUIZ + WORKSHEET are listed for completeness even though the streaming
+# route 400s on them today — the same membership set is the right gate for
+# any future surface that grows a streaming path for short-form types.
+STUDENT_FACING_CONTENT_TYPES: frozenset[str] = frozenset(
+    {"STUDY_GUIDE", "SAMPLE_TEST", "ASSIGNMENT", "QUIZ", "WORKSHEET"}
+)
+
+
+class StreamCompletionEvent(BaseModel):
+    """Typed body of the ``event: complete`` SSE frame on the streaming route.
+
+    Mirrors the dict the streaming route already emits today, plus the
+    1F-3 (``parent_companion``) extension. Kept here as a typed schema so
+    consumers (frontend hook, integration tests) can pin the wire shape
+    without re-deriving it from the route module.
+
+    The ``parent_companion`` field is populated **only** when the
+    generation targets a student-facing artifact for ``persona='student'``
+    AND the auto-emit succeeds. Auto-emit failure is non-fatal — the
+    route logs and emits ``parent_companion=None`` rather than failing
+    the primary generation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    se_codes_targeted: list[str] = Field(
+        default_factory=list,
+        description="Ordered list of SE ministry codes anchored in the prompt.",
+    )
+    voice_module_id: str | None = Field(
+        default=None,
+        description="Voice-module identifier resolved for this generation.",
+    )
+    voice_module_hash: str | None = Field(
+        default=None,
+        description="SHA-256 hex digest of the voice-module contents used.",
+    )
+    persona: TargetPersona = Field(
+        ..., description="The persona overlay used to build the prompt."
+    )
+    content_type: HTTPContentType = Field(
+        ..., description="HTTP-side artifact type the request targeted."
+    )
+    parent_companion: dict | None = Field(
+        default=None,
+        description=(
+            "Parent Companion derivative auto-emitted alongside the primary "
+            "student artifact when ``persona='student'`` and ``content_type`` "
+            "is in ``STUDENT_FACING_CONTENT_TYPES``. Serialized form of "
+            "``ParentCompanionContent`` (5-section structure per FR-02.6 / "
+            "Amendment A2). ``None`` for teacher- and parent-facing "
+            "generations OR when auto-emit fails (non-fatal — the primary "
+            "generation always succeeds independently)."
+        ),
     )
