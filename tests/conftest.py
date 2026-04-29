@@ -95,12 +95,20 @@ def _isolate_task_sync_flag(app):
 
     # Default-OFF flags whose ON state must not leak between tests under
     # the session-scoped DB fixture. Add new entries here when introducing
-    # a new default-OFF flag that any test toggles ON. Default-ON flags
-    # (e.g. ``parent.unified_digest_v2``) are intentionally excluded — the
-    # leak direction is harmless.
-    keys_to_reset = (
+    # a new default-OFF flag that any test toggles ON.
+    default_off_keys = (
         "task_sync_enabled",
         "dci_v1_enabled",  # CB-DCI-001 M0-3 (#4141)
+    )
+    # #4542 — default-ON flags whose OFF state must not leak. PR #4448 added
+    # tests that flip ``parent.unified_digest_v2`` to False to pin the legacy
+    # path; without this reset, the polluted (enabled=False, variant="on_100")
+    # state survives into ``test_feature_flags`` which asserts the seeded-
+    # default ON contract. The seed-time auto-promote at
+    # ``feature_seed_service.py:159`` only fires when BOTH variant=="off" AND
+    # enabled is False, so it doesn't catch the leak.
+    default_on_keys = (
+        "parent.unified_digest_v2",
     )
 
     db = SessionLocal()
@@ -109,19 +117,27 @@ def _isolate_task_sync_flag(app):
 
         flags = (
             db.query(FeatureFlag)
-            .filter(FeatureFlag.key.in_(keys_to_reset))
+            .filter(FeatureFlag.key.in_(default_off_keys + default_on_keys))
             .all()
         )
         dirty = False
         for flag in flags:
-            if flag.enabled:
+            if flag.key in default_off_keys and flag.enabled:
                 flag.enabled = False
+                dirty = True
+            elif flag.key in default_on_keys and not flag.enabled:
+                flag.enabled = True
+                # Restore the canonical seeded variant alongside enabled —
+                # the polluting tests only flip ``enabled`` (not ``variant``),
+                # and the auto-promote on seed_features() refuses rows whose
+                # variant has drifted from the original "off" sentinel.
+                flag.variant = "on_100"
                 dirty = True
         if dirty:
             db.commit()
         # When a row is missing (earliest startup-smoke tests, or a test
         # that hasn't yet triggered seed_features) there is nothing to
-        # reset — the default-OFF contract is already satisfied.
+        # reset — the default-state contract is already satisfied.
     except SQLAlchemyError:
         # Surface real DB errors (including missing-table OperationalError)
         # at WARNING so a genuine failure in the reset path is visible in
