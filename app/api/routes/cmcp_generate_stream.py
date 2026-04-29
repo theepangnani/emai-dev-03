@@ -43,9 +43,18 @@ Validator failure is non-fatal — alignment is a soft signal in M1
 (not a generation gate), so a pipeline exception logs and ships
 ``alignment_score=None`` rather than returning a 500.
 
+1E-2 extension (#4495) — per-content-type latency telemetry + SLO alerts
+-------------------------------------------------------------------------
+At request entry the route mints a ``request_id`` and starts a
+monotonic perf-counter. The 1E-2 helper ``emit_latency_telemetry`` fires
+at end-of-stream (``done`` / ``error`` / mid-stream exception alike via
+the ``event_stream`` ``finally`` block) and on the 4xx prep-failure
+paths (short-form 400 redirect + subject/strand/no-CEG-match 422), so
+every per-type latency sample lands in the structured-log feed with a
+deterministic ``slo_breached`` flag.
+
 Out of scope (deferred)
 -----------------------
-- Per-content-type latency telemetry — 1E-2 wave 3.
 - Frontend streaming hook — 1E-3 wave 3.
 - Voice-module registry hookup — 1C-1 / 1C-2.
 - Persisting an artifact row — 1A-3 state machine.
@@ -69,7 +78,9 @@ from __future__ import annotations
 
 import json
 import logging
+from time import perf_counter
 from typing import AsyncIterator
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -90,6 +101,7 @@ from app.schemas.cmcp import (
     TargetPersona,
 )
 from app.services.ai_service import generate_content_stream
+from app.services.cmcp.generation_telemetry import emit_latency_telemetry
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
@@ -159,56 +171,88 @@ def generate_cmcp_stream(
     / strand / curriculum-match errors surface as ``422`` (matching the
     sync endpoint) rather than as an SSE error frame buried mid-stream.
     """
+    # 1E-2 (#4495): start the latency timer at request entry and mint a
+    # request_id. Both are captured into the inner ``event_stream``
+    # closure so telemetry emits exactly once at end-of-stream — matches
+    # the sync route's "one telemetry line per request" contract.
+    _start_perf = perf_counter()
+    _request_id = uuid4().hex
+
     if payload.content_type not in _LONG_FORM_CONTENT_TYPES:
         # Short-form content types never enter the streaming path — the
         # sync route is the correct surface. Returning a structured 400
         # with the canonical redirect message keeps the frontend's
         # decision logic ("which endpoint?") testable without probing
         # the stream itself.
+        #
+        # Emit the breach-eligible telemetry line for the gating-only
+        # path so dashboards still see a per-content-type sample for the
+        # 400 case (latency here is tiny — well under any SLO).
+        emit_latency_telemetry(
+            content_type=payload.content_type,
+            latency_ms=int((perf_counter() - _start_perf) * 1000),
+            request_id=_request_id,
+        )
         raise HTTPException(
             status_code=400,
             detail=_SHORT_FORM_REDIRECT_MESSAGE,
         )
 
-    subject, strand = _resolve_subject_and_strand(
-        db, payload.subject_code, payload.strand_code
-    )
-
-    persona: TargetPersona = payload.target_persona or _derive_persona(
-        current_user
-    )
-
-    engine_request = _to_engine_request(
-        payload, subject_id=subject.id, strand_id=strand.id
-    )
-
-    # Resolve the active voice module for the persona so the engine can
-    # stamp its hash on the completion frame (#4480 / M1-C 1C-2). Mirrors
-    # the 1A-2 sync route — keeps the streaming + sync surfaces aligned
-    # until 1C-3 lands DB-backed persistence.
-    voice_module_id = VoiceRegistry.active_module_id(persona)
-
-    engine = GuardrailEngine(db)
+    # 1E-2 (#4495): emit a telemetry line on the 422 paths too — wrap
+    # the synchronous resolution / prompt build so dashboards see a
+    # per-content-type sample for the failure modes that close before
+    # the SSE stream opens. The success path emits inside ``event_stream``
+    # to capture full end-of-stream latency.
     try:
-        prompt, se_codes, voice_module_hash = engine.build_prompt(
-            engine_request,
-            class_context_envelope=None,
-            voice_module_path=None,
-            voice_module_id=voice_module_id,
-            target_persona=persona,
+        subject, strand = _resolve_subject_and_strand(
+            db, payload.subject_code, payload.strand_code
         )
-    except NoCurriculumMatchError as exc:
-        # Mirror the sync route's 422 — surface CEG-empty before
-        # opening a stream so callers always see the failure mode in
-        # the same shape regardless of which endpoint they hit.
-        logger.info(
-            "CMCP stream 422 — no CEG match for grade=%s subject=%s strand=%s topic=%r",
-            engine_request.grade,
-            subject.code,
-            strand.code,
-            engine_request.topic,
+
+        persona: TargetPersona = payload.target_persona or _derive_persona(
+            current_user
         )
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+        engine_request = _to_engine_request(
+            payload, subject_id=subject.id, strand_id=strand.id
+        )
+
+        # Resolve the active voice module for the persona so the engine
+        # can stamp its hash on the completion frame (#4480 / M1-C 1C-2).
+        # Mirrors the 1A-2 sync route — keeps the streaming + sync
+        # surfaces aligned until 1C-3 lands DB-backed persistence.
+        voice_module_id = VoiceRegistry.active_module_id(persona)
+
+        engine = GuardrailEngine(db)
+        try:
+            prompt, se_codes, voice_module_hash = engine.build_prompt(
+                engine_request,
+                class_context_envelope=None,
+                voice_module_path=None,
+                voice_module_id=voice_module_id,
+                target_persona=persona,
+            )
+        except NoCurriculumMatchError as exc:
+            # Mirror the sync route's 422 — surface CEG-empty before
+            # opening a stream so callers always see the failure mode in
+            # the same shape regardless of which endpoint they hit.
+            logger.info(
+                "CMCP stream 422 — no CEG match for grade=%s subject=%s strand=%s topic=%r",
+                engine_request.grade,
+                subject.code,
+                strand.code,
+                engine_request.topic,
+            )
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except HTTPException:
+        # Emit telemetry for the 422 / 4xx prep-failure paths so per-type
+        # failure rates show up alongside successful streams. Re-raise
+        # the original HTTPException untouched.
+        emit_latency_telemetry(
+            content_type=payload.content_type,
+            latency_ms=int((perf_counter() - _start_perf) * 1000),
+            request_id=_request_id,
+        )
+        raise
 
     se_codes_list = list(se_codes)
 
@@ -359,6 +403,18 @@ def generate_cmcp_stream(
             logger.exception("CMCP stream unexpected error")
             yield _sse_event("error", "Generation failed")
             return
+        finally:
+            # 1E-2 (#4495): emit per-type latency telemetry at end-of-
+            # stream. ``finally`` runs on done / error / mid-stream
+            # exception alike, so dashboards always see a sample. The
+            # latency captures full wall-clock from request entry through
+            # the last yielded frame — matches the SLO definition (full
+            # end-to-end response time, not just AI call duration).
+            emit_latency_telemetry(
+                content_type=payload.content_type,
+                latency_ms=int((perf_counter() - _start_perf) * 1000),
+                request_id=_request_id,
+            )
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
