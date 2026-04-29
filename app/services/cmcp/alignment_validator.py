@@ -117,6 +117,17 @@ def _parse_concepts(raw_text: str) -> list[dict]:
                 "curriculum_code": str(item["curriculum_code"]),
                 "strand": str(item.get("strand", "")),
             })
+
+    # Surface prompt-conformance drift: if the model returned items missing
+    # the required fields, log so we can detect quality regressions over
+    # time (e.g., a model update breaking schema adherence).
+    dropped = len(parsed) - len(validated)
+    if dropped > 0:
+        logger.warning(
+            "AlignmentValidator: dropped %d malformed second-pass item(s) "
+            "(kept %d/%d)",
+            dropped, len(validated), len(parsed),
+        )
     return validated
 
 
@@ -130,12 +141,13 @@ def _compute_coverage(
     concept's `curriculum_code` (case-insensitively) equals it.
     Returns (matched, uncovered, coverage_rate).
 
-    Empty `expected_se_codes` is treated as full coverage (rate=1.0): there is
-    nothing to fail. Callers that want to require at least one expected SE
-    should validate input before calling.
+    Empty `expected_se_codes` is rejected by the caller (`validate`) as a
+    contract bug, but we keep a defensive 0.0 fallback here in case of
+    future direct callers. A degenerate "no expectations declared" input
+    must NOT silently report full coverage.
     """
     if not expected_se_codes:
-        return [], [], 1.0
+        return [], [], 0.0
 
     mapped_codes = {
         _normalize_code(c["curriculum_code"])
@@ -186,6 +198,21 @@ class AlignmentValidator:
             non-passing result with `error` populated and an empty
             `second_pass_concepts` — never raises.
         """
+        # Empty `expected_se_codes` is a caller-contract bug — every artifact
+        # passing through this validator is generated against declared SEs.
+        # Surface it as a non-passing flagged result rather than silently
+        # approving an artifact with zero declared learning intent.
+        if not expected_se_codes:
+            return ValidationResult(
+                passed=False,
+                coverage_rate=0.0,
+                matched_se_codes=[],
+                uncovered_se_codes=[],
+                flag_for_review=True,
+                second_pass_concepts=[],
+                error="no expected_se_codes provided",
+            )
+
         # Empty content can never cover anything. Short-circuit before we
         # spend a Claude call. Treats every expected SE as uncovered.
         if not generated_content or not generated_content.strip():
@@ -223,7 +250,7 @@ Identify the 3-12 most important concepts in this content and map each to the mo
                 temperature=0.3,  # Lower temperature for precise mapping.
             )
         except Exception as e:  # noqa: BLE001 — fail-safe: never raise out
-            logger.warning(f"AlignmentValidator: Claude call failed: {e}")
+            logger.warning("AlignmentValidator: Claude call failed: %s", e)
             return ValidationResult(
                 passed=False,
                 coverage_rate=0.0,
@@ -238,7 +265,7 @@ Identify the 3-12 most important concepts in this content and map each to the mo
             concepts = _parse_concepts(content)
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(
-                f"AlignmentValidator: failed to parse second-pass response: {e}"
+                "AlignmentValidator: failed to parse second-pass response: %s", e
             )
             return ValidationResult(
                 passed=False,

@@ -363,6 +363,56 @@ async def test_empty_generated_content_short_circuits():
 
 
 @pytest.mark.asyncio
+async def test_empty_expected_se_codes_rejected():
+    """Empty expected_se_codes is a caller contract bug — must surface, not pass."""
+    call_count = {"n": 0}
+
+    async def fake(*_args, **_kwargs):
+        call_count["n"] += 1
+        return _claude_response([])
+
+    with _patch_generate_content(fake):
+        result = await AlignmentValidator.validate(
+            generated_content="some real content here",
+            expected_se_codes=[],
+            grade=9,
+            subject_code="MTH1W",
+        )
+
+    # No Claude call — short-circuit BEFORE the empty-content check.
+    assert call_count["n"] == 0
+    assert result.passed is False
+    assert result.coverage_rate == 0.0
+    assert result.matched_se_codes == []
+    assert result.uncovered_se_codes == []
+    assert result.flag_for_review is True
+    assert result.error == "no expected_se_codes provided"
+
+
+@pytest.mark.asyncio
+async def test_whitespace_tolerant_matching():
+    """SE codes match with stray whitespace stripped (model output may include it)."""
+    expected = ["  MTH1W-B2.3  ", "MTH1W-B2.4"]
+
+    async def fake(*_args, **_kwargs):
+        return _claude_response([
+            {"concept": "C1", "curriculum_code": "MTH1W-B2.3", "strand": "Number"},
+            {"concept": "C2", "curriculum_code": "  mth1w-b2.4 ", "strand": "Number"},
+        ])
+
+    with _patch_generate_content(fake):
+        result = await AlignmentValidator.validate(
+            generated_content="content",
+            expected_se_codes=expected,
+            grade=9,
+            subject_code="MTH1W",
+        )
+
+    assert result.coverage_rate == 1.0
+    assert result.uncovered_se_codes == []
+
+
+@pytest.mark.asyncio
 async def test_thresholds_match_spec():
     """Sanity check: thresholds in source must match #4462 spec (0.80 / 0.95)."""
     assert PASS_THRESHOLD == 0.80
