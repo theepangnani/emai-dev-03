@@ -1,0 +1,316 @@
+/* CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion 5-section render.
+ *
+ * Visual treatment is *distinct* from student-facing artifacts (warm coaching
+ * tone, NOT Arc-led) — but reuses the Bridge token system from `BridgePage.css`
+ * verbatim. No new tokens are introduced. Selectors are namespaced under
+ * `.parent-companion-page` so this layer cannot leak into other routes.
+ *
+ * Section order (per FR-02.6):
+ *   1. SE explanation        (kicker + 2-sentence prose)
+ *   2. Talking points        (rust-accented numbered list)
+ *   3. Coaching prompts      (pine-accented question list)
+ *   4. How to help w/o giving answer (pine-tinted callout)
+ *   5. Bridge deep-link CTA  (rust-on-paper button)
+ */
+
+.parent-companion-page {
+  /* Reuse Bridge tokens — same palette as BridgePage.css. */
+  --bridge-ivory: #f5f1ea;
+  --bridge-paper: #fbf8f2;
+  --bridge-card: var(--color-surface);
+  --bridge-ink: #1c1a16;
+  --bridge-ink-2: #3a3630;
+  --bridge-muted: #6b645b;
+  --bridge-hair: #e5ddd1;
+  --bridge-rail: #ece4d6;
+  --bridge-rust: #b04a2c;
+  --bridge-rust-ink: #7a2f18;
+  --bridge-pine: #2d4a3e;
+  --bridge-active-bg: #e6efe8;
+  --bridge-active-ink: #23523f;
+
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--bridge-ink);
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 16px 0 64px;
+}
+
+.parent-companion-page h1,
+.parent-companion-page h2,
+.parent-companion-page h3 {
+  font-family: "Fraunces", "Georgia", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* ---------------- Header ---------------- */
+.parent-companion-header {
+  border-bottom: 1px solid var(--bridge-hair);
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+}
+
+.parent-companion-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bridge-rust);
+  font-weight: 500;
+}
+
+.parent-companion-title {
+  font-size: 28px;
+  line-height: 1.15;
+  margin-top: 6px;
+  letter-spacing: -0.02em;
+  color: var(--bridge-ink);
+}
+
+.parent-companion-week {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  background: var(--bridge-rail);
+  color: var(--bridge-muted);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+/* ---------------- Section card ---------------- */
+.parent-companion-section {
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 18px;
+  padding: 22px 26px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(28, 26, 22, 0.04);
+}
+
+.parent-companion-section-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bridge-muted);
+  font-weight: 500;
+  display: block;
+}
+
+.parent-companion-section-title {
+  font-size: 19px;
+  line-height: 1.25;
+  margin-top: 4px;
+  margin-bottom: 14px;
+  color: var(--bridge-ink);
+}
+
+/* ---------------- Section 1: SE explanation ---------------- */
+.parent-companion-explanation {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--bridge-ink-2);
+  margin: 0;
+}
+
+/* ---------------- Section 2: Talking points (rust accent) ---------------- */
+.parent-companion-talking-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.parent-companion-talking-points li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--bridge-ink-2);
+  padding: 10px 14px 10px 12px;
+  background: var(--bridge-paper);
+  border: 1px solid var(--bridge-hair);
+  border-left: 3px solid var(--bridge-rust);
+  border-radius: 10px;
+}
+
+.parent-companion-talking-points li::before {
+  content: counter(talking-counter);
+  counter-increment: talking-counter;
+  font-family: "Fraunces", serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--bridge-rust);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.parent-companion-talking-points {
+  counter-reset: talking-counter;
+}
+
+/* ---------------- Section 3: Coaching prompts (pine accent) ---------------- */
+.parent-companion-prompts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.parent-companion-prompts li {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--bridge-ink-2);
+  padding: 12px 16px 12px 18px;
+  background: var(--bridge-paper);
+  border: 1px solid var(--bridge-hair);
+  border-left: 3px solid var(--bridge-pine);
+  border-radius: 10px;
+  position: relative;
+}
+
+.parent-companion-prompts li::before {
+  content: "?";
+  font-family: "Fraunces", serif;
+  font-size: 14px;
+  color: var(--bridge-pine);
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+/* ---------------- Section 4: How-to-help (pine tinted callout) ---------------- */
+.parent-companion-how-to-help {
+  background: var(--bridge-active-bg);
+  border-color: var(--bridge-pine);
+}
+
+.parent-companion-how-to-help .parent-companion-section-kicker {
+  color: var(--bridge-active-ink);
+}
+
+.parent-companion-how-to-help-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--bridge-active-ink);
+  margin: 0;
+}
+
+/* ---------------- Section 5: Bridge deep link CTA ---------------- */
+.parent-companion-deeplink {
+  text-align: center;
+}
+
+.parent-companion-deeplink-summary {
+  font-size: 14px;
+  color: var(--bridge-muted);
+  margin: 0 0 14px;
+}
+
+.parent-companion-deeplink-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--bridge-rust);
+  color: var(--bridge-paper);
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "DM Sans", system-ui, sans-serif;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.parent-companion-deeplink-button:hover,
+.parent-companion-deeplink-button:focus-visible {
+  background: var(--bridge-rust-ink);
+  outline: none;
+  box-shadow: 0 6px 18px rgba(176, 74, 44, 0.28);
+}
+
+.parent-companion-deeplink-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: var(--bridge-rust);
+}
+
+.parent-companion-deeplink-arrow {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* ---------------- Loading + Error + Empty states ---------------- */
+.parent-companion-state {
+  background: var(--bridge-card);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 18px;
+  padding: 36px 28px;
+  margin-top: 8px;
+  text-align: center;
+  color: var(--bridge-muted);
+}
+
+.parent-companion-state-title {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--bridge-ink);
+}
+
+.parent-companion-state-body {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.parent-companion-state--error .parent-companion-state-title {
+  color: var(--bridge-rust-ink);
+}
+
+.parent-companion-skeleton-row {
+  height: 14px;
+  background: var(--bridge-rail);
+  border-radius: 6px;
+  margin: 10px auto;
+  max-width: 480px;
+  animation: parent-companion-pulse 1.4s ease-in-out infinite;
+}
+
+.parent-companion-skeleton-row:nth-child(2) {
+  max-width: 360px;
+}
+.parent-companion-skeleton-row:nth-child(3) {
+  max-width: 420px;
+}
+
+@keyframes parent-companion-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.95; }
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 640px) {
+  .parent-companion-page {
+    padding: 12px 0 48px;
+  }
+
+  .parent-companion-section {
+    padding: 18px 18px;
+    border-radius: 14px;
+  }
+
+  .parent-companion-title {
+    font-size: 24px;
+  }
+}
