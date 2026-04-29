@@ -40,6 +40,7 @@ import { parentApi, type ChildSummary } from '../../api/parent';
 import { useConfirm } from '../../components/ConfirmModal';
 import { useFeatureFlagEnabled } from '../../hooks/useFeatureToggle';
 import { DigestHistoryPanel } from '../../components/parent/DigestHistoryPanel';
+import { DashboardView } from './dashboard/DashboardView';
 import './EmailDigestPage.css';
 
 interface ApiErrorResponse {
@@ -102,13 +103,24 @@ function senderKidNames(
  *  - `parent.unified_digest_v2` OFF → legacy UI (preserved during ramp).
  *  - `parent.unified_digest_v2` ON  → unified multi-kid UI.
  *  - `?legacy=1` query param forces legacy regardless of flag (fallback ramp).
+ *  - `email_digest_dashboard_v1` ON (CB-EDIGEST-002 #4594) → new aggregated
+ *    dashboard surface. Wins over the unified UI; `?legacy=1` still escapes
+ *    back to the legacy view. Flipping this flag remounts the page so each
+ *    branch is a separate component (avoids rules-of-hooks issues when the
+ *    cached flag value changes).
  */
 export function EmailDigestPage() {
   const [searchParams] = useSearchParams();
   const unifiedEnabled = useFeatureFlagEnabled('parent.unified_digest_v2');
+  const dashboardEnabled = useFeatureFlagEnabled('email_digest_dashboard_v1');
   const legacyForced = searchParams.get('legacy') === '1';
-  const renderUnified = unifiedEnabled && !legacyForced;
-  return renderUnified ? <EmailDigestPageUnified /> : <EmailDigestPageLegacy />;
+  if (legacyForced) {
+    return <EmailDigestPageLegacy />;
+  }
+  if (dashboardEnabled) {
+    return <DashboardView />;
+  }
+  return unifiedEnabled ? <EmailDigestPageUnified /> : <EmailDigestPageLegacy />;
 }
 
 // ============================================================================

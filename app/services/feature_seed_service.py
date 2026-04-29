@@ -116,6 +116,19 @@ def seed_features(db: Session) -> int:
             "variant": "on_100",
         },
         {
+            "key": "email_digest_dashboard_v1",
+            "name": "Email Digest Dashboard V1 (CB-EDIGEST-002)",
+            "description": (
+                "CB-EDIGEST-002 #4594: gates the new aggregated parent dashboard "
+                "at /email-digest. When ON, EmailDigestPageUnified renders the "
+                "DashboardView (Today + Week grid + drilldown) instead of the "
+                "unified-digest list UI. OFF by default; ramp via variant: "
+                "off / on_5 / on_25 / on_100 over 4 weeks per PRD."
+            ),
+            "enabled": False,
+            "variant": "off",
+        },
+        {
             "key": "theme.bridge_default",
             "name": "Bridge Theme (Force-Apply Default)",
             "description": (
