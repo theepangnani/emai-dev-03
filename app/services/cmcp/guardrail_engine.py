@@ -303,6 +303,18 @@ class GuardrailEngine:
 
         For 1A-1, we just slurp the file at the path if it exists. Hash
         stamping + the registry-backed loader land in M1-C 1C-1/1C-2.
+
+        Trust boundary
+        --------------
+        ``voice_module_path`` is **trusted-caller-only** input — it must
+        never come directly from an HTTP request body. M1-A 1A-2's
+        generation route will accept a *module ID* (string key) and
+        translate it via the M1-C 1C-1 registry to a path rooted under
+        ``prompt_modules/voice/``. Until that registry ships, callers
+        in tests pass paths produced by ``tmp_path`` fixtures. If a
+        future caller is tempted to forward a request-supplied path
+        here, that's a path-traversal / local-file-disclosure bug —
+        block it at the route layer.
         """
         if voice_module_path is None:
             return None
