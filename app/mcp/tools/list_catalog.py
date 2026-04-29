@@ -351,6 +351,34 @@ def _se_subject(se_codes: Any) -> str | None:
     return first.split(".", 1)[0].upper()
 
 
+def _se_grade(se_codes: Any) -> int | None:
+    """Best-effort grade integer from the first SE code.
+
+    Ontario SE codes are namespaced ``<SUBJECT>.<GRADE>.<STRAND>.<...>``;
+    the second segment is the grade. Returns ``None`` when the row has
+    no SE codes, the second segment isn't an integer, or the row's
+    schema doesn't expose a parseable code. Used by the Python-side
+    ``grade`` post-filter in :func:`list_catalog` because the
+    ``study_guides`` table has no dedicated ``grade`` column today (it's
+    embedded in the SE code; M3+ may add a real column).
+    """
+    if not se_codes:
+        return None
+    try:
+        first = se_codes[0]
+    except (IndexError, TypeError):
+        return None
+    if not isinstance(first, str):
+        return None
+    parts = first.split(".")
+    if len(parts) < 2:
+        return None
+    try:
+        return int(parts[1])
+    except ValueError:
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Handler
 # ---------------------------------------------------------------------------
@@ -378,22 +406,22 @@ def list_catalog(
     )
 
     # Curriculum filters: only narrow when the row carries the metadata.
-    if args["subject_code"]:
-        # ``se_codes`` is a JSON array. Across SQLite + PG we can't push
-        # a portable "any element starts-with X" predicate into the DB
-        # without a dialect branch, so we filter in Python after the
-        # role-scope subquery has already narrowed the candidate set.
-        # The over-fetch (``limit+1``) below absorbs the post-filter
-        # shrinkage so pagination still works deterministically — when
-        # the post-filter trims the page below ``limit``, we simply
-        # report ``next_cursor=None`` (no more rows to enumerate that
-        # match the predicate).
-        pass
+    # ``subject_code`` + ``grade`` are post-filtered in Python (after the
+    # role-scope subquery narrows the candidate set) because the
+    # ``se_codes`` JSON array shape isn't portable across SQLite + PG
+    # without a dialect branch. See the post-filter pass below for the
+    # Python-side implementation; both filters share the same window so
+    # we don't pay double the over-fetch cost.
+    #
+    # Pagination contract under post-filtering: an over-fetched window
+    # of ``limit + 1`` rows can shrink to fewer than ``limit`` matches
+    # (or even zero). When that happens we still emit a ``next_cursor``
+    # if the SQL window's last row exists, so the caller can advance
+    # past unmatched rows. Callers must NOT use "empty page → done";
+    # they must check ``next_cursor is None`` instead.
     if args["grade"] is not None and hasattr(StudyGuide, "grade"):
-        # Defensive ``hasattr`` — current schema has no ``grade`` column
-        # (the SE code carries it), so this branch is a no-op today.
-        # Left in place so a future schema migration that adds a real
-        # ``grade`` column "just works" without re-shipping this tool.
+        # Forward-compat: if a future schema adds a real ``grade``
+        # column we'll prefer the SQL filter over the post-filter.
         query = query.filter(StudyGuide.grade == args["grade"])
     if args["content_type"]:
         # ``guide_type`` is the existing column; map ``content_type``
@@ -429,8 +457,10 @@ def list_catalog(
     else:
         cursor_anchor = None
 
-    # Post-filter for ``subject_code`` (Python-side because the SE codes
-    # JSON shape isn't portable across dialects — see comment above).
+    # Post-filters for ``subject_code`` + ``grade`` (Python-side because
+    # the SE codes JSON shape isn't portable across dialects — see the
+    # pre-filter docstring above). Order doesn't matter; both predicates
+    # are applied to the same row collection.
     if args["subject_code"]:
         prefix = args["subject_code"].upper() + "."
         rows = [
@@ -441,6 +471,16 @@ def list_catalog(
                 isinstance(c, str) and c.upper().startswith(prefix)
                 for c in r.se_codes
             )
+        ]
+    if args["grade"] is not None and not hasattr(StudyGuide, "grade"):
+        # Skip the post-filter when a real ``grade`` column exists
+        # (already handled by the SQL pre-filter above). For today's
+        # schema (no column) we parse the SE code's grade segment.
+        target = args["grade"]
+        rows = [
+            r
+            for r in rows
+            if r.se_codes and _se_grade(r.se_codes) == target
         ]
 
     next_cursor: str | None = None

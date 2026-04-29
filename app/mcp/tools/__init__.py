@@ -258,7 +258,11 @@ TOOLS: dict[str, ToolDescriptor] = {
             "List CB-CMCP content artifacts the caller may access. "
             "Cursor-paginated; default state APPROVED; optional subject "
             "/ grade / content_type filters. Returns "
-            "{artifacts: [...], next_cursor}."
+            "{artifacts: [...], next_cursor}. Pagination contract: a "
+            "page may be empty with next_cursor still set when the "
+            "subject_code/grade post-filter trims a window — clients "
+            "must paginate by checking next_cursor is None, not by "
+            "checking artifacts is empty."
         ),
         input_schema={
             "type": "object",

@@ -859,3 +859,80 @@ def test_route_filter_by_subject_code_narrows_result(
     titles = [a["title"] for a in resp.json()["content"]["artifacts"]]
     assert "math row" in titles
     assert "science row" not in titles
+
+
+def test_route_filter_by_grade_narrows_result(
+    client, admin_user_real, mcp_flag_on, db_session
+):
+    """``grade=5`` only returns rows whose SE code's grade segment is ``5``.
+
+    Today's schema has no ``study_guides.grade`` column — the grade is
+    embedded in the SE code (``<SUBJECT>.<GRADE>.<...>``). This test
+    locks the post-filter behaviour so a future schema migration that
+    adds a real ``grade`` column doesn't silently change the user-
+    visible filter semantics.
+    """
+    _seed_guide(
+        db_session,
+        user_id=admin_user_real.id,
+        title="grade-5 row",
+        se_codes=["MATH.5.A.1"],
+    )
+    _seed_guide(
+        db_session,
+        user_id=admin_user_real.id,
+        title="grade-8 row",
+        se_codes=["MATH.8.A.1"],
+    )
+
+    headers = _auth(client, admin_user_real.email)
+    resp = client.post(
+        "/mcp/call_tool",
+        json={
+            "name": "list_catalog",
+            "arguments": {"grade": 5},
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    titles = [a["title"] for a in resp.json()["content"]["artifacts"]]
+    assert "grade-5 row" in titles
+    assert "grade-8 row" not in titles
+
+
+@pytest.fixture()
+def board_admin_user_real(db_session):
+    from app.models.user import UserRole
+
+    return _make_user(db_session, UserRole.BOARD_ADMIN)
+
+
+def test_route_board_admin_without_board_id_sees_empty_until_m3e(
+    client, board_admin_user_real, mcp_flag_on, db_session
+):
+    """BOARD_ADMIN with no resolvable ``board_id`` → empty result, not error.
+
+    The ``User`` model has no ``board_id`` column today (M3-E concern),
+    so ``_resolve_caller_board_id`` returns ``None`` for every real
+    BOARD_ADMIN user — collapsing to a fail-closed empty selection.
+    The handler must return a clean ``200`` with an empty artifact
+    list, NOT a ``404`` or a ``403``. This locks the contract until
+    M3-E adds per-row board stamping.
+    """
+    _seed_guide(
+        db_session,
+        user_id=board_admin_user_real.id,
+        title="legacy unscoped row",
+        se_codes=["MATH.5.A.1"],
+    )
+
+    headers = _auth(client, board_admin_user_real.email)
+    resp = client.post(
+        "/mcp/call_tool",
+        json={"name": "list_catalog", "arguments": {}},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()["content"]
+    assert body["artifacts"] == []
+    assert body["next_cursor"] is None
