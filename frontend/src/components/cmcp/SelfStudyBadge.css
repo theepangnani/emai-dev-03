@@ -1,0 +1,53 @@
+/* CB-CMCP-001 M3-B 3B-2 (#4578) — SelfStudyBadge styles.
+ *
+ * Uses existing global tokens (--color-warning-*, --radius-sm, --font-sans)
+ * defined in index.css / documented in THEME.md. No new tokens are
+ * introduced. The badge intentionally inherits the same "warning/pending"
+ * semantic ramp as GenericBadge so the two chips read as a coherent
+ * warning family across rust/ivory and the default Bridge theme.
+ */
+.cmcp-self-study-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-sm, 8px);
+  font-family: var(--font-sans, "DM Sans", system-ui, sans-serif);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--color-warning-bg, #f6ead3);
+  color: var(--color-warning-text, #7a5a1a);
+  /* Color is one of two indicators per WCAG 1.4.1; the icon + label combo
+     is the actual meaning carrier. The border uses the same swatch as the
+     label text so the chip's affordance boundary meets WCAG 1.4.11
+     Non-Text Contrast (>=3:1 against --color-warning-bg) in both light
+     and dark themes. */
+  border: 1px solid var(--color-warning-text, #7a5a1a);
+}
+
+/* Size variants — only padding + font-size + icon differ. */
+.cmcp-self-study-badge--sm {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+.cmcp-self-study-badge--md {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.cmcp-self-study-badge--md .cmcp-self-study-badge-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.cmcp-self-study-badge-icon {
+  flex-shrink: 0;
+  /* Inherit currentColor so the icon stroke matches the label colour. */
+  color: inherit;
+}
+
+.cmcp-self-study-badge-label {
+  /* Text label is the primary meaning carrier; keep it readable but compact. */
+  letter-spacing: 0.01em;
+}
