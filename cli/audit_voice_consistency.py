@@ -49,7 +49,6 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import hashlib
 import json
 import logging
 import random
@@ -385,9 +384,3 @@ __all__ = [
     "main",
     "run_audit",
 ]
-
-
-# ``hashlib`` import is required indirectly via the stub's documented hash
-# format guarantees. Kept explicit so editors / linters don't strip it if
-# the stub is later updated to compute a hash inline.
-_ = hashlib
