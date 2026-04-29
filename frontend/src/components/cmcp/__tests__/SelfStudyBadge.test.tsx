@@ -19,6 +19,15 @@ import {
 } from '../SelfStudyBadge';
 
 describe('SelfStudyBadge', () => {
+  it('uses the exact spec literal "AI-generated, not teacher-approved"', () => {
+    // Pin the label literal: GH #4578 acceptance requires this exact copy.
+    // Other tests assert against the SELF_STUDY_BADGE_LABEL constant — if a
+    // future refactor accidentally renames the constant value, those tests
+    // would stay green but the on-screen warning copy would silently drift.
+    // This single-line guard closes that mutation-coverage gap.
+    expect(SELF_STUDY_BADGE_LABEL).toBe('AI-generated, not teacher-approved');
+  });
+
   it('renders the icon and the visible text label', () => {
     const { container } = render(<SelfStudyBadge />);
     const badge = screen.getByTestId('cmcp-self-study-badge');
