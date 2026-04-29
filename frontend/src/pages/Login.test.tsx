@@ -189,6 +189,25 @@ describe('Login', () => {
     })
   })
 
+  // #4538 (PR review pass-1) — `?redirect=/login` would cause an infinite
+  // redirect loop on the password-login flow. Sanitizer must reject it so
+  // we land on /dashboard instead.
+  it('ignores ?redirect=/login (auth page — would loop) and falls back to /dashboard', async () => {
+    mockSearchParams.set('redirect', '/login')
+    mockLogin.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderWithProviders(<Login />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    })
+  })
+
   it('navigates to state.from.pathname after OAuth user-loaded effect', async () => {
     mockLocationState = { from: { pathname: '/email-digest' } }
     mockUser = { id: 1, role: 'parent' }

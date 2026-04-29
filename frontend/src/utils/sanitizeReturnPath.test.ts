@@ -60,4 +60,35 @@ describe('sanitizeReturnPath', () => {
   it('rejects javascript: URLs (no leading slash)', () => {
     expect(sanitizeReturnPath('javascript:alert(1)')).toBeNull();
   });
+
+  // #4538 — auth-page paths must be rejected to prevent infinite redirect
+  // loops on the password-login flow (the ?redirect= param survives in the
+  // URL and the user-loaded effect re-fires every render).
+  it('rejects /login (would cause infinite redirect loop)', () => {
+    expect(sanitizeReturnPath('/login')).toBeNull();
+  });
+
+  it('rejects /register (auth page)', () => {
+    expect(sanitizeReturnPath('/register')).toBeNull();
+  });
+
+  it('rejects /forgot-password (auth page)', () => {
+    expect(sanitizeReturnPath('/forgot-password')).toBeNull();
+  });
+
+  it('rejects /waitlist (auth-adjacent landing)', () => {
+    expect(sanitizeReturnPath('/waitlist')).toBeNull();
+  });
+
+  it('rejects /login?next=foo (query string ignored when comparing)', () => {
+    expect(sanitizeReturnPath('/login?next=foo')).toBeNull();
+  });
+
+  it('rejects /login#section (hash ignored when comparing)', () => {
+    expect(sanitizeReturnPath('/login#section')).toBeNull();
+  });
+
+  it('does NOT reject /loginx (no false positive on prefix match)', () => {
+    expect(sanitizeReturnPath('/loginx')).toBe('/loginx');
+  });
 });
