@@ -433,6 +433,52 @@ def test_teacher_with_other_teachers_course_denied_403(
         db_session.commit()
 
 
+def test_stream_route_parent_with_course_id_denied_403(
+    client,
+    db_session,
+    parent_user,
+    teacher_user,
+    cmcp_flag_on,
+    seeded_cmcp_curriculum,
+):
+    """Stream-route parity guard: PARENT + course_id on /generate/stream → 403.
+
+    The authority guard is wired into both the sync route and the stream
+    route. Without this assertion, a future refactor could remove the
+    stream-route hook silently — sync tests would still pass while the
+    streaming surface would now leak a 403-deserving request through
+    to the SSE response. STUDY_GUIDE is required because the stream
+    route returns 400 (short-form redirect) for QUIZ.
+    """
+    from app.models.course import Course
+    from app.models.study_guide import StudyGuide
+
+    course = _seed_course(db_session, teacher_user.id)
+    try:
+        headers = _auth(client, parent_user.email)
+        body = _payload(
+            seeded_cmcp_curriculum,
+            content_type="STUDY_GUIDE",
+            course_id=course.id,
+        )
+        resp = client.post(
+            "/api/cmcp/generate/stream", json=body, headers=headers
+        )
+        assert resp.status_code == 403, resp.text
+        # No artifact row should have been written.
+        rows = (
+            db_session.query(StudyGuide)
+            .filter(StudyGuide.user_id == parent_user.id)
+            .all()
+        )
+        assert rows == []
+    finally:
+        db_session.query(Course).filter(Course.id == course.id).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Audit log — one entry per successful INSERT
 # ─────────────────────────────────────────────────────────────────────

@@ -188,8 +188,13 @@ def persist_cmcp_artifact(
         parent_summary=parent_summary_json,
     )
     db.add(artifact)
-    db.commit()
-    db.refresh(artifact)
+    # ``flush()`` populates ``artifact.id`` (autoincrement) without ending
+    # the transaction so the M3α 3B-1 audit-log INSERT below can carry
+    # the new resource_id under the SAME outer transaction. The single
+    # ``commit()`` at the end then atomically lands the artifact + the
+    # audit row + closes the transaction (one round-trip, no expired-
+    # ORM-object reload on the route side).
+    db.flush()
     logger.info(
         "cmcp.artifact.persisted id=%s user_id=%s state=%s persona=%s "
         "content_type=%s course_id=%s",
@@ -214,10 +219,7 @@ def persist_cmcp_artifact(
     # the Bill 194 audit trail captures every CMCP artifact creation.
     # Lazy-import the audit service to keep the persistence module import
     # graph minimal — ``log_action`` is fail-soft (savepoint + warn) so a
-    # missed audit row never corrupts the persistence transaction. The
-    # trailing ``db.commit()`` flushes the savepoint to disk; matches the
-    # ``log_action(...) → db.commit()`` pattern used in
-    # ``app/api/routes/account_deletion.py``.
+    # missed audit row never corrupts the persistence transaction.
     from app.services.audit_service import log_action
 
     log_action(
@@ -235,6 +237,7 @@ def persist_cmcp_artifact(
         },
     )
     db.commit()
+    db.refresh(artifact)
     return artifact
 
 
