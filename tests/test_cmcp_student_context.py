@@ -249,8 +249,7 @@ def test_get_student_profile_404_for_unknown_student(
 class _QueryCountingSession:
     """Wrap a ``Session`` and count ``query()`` invocations.
 
-    Only ``query`` and ``execute`` are intercepted (the two access
-    paths used inside the service); everything else delegates to the
+    Only ``query`` is intercepted; everything else delegates to the
     underlying session via ``__getattr__``.
     """
 
@@ -330,10 +329,14 @@ def test_cache_key_includes_role(
     get_student_profile(student.id, db_session, linked_parent)
     get_student_profile(student.id, db_session, admin)
 
-    keys = list(student_context._cache.keys())
-    assert any("parent" in k for k in keys), keys
-    assert any("admin" in k for k in keys), keys
-    assert len(keys) == 2
+    # Pin the exact cache keys so a future change that loosens
+    # role-scoping (e.g. role tag becomes a substring like "parent" of
+    # "co-parent") fails this test instead of silently passing.
+    expected_keys = {
+        f"profile:{student.id}:parent",
+        f"profile:{student.id}:admin",
+    }
+    assert set(student_context._cache.keys()) == expected_keys
 
 
 # ── Other-function smoke coverage ──

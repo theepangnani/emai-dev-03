@@ -32,7 +32,7 @@ Functions
 - :func:`get_student_weak_areas`      — courses where student averages < 70%
 
 All four enforce RBAC via :func:`_assert_access` and cache results for
-five minutes per (function, student_id) tuple.
+five minutes per (function, student_id, role) tuple.
 """
 from __future__ import annotations
 
