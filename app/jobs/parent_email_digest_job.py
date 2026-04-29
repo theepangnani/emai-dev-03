@@ -143,6 +143,44 @@ def _sanitise_whatsapp_var(text: str) -> str:
     return s
 
 
+def _sanitise_whatsapp_section_block(text: str) -> str:
+    """#4502 — Sanitise a V2 sectioned section block for Twilio's Content API.
+
+    Twilio's Content API rejects newlines (and other control chars) inside
+    template variables. ``_sectioned_section_block`` produces multi-line text
+    (one bullet per line) that is correct for non-Twilio consumers (delivery
+    log, observability), but must be flattened to a single line at the V2 send
+    boundary.
+
+    Differs from ``_sanitise_whatsapp_var`` in one place: V2 blocks are already
+    bulleted with leading ``- `` markers, so the V1 paragraph-break-to-bullet
+    substitution (``\\n{2,}`` → `` • ``) would inject a redundant separator.
+    Here every newline (single or repeated) collapses to a space.
+
+    Defensive HTML scrub mirrors ``_sanitise_whatsapp_var`` (per #4006): catches
+    HTML tag fragments / unterminated tags / lone angle brackets that may have
+    survived upstream sanitisation in source AI output before they reach
+    Twilio's variable-content policy.
+    """
+    s = text
+    # #4006 defensive HTML scrub (first step) — strip tag fragments,
+    # unterminated tags, and lone angle brackets that indicate tag residue.
+    s = re.sub(r'<[^>]*>?', '', s)
+    s = re.sub(r'</[^\s]*', '', s)
+    s = s.replace('<', '').replace('>', '')
+    s = s.replace('\r\n', '\n').replace('\r', '\n')
+    # Single \n / \t → space (V2 blocks own their own bullet markers).
+    s = re.sub(r'[\n\r\t]', ' ', s)
+    # Strip all remaining control chars (ASCII 0-31).
+    s = re.sub(r'[\x00-\x1f]', ' ', s)
+    # Collapse whitespace runs.
+    s = re.sub(r'\s+', ' ', s).strip()
+    # Per-variable 1024 cap, with truncation marker.
+    if len(s) > 1024:
+        s = s[:1021] + "..."
+    return s
+
+
 def _send_sectioned_whatsapp_v2(
     to_phone: str,
     content_sid: str,
@@ -175,15 +213,23 @@ def _send_sectioned_whatsapp_v2(
         sectioned.get("action_items") or [], _of("action_items")
     )
 
+    # #4502 — sanitise each section block at the V2 send boundary. Twilio's
+    # Content API rejects \n in variables (HTTP 400). _sectioned_section_block
+    # itself still emits multi-line text for non-Twilio consumers (delivery
+    # log, observability); we only flatten right before send.
+    sanitised_urgent_block = _sanitise_whatsapp_section_block(urgent_block)
+    sanitised_announcements_block = _sanitise_whatsapp_section_block(announcements_block)
+    sanitised_action_items_block = _sanitise_whatsapp_section_block(action_items_block)
+
     sanitised_parent_name = re.sub(r'[\x00-\x1f]', ' ', parent_name).strip()
     return send_whatsapp_template(
         to_phone,
         content_sid,
         {
             "1": sanitised_parent_name,
-            "2": urgent_block,
-            "3": announcements_block,
-            "4": action_items_block,
+            "2": sanitised_urgent_block,
+            "3": sanitised_announcements_block,
+            "4": sanitised_action_items_block,
         },
     )
 
@@ -516,46 +562,96 @@ async def send_digest_for_integration(
                     v2_sid = app_settings.twilio_whatsapp_digest_content_sid_v2
                     v1_sid = app_settings.twilio_whatsapp_digest_content_sid
 
+                    # #4502 — V2 → V1 → freeform actual fallback chain. PR #4104
+                    # shipped mutually exclusive branches keyed on which SID was
+                    # configured; a V2 failure did not attempt V1, so WhatsApp
+                    # delivery silently failed whenever Twilio rejected the V2
+                    # send. Each layer now catches and logs its own exceptions
+                    # so a Twilio-side error doesn't break the chain.
+                    # Transitions logged at WARNING — silent fallback would mask
+                    # systemic V2/V1 failures from ops dashboards/alerts.
+                    wa_success = False
+
+                    # 1) V2 sectioned 4-variable template (when configured).
                     if v2_sid:
-                        wa_success = _send_sectioned_whatsapp_v2(
-                            integration.whatsapp_phone,
-                            v2_sid,
-                            parent_name,
-                            sectioned_content,
-                        )
-                    else:
-                        # V1 path: flatten 3x3 into single-line-with-bullets.
+                        try:
+                            wa_success = _send_sectioned_whatsapp_v2(
+                                integration.whatsapp_phone,
+                                v2_sid,
+                                parent_name,
+                                sectioned_content,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Legacy V2 sectioned WhatsApp send raised | integration_id=%s | error=%s",
+                                integration.id,
+                                e,
+                            )
+                            wa_success = False
+                        if not wa_success:
+                            logger.warning(
+                                "Legacy V2 sectioned WhatsApp returned failure — falling back to V1 | integration_id=%s",
+                                integration.id,
+                            )
+
+                    # Compute `flattened` once for V1 + freeform fallback paths
+                    # (lazy — skipped entirely when V2 succeeds, the common case).
+                    if not wa_success:
                         flattened = _flatten_sectioned_to_bullets(sectioned_content)
-                        if v1_sid:
-                            sanitised_text = _sanitise_whatsapp_var(flattened)
-                            sanitised_parent_name = re.sub(
-                                r'[\x00-\x1f]', ' ', parent_name
-                            ).strip()
+
+                    # 2) V1 single-variable template fallback.
+                    if not wa_success and v1_sid:
+                        sanitised_text = _sanitise_whatsapp_var(flattened)
+                        sanitised_parent_name = re.sub(
+                            r'[\x00-\x1f]', ' ', parent_name
+                        ).strip()
+                        try:
                             wa_success = send_whatsapp_template(
                                 integration.whatsapp_phone,
                                 v1_sid,
                                 {"1": sanitised_parent_name, "2": sanitised_text},
                             )
-                        else:
-                            # No SID at all -> freeform fallback with flattened text.
-                            header = (
-                                f"Hi {parent_name}, here's your child's daily "
-                                f"school email summary:\n\n"
+                        except Exception as e:
+                            logger.warning(
+                                "Legacy V1 WhatsApp send raised | integration_id=%s | error=%s",
+                                integration.id,
+                                e,
                             )
-                            footer = (
-                                "\n\nView full digest at "
-                                "https://www.classbridge.ca/email-digest"
+                            wa_success = False
+                        if not wa_success:
+                            logger.warning(
+                                "Legacy V1 WhatsApp returned failure — falling back to freeform | integration_id=%s",
+                                integration.id,
                             )
-                            max_content_len = 1600 - len(header) - len(footer)
-                            body = (
-                                flattened[:max_content_len - 3] + "..."
-                                if len(flattened) > max_content_len
-                                else flattened
-                            )
+
+                    # 3) Freeform body fallback with flattened text.
+                    if not wa_success:
+                        header = (
+                            f"Hi {parent_name}, here's your child's daily "
+                            f"school email summary:\n\n"
+                        )
+                        footer = (
+                            "\n\nView full digest at "
+                            "https://www.classbridge.ca/email-digest"
+                        )
+                        max_content_len = 1600 - len(header) - len(footer)
+                        body = (
+                            flattened[:max_content_len - 3] + "..."
+                            if len(flattened) > max_content_len
+                            else flattened
+                        )
+                        try:
                             wa_success = send_whatsapp_message(
                                 integration.whatsapp_phone,
                                 f"{header}{body}{footer}",
                             )
+                        except Exception as e:
+                            logger.warning(
+                                "Legacy freeform WhatsApp send raised | integration_id=%s | error=%s",
+                                integration.id,
+                                e,
+                            )
+                            wa_success = False
                     whatsapp_status = "sent" if wa_success else "failed"
                     whatsapp_ok = bool(wa_success)
                     # Sectioned path handled — skip the legacy sanitisation block.
@@ -1276,61 +1372,111 @@ async def send_unified_digest_for_parent(
                             wa_integration.whatsapp_phone,
                             f"Hi {parent_name}, {fallback_text}",
                         )
-                elif v2_sid and not sectioned_for_wa.get("legacy_blob"):
-                    wa_success = _send_sectioned_whatsapp_v2(
-                        wa_integration.whatsapp_phone,
-                        v2_sid,
-                        parent_name,
-                        sectioned_for_wa,
-                    )
-                elif v1_sid:
-                    if sectioned_for_wa.get("legacy_blob"):
-                        plain_text = re.sub(
-                            r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
-                        )
-                        sanitised_text = _sanitise_whatsapp_var(plain_text)
-                    else:
-                        sanitised_text = _sanitise_whatsapp_var(
-                            _flatten_sectioned_to_bullets(sectioned_for_wa)
-                        )
-                    sanitised_parent_name = re.sub(
-                        r'[\x00-\x1f]', ' ', parent_name
-                    ).strip()
-                    wa_success = send_whatsapp_template(
-                        wa_integration.whatsapp_phone,
-                        v1_sid,
-                        {
-                            "1": sanitised_parent_name,
-                            "2": sanitised_text,
-                        },
-                    )
                 else:
-                    if sectioned_for_wa.get("legacy_blob"):
-                        plain_text = re.sub(
-                            r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
+                    # #4502 — V2 → V1 → freeform actual fallback chain. PR #4104
+                    # claimed this contract but shipped mutually exclusive
+                    # branches keyed on which SID was configured; a V2 failure
+                    # did not attempt V1, so WhatsApp delivery silently failed
+                    # whenever Twilio rejected the V2 send (e.g. invalid
+                    # variables → HTTP 400). Each layer now catches and logs
+                    # its own exceptions so a Twilio-side error doesn't break
+                    # the chain.
+                    # Transitions logged at WARNING — silent fallback would mask
+                    # systemic V2/V1 failures from ops dashboards/alerts.
+                    wa_success = False
+
+                    # 1) V2 sectioned 4-variable template (when configured and
+                    #    we don't have a legacy_blob — V2 requires sectioned
+                    #    content).
+                    if v2_sid and not sectioned_for_wa.get("legacy_blob"):
+                        try:
+                            wa_success = _send_sectioned_whatsapp_v2(
+                                wa_integration.whatsapp_phone,
+                                v2_sid,
+                                parent_name,
+                                sectioned_for_wa,
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Unified V2 sectioned WhatsApp send raised | parent_id=%s | error=%s",
+                                parent_id,
+                                e,
+                            )
+                            wa_success = False
+                        if not wa_success:
+                            logger.warning(
+                                "Unified V2 sectioned WhatsApp returned failure — falling back to V1 | parent_id=%s",
+                                parent_id,
+                            )
+
+                    # Compute `plain_text` once for V1 + freeform fallback paths
+                    # (lazy — skipped entirely when V2 succeeds, the common case).
+                    if not wa_success:
+                        if sectioned_for_wa.get("legacy_blob"):
+                            plain_text = re.sub(
+                                r'<[^>]+>', '', sectioned_for_wa["legacy_blob"]
+                            )
+                        else:
+                            plain_text = _flatten_sectioned_to_bullets(
+                                sectioned_for_wa
+                            )
+
+                    # 2) V1 single-variable template fallback.
+                    if not wa_success and v1_sid:
+                        sanitised_text = _sanitise_whatsapp_var(plain_text)
+                        sanitised_parent_name = re.sub(
+                            r'[\x00-\x1f]', ' ', parent_name
+                        ).strip()
+                        try:
+                            wa_success = send_whatsapp_template(
+                                wa_integration.whatsapp_phone,
+                                v1_sid,
+                                {
+                                    "1": sanitised_parent_name,
+                                    "2": sanitised_text,
+                                },
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Unified V1 WhatsApp send raised | parent_id=%s | error=%s",
+                                parent_id,
+                                e,
+                            )
+                            wa_success = False
+                        if not wa_success:
+                            logger.warning(
+                                "Unified V1 WhatsApp returned failure — falling back to freeform | parent_id=%s",
+                                parent_id,
+                            )
+
+                    # 3) Freeform body fallback (always available — last layer).
+                    if not wa_success:
+                        header = (
+                            f"Hi {parent_name}, here's your kids' daily school "
+                            f"email summary:\n\n"
                         )
-                    else:
-                        plain_text = _flatten_sectioned_to_bullets(
-                            sectioned_for_wa
+                        footer = (
+                            "\n\nView full digest at "
+                            "https://www.classbridge.ca/email-digest"
                         )
-                    header = (
-                        f"Hi {parent_name}, here's your kids' daily school "
-                        f"email summary:\n\n"
-                    )
-                    footer = (
-                        "\n\nView full digest at "
-                        "https://www.classbridge.ca/email-digest"
-                    )
-                    max_content_len = 1600 - len(header) - len(footer)
-                    body = (
-                        plain_text[: max_content_len - 3] + "..."
-                        if len(plain_text) > max_content_len
-                        else plain_text
-                    )
-                    wa_success = send_whatsapp_message(
-                        wa_integration.whatsapp_phone,
-                        f"{header}{body}{footer}",
-                    )
+                        max_content_len = 1600 - len(header) - len(footer)
+                        body = (
+                            plain_text[: max_content_len - 3] + "..."
+                            if len(plain_text) > max_content_len
+                            else plain_text
+                        )
+                        try:
+                            wa_success = send_whatsapp_message(
+                                wa_integration.whatsapp_phone,
+                                f"{header}{body}{footer}",
+                            )
+                        except Exception as e:
+                            logger.warning(
+                                "Unified freeform WhatsApp send raised | parent_id=%s | error=%s",
+                                parent_id,
+                                e,
+                            )
+                            wa_success = False
                 whatsapp_status = "sent" if wa_success else "failed"
                 whatsapp_ok = bool(wa_success)
             except Exception as e:

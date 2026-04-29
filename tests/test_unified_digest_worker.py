@@ -1360,3 +1360,497 @@ async def test_unified_digest_whatsapp_ai_failure_partial_not_full_failure(db_se
     assert log is not None
     assert log.whatsapp_delivery_status == "failed"
     assert log.email_delivery_status == "sent"
+
+
+# ---------------------------------------------------------------------------
+# #4502 — V2 sectioned WhatsApp variable sanitisation
+#
+# Twilio's Content API rejects \n in template variables (HTTP 400 "Content
+# Variables parameter is invalid"). #3941 fixed this for V1; these tests
+# guard the V2 send-boundary sanitisation so a regression cannot silently
+# reintroduce the failure mode.
+# ---------------------------------------------------------------------------
+
+
+def test_send_sectioned_whatsapp_v2_strips_newlines_from_variables():
+    """Mutation-test guard: every variable passed to Twilio must be \\n-free.
+
+    If the V2 sanitisation is reverted, ``urgent_block`` (and the other two
+    section blocks) will contain ``\\n`` bullet separators emitted by
+    ``_sectioned_section_block``, and this test will fail.
+    """
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    sectioned = {
+        "urgent": ["item one", "item two", "item three"],
+        "announcements": ["news alpha", "news beta"],
+        "action_items": ["sign form", "pay fee", "rsvp"],
+        "overflow": {"urgent": 2, "announcements": 1, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        result = _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat Parent", sectioned
+        )
+
+    assert result is True
+    mock_send.assert_called_once()
+    # Variables dict is the third positional arg.
+    variables = mock_send.call_args[0][2]
+    assert set(variables.keys()) == {"1", "2", "3", "4"}
+    for key, value in variables.items():
+        assert "\n" not in value, f"variable {key!r} contains \\n: {value!r}"
+        assert "\r" not in value, f"variable {key!r} contains \\r: {value!r}"
+        assert "\t" not in value, f"variable {key!r} contains \\t: {value!r}"
+    # Real content survives the flattening.
+    assert "item one" in variables["2"]
+    assert "item two" in variables["2"]
+    assert "And 2 more" in variables["2"]
+    assert "news alpha" in variables["3"]
+    assert "And 1 more" in variables["3"]
+    assert "rsvp" in variables["4"]
+
+
+def test_send_sectioned_whatsapp_v2_caps_each_variable_at_1024_chars():
+    """Per-variable 1024-char Twilio cap: long blocks truncate with ``...``."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    long_item = "x" * 2000  # forces overflow past Twilio's per-variable cap
+    sectioned = {
+        "urgent": [long_item],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    urgent_var = variables["2"]
+    assert len(urgent_var) <= 1024
+    assert urgent_var.endswith("...")
+
+
+def test_send_sectioned_whatsapp_v2_empty_sections_render_as_none():
+    """Empty section round-trips to literal ``(none)`` (V2 template requires
+    non-empty variables)."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    sectioned = {
+        "urgent": [],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    assert variables["2"] == "(none)"
+    assert variables["3"] == "(none)"
+    assert variables["4"] == "(none)"
+
+
+def test_send_sectioned_whatsapp_v2_strips_control_chars():
+    """ASCII control chars (0x00-0x1f) get stripped from section variables."""
+    from app.jobs.parent_email_digest_job import _send_sectioned_whatsapp_v2
+
+    # Inject a NUL, BEL, vertical tab, and form feed inside a bullet.
+    dirty_item = "alpha\x00beta\x07gamma\x0bdelta\x0cend"
+    sectioned = {
+        "urgent": [dirty_item],
+        "announcements": [],
+        "action_items": [],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+    mock_send = MagicMock(return_value=True)
+    with patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_send
+    ):
+        _send_sectioned_whatsapp_v2(
+            "+15555550100", "HXv2sid", "Pat", sectioned
+        )
+
+    variables = mock_send.call_args[0][2]
+    urgent_var = variables["2"]
+    # No control chars survive.
+    for ch in urgent_var:
+        assert ord(ch) >= 0x20, f"control char {ch!r} leaked through"
+    # Real content survives.
+    assert "alpha" in urgent_var
+    assert "beta" in urgent_var
+    assert "gamma" in urgent_var
+    assert "delta" in urgent_var
+    assert "end" in urgent_var
+
+
+def test_sanitise_whatsapp_section_block_strips_html_tags():
+    """#4505 SUGG-2 — `_sanitise_whatsapp_section_block` defensively scrubs
+    HTML tags / unterminated tags / lone angle brackets, mirroring the #4006
+    pattern in `_sanitise_whatsapp_var`. Source AI output occasionally leaks
+    tag fragments (`<b>`, `<script>`, unterminated `<sup`) which Twilio's
+    Content API rejects."""
+    from app.jobs.parent_email_digest_job import _sanitise_whatsapp_section_block
+
+    dirty = (
+        "- <b>Bold item</b> in urgent section\n"
+        "- Item with <script>alert('x')</script> tag\n"
+        "- Item with unterminated <sup tag fragment"
+    )
+    cleaned = _sanitise_whatsapp_section_block(dirty)
+
+    # No HTML markup survives.
+    assert "<" not in cleaned
+    assert ">" not in cleaned
+    assert "<b>" not in cleaned
+    assert "</b>" not in cleaned
+    assert "<script>" not in cleaned
+    assert "</script>" not in cleaned
+    assert "<sup" not in cleaned
+    # Real content survives.
+    assert "Bold item" in cleaned
+    assert "in urgent section" in cleaned
+    assert "alert" in cleaned  # script body text remains (markup gone)
+    assert "unterminated" in cleaned
+    # Newlines were also collapsed (sanitiser's primary contract).
+    assert "\n" not in cleaned
+
+
+# #4502 — V2 → V1 → freeform actual fallback chain (unified path).
+#
+# PR #4104's commit message claimed this contract but shipped mutually
+# exclusive ``elif`` branches keyed on which SID is configured, so a V2
+# failure never attempted V1 — WhatsApp delivery silently failed when
+# Twilio rejected V2 (e.g. invalid variables → HTTP 400). These tests
+# pin the actual fallback semantics so the bug can't regress.
+# ---------------------------------------------------------------------------
+
+
+def _non_empty_sectioned_payload():
+    """Sectioned payload with at least one item per section so the
+    empty-digest short-circuit (#4106) does NOT fire."""
+    return {
+        "urgent": ["Yearbook due TODAY"],
+        "announcements": ["School concert Friday"],
+        "action_items": ["Sign permission form"],
+        "overflow": {"urgent": 0, "announcements": 0, "action_items": 0},
+    }
+
+
+@pytest.mark.asyncio
+async def test_unified_v2_success_skips_v1_and_freeform(db_session):
+    """#4502 — V2 succeeds → V1 NOT called, freeform NOT called, status=delivered."""
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_v2_ok@test.com"
+    )
+
+    mock_v2 = MagicMock(return_value=True)
+    mock_v1 = MagicMock(return_value=True)
+    mock_freeform = MagicMock(return_value=True)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    assert result["status"] == "delivered"
+    mock_v2.assert_called_once()
+    mock_v1.assert_not_called()
+    mock_freeform.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_unified_v2_failure_falls_back_to_v1_success(db_session):
+    """#4502 — V2 returns False → V1 called → V1 succeeds → freeform NOT called.
+
+    Mutation-test guard: under the buggy elif chain, V1 is never reached
+    because v2_sid is configured, so this test would fail (mock_v1 never
+    called) if the fallback fix is reverted. Asserting BOTH V2 AND V1 were
+    called is the genuine signal that the fallback chain is honored.
+    """
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_v2_fail_v1_ok@test.com"
+    )
+
+    mock_v2 = MagicMock(return_value=False)  # V2 fails
+    mock_v1 = MagicMock(return_value=True)   # V1 succeeds
+    mock_freeform = MagicMock(return_value=True)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    assert result["status"] == "delivered"
+    # The mutation-test guard: BOTH V2 + V1 attempted under the new fallback.
+    mock_v2.assert_called_once()
+    mock_v1.assert_called_once()
+    # Freeform NOT reached — V1 succeeded.
+    mock_freeform.assert_not_called()
+
+    # Log records the WhatsApp delivery as sent.
+    log = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .first()
+    )
+    assert log is not None
+    assert log.whatsapp_delivery_status == "sent"
+
+
+@pytest.mark.asyncio
+async def test_unified_v2_and_v1_failure_falls_back_to_freeform_success(db_session):
+    """#4502 — V2 fails → V1 fails → freeform called → freeform succeeds, status=delivered."""
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_all_to_freeform@test.com"
+    )
+
+    mock_v2 = MagicMock(return_value=False)
+    mock_v1 = MagicMock(return_value=False)
+    mock_freeform = MagicMock(return_value=True)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    assert result["status"] == "delivered"
+    mock_v2.assert_called_once()
+    mock_v1.assert_called_once()
+    mock_freeform.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_unified_v2_failure_v1_unset_falls_back_to_freeform(db_session):
+    """#4502 — V2 fails AND V1 SID unset → freeform called and succeeds."""
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_v2_fail_no_v1@test.com"
+    )
+
+    mock_v2 = MagicMock(return_value=False)
+    mock_v1 = MagicMock(return_value=True)
+    mock_freeform = MagicMock(return_value=True)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", ""
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    assert result["status"] == "delivered"
+    mock_v2.assert_called_once()
+    mock_v1.assert_not_called()  # V1 SID was unset → skipped
+    mock_freeform.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_unified_all_three_fail_status_partial(db_session):
+    """#4502 — V2 fails → V1 fails → freeform fails → whatsapp_ok=False.
+
+    in_app + email still succeeded so the overall status is 'partial'.
+    """
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+    from app.models.parent_gmail_integration import DigestDeliveryLog
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_all_fail@test.com"
+    )
+
+    mock_v2 = MagicMock(return_value=False)
+    mock_v1 = MagicMock(return_value=False)
+    mock_freeform = MagicMock(return_value=False)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    # in_app + email succeeded; WhatsApp failed → partial.
+    assert result["status"] == "partial"
+    mock_v2.assert_called_once()
+    mock_v1.assert_called_once()
+    mock_freeform.assert_called_once()
+
+    log = (
+        db_session.query(DigestDeliveryLog)
+        .filter(DigestDeliveryLog.parent_id == parent.id)
+        .first()
+    )
+    assert log is not None
+    assert log.whatsapp_delivery_status == "failed"
+
+
+@pytest.mark.asyncio
+async def test_unified_v2_raises_falls_back_to_v1(db_session):
+    """#4502 — V2 raises (Twilio HTTP error etc.) → exception is swallowed +
+    logged, V1 attempted, succeeds. The chain doesn't break on a Twilio-side
+    error."""
+    from app.jobs import parent_email_digest_job as job
+    from app.jobs.parent_email_digest_job import send_unified_digest_for_parent
+
+    parent, _ = _make_parent_with_whatsapp_integration(
+        db_session, "u_v2_raise@test.com"
+    )
+
+    mock_v2 = MagicMock(side_effect=RuntimeError("twilio HTTP 400"))
+    mock_v1 = MagicMock(return_value=True)
+    mock_freeform = MagicMock(return_value=True)
+
+    with patch(
+        "app.services.parent_gmail_service.fetch_child_emails",
+        new=AsyncMock(side_effect=_fake_fetch_one_email),
+    ), patch(
+        "app.services.notification_service.send_multi_channel_notification",
+        new=MagicMock(return_value={"in_app": True, "email": True}),
+    ), patch(
+        "app.services.parent_digest_ai_service.generate_sectioned_digest",
+        new=AsyncMock(return_value=_non_empty_sectioned_payload()),
+    ), patch.object(
+        job, "_send_sectioned_whatsapp_v2", new=mock_v2
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_template", new=mock_v1
+    ), patch(
+        "app.services.whatsapp_service.send_whatsapp_message", new=mock_freeform
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid", "HXv1sid"
+    ), patch.object(
+        job.app_settings, "twilio_whatsapp_digest_content_sid_v2", "HXv2sid"
+    ):
+        result = await send_unified_digest_for_parent(
+            db_session, parent.id, skip_dedup=True,
+            since=datetime(2026, 4, 23, tzinfo=timezone.utc),
+        )
+
+    assert result["status"] == "delivered"
+    mock_v2.assert_called_once()
+    mock_v1.assert_called_once()
+    mock_freeform.assert_not_called()
