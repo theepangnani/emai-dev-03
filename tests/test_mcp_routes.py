@@ -286,25 +286,44 @@ def test_call_tool_role_not_allowed_returns_403(
     assert "generate_content" in detail
 
 
-def test_call_tool_stub_returns_501(client, teacher_user, mcp_flag_on):
+@pytest.fixture()
+def synthetic_stub_tool(monkeypatch):
+    """Inject a temporary stub tool into ``TOOLS`` for dispatch-stub tests.
+
+    All 4 of the M2-B tools (get_expectations, get_artifact, list_catalog,
+    generate_content) are now concrete handlers, so to exercise the
+    dispatcher's 501 path we register a one-off stub.
+    """
+    from app.mcp.tools import TOOLS, ToolDescriptor, _stub_handler
+
+    name = "_stub_for_test"
+    desc = ToolDescriptor(
+        name=name,
+        description="Synthetic stub used only by dispatcher 501 tests.",
+        input_schema={"type": "object", "additionalProperties": False},
+        roles=("PARENT", "STUDENT", "TEACHER", "ADMIN"),
+        handler=_stub_handler(name),
+    )
+    monkeypatch.setitem(TOOLS, name, desc)
+    return name
+
+
+def test_call_tool_stub_returns_501(client, teacher_user, mcp_flag_on, synthetic_stub_tool):
     """A stub tool raises :class:`MCPNotImplementedError` → 501.
 
     The detail must name the tool so MCP clients can tell which stub
-    blocked them (helpful during M2 → M3 rollout when 2B-* land
-    incrementally).
-
-    NOTE: ``get_expectations`` (2B-1, #4552) is now a concrete handler;
-    ``list_catalog`` is the remaining read-only stub used here.
+    blocked them. Uses an injected synthetic stub since all 4 production
+    M2-B tools are now concrete handlers.
     """
     headers = _auth(client, teacher_user.email)
     resp = client.post(
         "/mcp/call_tool",
-        json={"name": "list_catalog", "arguments": {}},
+        json={"name": synthetic_stub_tool, "arguments": {}},
         headers=headers,
     )
     assert resp.status_code == 501
     detail = resp.json()["detail"]
-    assert "list_catalog" in detail
+    assert synthetic_stub_tool in detail
     assert "not yet implemented" in detail
 
 
@@ -326,20 +345,17 @@ def test_call_tool_missing_name_returns_422(
     assert resp.status_code == 422
 
 
-def test_call_tool_default_arguments(client, teacher_user, mcp_flag_on):
+def test_call_tool_default_arguments(client, teacher_user, mcp_flag_on, synthetic_stub_tool):
     """Omitting ``arguments`` falls back to ``{}`` (and still hits 501).
 
     Verifies the schema's ``default_factory=dict`` so MCP clients don't
-    have to send an empty dict explicitly.
-
-    NOTE: ``get_expectations`` (2B-1, #4552) is now a concrete handler;
-    ``list_catalog`` is the remaining read-only stub used here so the
-    501 assertion still exercises the stub path.
+    have to send an empty dict explicitly. Uses the injected stub since
+    all production tools are now concrete.
     """
     headers = _auth(client, teacher_user.email)
     resp = client.post(
         "/mcp/call_tool",
-        json={"name": "list_catalog"},
+        json={"name": synthetic_stub_tool},
         headers=headers,
     )
     # Stub raises 501 — confirms the dispatcher reached the handler.
