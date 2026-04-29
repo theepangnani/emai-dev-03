@@ -103,6 +103,8 @@ const ParentAITools = lazyRetry(() => import('./pages/parent/ParentAITools').the
 const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHistoryPage').then((m) => ({ default: m.ActivityHistoryPage })));
 const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
 const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage').then((m) => ({ default: m.EmailDigestPage })));
+// CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion 5-section render page; PARENT-only.
+const ParentCompanionPage = lazyRetry(() => import('./pages/parent/ParentCompanionPage').then((m) => ({ default: m.ParentCompanionPage })));
 const GmailOAuthCallbackPage = lazyRetry(() => import('./pages/GmailOAuthCallbackPage').then((m) => ({ default: m.GmailOAuthCallbackPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
@@ -246,6 +248,15 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent']}>
                     <EmailDigestPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion 5-section render. */}
+              <Route
+                path="/parent/companion/:artifact_id"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <ParentCompanionPage />
                   </ProtectedRoute>
                 }
               />

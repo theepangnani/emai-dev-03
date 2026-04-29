@@ -44,6 +44,8 @@ from app.api.routes import dci_consent  # CB-DCI-001 M0-11 (#4148)
 from app.api.routes import dci  # CB-DCI-001 M0-4 (#4139)
 from app.api.routes import curriculum  # CB-CMCP-001 M0-B 0B-1 (#4415)
 from app.api.routes import ceg_admin_review  # CB-CMCP-001 M0-B 0B-3a (#4428)
+from app.api.routes import cmcp_generate  # CB-CMCP-001 M1-A 1A-2 (#4471)
+from app.api.routes import cmcp_generate_stream  # CB-CMCP-001 M1-E 1E-1 (#4481)
 
 # Initialize logging first (auto-determines level based on environment)
 setup_logging(
@@ -1716,6 +1718,8 @@ app.include_router(dci_consent.router, prefix="/api")  # CB-DCI-001 M0-11 (#4148
 app.include_router(dci.router, prefix="/api")  # CB-DCI-001 M0-4 (#4139)
 app.include_router(curriculum.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-1 (#4415)
 app.include_router(ceg_admin_review.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-3a (#4428)
+app.include_router(cmcp_generate.router, prefix="/api")  # CB-CMCP-001 M1-A 1A-2 (#4471)
+app.include_router(cmcp_generate_stream.router, prefix="/api")  # CB-CMCP-001 M1-E 1E-1 (#4481)
 
 logger.info("API routes registered at /api")
 
