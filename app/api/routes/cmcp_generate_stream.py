@@ -74,6 +74,12 @@ The ``data: <chunk-text>`` line on token frames carries the raw chunk
 text (matches the issue body's ``data: {chunk}\\n\\n`` shape). The
 ``event: complete`` payload is JSON shaped like ``StreamCompletionEvent``.
 """
+# NOTE (#4533 — refactor deferred to M3): this route is ~450 LOC after
+# 5 stripes (1B-3 / 1C-2 / 1D-3 / 1E-2 / 1F-3). M3 will rewrite the
+# completion path for persistence + surface dispatch + Tasks emit, so
+# extracting `_resolve_envelope` / `_resolve_voice` / `_run_validation`
+# / `_emit_completion` helpers now would be throwaway work — see the
+# M3 section of docs/design/CB-CMCP-001-batch-implementation-plan.md.
 from __future__ import annotations
 
 import json
