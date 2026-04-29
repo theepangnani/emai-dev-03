@@ -44,14 +44,10 @@ const WEEKDAY_FALLBACK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function computeWeekdayLabel(day: DayBucket, columnIndex: number): string {
   if (day.weekday && day.weekday.trim()) return day.weekday;
-  // Fallback: derive Mon-Sun from the ISO date if possible, else use column index.
-  const parsed = new Date(day.day);
-  if (!Number.isNaN(parsed.getTime())) {
-    // JS getDay(): 0=Sun..6=Sat. PRD says Mon-Sun → remap.
-    const jsDow = parsed.getDay();
-    const monSunIndex = (jsDow + 6) % 7; // 0=Mon..6=Sun
-    return WEEKDAY_FALLBACK[monSunIndex];
-  }
+  // Fallback: trust the column index. The contract says days[] is exactly
+  // Mon..Sun in order, so we don't parse day.day with `new Date(...)` —
+  // that's TZ-sensitive (UTC-parsed ISO dates can land on the previous
+  // weekday in negative-UTC locales).
   return WEEKDAY_FALLBACK[columnIndex] ?? '';
 }
 
@@ -155,7 +151,7 @@ export function WeekGrid({ kids, onCellClick }: WeekGridProps): ReactElement {
                 <li key={kid.id} className="weekgrid-mobile-kid">
                   <button
                     type="button"
-                    className={`weekgrid-mobile-kid-button${day.is_past ? ' weekgrid-cell-past' : ''}`}
+                    className={`weekgrid-mobile-kid-button${day.is_past ? ' weekgrid-mobile-kid-button-past' : ''}`}
                     onClick={() => onCellClick(kid.id, day)}
                   >
                     <span className="weekgrid-mobile-kid-name">{kid.first_name}</span>

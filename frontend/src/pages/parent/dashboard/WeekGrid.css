@@ -198,6 +198,10 @@
   outline: none;
 }
 
+.weekgrid-mobile-kid-button-past {
+  opacity: 0.5;
+}
+
 .weekgrid-mobile-kid-name {
   font-weight: 700;
   font-size: 0.9rem;
