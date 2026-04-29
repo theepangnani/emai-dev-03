@@ -90,7 +90,9 @@ export function DashboardHeader({
   isRefreshing,
   onRefresh,
 }: DashboardHeaderProps): JSX.Element {
-  const trimmedName = parentName.trim();
+  // Defensive: TS says `string` but real callers may pass `user?.full_name`
+  // (undefined during loading) or null. Coerce so trim() never throws.
+  const trimmedName = (parentName ?? '').trim();
   const greeting = trimmedName
     ? `Hi ${trimmedName}, here's today's view`
     : "Hi there, here's today's view";
