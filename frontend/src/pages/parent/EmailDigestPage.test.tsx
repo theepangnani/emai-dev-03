@@ -18,6 +18,7 @@ const mockSendWhatsAppOTP = vi.fn();
 const mockVerifyWhatsAppOTP = vi.fn();
 const mockDisconnectWhatsApp = vi.fn();
 const mockSendDigestNow = vi.fn();
+const mockSendDigestNowForParent = vi.fn();
 const mockTriggerSync = vi.fn();
 const mockListChildProfiles = vi.fn();
 const mockCreateChildProfile = vi.fn();
@@ -45,6 +46,8 @@ vi.mock('../../api/parentEmailDigest', async () => {
     verifyWhatsAppOTP: (...args: unknown[]) => mockVerifyWhatsAppOTP(...args),
     disconnectWhatsApp: (...args: unknown[]) => mockDisconnectWhatsApp(...args),
     sendDigestNow: (...args: unknown[]) => mockSendDigestNow(...args),
+    sendDigestNowForParent: (...args: unknown[]) =>
+      mockSendDigestNowForParent(...args),
     triggerSync: (...args: unknown[]) => mockTriggerSync(...args),
     listChildProfiles: (...args: unknown[]) => mockListChildProfiles(...args),
     createChildProfile: (...args: unknown[]) => mockCreateChildProfile(...args),
@@ -1586,6 +1589,10 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
     flagEnabledMock.mockReturnValue(true);
     mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
     mockTriggerSync.mockResolvedValue({ data: buildIntegration() });
+    // #4483: unified view now calls the parent-scoped endpoint.
+    mockSendDigestNowForParent.mockResolvedValue({
+      data: { status: 'delivered', email_count: 3, message: 'Digest sent!' },
+    });
     mockSendDigestNow.mockResolvedValue({
       data: { status: 'delivered', email_count: 3, message: 'Digest sent!' },
     });
@@ -1618,7 +1625,10 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
     });
   });
 
-  it('clicking Send Digest Now calls sendDigestNow(integrationId)', async () => {
+  // #4483 (D2/D3): unified UI now calls the parent-scoped endpoint so the
+  // V2 worker handles multi-kid framing in subject + body. Per-integration
+  // sendDigestNow must NOT be called from the unified view.
+  it('clicking Send Digest Now calls sendDigestNowForParent (parent-scoped, #4483)', async () => {
     renderWithProviders(<EmailDigestPage />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
@@ -1627,12 +1637,15 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
 
     await waitFor(() => {
-      expect(mockSendDigestNow).toHaveBeenCalledWith(1);
+      expect(mockSendDigestNowForParent).toHaveBeenCalled();
     });
+    // Crucially: the per-integration endpoint must NOT be called.
+    expect(mockSendDigestNow).not.toHaveBeenCalled();
   });
 
   it('renders the per-channel status banner with delivered status (no retry button)', async () => {
-    mockSendDigestNow.mockResolvedValue({
+    // #4483: payload comes from sendDigestNowForParent in the unified view.
+    mockSendDigestNowForParent.mockResolvedValue({
       data: { status: 'delivered', email_count: 5, message: 'Digest sent to 5 messages.' },
     });
     renderWithProviders(<EmailDigestPage />);
@@ -1651,7 +1664,7 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
   });
 
   it('renders the per-channel status banner with failed status (shows Try again button)', async () => {
-    mockSendDigestNow.mockResolvedValue({
+    mockSendDigestNowForParent.mockResolvedValue({
       data: { status: 'failed', email_count: 0, message: 'Failed to deliver digest.' },
     });
     renderWithProviders(<EmailDigestPage />);
@@ -1672,7 +1685,7 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
   // #4102 pass-1 review: cover the remaining status branches the legacy
   // tests had but the unified port skipped.
   it('renders amber partial status with failed-channel list', async () => {
-    mockSendDigestNow.mockResolvedValue({
+    mockSendDigestNowForParent.mockResolvedValue({
       data: {
         status: 'partial',
         email_count: 2,
@@ -1695,7 +1708,7 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
   });
 
   it('renders skipped status WITH preferences link when reason=no_eligible_channels', async () => {
-    mockSendDigestNow.mockResolvedValue({
+    mockSendDigestNowForParent.mockResolvedValue({
       data: {
         status: 'skipped',
         email_count: 0,
@@ -1715,7 +1728,7 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
   });
 
   it('does NOT render preferences link for skipped with reason=no_new_emails', async () => {
-    mockSendDigestNow.mockResolvedValue({
+    mockSendDigestNowForParent.mockResolvedValue({
       data: {
         status: 'skipped',
         email_count: 0,
@@ -1733,6 +1746,38 @@ describe('EmailDigestPage — unified Sync + Send Digest (#4056)', () => {
     });
     expect(screen.queryByRole('link', { name: 'Open preferences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  });
+});
+
+// #4483 (D2/D3): single-integration legacy view (flag OFF) still calls the
+// per-integration `sendDigestNow` endpoint — smaller blast radius for users
+// not yet on the V2 ramp. Guards against accidental cross-pollination from
+// the unified-view changes.
+describe('EmailDigestPage — legacy view still uses per-integration sendDigestNow (#4483)', () => {
+  beforeEach(() => {
+    flagEnabledMock.mockReturnValue(false);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    mockTriggerSync.mockResolvedValue({ data: buildIntegration() });
+    mockSendDigestNow.mockResolvedValue({
+      data: { status: 'delivered', email_count: 1, message: 'Digest sent!' },
+    });
+    mockSendDigestNowForParent.mockResolvedValue({
+      data: { status: 'delivered', email_count: 1, message: 'should not be called' },
+    });
+  });
+
+  it('clicking Send Digest Now in legacy view calls per-integration sendDigestNow, not the parent-scoped endpoint', async () => {
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send Digest Now' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send Digest Now' }));
+
+    await waitFor(() => {
+      expect(mockSendDigestNow).toHaveBeenCalledWith(1);
+    });
+    expect(mockSendDigestNowForParent).not.toHaveBeenCalled();
   });
 });
 

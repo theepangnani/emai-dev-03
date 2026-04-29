@@ -826,6 +826,118 @@ async def send_digest_now(
     )
 
 
+# #4483 (D2/D3): parent-scoped manual "Send Now". The legacy
+# `/integrations/{id}/send-digest` route remains for back-compat — it stays
+# scoped to a single integration's identity. This new route is parent-scoped
+# (no integration_id in the URL) and is what the unified UI should call so
+# multi-kid parents always get the V2 multi-kid framing when the flag is on.
+@router.post("/send-now", response_model=SendDigestResponse)
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
+async def send_digest_now_parent_scoped(
+    request: Request,
+    since_hours: int = Query(
+        24,
+        ge=1,
+        le=168,
+        description="Look-back window in hours, 1-168.",
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+) -> SendDigestResponse:
+    """Manual digest trigger across all of the parent's active integrations.
+
+    Honours the ``parent.unified_digest_v2`` feature flag:
+
+    * flag ON  → ONE envelope per parent via
+      :func:`send_unified_digest_for_parent`, with multi-kid attribution-aware
+      subject and body.
+    * flag OFF → loops the parent's active integrations and falls back to the
+      legacy per-integration :func:`send_digest_for_integration`.
+
+    Used by the unified Email Digest page; the per-integration send route at
+    ``POST /integrations/{integration_id}/send-digest`` remains for back-compat.
+    """
+    from app.services.feature_flag_service import is_feature_enabled
+    from app.jobs.parent_email_digest_job import (
+        send_unified_digest_for_parent,
+        send_digest_for_integration,
+    )
+
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=since_hours)
+
+    if is_feature_enabled("parent.unified_digest_v2", db=db):
+        result = await send_unified_digest_for_parent(
+            db,
+            current_user.id,
+            skip_dedup=True,
+            since=since_dt,
+        )
+        # send_unified_digest_for_parent returns a plain dict; SendDigestResponse
+        # tolerates the optional fields (channel_status / reason /
+        # attribution_counts) and ignores any extras.
+        if isinstance(result, dict):
+            return SendDigestResponse(**result)
+        return result
+
+    # Legacy fallback: aggregate across all active integrations with digest
+    # enabled. Per-integration dedup is bypassed (skip_dedup=True) because
+    # this is an explicit manual trigger.
+    integrations = (
+        db.query(ParentGmailIntegration)
+        .join(ParentDigestSettings)
+        .filter(ParentGmailIntegration.parent_id == current_user.id)
+        .filter(ParentGmailIntegration.is_active == True)  # noqa: E712
+        .filter(ParentDigestSettings.digest_enabled == True)  # noqa: E712
+        .all()
+    )
+    if not integrations:
+        return SendDigestResponse(
+            status="skipped",
+            email_count=0,
+            message="No active integrations to send digest for.",
+            reason="no_integrations",
+        )
+
+    sent = 0
+    skipped = 0
+    failed = 0
+    total_emails = 0
+    for integ in integrations:
+        result = await send_digest_for_integration(
+            db,
+            integ,
+            skip_dedup=True,
+            since=since_dt,
+            create_tasks=False,
+        )
+        total_emails += int(result.get("email_count") or 0)
+        per_status = result.get("status")
+        if per_status == "delivered":
+            sent += 1
+        elif per_status == "skipped":
+            skipped += 1
+        else:
+            failed += 1
+
+    if sent > 0 and failed == 0:
+        overall = "delivered"
+    elif sent > 0:
+        overall = "partial"
+    elif failed > 0:
+        overall = "failed"
+    else:
+        overall = "skipped"
+
+    return SendDigestResponse(
+        status=overall,
+        email_count=total_emails,
+        message=(
+            f"{sent} delivered, {skipped} skipped, {failed} failed across "
+            f"{len(integrations)} integration(s)."
+        ),
+    )
+
+
 @router.post("/integrations/{integration_id}/sync")
 @limiter.limit("10/minute", key_func=get_user_id_or_ip)
 async def trigger_manual_sync(

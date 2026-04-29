@@ -815,3 +815,240 @@ def test_send_digest_now_legacy_400s_when_url_integration_inactive(
     )
     assert resp.status_code == 400
     assert "not active" in resp.json()["detail"].lower()
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 10. #4483 (D2/D3) — parent-scoped manual "Send Now" endpoint.
+#
+# The new endpoint at POST /api/parent/email-digest/send-now (no
+# integration_id) honors `parent.unified_digest_v2`:
+#   * flag ON  → calls send_unified_digest_for_parent ONCE
+#   * flag OFF → loops the parent's active integrations and calls
+#                send_digest_for_integration per integration
+# This is what the unified UI calls so multi-kid parents always get the
+# multi-kid framing in subject + body.
+# ──────────────────────────────────────────────────────────────────────────
+
+
+def _add_second_integration(db_session, parent, *, suffix_extra: str):
+    """Add a second active Gmail integration (+ digest settings) for ``parent``.
+
+    Used by the parent-scoped tests below to assert behavior across multiple
+    integrations under the legacy fallback path.
+    """
+    from app.models.parent_gmail_integration import (
+        ParentDigestSettings,
+        ParentGmailIntegration,
+    )
+
+    integ2 = ParentGmailIntegration(
+        parent_id=parent.id,
+        gmail_address=f"parent2{suffix_extra}@gmail.com",
+        google_id=f"google_id2{suffix_extra}",
+        access_token="enc_access2",
+        refresh_token="enc_refresh2",
+        child_school_email=f"child2{suffix_extra}@school.ca",
+        child_first_name="Sam",
+    )
+    db_session.add(integ2)
+    db_session.commit()
+    settings2 = ParentDigestSettings(
+        integration_id=integ2.id,
+        timezone="America/Toronto",
+    )
+    db_session.add(settings2)
+    db_session.commit()
+    db_session.refresh(integ2)
+    return integ2
+
+
+def test_send_now_parent_scoped_unified_path(client, db_session, digest_env):
+    """Flag ON + 2 integrations → unified worker called ONCE; legacy NOT called."""
+    _set_unified_v2_flag(db_session, True)
+    env = digest_env
+    _add_second_integration(
+        db_session, env["parent"], suffix_extra=f"_p1_{id(db_session)}"
+    )
+
+    unified_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 3,
+            "attribution_counts": {"school_email": 3},
+            "channel_status": {"in_app": True, "email": True},
+            "message": "Unified digest delivered with 3 emails",
+        }
+    )
+    legacy_mock = AsyncMock(
+        return_value={"status": "delivered", "email_count": 0, "message": "legacy"}
+    )
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
+    ):
+        resp = client.post(
+            "/api/parent/email-digest/send-now",
+            headers=_auth(client, env["parent"].email),
+        )
+
+    assert resp.status_code == 200, resp.text
+    unified_mock.assert_awaited_once()
+    legacy_mock.assert_not_awaited()
+    body = resp.json()
+    assert body["status"] == "delivered"
+    assert body["email_count"] == 3
+    assert body["attribution_counts"] == {"school_email": 3}
+    assert body["channel_status"] == {"in_app": True, "email": True}
+    # The unified worker is called with parent_id (not integration); skip_dedup
+    # is forced True because this is an explicit manual trigger.
+    call_kwargs = unified_mock.await_args.kwargs
+    assert call_kwargs.get("skip_dedup") is True
+    # Positional second arg = parent_id (db is positional 0).
+    assert unified_mock.await_args.args[1] == env["parent"].id
+
+
+def test_send_now_parent_scoped_legacy_path(client, db_session, digest_env):
+    """Flag OFF + 2 integrations → legacy helper called twice, unified never."""
+    _set_unified_v2_flag(db_session, False)
+    env = digest_env
+    _add_second_integration(
+        db_session, env["parent"], suffix_extra=f"_p2_{id(db_session)}"
+    )
+
+    unified_mock = AsyncMock(
+        return_value={"status": "delivered", "email_count": 0, "message": "unified"}
+    )
+    legacy_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 1,
+            "message": "Email digest delivered",
+            "channel_status": {"in_app": True, "email": None, "whatsapp": None},
+        }
+    )
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
+    ):
+        resp = client.post(
+            "/api/parent/email-digest/send-now",
+            headers=_auth(client, env["parent"].email),
+        )
+
+    assert resp.status_code == 200, resp.text
+    unified_mock.assert_not_awaited()
+    assert legacy_mock.await_count == 2
+    body = resp.json()
+    # Aggregated success across both integrations → "delivered".
+    assert body["status"] == "delivered"
+    assert body["email_count"] == 2  # 1 + 1
+    # Sanity on legacy invocation contract: create_tasks=False is forced
+    # because the parent-scoped trigger never opt-ins to the #3929 pilot.
+    for call in legacy_mock.await_args_list:
+        assert call.kwargs.get("create_tasks") is False
+        assert call.kwargs.get("skip_dedup") is True
+
+
+def test_send_now_parent_scoped_no_active_integrations_returns_skipped(
+    client, db_session, digest_env
+):
+    """Flag OFF + 0 active integrations → SKIPPED with email_count=0."""
+    _set_unified_v2_flag(db_session, False)
+    env = digest_env
+    # Deactivate the only integration on the parent.
+    env["integration"].is_active = False
+    db_session.commit()
+
+    unified_mock = AsyncMock(return_value={"status": "delivered", "email_count": 0})
+    legacy_mock = AsyncMock(return_value={"status": "delivered", "email_count": 0})
+
+    with patch(
+        "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+        new=unified_mock,
+    ), patch(
+        "app.jobs.parent_email_digest_job.send_digest_for_integration",
+        new=legacy_mock,
+    ):
+        resp = client.post(
+            "/api/parent/email-digest/send-now",
+            headers=_auth(client, env["parent"].email),
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["status"] == "skipped"
+    assert body["email_count"] == 0
+    # Neither helper should fire when the parent has nothing to send.
+    unified_mock.assert_not_awaited()
+    legacy_mock.assert_not_awaited()
+
+
+def test_send_now_parent_scoped_requires_parent_role(
+    client, db_session, digest_env
+):
+    """Non-parent user (student) gets 403."""
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    suffix = f"_studcheck_{id(db_session)}_{datetime.now(timezone.utc).timestamp():.6f}"
+    student_user = User(
+        email=f"student{suffix}@example.com",
+        full_name="A Student",
+        role=UserRole.STUDENT,
+        hashed_password=get_password_hash("Password123!"),
+    )
+    db_session.add(student_user)
+    db_session.commit()
+
+    resp = client.post(
+        "/api/parent/email-digest/send-now",
+        headers=_auth(client, student_user.email),
+    )
+    assert resp.status_code == 403
+
+
+def test_send_now_parent_scoped_rate_limited_after_10(
+    client, db_session, digest_env, app
+):
+    """11th call within a minute must trip the 10/min limiter."""
+    _set_unified_v2_flag(db_session, True)
+    env = digest_env
+
+    unified_mock = AsyncMock(
+        return_value={
+            "status": "delivered",
+            "email_count": 0,
+            "attribution_counts": {},
+            "channel_status": None,
+            "message": "ok",
+        }
+    )
+
+    headers = _auth(client, env["parent"].email)
+    app.state.limiter.enabled = True
+    app.state.limiter.reset()
+    try:
+        with patch(
+            "app.jobs.parent_email_digest_job.send_unified_digest_for_parent",
+            new=unified_mock,
+        ):
+            for _ in range(10):
+                resp = client.post(
+                    "/api/parent/email-digest/send-now", headers=headers
+                )
+                assert resp.status_code == 200, resp.text
+            resp = client.post(
+                "/api/parent/email-digest/send-now", headers=headers
+            )
+        assert resp.status_code == 429
+    finally:
+        app.state.limiter.enabled = False
+        app.state.limiter.reset()
