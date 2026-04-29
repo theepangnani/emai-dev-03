@@ -75,6 +75,9 @@ from app.schemas.cmcp import (
     TargetPersona,
 )
 from app.services.cmcp.artifact_persistence import persist_cmcp_artifact
+from app.services.cmcp.class_distribution_authority import (
+    validate_class_distribution_authority,
+)
 from app.services.cmcp.class_context_resolver import (
     ClassContextEnvelope,
     ClassContextResolver,
@@ -295,6 +298,14 @@ def generate_cmcp_preview_sync(
     """
     subject, strand = _resolve_subject_and_strand(
         db, payload.subject_code, payload.strand_code
+    )
+
+    # M3α 3B-1 (#4577): enforce D3=C class-distribution authority before
+    # any envelope / prompt work. PARENT/STUDENT requestors with
+    # ``course_id`` set are 403'd; TEACHERs not owning the course are
+    # 403'd; admins bypass. No-op when ``course_id`` is None.
+    validate_class_distribution_authority(
+        user=current_user, course_id=payload.course_id, db=db
     )
 
     persona: TargetPersona = payload.target_persona or _derive_persona(

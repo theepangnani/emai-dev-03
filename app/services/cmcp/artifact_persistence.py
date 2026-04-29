@@ -209,6 +209,32 @@ def persist_cmcp_artifact(
             "course_id": course_id,
         },
     )
+
+    # M3α 3B-1 (#4577): write an audit-log entry for the initial INSERT so
+    # the Bill 194 audit trail captures every CMCP artifact creation.
+    # Lazy-import the audit service to keep the persistence module import
+    # graph minimal — ``log_action`` is fail-soft (savepoint + warn) so a
+    # missed audit row never corrupts the persistence transaction. The
+    # trailing ``db.commit()`` flushes the savepoint to disk; matches the
+    # ``log_action(...) → db.commit()`` pattern used in
+    # ``app/api/routes/account_deletion.py``.
+    from app.services.audit_service import log_action
+
+    log_action(
+        db,
+        user_id=user.id,
+        action="cmcp.artifact.created",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={
+            "state": state,
+            "persona": target_persona,
+            "content_type": http_content_type,
+            "course_id": course_id,
+            "role": user.role.value if user.role else None,
+        },
+    )
+    db.commit()
     return artifact
 
 
