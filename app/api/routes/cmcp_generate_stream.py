@@ -33,16 +33,26 @@ auto-emit is best-effort — if Claude fails or the lint trips, the
 service returns ``None`` and the completion event carries
 ``parent_companion: null`` rather than failing the primary generation.
 
+1D-3 extension (#4494) — alignment_score + flag_for_review
+----------------------------------------------------------
+After the primary Claude stream completes cleanly (and after the 1F-3
+parent-companion auto-emit), the route runs the 1D-2
+``ValidationPipeline`` over the accumulated content and stamps
+``alignment_score`` + ``flag_for_review`` onto the completion frame.
+Validator failure is non-fatal — alignment is a soft signal in M1
+(not a generation gate), so a pipeline exception logs and ships
+``alignment_score=None`` rather than returning a 500.
+
 Out of scope (deferred)
 -----------------------
 - Per-content-type latency telemetry — 1E-2 wave 3.
 - Frontend streaming hook — 1E-3 wave 3.
-- Validation pipeline composition into the stream — handled in 1D-2 /
-  later stripe; this route makes the basic Claude call only.
 - Voice-module registry hookup — 1C-1 / 1C-2.
 - Persisting an artifact row — 1A-3 state machine.
 - **Persisting the auto-emitted Parent Companion** — M3 territory.
   1F-3 ships the inline auto-emit only.
+- **Persisting the alignment_score** — M3 territory. 1D-3 surfaces
+  the score on the completion frame only.
 
 SSE wire format
 ---------------
@@ -53,8 +63,7 @@ The frontend stream-reader (1E-3) parses each frame as either:
 
 The ``data: <chunk-text>`` line on token frames carries the raw chunk
 text (matches the issue body's ``data: {chunk}\\n\\n`` shape). The
-``event: complete`` payload is JSON so 1D-2's validation result + the
-voice hash can be carried verbatim once those wires land.
+``event: complete`` payload is JSON shaped like ``StreamCompletionEvent``.
 """
 from __future__ import annotations
 
@@ -77,6 +86,7 @@ from app.models.user import User
 from app.schemas.cmcp import (
     STUDENT_FACING_CONTENT_TYPES,
     CMCPGenerateRequest,
+    StreamCompletionEvent,
     TargetPersona,
 )
 from app.services.ai_service import generate_content_stream
@@ -85,6 +95,7 @@ from app.services.cmcp.guardrail_engine import (
     NoCurriculumMatchError,
 )
 from app.services.cmcp.parent_companion_service import ParentCompanionService
+from app.services.cmcp.validation_pipeline import ValidationPipeline
 from app.services.cmcp.voice_registry import VoiceRegistry
 
 logger = logging.getLogger(__name__)
@@ -199,8 +210,17 @@ def generate_cmcp_stream(
         )
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    se_codes_list = list(se_codes)
+
+    # Snapshot the request's resolved grade + subject_code so the
+    # post-stream validator call (1D-3) doesn't reach back into ``payload``
+    # / ``subject`` (which carry SQLAlchemy session state we don't want
+    # to touch from the async generator).
+    validator_grade = engine_request.grade
+    validator_subject_code = subject.code
+
     completion_payload: dict = {
-        "se_codes_targeted": list(se_codes),
+        "se_codes_targeted": se_codes_list,
         "voice_module_id": voice_module_id,
         "voice_module_hash": voice_module_hash,
         "persona": persona,
@@ -210,6 +230,12 @@ def generate_cmcp_stream(
         # generations OR when the auto-emit fails for any reason — the
         # primary generation never depends on auto-emit success.
         "parent_companion": None,
+        # 1D-3 (#4494): populated below by the ValidationPipeline. ``None``
+        # / ``False`` when the validator was skipped (empty content / no
+        # SEs) or raised — alignment is a soft signal, not a generation
+        # gate, in M1.
+        "alignment_score": None,
+        "flag_for_review": False,
     }
 
     # Snapshot the inputs the Parent Companion service needs that aren't
@@ -272,8 +298,9 @@ def generate_cmcp_stream(
         wire format the issue specifies.
 
         Accumulates the streamed text into ``full_content`` so the
-        1F-3 Parent Companion auto-emit can run against the complete
-        artifact once the primary stream finishes cleanly.
+        1F-3 Parent Companion auto-emit + the 1D-3 ValidationPipeline
+        run can both operate against the complete artifact once the
+        primary stream finishes cleanly.
         """
         full_content_parts: list[str] = []
         try:
@@ -289,8 +316,8 @@ def generate_cmcp_stream(
                 elif ev_type == "done":
                     # Stream finished cleanly — run the Parent Companion
                     # auto-emit (no-op for non-student personas) then
-                    # emit the completion event with the curriculum
-                    # metadata + optional companion payload.
+                    # run the 1D-3 alignment pipeline before emitting
+                    # the completion event.
                     done_data = ai_event.get("data") or {}
                     full_content = (
                         done_data.get("full_content")
@@ -300,7 +327,22 @@ def generate_cmcp_stream(
                     completion_payload["parent_companion"] = (
                         await _maybe_emit_parent_companion(full_content)
                     )
-                    yield _sse_event("complete", completion_payload)
+                    alignment_score, flag_for_review = (
+                        await _run_alignment_pipeline(
+                            generated_content=full_content,
+                            expected_se_codes=se_codes_list,
+                            grade=validator_grade,
+                            subject_code=validator_subject_code,
+                        )
+                    )
+                    completion_payload["alignment_score"] = alignment_score
+                    completion_payload["flag_for_review"] = flag_for_review
+                    # Round-trip through the typed schema so the wire
+                    # payload matches ``StreamCompletionEvent`` exactly
+                    # (catches typos in payload-building via Pydantic's
+                    # ``extra='forbid'`` config + per-field validators).
+                    typed = StreamCompletionEvent(**completion_payload)
+                    yield _sse_event("complete", typed.model_dump())
                     return
                 elif ev_type == "error":
                     yield _sse_event(
@@ -319,3 +361,50 @@ def generate_cmcp_stream(
             return
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+async def _run_alignment_pipeline(
+    *,
+    generated_content: str,
+    expected_se_codes: list[str],
+    grade: int,
+    subject_code: str,
+) -> tuple[float | None, bool]:
+    """Run the 1D-2 ``ValidationPipeline`` and return ``(score, flag)``.
+
+    Returns ``(None, False)`` when the validator was skipped (empty
+    content / no expected SEs) or raised — alignment is a soft signal
+    in M1, not a generation gate, so a pipeline exception MUST NOT
+    block the artifact from reaching the client.
+
+    The streaming route does not currently ask the model to emit a
+    ``se_codes_covered`` self-report (that wire is deferred until
+    persistence lands in M3). We pass the expected SE codes as the
+    "self-report" — i.e., we trust the prompt's anchoring — so the
+    composed ``alignment_score`` collapses to the second-pass coverage
+    rate, which is the only independent signal we have in M1.
+    """
+    if not generated_content or not generated_content.strip():
+        return None, False
+    if not expected_se_codes:
+        return None, False
+    try:
+        pipeline = ValidationPipeline()
+        result = await pipeline.validate(
+            generated_content=generated_content,
+            model_self_report_se_codes=list(expected_se_codes),
+            expected_se_codes=list(expected_se_codes),
+            grade=grade,
+            subject_code=subject_code,
+        )
+    except Exception:
+        # Validator failure must not block the artifact — log + ship
+        # the artifact with ``alignment_score=None`` so the client
+        # can render a "score unavailable" pill rather than a 500.
+        logger.exception(
+            "CMCP stream alignment validation failed grade=%s subject=%s",
+            grade,
+            subject_code,
+        )
+        return None, False
+    return result.alignment_score, result.flag_for_review

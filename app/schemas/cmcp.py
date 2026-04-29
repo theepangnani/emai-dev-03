@@ -18,11 +18,14 @@ Stripe scope
   * ``GenerationPreview`` — response model returning the constructed
     prompt + targeted SE codes + persona + voice-module pointer. No
     Claude/OpenAI call yet (M1-E 1E-1 wires that).
-- 1F-3 (this stripe, #4497) adds the typed schema for the streaming
-  route's ``event: complete`` payload, including the optional
+- 1F-3 (#4497) adds the typed schema for the streaming route's
+  ``event: complete`` payload, including the optional
   ``parent_companion`` field auto-emitted alongside student-facing
   artifacts. Persistence + DCI/Bridge surfacing remains M3 territory —
   this stripe ships the inline auto-emit only.
+- 1D-3 (#4494) extends ``StreamCompletionEvent`` with
+  ``alignment_score`` + ``flag_for_review`` — the composed result of
+  the 1D-2 ``ValidationPipeline`` run over the streamed content.
 
 The id-based ``GenerationRequest`` and the code-based
 ``CMCPGenerateRequest`` are intentionally kept distinct: the engine is
@@ -251,7 +254,7 @@ class GenerationPreview(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 1F-3 (#4497): streaming route completion-event schema
+# 1F-3 (#4497) + 1D-3 (#4494): streaming route completion-event schema
 # ---------------------------------------------------------------------------
 
 
@@ -270,15 +273,22 @@ class StreamCompletionEvent(BaseModel):
     """Typed body of the ``event: complete`` SSE frame on the streaming route.
 
     Mirrors the dict the streaming route already emits today, plus the
-    1F-3 (``parent_companion``) extension. Kept here as a typed schema so
-    consumers (frontend hook, integration tests) can pin the wire shape
-    without re-deriving it from the route module.
+    1F-3 (``parent_companion``) extension and the 1D-3
+    (``alignment_score`` / ``flag_for_review``) extension. Kept here as a
+    typed schema so consumers (frontend hook, integration tests) can pin
+    the wire shape without re-deriving it from the route module.
 
     The ``parent_companion`` field is populated **only** when the
     generation targets a student-facing artifact for ``persona='student'``
     AND the auto-emit succeeds. Auto-emit failure is non-fatal — the
     route logs and emits ``parent_companion=None`` rather than failing
     the primary generation.
+
+    The ``alignment_score`` + ``flag_for_review`` fields (1D-3) carry the
+    composed result of ``ValidationPipeline.validate`` (1D-2) run over
+    the full streamed content. ``alignment_score`` is ``None`` when the
+    validator could not run (empty content) or raised — alignment is a
+    soft signal in M1, not a generation gate.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -311,5 +321,25 @@ class StreamCompletionEvent(BaseModel):
             "Amendment A2). ``None`` for teacher- and parent-facing "
             "generations OR when auto-emit fails (non-fatal — the primary "
             "generation always succeeds independently)."
+        ),
+    )
+    alignment_score: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "1D-3 (#4494): composed alignment score from "
+            "``ValidationPipeline.validate`` (1D-2) over the streamed "
+            "content. ``None`` when the validator could not run (e.g., "
+            "empty content) or raised — alignment is a soft signal in M1, "
+            "not a generation gate."
+        ),
+    )
+    flag_for_review: bool = Field(
+        default=False,
+        description=(
+            "1D-3 (#4494): True when ``alignment_score < REVIEW_THRESHOLD`` "
+            "per the 1D-2 pipeline. False when the validator was skipped or "
+            "the score cleared the review threshold."
         ),
     )
