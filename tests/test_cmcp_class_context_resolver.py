@@ -245,9 +245,13 @@ def test_resolve_pulls_recent_announcements(db_session, teacher_user, course):
     assert env.classroom_announcements[0]["creator_name"] == "Mr. Thompson"
 
 
-def test_resolve_excludes_announcements_older_than_14_days(
+def test_resolve_includes_freshly_ingested_announcement_with_stale_creation_time(
     db_session, teacher_user, course
 ):
+    """Documented OR-on-created_at semantics: a freshly ingested item with
+    stale ``creation_time`` still surfaces because ``created_at`` is fresh.
+    This is intentional — the teacher just uploaded it, so it IS recent
+    context for the prompt even if the GC creation timestamp is months old."""
     from app.models.course_announcement import CourseAnnouncement
     from app.services.cmcp.class_context_resolver import ClassContextResolver
 
@@ -255,18 +259,10 @@ def test_resolve_excludes_announcements_older_than_14_days(
     stale = CourseAnnouncement(
         course_id=course.id,
         google_announcement_id=f"gca-stale-{uuid4().hex[:8]}",
-        text="Stale announcement from last month.",
+        text="Old GC announcement, just ingested today.",
         creator_name="Mr. Thompson",
         creation_time=now - timedelta(days=30),
     )
-    # ``created_at`` is server_default=now() — it can't be backdated via
-    # the constructor, but committing a row whose creation_time is 30
-    # days old still leaves created_at fresh.  Our resolver currently
-    # ORs both timestamps: any row whose created_at is fresh will pass
-    # the recency filter even if creation_time is stale.  This test
-    # therefore asserts the documented intent ("rows are surfaced when
-    # EITHER timestamp is within 14 days") rather than asserting
-    # exclusion of fresh-ingested old GC items.
     db_session.add(stale)
     db_session.commit()
 
@@ -276,11 +272,51 @@ def test_resolve_excludes_announcements_older_than_14_days(
         target_se_codes=[],
         db=db_session,
     )
-    # The OR-on-created_at semantics mean a freshly ingested old GC item
-    # IS surfaced (it's still meaningful context — the teacher just
-    # uploaded it).  We assert at least the row appears so this test
-    # captures the documented behavior.
-    assert len(env.classroom_announcements) >= 1
+    assert len(env.classroom_announcements) == 1
+
+
+def test_resolve_excludes_announcement_when_both_timestamps_older_than_14_days(
+    db_session, teacher_user, course
+):
+    """When BOTH ``creation_time`` AND ``created_at`` are >14 days old, the
+    row drops out — this is the actual recency contract from A1 FR-02.5b.
+
+    Backdate ``created_at`` via direct SQL UPDATE because the column has
+    ``server_default=now()`` which the constructor can't override.
+    """
+    from sqlalchemy import text
+
+    from app.models.course_announcement import CourseAnnouncement
+    from app.services.cmcp.class_context_resolver import ClassContextResolver
+
+    now = datetime.now(timezone.utc)
+    stale = CourseAnnouncement(
+        course_id=course.id,
+        google_announcement_id=f"gca-stale-both-{uuid4().hex[:8]}",
+        text="Truly stale announcement.",
+        creator_name="Mr. Thompson",
+        creation_time=now - timedelta(days=30),
+    )
+    db_session.add(stale)
+    db_session.commit()
+    db_session.refresh(stale)
+
+    backdate = (now - timedelta(days=30)).isoformat()
+    db_session.execute(
+        text(
+            "UPDATE course_announcements SET created_at = :ts WHERE id = :id"
+        ),
+        {"ts": backdate, "id": stale.id},
+    )
+    db_session.commit()
+
+    env = ClassContextResolver().resolve(
+        user_id=teacher_user.id,
+        course_id=course.id,
+        target_se_codes=[],
+        db=db_session,
+    )
+    assert len(env.classroom_announcements) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +437,7 @@ def test_resolve_pulls_approved_artifacts_with_se_overlap(
 
     approved = StudyGuide(
         user_id=teacher_user.id,
+        course_id=course.id,
         title="Slope mastery",
         content="...",
         guide_type="study_guide",
@@ -409,6 +446,7 @@ def test_resolve_pulls_approved_artifacts_with_se_overlap(
     )
     draft = StudyGuide(
         user_id=teacher_user.id,
+        course_id=course.id,
         title="Draft slope guide",
         content="...",
         guide_type="study_guide",
@@ -417,6 +455,7 @@ def test_resolve_pulls_approved_artifacts_with_se_overlap(
     )
     no_overlap = StudyGuide(
         user_id=teacher_user.id,
+        course_id=course.id,
         title="Geometry guide",
         content="...",
         guide_type="study_guide",
@@ -441,6 +480,100 @@ def test_resolve_pulls_approved_artifacts_with_se_overlap(
     assert matched["matched_se_codes"] == ["MTH8.A1.1"]
 
 
+def test_resolve_excludes_artifacts_from_other_courses(
+    db_session, teacher_user, course, teacher
+):
+    """Per #4477 review: library query is course-scoped when course_id is set."""
+    from app.models.course import Course
+    from app.models.study_guide import StudyGuide
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.class_context_resolver import ClassContextResolver
+
+    other_course = Course(
+        name="Other math",
+        subject="Math",
+        teacher_id=teacher.id,
+        google_classroom_id=f"gc-other-{uuid4().hex[:8]}",
+    )
+    db_session.add(other_course)
+    db_session.commit()
+    db_session.refresh(other_course)
+
+    own = StudyGuide(
+        user_id=teacher_user.id,
+        course_id=course.id,
+        title="Own course slope",
+        content="...",
+        guide_type="study_guide",
+        state=ArtifactState.APPROVED,
+        se_codes=["MTH8.A1.1"],
+    )
+    foreign = StudyGuide(
+        user_id=teacher_user.id,
+        course_id=other_course.id,
+        title="Other course slope",
+        content="...",
+        guide_type="study_guide",
+        state=ArtifactState.APPROVED,
+        se_codes=["MTH8.A1.1"],
+    )
+    db_session.add_all([own, foreign])
+    db_session.commit()
+
+    env = ClassContextResolver().resolve(
+        user_id=teacher_user.id,
+        course_id=course.id,
+        target_se_codes=["MTH8.A1.1"],
+        db=db_session,
+    )
+    titles = [a["title"] for a in env.teacher_library_artifacts]
+    assert "Own course slope" in titles
+    assert "Other course slope" not in titles
+
+
+def test_resolve_pulls_artifacts_across_courses_when_course_id_none(
+    db_session, teacher_user, course, teacher
+):
+    """When course_id is None (CEG-only mode), the library scan is unscoped
+    so callers without a course context can still match approved artifacts
+    by SE codes alone."""
+    from app.models.course import Course
+    from app.models.study_guide import StudyGuide
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.class_context_resolver import ClassContextResolver
+
+    other_course = Course(
+        name="Other math",
+        subject="Math",
+        teacher_id=teacher.id,
+        google_classroom_id=f"gc-cross-{uuid4().hex[:8]}",
+    )
+    db_session.add(other_course)
+    db_session.commit()
+    db_session.refresh(other_course)
+
+    a = StudyGuide(
+        user_id=teacher_user.id,
+        course_id=other_course.id,
+        title="Approved cross-course slope",
+        content="...",
+        guide_type="study_guide",
+        state=ArtifactState.APPROVED,
+        se_codes=["MTH8.A1.1"],
+    )
+    db_session.add(a)
+    db_session.commit()
+
+    env = ClassContextResolver().resolve(
+        user_id=teacher_user.id,
+        course_id=None,
+        target_se_codes=["MTH8.A1.1"],
+        db=db_session,
+    )
+    titles = [a["title"] for a in env.teacher_library_artifacts]
+    assert "Approved cross-course slope" in titles
+
+
 def test_resolve_skips_library_when_no_target_se_codes(
     db_session, teacher_user, course
 ):
@@ -450,6 +583,7 @@ def test_resolve_skips_library_when_no_target_se_codes(
 
     approved = StudyGuide(
         user_id=teacher_user.id,
+        course_id=course.id,
         title="Slope mastery",
         content="...",
         guide_type="study_guide",
@@ -587,6 +721,7 @@ def test_envelope_contains_no_student_pii(
     db_session.add(
         StudyGuide(
             user_id=teacher_user.id,
+            course_id=course.id,
             title="Slope mastery",
             content="...",
             guide_type="study_guide",
@@ -633,33 +768,24 @@ def test_envelope_contains_no_student_pii(
             assert not (forbidden_keys & item.keys())
 
 
-def test_resolve_with_mocked_dependencies_does_not_call_real_apis(
-    monkeypatch, db_session, teacher_user, course
-):
-    """Smoke test — ensure the resolver pulls only from the local DB.
+def test_resolver_module_does_not_import_network_clients():
+    """Per #4472 hard rule "DO NOT make real API calls" — the resolver's
+    contract is to read cached DB rows only.  Assert the source file does
+    not import any network client (googleapiclient, requests, httpx).
 
-    Per #4472 hard rule "DO NOT make real API calls", we monkeypatch the
-    google_classroom client builder.  If the resolver ever tries to use
-    it, the test fails immediately rather than reaching the network.
+    A grep on the source file is more robust than a monkeypatch because
+    it catches the failure at module-import time rather than at a
+    specific call site.
     """
-    import app.services.google_classroom as gc
+    import inspect
 
-    def _explode(*args, **kwargs):
-        raise AssertionError(
-            "ClassContextResolver attempted to call the live Google "
-            "Classroom client — must read cached CourseAnnouncement rows."
+    from app.services.cmcp import class_context_resolver
+
+    src = inspect.getsource(class_context_resolver)
+
+    forbidden = ["googleapiclient", "import requests", "import httpx", "urllib.request"]
+    for token in forbidden:
+        assert token not in src, (
+            f"class_context_resolver.py imports network client {token!r} — "
+            f"it must read only cached DB rows."
         )
-
-    monkeypatch.setattr(gc, "build", _explode, raising=False)
-
-    from app.services.cmcp.class_context_resolver import ClassContextResolver
-
-    # No data — just verify the resolver runs cleanly with the
-    # GC client wired to explode.
-    env = ClassContextResolver().resolve(
-        user_id=teacher_user.id,
-        course_id=course.id,
-        target_se_codes=["A1.1"],
-        db=db_session,
-    )
-    assert env.fallback_used is True

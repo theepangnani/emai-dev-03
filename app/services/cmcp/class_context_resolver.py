@@ -36,10 +36,21 @@ Privacy boundary
 ----------------
 
 Per A1 + DD §5.5 ("No PII in generation prompts"), the envelope MUST NOT
-carry student names, student IDs, parent names, or per-student grades.
-Inputs are filtered to course-level / teacher-authored content only.
-``user_id`` (the *teacher* whose library is being queried) is preserved
-on the envelope's input metadata for audit but is NOT a student field.
+carry student names, student IDs, parent names, or per-student grades
+**joined from the schema**. Inputs are filtered to course-level /
+teacher-authored content only.  ``user_id`` (the *teacher* whose library
+is being queried) is preserved on the envelope's input metadata for
+audit but is NOT a student field.
+
+Caveat — incidental free-text PII: ``TeacherCommunication.subject`` and
+``TeacherCommunication.ai_summary`` are AI-summarized from the teacher's
+inbox.  No student/parent schema fields are joined, but the free-text
+content of these excerpts may incidentally contain student or parent
+first names that slipped past upstream summarization.  Downstream
+callers (1B-3) should treat the envelope as **low-PII**, not
+**zero-PII**, until a dedicated sanitizer lands.  Both fields are
+length-capped (``_SUMMARY_MAX_CHARS`` / ``_SUBJECT_MAX_CHARS``) and the
+digest is item-capped (``_DIGEST_ITEM_CAP``) to bound exposure.
 
 Stubs / known gaps
 ------------------
@@ -97,6 +108,11 @@ _DIGEST_WINDOW_DAYS = 30
 #: dict.  10 items keeps the eventual prompt under the budget while still
 #: covering a typical 30-day teacher inbox.
 _DIGEST_ITEM_CAP = 10
+
+#: Per-item subject cap for teacher-digest items.  Subjects come from the
+#: teacher's inbox and may carry incidental student/parent first names —
+#: cap before surfacing.
+_SUBJECT_MAX_CHARS = 200
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +228,9 @@ class ClassContextResolver:
             if course_id
             else None
         )
-        teacher_library = self._fetch_library_artifacts(target_se_set, db)
+        teacher_library = self._fetch_library_artifacts(
+            course_id, target_se_set, db
+        )
 
         # Audit metadata — per A1, envelope_size is the count of cited
         # sources across all four categories.  teacher_digest_summary
@@ -397,7 +415,7 @@ class ClassContextResolver:
         for r in rows:
             items.append(
                 {
-                    "subject": r.subject,
+                    "subject": _truncate(r.subject, _SUBJECT_MAX_CHARS),
                     "ai_summary": _truncate(r.ai_summary),
                     "received_at": (
                         r.received_at.isoformat() if r.received_at else None
@@ -416,6 +434,7 @@ class ClassContextResolver:
 
     def _fetch_library_artifacts(
         self,
+        course_id: int | None,
         target_se_codes: set[str],
         db: Session,
     ) -> list[dict[str, Any]]:
@@ -424,7 +443,11 @@ class ClassContextResolver:
         Implemented as a load-then-filter overlap because dev-03's
         ``se_codes`` column uses portable JSON (JSONB on PG, JSON on
         SQLite) and SQLite has no native array-overlap operator.  We
-        gate the load with ``state == APPROVED`` to keep the scan small.
+        gate the load with ``state == APPROVED`` and (when provided)
+        ``course_id`` to keep the scan small — without the course filter
+        the candidate set grows linearly with the platform's APPROVED
+        corpus across all boards.  A dialect-aware JSONB containment
+        path is deferred to M3 telemetry tuning.
 
         Privacy: ``StudyGuide`` rows can carry ``user_id`` (the author);
         we deliberately omit that field from the cell so envelope
@@ -438,15 +461,14 @@ class ClassContextResolver:
         # but we keep the resolver decoupled from the state-machine class.
         from app.services.cmcp.artifact_state import ArtifactState
 
-        rows = (
-            db.query(StudyGuide)
-            .filter(
-                StudyGuide.state == ArtifactState.APPROVED,
-                StudyGuide.archived_at.is_(None),
-                StudyGuide.se_codes.isnot(None),
-            )
-            .all()
+        q = db.query(StudyGuide).filter(
+            StudyGuide.state == ArtifactState.APPROVED,
+            StudyGuide.archived_at.is_(None),
+            StudyGuide.se_codes.isnot(None),
         )
+        if course_id is not None:
+            q = q.filter(StudyGuide.course_id == course_id)
+        rows = q.all()
 
         out: list[dict[str, Any]] = []
         for r in rows:
