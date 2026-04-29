@@ -20,10 +20,12 @@
   background: var(--color-warning-bg, #f6ead3);
   color: var(--color-warning-text, #7a5a1a);
   /* Color is one of two indicators per WCAG 1.4.1; the icon + label combo
-     is the actual meaning carrier. The hairline border keeps the chip
-     legible even when --color-warning-bg falls back to a near-surface tint
-     in dark mode. */
-  border: 1px solid var(--color-warning, #d4a24b);
+     is the actual meaning carrier. The border uses the same swatch as the
+     label text (--color-warning-text) so the chip's affordance boundary
+     meets WCAG 1.4.11 Non-Text Contrast (>=3:1 against --color-warning-bg)
+     in both light and dark themes — the previous --color-warning border
+     sat at ~1.4:1 against the bg and would have been near-invisible. */
+  border: 1px solid var(--color-warning-text, #7a5a1a);
 }
 
 .cmcp-generic-badge-icon {

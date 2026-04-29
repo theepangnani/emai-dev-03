@@ -14,8 +14,12 @@
  * Accessibility (WCAG 1.4.1):
  * - Color is NOT the only indicator: an inline icon and a text label are both
  *   present, and the icon is decorative (``aria-hidden``) while the label
- *   carries the meaning. The component also exposes ``role="status"`` so
- *   assistive tech announces the warning when it appears.
+ *   carries the meaning.
+ * - We deliberately do NOT use ``role="status"`` (an ``aria-live="polite"``
+ *   region): NVDA+Firefox don't announce live regions whose contents are
+ *   present at insertion time, and re-mount-driven re-announces produce
+ *   duplicate audible warnings. The badge is a static label, not breaking
+ *   news — the visible text + an explicit ``aria-label`` carry the meaning.
  *
  * Token policy: Uses existing global tokens (``--color-warning-bg``,
  * ``--color-warning-text``, ``--color-warning``, ``--radius-sm``, ``--font-sans``).
@@ -33,6 +37,8 @@ interface GenericBadgeProps {
 }
 
 export const GENERIC_BADGE_LABEL = 'generic — no class-vocab anchoring';
+export const GENERIC_BADGE_ARIA_LABEL =
+  'Warning: this artifact is generic — no class-vocab anchoring.';
 
 export function GenericBadge({ fallbackUsed, className }: GenericBadgeProps) {
   if (!fallbackUsed) return null;
@@ -43,7 +49,7 @@ export function GenericBadge({ fallbackUsed, className }: GenericBadgeProps) {
   return (
     <span
       className={classes.join(' ')}
-      role="status"
+      aria-label={GENERIC_BADGE_ARIA_LABEL}
       data-testid="cmcp-generic-badge"
     >
       {/* Decorative warning-triangle icon — text label below carries the
