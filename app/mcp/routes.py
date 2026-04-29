@@ -57,7 +57,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -94,8 +94,8 @@ _oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def require_mcp_enabled(
+    request: Request,
     token: str = Depends(_oauth2_scheme),
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
     """Dependency: 401 if unauthed / wrong token type, 403 if flag OFF.
@@ -104,20 +104,31 @@ def require_mcp_enabled(
 
     1. ``OAuth2PasswordBearer`` short-circuits with 401 when no token is
        presented. This is enforced by FastAPI before this function runs.
-    2. ``get_current_user`` validates the JWT signature + exp + blacklist
-       + user-row existence + deletion status. Failures raise 401.
-    3. :func:`verify_mcp_token` adds the strict ``type=access`` check
-       that ``get_current_user`` doesn't enforce — so a refresh /
-       unsubscribe / password-reset token signed with the same secret
-       can't authenticate an MCP transport session (#4557 hardening).
+    2. :func:`verify_mcp_token` runs FIRST, before the heavier
+       ``get_current_user`` lookup. This adds the strict ``type=access``
+       check that ``get_current_user`` doesn't enforce, so a leaked
+       refresh / unsubscribe / password-reset token signed with the same
+       secret is rejected before any User-row side effects could fire
+       (#4559 review pass-1 hardening — preempts a future world where
+       ``get_current_user`` gains last-seen / login-tracking writes).
+    3. ``get_current_user`` then validates the JWT signature + exp +
+       blacklist + user-row existence + deletion status. Failures raise
+       401. Called via direct invocation (not ``Depends``) so step 2
+       always runs first; reuse keeps the blacklist / deletion checks
+       consistent with the REST surface.
     4. The flag check is last so unauth requests always see 401, never
        a 403 that would leak flag state to anonymous probers.
     """
-    # Re-validate token type. ``get_current_user`` already decoded the
-    # JWT for its own checks, but it doesn't gate on ``type``; running
-    # ``verify_mcp_token`` here adds the access-token-type assertion
-    # without coupling this module to ``get_current_user``'s internals.
+    # Strict token-type check FIRST — reject refresh/unsubscribe/etc.
+    # before any DB work or User-row reads happen.
     verify_mcp_token(token)
+
+    # Now resolve the authoritative User. Reusing ``get_current_user``
+    # keeps blacklist + deletion checks consistent with the REST
+    # surface; calling it directly (not via ``Depends``) ensures the
+    # token-type check above always runs first regardless of FastAPI's
+    # dependency-resolution order.
+    current_user = get_current_user(request=request, token=token, db=db)
 
     if not is_feature_enabled(MCP_FEATURE_FLAG_KEY, db=db):
         raise HTTPException(

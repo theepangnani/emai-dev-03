@@ -113,6 +113,28 @@ class ToolDescriptor:
     input_schema: dict[str, Any]
     roles: tuple[str, ...]
     handler: ToolHandler = field(repr=False, compare=False)
+    # Precomputed normalized allowlist (#4559 review pass-1). Built in
+    # ``__post_init__`` so :meth:`is_role_allowed` can do an O(1) hash
+    # lookup on every catalog request and dispatch call without
+    # rebuilding a set comprehension. ``init=False`` so the registry's
+    # construction sites don't have to pass it; ``compare=False`` so
+    # equality stays driven by the user-visible fields.
+    _normalized_roles: frozenset[str] = field(
+        init=False, repr=False, compare=False
+    )
+
+    def __post_init__(self) -> None:
+        """Compute :attr:`_normalized_roles` once at construction time.
+
+        Frozen dataclasses block normal attribute assignment, so we go
+        through ``object.__setattr__`` — the standard escape hatch for
+        ``__post_init__`` on a frozen dataclass.
+        """
+        object.__setattr__(
+            self,
+            "_normalized_roles",
+            frozenset(r.strip().upper() for r in self.roles),
+        )
 
     def is_role_allowed(self, role: str | None) -> bool:
         """Return ``True`` iff *role* (case-insensitive) is in the allowlist.
@@ -122,11 +144,15 @@ class ToolDescriptor:
         tool's ``roles`` tuple if they should see it. (The phase-2
         ``ROLE_TOOLS`` admin-bypass sentinel applies only to that
         endpoint-tool surface, not to the 2B-* MCP tools.)
+
+        O(1) on the precomputed :attr:`_normalized_roles` frozenset
+        (#4559 review pass-1) — called twice per ``call_tool`` request
+        (catalog filter + dispatch re-check) so the per-call cost
+        matters as more tools land in 2B-*.
         """
         if not role:
             return False
-        norm = role.strip().upper()
-        return norm in {r.strip().upper() for r in self.roles}
+        return role.strip().upper() in self._normalized_roles
 
     def to_public_dict(self) -> dict[str, Any]:
         """Return the JSON-safe form for ``GET /mcp/list_tools``.
