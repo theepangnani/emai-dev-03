@@ -50,7 +50,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.routes.cmcp_generate import generate_cmcp_preview_sync
@@ -178,6 +178,20 @@ def _load_review_artifact(
 
 
 _SortField = Literal["created_at", "content_type", "subject"]
+
+
+# States in which the review queue allows mutating the artifact (PATCH +
+# regenerate). APPROVED / APPROVED_VERIFIED / ARCHIVED are intentionally
+# excluded — those are downstream-consumed by surface stripes (parent
+# companion fetch, dispatcher fan-out, Tasks emit) and silent body
+# mutation would break the audit + consumption invariants.
+_MUTABLE_REVIEW_STATES: frozenset[str] = frozenset(
+    {
+        ArtifactState.PENDING_REVIEW,
+        ArtifactState.REJECTED,
+        ArtifactState.DRAFT,
+    }
+)
 
 
 class ReviewQueueItem(BaseModel):
@@ -328,8 +342,13 @@ def _edit_history_list(value: Any) -> list[EditHistoryEntry]:
             continue
         try:
             out.append(EditHistoryEntry(**entry))
-        except Exception:
+        except ValidationError as exc:
             # Defensive: a malformed legacy entry shouldn't 500 the GET.
+            # Logged at DEBUG so ops can spot a recurring schema-drift
+            # signal without polluting INFO/WARN streams.
+            logger.debug(
+                "Dropping malformed edit_history entry: %s", exc
+            )
             continue
     return out
 
@@ -488,11 +507,23 @@ def patch_review_artifact(
 
     Persists the new full Markdown body to ``content`` and stamps a
     ``{editor_id, edit_at, before_snippet, after_snippet}`` entry on
-    ``edit_history`` (append-only). State is left untouched — the edit
-    can happen in any non-terminal state, the frontend gates the call
-    contextually.
+    ``edit_history`` (append-only). State is left untouched on the
+    edit — but the edit is only permitted in ``_MUTABLE_REVIEW_STATES``
+    (PENDING_REVIEW, REJECTED, DRAFT). Editing an APPROVED /
+    APPROVED_VERIFIED / ARCHIVED artifact would silently mutate a
+    published body and break the audit + downstream-consumption
+    invariants, so we 409 instead.
     """
     artifact = _load_review_artifact(artifact_id, current_user, db)
+
+    if artifact.state not in _MUTABLE_REVIEW_STATES:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Cannot edit artifact in state {artifact.state!r}; "
+                f"expected one of PENDING_REVIEW/REJECTED/DRAFT"
+            ),
+        )
 
     before_snip = _snippet(artifact.content)
     after_snip = _snippet(payload.content)
@@ -653,16 +684,12 @@ def regenerate_review_artifact(
     """
     artifact = _load_review_artifact(artifact_id, current_user, db)
 
-    # Regenerate is only meaningful in non-terminal review states.
-    # PENDING_REVIEW is the canonical entry; REJECTED also benefits
-    # because the issue's contract keeps state=PENDING_REVIEW after
-    # regeneration. Block APPROVED / APPROVED_VERIFIED / ARCHIVED so a
-    # caller can't quietly mutate a published artifact.
-    if artifact.state not in (
-        ArtifactState.PENDING_REVIEW,
-        ArtifactState.REJECTED,
-        ArtifactState.DRAFT,
-    ):
+    # Regenerate is only meaningful in mutable review states (same set
+    # as PATCH — PENDING_REVIEW canonical, REJECTED + DRAFT included
+    # since the contract keeps state=PENDING_REVIEW after regeneration).
+    # Block APPROVED / APPROVED_VERIFIED / ARCHIVED so a caller can't
+    # quietly mutate a published artifact.
+    if artifact.state not in _MUTABLE_REVIEW_STATES:
         raise HTTPException(
             status_code=409,
             detail=(
@@ -670,6 +697,10 @@ def regenerate_review_artifact(
                 f"expected one of PENDING_REVIEW/REJECTED/DRAFT"
             ),
         )
+
+    # Capture the pre-regenerate snippet for the audit trail BEFORE we
+    # mutate ``artifact.content`` below.
+    before_snippet = _snippet(artifact.content)
 
     preview = generate_cmcp_preview_sync(
         payload=payload.request,
@@ -680,21 +711,75 @@ def regenerate_review_artifact(
     # ``generate_cmcp_preview_sync`` inserts a fresh row via
     # ``persist_cmcp_artifact``. Delete it so the regenerate contract
     # ("same id") holds. ``preview.id`` is None only when the insert
-    # was skipped/failed — defensive None-check below.
+    # was skipped/failed — defensive None-check below. Wrap in its own
+    # try/except so a failed cleanup (e.g., FK constraint when future
+    # stripes add child relationships) doesn't roll back the artifact
+    # update — leaking a fresh row is a soft cost, the artifact update
+    # is the user-visible operation.
     if preview.id is not None and preview.id != artifact.id:
-        stale = (
-            db.query(StudyGuide)
-            .filter(StudyGuide.id == preview.id)
-            .first()
-        )
-        if stale is not None:
-            db.delete(stale)
+        try:
+            stale = (
+                db.query(StudyGuide)
+                .filter(StudyGuide.id == preview.id)
+                .first()
+            )
+            if stale is not None:
+                db.delete(stale)
+                db.flush()
+        except Exception:
+            logger.exception(
+                "cmcp.review.regenerate cleanup failed; leaking fresh row "
+                "id=%s — will be cleaned up by a future janitor",
+                preview.id,
+            )
+            db.rollback()
+            # Re-fetch the artifact since rollback detached it.
+            artifact = (
+                db.query(StudyGuide)
+                .filter(StudyGuide.id == artifact_id)
+                .first()
+            )
+            if artifact is None:
+                # Defensive — the row existed at the start of the
+                # request; vanishing mid-flight is a 500-class fault.
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        f"Artifact {artifact_id} disappeared during "
+                        f"regenerate cleanup"
+                    ),
+                )
+
+    # Stamp the edit_history with a regenerate marker BEFORE the commit
+    # so the audit trail records the entire-body replacement, not just
+    # the in-place ``cmcp.review.regenerated`` ops log line.
+    history = artifact.edit_history
+    if history is None:
+        history = []
+    elif isinstance(history, str):
+        try:
+            history = json.loads(history)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            history = []
+    elif not isinstance(history, list):
+        history = []
+    else:
+        history = list(history)
+    history.append(
+        {
+            "editor_id": current_user.id,
+            "edit_at": datetime.now(timezone.utc).isoformat(),
+            "before_snippet": before_snippet,
+            "after_snippet": _snippet(preview.prompt),
+        }
+    )
 
     artifact.content = preview.prompt
     artifact.se_codes = list(preview.se_codes_targeted) if preview.se_codes_targeted else None
     artifact.voice_module_hash = preview.voice_module_hash
     artifact.requested_persona = preview.persona
     artifact.state = ArtifactState.PENDING_REVIEW
+    artifact.edit_history = history
     # A regeneration invalidates the previous review verdict.
     artifact.reviewed_by_user_id = None
     artifact.reviewed_at = None

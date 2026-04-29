@@ -442,6 +442,54 @@ def test_patch_persists_content_and_grows_edit_history(
         db_session.commit()
 
 
+def test_patch_terminal_state_409(
+    client, db_session, teacher_user, cmcp_flag_on
+):
+    """PATCH on APPROVED / APPROVED_VERIFIED / ARCHIVED → 409.
+
+    Mutation-test guard: if the state-gate were removed, the PATCH would
+    silently succeed and the body would be replaced — this test would
+    catch that by asserting 409 (not 200).
+    """
+    from app.models.study_guide import StudyGuide
+    from app.services.cmcp.artifact_state import ArtifactState
+
+    course = _make_course_owned_by(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.APPROVED,
+        content="Published body — must not mutate.",
+    )
+    try:
+        headers = _auth(client, teacher_user.email)
+        resp = client.patch(
+            f"/api/cmcp/review/{art.id}",
+            json={"content": "Sneaky edit attempt."},
+            headers=headers,
+        )
+        assert resp.status_code == 409, resp.text
+        # Verify the body was NOT mutated (mutation-test guard).
+        db_session.expire_all()
+        row = (
+            db_session.query(StudyGuide)
+            .filter(StudyGuide.id == art.id)
+            .first()
+        )
+        assert row.content == "Published body — must not mutate."
+    finally:
+        from app.models.course import Course
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == art.id
+        ).delete(synchronize_session=False)
+        db_session.query(Course).filter(Course.id == course).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+
+
 def test_patch_cross_class_denied_404(
     client, db_session, teacher_user, other_teacher_user, cmcp_flag_on
 ):
@@ -720,6 +768,116 @@ def test_regenerate_replaces_content_keeps_id_and_pending_state(
         assert row is not None
         assert row.content == "Regenerated prompt content."
         assert row.state == ArtifactState.PENDING_REVIEW
+    finally:
+        from app.models.course import Course
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == art.id
+        ).delete(synchronize_session=False)
+        db_session.query(Course).filter(Course.id == course).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+
+
+def test_regenerate_stamps_edit_history(
+    client, db_session, teacher_user, cmcp_flag_on
+):
+    """Regenerate appends an entry to edit_history (audit trail)."""
+    from app.models.study_guide import StudyGuide
+    from app.schemas.cmcp import GenerationPreview
+    from app.services.cmcp.artifact_state import ArtifactState
+
+    course = _make_course_owned_by(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.PENDING_REVIEW,
+        content="Original prompt.",
+    )
+
+    fake_preview = GenerationPreview(
+        id=None,
+        prompt="Regenerated prompt content.",
+        se_codes_targeted=["B2.1"],
+        voice_module_id="voice-module-1",
+        voice_module_hash="d" * 64,
+        persona="teacher",
+    )
+
+    try:
+        with patch(
+            "app.api.routes.cmcp_review.generate_cmcp_preview_sync",
+            return_value=fake_preview,
+        ):
+            headers = _auth(client, teacher_user.email)
+            body = {
+                "request": {
+                    "grade": 7,
+                    "subject_code": "MATH",
+                    "strand_code": "B",
+                    "content_type": "QUIZ",
+                    "difficulty": "GRADE_LEVEL",
+                    "course_id": course,
+                }
+            }
+            resp = client.post(
+                f"/api/cmcp/review/{art.id}/regenerate",
+                json=body,
+                headers=headers,
+            )
+            assert resp.status_code == 200, resp.text
+            data = resp.json()
+            # Audit entry present.
+            assert len(data["edit_history"]) == 1
+            entry = data["edit_history"][0]
+            assert entry["editor_id"] == teacher_user.id
+            assert entry["before_snippet"] == "Original prompt."
+            assert entry["after_snippet"] == "Regenerated prompt content."
+    finally:
+        from app.models.course import Course
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == art.id
+        ).delete(synchronize_session=False)
+        db_session.query(Course).filter(Course.id == course).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+
+
+def test_regenerate_terminal_state_409(
+    client, db_session, teacher_user, cmcp_flag_on
+):
+    """Regenerate on APPROVED → 409 (cannot mutate published artifact)."""
+    from app.models.study_guide import StudyGuide
+    from app.services.cmcp.artifact_state import ArtifactState
+
+    course = _make_course_owned_by(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.APPROVED,
+    )
+    try:
+        headers = _auth(client, teacher_user.email)
+        body = {
+            "request": {
+                "grade": 7,
+                "subject_code": "MATH",
+                "strand_code": "B",
+                "content_type": "QUIZ",
+                "difficulty": "GRADE_LEVEL",
+            }
+        }
+        resp = client.post(
+            f"/api/cmcp/review/{art.id}/regenerate",
+            json=body,
+            headers=headers,
+        )
+        assert resp.status_code == 409
     finally:
         from app.models.course import Course
 
