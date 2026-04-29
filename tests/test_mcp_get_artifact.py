@@ -305,12 +305,10 @@ class TestGetArtifactHandler:
     def test_parent_cannot_fetch_unrelated_kids_artifact(
         self, db_session, unrelated_parent_user, kid_artifact
     ):
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactAccessDeniedError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolAccessDeniedError
+        from app.mcp.tools.get_artifact import get_artifact_handler
 
-        with pytest.raises(MCPArtifactAccessDeniedError):
+        with pytest.raises(MCPToolAccessDeniedError):
             get_artifact_handler(
                 {"artifact_id": kid_artifact.id},
                 unrelated_parent_user,
@@ -330,12 +328,10 @@ class TestGetArtifactHandler:
     def test_student_cannot_fetch_others_artifact(
         self, db_session, student_user, kid_artifact
     ):
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactAccessDeniedError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolAccessDeniedError
+        from app.mcp.tools.get_artifact import get_artifact_handler
 
-        with pytest.raises(MCPArtifactAccessDeniedError):
+        with pytest.raises(MCPToolAccessDeniedError):
             get_artifact_handler(
                 {"artifact_id": kid_artifact.id}, student_user, db_session
             )
@@ -357,15 +353,13 @@ class TestGetArtifactHandler:
     def test_teacher_cannot_fetch_other_class_artifact(
         self, db_session, other_teacher_user, class_artifact
     ):
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactAccessDeniedError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolAccessDeniedError
+        from app.mcp.tools.get_artifact import get_artifact_handler
 
         # ``other_teacher_user`` has no Teacher row at all — assigned to
         # nothing. Verifies the matrix denies "TEACHER but not on this
         # course" cleanly.
-        with pytest.raises(MCPArtifactAccessDeniedError):
+        with pytest.raises(MCPToolAccessDeniedError):
             get_artifact_handler(
                 {"artifact_id": class_artifact.id},
                 other_teacher_user,
@@ -394,10 +388,8 @@ class TestGetArtifactHandler:
     def test_board_admin_cross_board_denied(
         self, db_session, board_artifact
     ):
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactAccessDeniedError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolAccessDeniedError
+        from app.mcp.tools.get_artifact import get_artifact_handler
         from app.models.user import UserRole
 
         admin = _make_user(
@@ -407,7 +399,7 @@ class TestGetArtifactHandler:
             board_id="OCDSB",
         )
 
-        with pytest.raises(MCPArtifactAccessDeniedError):
+        with pytest.raises(MCPToolAccessDeniedError):
             get_artifact_handler(
                 {"artifact_id": board_artifact.id}, admin, db_session
             )
@@ -420,10 +412,8 @@ class TestGetArtifactHandler:
         state). Without this guard a BOARD_ADMIN with no resolvable
         board would inadvertently see every legacy row.
         """
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactAccessDeniedError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolAccessDeniedError
+        from app.mcp.tools.get_artifact import get_artifact_handler
         from app.models.user import UserRole
 
         admin = _make_user(
@@ -433,7 +423,7 @@ class TestGetArtifactHandler:
             board_id="TDSB",
         )
 
-        with pytest.raises(MCPArtifactAccessDeniedError):
+        with pytest.raises(MCPToolAccessDeniedError):
             get_artifact_handler(
                 {"artifact_id": kid_artifact.id}, admin, db_session
             )
@@ -456,12 +446,10 @@ class TestGetArtifactHandler:
     def test_unknown_artifact_id_raises_not_found(
         self, db_session, curriculum_admin_user
     ):
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactNotFoundError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolNotFoundError
+        from app.mcp.tools.get_artifact import get_artifact_handler
 
-        with pytest.raises(MCPArtifactNotFoundError):
+        with pytest.raises(MCPToolNotFoundError):
             get_artifact_handler(
                 {"artifact_id": 9_999_999},
                 curriculum_admin_user,
@@ -478,12 +466,10 @@ class TestGetArtifactHandler:
         whatever they want — the handler re-validates so misuse from
         another stripe surfaces as 404 rather than a 500.
         """
-        from app.mcp.tools.get_artifact import (
-            MCPArtifactNotFoundError,
-            get_artifact_handler,
-        )
+        from app.mcp.tools._errors import MCPToolNotFoundError
+        from app.mcp.tools.get_artifact import get_artifact_handler
 
-        with pytest.raises(MCPArtifactNotFoundError):
+        with pytest.raises(MCPToolNotFoundError):
             get_artifact_handler(
                 {"artifact_id": "abc"}, curriculum_admin_user, db_session
             )
@@ -491,7 +477,7 @@ class TestGetArtifactHandler:
         # ``True``/``False`` would silently coerce to 1/0 in a DB query
         # because ``bool`` subclasses ``int``; the handler rejects them
         # explicitly to avoid that.
-        with pytest.raises(MCPArtifactNotFoundError):
+        with pytest.raises(MCPToolNotFoundError):
             get_artifact_handler(
                 {"artifact_id": True}, curriculum_admin_user, db_session
             )

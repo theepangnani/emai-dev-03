@@ -70,9 +70,10 @@ from app.mcp.tools import (
     get_tool,
     list_tools_for_role,
 )
-from app.mcp.tools.get_artifact import (
-    MCPArtifactAccessDeniedError,
-    MCPArtifactNotFoundError,
+from app.mcp.tools._errors import (
+    MCPToolAccessDeniedError,
+    MCPToolNotFoundError,
+    MCPToolValidationError,
 )
 from app.models.user import User
 from app.services.feature_flag_service import is_feature_enabled
@@ -267,8 +268,17 @@ def call_tool(
       catalog, and the registry is the single source of truth.
     - Stub tool (2B-* not yet implemented) → ``501 Not Implemented``
       with the tool name in the detail.
-    - Any other handler exception bubbles up. Concrete 2B-* handlers
-      should raise ``HTTPException`` directly for known failures.
+    - Concrete 2B-* handlers raise the shared MCP domain exceptions
+      (:class:`MCPToolNotFoundError`, :class:`MCPToolAccessDeniedError`,
+      :class:`MCPToolValidationError`) which this dispatcher translates
+      to ``404`` / ``403`` / ``422`` with per-error telemetry hooks.
+      See :mod:`app.mcp.tools._errors` for the full contract — the
+      domain-exception pattern (vs raw ``HTTPException``) keeps the
+      tool layer transport-agnostic so future stdio / SSE transports
+      can reuse the same handlers.
+    - Any other handler exception (including ``HTTPException`` raised
+      by collaborators like ``generate_cmcp_preview_sync``) bubbles up
+      to the route layer.
     """
     descriptor = get_tool(payload.name)
     if descriptor is None:
@@ -301,24 +311,55 @@ def call_tool(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail=str(exc),
         ) from exc
-    except MCPArtifactNotFoundError as exc:
-        # 2B-2 (#4553) — ``get_artifact`` couldn't find the requested
-        # row (or rejected an invalid arguments shape). 404 is the
-        # right code for both cases on the authenticated MCP surface;
-        # the handler already gates by id existence and the catalog
-        # filter has already gated role access to the tool itself.
+    except MCPToolNotFoundError as exc:
+        # Tool couldn't find the requested resource (e.g. ``get_artifact``
+        # given an unknown ``artifact_id``, or arguments that referenced
+        # an id the catalog can't resolve). 404 is the right code on the
+        # authenticated MCP surface; the handler has already gated by id
+        # existence and the catalog filter has already gated role access
+        # to the tool itself.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    except MCPArtifactAccessDeniedError as exc:
-        # 2B-2 (#4553) — caller's role allowlists the tool but the
-        # per-row visibility check denied access. Distinct 403 from
-        # the catalog-level role check above so operators can
-        # telemetry per-row denials.
+    except MCPToolAccessDeniedError as exc:
+        # Caller's role allowlists the tool but the per-row visibility
+        # check denied access (or a tool-scoped feature flag is OFF).
+        # Distinct 403 from the catalog-level role check above so
+        # operators can telemetry per-row denials separately from
+        # catalog denials.
+        logger.info(
+            "mcp.call_tool.access_denied name=%s user_id=%s role=%s",
+            payload.name,
+            current_user.id,
+            (current_user.role.value if current_user.role else None),
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(exc),
+        ) from exc
+    except MCPToolValidationError as exc:
+        # Caller's arguments failed handler-level validation (bad
+        # cursor, out-of-range numeric, wrong field type, etc.). 422 is
+        # the FastAPI-conventional code for "your input is bad". Prefer
+        # the structured ``details`` payload (e.g. Pydantic
+        # ``errors()`` list) when the handler attached one, so MCP
+        # clients can highlight the offending field — that matches
+        # FastAPI's own 422 body shape.
+        logger.info(
+            "mcp.call_tool.validation_error name=%s user_id=%s role=%s",
+            payload.name,
+            current_user.id,
+            (current_user.role.value if current_user.role else None),
+        )
+        detail: Any
+        if exc.details is not None:
+            detail = exc.details
+        else:
+            detail = str(exc)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
         ) from exc
 
     return CallToolResponse(name=payload.name, content=result)

@@ -26,7 +26,6 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 
 from conftest import PASSWORD, _auth
 
@@ -152,26 +151,27 @@ def test_cursor_encode_decode_roundtrip():
 
 
 def test_cursor_decode_rejects_garbage():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _decode_cursor
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError) as excinfo:
         _decode_cursor("not-base64!!!")
-    assert excinfo.value.status_code == 422
+    assert "Invalid cursor" in str(excinfo.value)
 
 
 def test_cursor_decode_rejects_missing_id_key():
-    """Payload missing ``id`` → 422 (not a 500)."""
+    """Payload missing ``id`` → MCPToolValidationError (dispatcher 422)."""
     import base64
     import json
 
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _decode_cursor
 
     bad = base64.urlsafe_b64encode(
         json.dumps({"created_at": "2026-04-28T12:00:00+00:00"}).encode()
     ).decode()
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _decode_cursor(bad)
-    assert excinfo.value.status_code == 422
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -196,29 +196,29 @@ def test_validate_arguments_defaults():
 
 
 def test_validate_arguments_limit_too_high():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError) as excinfo:
         _validate_arguments({"limit": 101})
-    assert excinfo.value.status_code == 422
-    assert "between 1 and 100" in excinfo.value.detail
+    assert "between 1 and 100" in str(excinfo.value)
 
 
 def test_validate_arguments_limit_zero():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _validate_arguments({"limit": 0})
-    assert excinfo.value.status_code == 422
 
 
 def test_validate_arguments_grade_bool_rejected():
     """Booleans are an ``int`` subclass — reject explicitly."""
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _validate_arguments({"grade": True})
-    assert excinfo.value.status_code == 422
 
 
 def test_validate_arguments_strips_strings():
@@ -936,3 +936,143 @@ def test_route_board_admin_without_board_id_sees_empty_until_m3e(
     body = resp.json()["content"]
     assert body["artifacts"] == []
     assert body["next_cursor"] is None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# #4568 — over-fetch loop fills the page across post-filtered windows
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_list_catalog_overfetches_to_fill_page(
+    client, admin_user_real, mcp_flag_on, db_session
+):
+    """Sparse-match windows should still emit a full page (#4568).
+
+    Seed 12 rows where every 3rd row has the test's unique subject SE
+    code (4 matches out of 12). Request ``limit=3``; the handler's
+    first SQL window fetches ``limit + 1 = 4`` rows ordered ``id DESC``,
+    which yields only ~1 match. The over-fetch loop must keep
+    advancing the cursor through more SQL windows until 3 matches are
+    accumulated OR the DB is exhausted.
+
+    Uses a unique subject prefix (``OVRFTCH``) and a unique
+    ``content_type`` so the test isolates from other route-level tests
+    that share the session-scoped DB fixture (see conftest comment).
+
+    Locks the standard cursor contract for the typical case: a single
+    ``call_tool`` with sparse matches returns exactly ``limit`` rows
+    (when enough exist) without forcing the caller to chase through
+    empty pages.
+    """
+    unique_subject = "OVRFTCH"
+    unique_type = "overfetch_test_type"
+    for i in range(12):
+        # Every 3rd row gets the unique SE prefix; the rest get a
+        # different prefix so the post-filter excludes them.
+        if i % 3 == 0:
+            se_codes = [f"{unique_subject}.5.A.{i}"]
+            title = f"match row {i:02d}"
+        else:
+            se_codes = [f"NOMATCH.5.B.{i}"]
+            title = f"skip row {i:02d}"
+        _seed_guide(
+            db_session,
+            user_id=admin_user_real.id,
+            title=title,
+            guide_type=unique_type,
+            se_codes=se_codes,
+        )
+
+    headers = _auth(client, admin_user_real.email)
+    resp = client.post(
+        "/mcp/call_tool",
+        json={
+            "name": "list_catalog",
+            "arguments": {
+                "subject_code": unique_subject,
+                "content_type": unique_type,
+                "limit": 3,
+            },
+        },
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()["content"]
+
+    # The page must be FULL — exactly 3 matching rows, no noise.
+    assert len(body["artifacts"]) == 3
+    titles = [a["title"] for a in body["artifacts"]]
+    assert all(t.startswith("match row") for t in titles), titles
+
+    # And the cursor must be set so the caller can fetch the 4th match.
+    assert body["next_cursor"] is not None
+
+    page2 = client.post(
+        "/mcp/call_tool",
+        json={
+            "name": "list_catalog",
+            "arguments": {
+                "subject_code": unique_subject,
+                "content_type": unique_type,
+                "limit": 3,
+                "cursor": body["next_cursor"],
+            },
+        },
+        headers=headers,
+    )
+    assert page2.status_code == 200, page2.text
+    body2 = page2.json()["content"]
+    # Only the 4th match remains; DB exhausts past it for this filter.
+    assert len(body2["artifacts"]) == 1
+    assert body2["artifacts"][0]["title"].startswith("match row")
+    # Standard cursor contract: empty next_cursor → caller is done.
+    assert body2["next_cursor"] is None
+
+
+def test_list_catalog_overfetch_caps_at_max_passes(monkeypatch, app):
+    """A degenerate filter (no matches anywhere) hits the pass cap (#4568).
+
+    Build a fake query that always returns ``limit + 1`` rows (so the
+    SQL window never exhausts) but where none of the rows match the
+    post-filter. The handler must stop after :data:`MAX_OVERFETCH_PASSES`
+    passes and emit a partial page (here: empty) with a non-null cursor
+    so the caller advances rather than the server walking the entire
+    table.
+    """
+    from app.mcp.tools.list_catalog import (
+        MAX_OVERFETCH_PASSES,
+        list_catalog,
+    )
+
+    pass_counter = {"n": 0}
+
+    class _Q(_RecordingQuery):
+        def all(self):
+            pass_counter["n"] += 1
+            # Always return ``limit + 1`` SCI rows so the over-fetch
+            # loop never sees ``db_exhausted`` and only stops when it
+            # hits MAX_OVERFETCH_PASSES.
+            return [
+                _fake_row(
+                    row_id=1000 - pass_counter["n"] * 10 - i,
+                    se_codes=[f"SCI.5.B.{pass_counter['n']}.{i}"],
+                )
+                for i in range(4)  # limit=3 → fetch limit+1=4
+            ]
+
+    db = MagicMock()
+    db.query.return_value = _Q(all_result=[])
+
+    out = list_catalog(
+        {"subject_code": "MATH", "limit": 3}, _admin_user(), db
+    )
+
+    # No MATH matches anywhere → empty page.
+    assert out["artifacts"] == []
+    # But the cursor is non-null so the caller advances on the next
+    # request — this is the documented edge case in the tool's
+    # description (#4568).
+    assert out["next_cursor"] is not None
+    # And we capped at MAX_OVERFETCH_PASSES SQL rounds rather than
+    # walking the whole table.
+    assert pass_counter["n"] == MAX_OVERFETCH_PASSES
