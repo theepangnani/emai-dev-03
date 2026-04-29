@@ -11,6 +11,12 @@ class UserRole(str, enum.Enum):
     STUDENT = "student"
     TEACHER = "teacher"
     ADMIN = "admin"
+    # CB-CMCP-001 M0-A 0A-3 (#4414): curriculum/board admin roles for the
+    # Curriculum + Master Content Plan. Actual RBAC gating for these values
+    # ships in M2/M3 stripes — exposing the enum members here so dependencies
+    # like require_role(UserRole.BOARD_ADMIN) can compile against them.
+    BOARD_ADMIN = "BOARD_ADMIN"
+    CURRICULUM_ADMIN = "CURRICULUM_ADMIN"
 
 
 class User(Base):
@@ -22,7 +28,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     full_name = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=True, index=True)  # Nullable for users pending onboarding
-    roles = Column(String(50), nullable=True)  # comma-separated: "parent,teacher"
+    roles = Column(String(120), nullable=True)  # comma-separated: "parent,teacher,BOARD_ADMIN,CURRICULUM_ADMIN" (#4452)
     needs_onboarding = Column(Boolean, default=False)
     onboarding_completed = Column(Boolean, default=False)
     email_verified = Column(Boolean, default=False)

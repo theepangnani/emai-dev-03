@@ -130,6 +130,8 @@ const PatternsStubPage = lazyRetry(() => import('./pages/dci/PatternsStubPage').
 const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((m) => ({ default: m.ConsentScreen })));
 // CB-DCI-001 (#4266) — kid-friendly fallback when /checkin is hit without consent.
 const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeedsConsentPage').then((m) => ({ default: m.CheckinNeedsConsentPage })));
+// CB-CMCP-001 M0-B 0B-3b (#4429) — curriculum-admin review page; gated to CURRICULUM_ADMIN role + cmcp.enabled flag.
+const CEGReviewPage = lazyRetry(() => import('./pages/admin/CEGReviewPage').then((m) => ({ default: m.CEGReviewPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -408,6 +410,15 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <AdminInspirationPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M0-B 0B-3b (#4429) — curriculum-admin review page. */}
+              <Route
+                path="/admin/ceg/review"
+                element={
+                  <ProtectedRoute allowedRoles={['CURRICULUM_ADMIN']}>
+                    <CEGReviewPage />
                   </ProtectedRoute>
                 }
               />
