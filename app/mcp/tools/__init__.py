@@ -258,14 +258,13 @@ TOOLS: dict[str, ToolDescriptor] = {
     "list_catalog": ToolDescriptor(
         name="list_catalog",
         description=(
-            "List CB-CMCP content artifacts the caller may access. "
-            "Cursor-paginated; default state APPROVED; optional subject "
-            "/ grade / content_type filters. Returns "
-            "{artifacts: [...], next_cursor}. Pagination contract: a "
-            "page may be empty with next_cursor still set when the "
-            "subject_code/grade post-filter trims a window — clients "
-            "must paginate by checking next_cursor is None, not by "
-            "checking artifacts is empty."
+            "List APPROVED CB-CMCP content artifacts the caller may access, "
+            "optionally filtered by subject / grade / strand. Cursor-paginated. "
+            "IMPORTANT: an empty 'artifacts' array does NOT mean 'no more results' — "
+            "callers must check 'next_cursor is None' to detect end of iteration. "
+            "(Post-filtering on subject/grade can return 0 matches in a window with "
+            "non-null next_cursor; M3 will add a real grade column and restore "
+            "standard cursor semantics.)"
         ),
         input_schema={
             "type": "object",

@@ -59,6 +59,14 @@ DEFAULT_LIMIT = 20
 MAX_LIMIT = 100
 DEFAULT_STATE = "APPROVED"
 
+# Maximum number of over-fetch SQL passes per ``list_catalog`` call before
+# we surrender and return a partial page with a non-null cursor (#4568).
+# Each pass fetches ``limit + 1`` rows from the DB; once we hit this cap,
+# we stop trying to fill the page and let the caller advance the cursor
+# on the next request. Without this guard a degenerate filter (e.g. a
+# subject_code that no row matches) would walk the entire table.
+MAX_OVERFETCH_PASSES = 5
+
 
 # ---------------------------------------------------------------------------
 # Cursor helpers
@@ -384,6 +392,44 @@ def _se_grade(se_codes: Any) -> int | None:
 # ---------------------------------------------------------------------------
 
 
+def _post_filter_rows(
+    rows: list,
+    *,
+    subject_code: str | None,
+    grade: int | None,
+    has_real_grade_column: bool,
+) -> list:
+    """Apply Python-side ``subject_code`` + ``grade`` filters to a row list.
+
+    Extracted from :func:`list_catalog` so the over-fetch loop (#4568)
+    can reuse the same predicate without duplicating the comprehension.
+    Order doesn't matter; both predicates are applied to the same row
+    collection.
+
+    ``has_real_grade_column`` short-circuits the grade post-filter when
+    the SQL pre-filter already handled it (forward-compat for an M3
+    schema that adds ``study_guides.grade``).
+    """
+    if subject_code:
+        prefix = subject_code.upper() + "."
+        rows = [
+            r
+            for r in rows
+            if r.se_codes
+            and any(
+                isinstance(c, str) and c.upper().startswith(prefix)
+                for c in r.se_codes
+            )
+        ]
+    if grade is not None and not has_real_grade_column:
+        rows = [
+            r
+            for r in rows
+            if r.se_codes and _se_grade(r.se_codes) == grade
+        ]
+    return rows
+
+
 def list_catalog(
     arguments: Mapping[str, Any],
     current_user: Any,
@@ -394,94 +440,130 @@ def list_catalog(
     Returns ``{"artifacts": [...], "next_cursor": str | None}``. Empty
     result yields ``{"artifacts": [], "next_cursor": None}`` (NOT 404 —
     a list endpoint on an empty selection is success, not failure).
+
+    Pagination contract (#4568)
+    ---------------------------
+    Standard cursor semantics: ``next_cursor is None`` → caller has
+    reached the end of iteration. The over-fetch loop below runs up to
+    :data:`MAX_OVERFETCH_PASSES` SQL pages to fill the requested
+    ``limit`` of *post-filtered* matches. Empty pages with a non-null
+    cursor are only emitted when the cap is hit — degenerate filters
+    can't infinitely walk the table, but a typical client paginating an
+    APPROVED-only catalog will see "empty page → done" hold.
     """
     # Lazy imports — see ``_apply_role_scope`` for the rationale.
     from app.models.study_guide import StudyGuide
 
     args = _validate_arguments(arguments)
+    has_real_grade_column = hasattr(StudyGuide, "grade")
+    limit = args["limit"]
 
-    query = db.query(StudyGuide).filter(
-        StudyGuide.archived_at.is_(None),
-        StudyGuide.state == args["state"],
-    )
+    def _build_window_query(cursor_id: int | None):
+        """Build the SQL window query for one over-fetch pass.
 
-    # Curriculum filters: only narrow when the row carries the metadata.
-    # ``subject_code`` + ``grade`` are post-filtered in Python (after the
-    # role-scope subquery narrows the candidate set) because the
-    # ``se_codes`` JSON array shape isn't portable across SQLite + PG
-    # without a dialect branch. See the post-filter pass below for the
-    # Python-side implementation; both filters share the same window so
-    # we don't pay double the over-fetch cost.
-    #
-    # Pagination contract under post-filtering: an over-fetched window
-    # of ``limit + 1`` rows can shrink to fewer than ``limit`` matches
-    # (or even zero). When that happens we still emit a ``next_cursor``
-    # if the SQL window's last row exists, so the caller can advance
-    # past unmatched rows. Callers must NOT use "empty page → done";
-    # they must check ``next_cursor is None`` instead.
-    if args["grade"] is not None and hasattr(StudyGuide, "grade"):
-        # Forward-compat: if a future schema adds a real ``grade``
-        # column we'll prefer the SQL filter over the post-filter.
-        query = query.filter(StudyGuide.grade == args["grade"])
-    if args["content_type"]:
-        # ``guide_type`` is the existing column; map ``content_type``
-        # (the MCP-spec name) to it.
-        query = query.filter(StudyGuide.guide_type == args["content_type"])
+        Recomputed inside the loop because each pass advances the
+        cursor predicate. The non-cursor filters + role scope are
+        identical across passes, but SQLAlchemy ``Query`` objects are
+        immutable to ``filter()`` chaining only — re-deriving from
+        ``db.query()`` keeps the loop body readable.
+        """
+        q = db.query(StudyGuide).filter(
+            StudyGuide.archived_at.is_(None),
+            StudyGuide.state == args["state"],
+        )
+        # Curriculum filters: only narrow when the row carries the
+        # metadata. ``subject_code`` + ``grade`` are post-filtered in
+        # Python because the ``se_codes`` JSON array shape isn't
+        # portable across SQLite + PG without a dialect branch.
+        if args["grade"] is not None and has_real_grade_column:
+            # Forward-compat: if a future schema adds a real ``grade``
+            # column we'll prefer the SQL filter over the post-filter.
+            q = q.filter(StudyGuide.grade == args["grade"])
+        if args["content_type"]:
+            # ``guide_type`` is the existing column; map ``content_type``
+            # (the MCP-spec name) to it.
+            q = q.filter(StudyGuide.guide_type == args["content_type"])
+        # Apply role scope BEFORE the cursor pagination so the cursor's
+        # tuple comparison only sees rows the caller may legally see.
+        q = _apply_role_scope(q, current_user, db)
+        # Cursor predicate. See the module docstring for why we don't
+        # include ``created_at`` in the predicate.
+        if cursor_id is not None:
+            q = q.filter(StudyGuide.id < cursor_id)
+        return q.order_by(StudyGuide.id.desc())
 
-    # Apply role scope BEFORE the cursor pagination so the cursor's
-    # tuple comparison only sees rows the caller may legally see.
-    query = _apply_role_scope(query, current_user, db)
-
-    # Cursor pagination: rows ordered ``id DESC`` (which is functionally
-    # equivalent to ``created_at DESC`` because ``id`` is monotonic on
-    # insert). Cursor predicate is ``id < cursor_id``. See the module
-    # docstring for why we don't include ``created_at`` in the predicate.
+    # Seed the loop with the caller's incoming cursor (or None for the
+    # first page).
     if args["cursor"]:
         _cursor_created_at, cursor_id = _decode_cursor(args["cursor"])
-        query = query.filter(StudyGuide.id < cursor_id)
-
-    query = query.order_by(StudyGuide.id.desc())
-
-    # Over-fetch by 1 to detect "more rows exist?" without COUNT.
-    rows = query.limit(args["limit"] + 1).all()
-
-    has_more = len(rows) > args["limit"]
-    if has_more:
-        # Anchor the cursor to the LAST page-window row BEFORE any
-        # Python-side post-filter trims it. If we anchored to the
-        # post-filter tail instead, a page that emits 0 ``subject_code``
-        # matches would emit no cursor and the caller couldn't continue
-        # past the unmatched window.
-        cursor_anchor = rows[args["limit"] - 1]
-        rows = rows[: args["limit"]]
     else:
-        cursor_anchor = None
+        cursor_id = None
 
-    # Post-filters for ``subject_code`` + ``grade`` (Python-side because
-    # the SE codes JSON shape isn't portable across dialects — see the
-    # pre-filter docstring above). Order doesn't matter; both predicates
-    # are applied to the same row collection.
-    if args["subject_code"]:
-        prefix = args["subject_code"].upper() + "."
-        rows = [
-            r
-            for r in rows
-            if r.se_codes
-            and any(
-                isinstance(c, str) and c.upper().startswith(prefix)
-                for c in r.se_codes
+    accumulated: list = []
+    last_raw_row = None  # Last SQL row from the most recent over-fetch.
+    db_exhausted = False
+    passes = 0
+
+    while passes < MAX_OVERFETCH_PASSES and len(accumulated) < limit:
+        passes += 1
+        # Over-fetch by 1 to detect "more rows exist?" without COUNT.
+        raw_rows = _build_window_query(cursor_id).limit(limit + 1).all()
+        if not raw_rows:
+            db_exhausted = True
+            break
+
+        # ``has_more_in_window`` is true when this pass actually saw
+        # ``limit + 1`` rows — i.e. the DB has at least one row past
+        # the window we just consumed. False when the table tail is
+        # within the window and there are no more rows after it.
+        has_more_in_window = len(raw_rows) > limit
+        # Trim the over-fetch sentinel before post-filtering — we only
+        # used it to detect "more rows exist?", not to surface the
+        # extra row in the response.
+        page_rows = raw_rows[:limit] if has_more_in_window else raw_rows
+
+        last_raw_row = page_rows[-1]
+        accumulated.extend(
+            _post_filter_rows(
+                page_rows,
+                subject_code=args["subject_code"],
+                grade=args["grade"],
+                has_real_grade_column=has_real_grade_column,
             )
-        ]
-    if args["grade"] is not None and not hasattr(StudyGuide, "grade"):
-        # Skip the post-filter when a real ``grade`` column exists
-        # (already handled by the SQL pre-filter above). For today's
-        # schema (no column) we parse the SE code's grade segment.
-        target = args["grade"]
-        rows = [
-            r
-            for r in rows
-            if r.se_codes and _se_grade(r.se_codes) == target
-        ]
+        )
+
+        if not has_more_in_window:
+            db_exhausted = True
+            break
+
+        # Advance the cursor for the next pass past the last row we
+        # just consumed (NOT the over-fetch sentinel — it's part of the
+        # next window).
+        cursor_id = last_raw_row.id
+
+    # Trim to the requested page size. Any matches beyond ``limit`` are
+    # discarded; the cursor is anchored so the caller picks them up on
+    # the next request.
+    if len(accumulated) > limit:
+        artifacts_rows = accumulated[:limit]
+        # Anchor to the last *emitted* match so the next call resumes
+        # immediately after it. This re-scans rows the next pass already
+        # saw if they're in the SQL window, but keeps the cursor
+        # contract precise: id < anchor.id picks up after the last
+        # emitted row.
+        cursor_anchor = artifacts_rows[-1]
+    else:
+        artifacts_rows = accumulated
+        if db_exhausted:
+            # Standard "no more results" — empty cursor signals done.
+            cursor_anchor = None
+        else:
+            # We hit MAX_OVERFETCH_PASSES without filling the page.
+            # Anchor to the last *raw* row we consumed so the caller
+            # can keep paginating past the unmatched window. This is
+            # the only path that emits ``len(artifacts) < limit`` with
+            # a non-null cursor — see the module docstring.
+            cursor_anchor = last_raw_row
 
     next_cursor: str | None = None
     if cursor_anchor is not None:
@@ -491,19 +573,20 @@ def list_catalog(
 
     logger.info(
         "mcp.list_catalog user_id=%s role=%s state=%s subject=%s grade=%s "
-        "content_type=%s page_size=%s has_more=%s",
+        "content_type=%s page_size=%s passes=%s db_exhausted=%s",
         getattr(current_user, "id", None),
         getattr(getattr(current_user, "role", None), "value", None),
         args["state"],
         args["subject_code"],
         args["grade"],
         args["content_type"],
-        len(rows),
-        has_more,
+        len(artifacts_rows),
+        passes,
+        db_exhausted,
     )
 
     return {
-        "artifacts": [_row_to_summary(r) for r in rows],
+        "artifacts": [_row_to_summary(r) for r in artifacts_rows],
         "next_cursor": next_cursor,
     }
 
@@ -511,6 +594,7 @@ def list_catalog(
 __all__ = [
     "DEFAULT_LIMIT",
     "MAX_LIMIT",
+    "MAX_OVERFETCH_PASSES",
     "DEFAULT_STATE",
     "list_catalog",
 ]
