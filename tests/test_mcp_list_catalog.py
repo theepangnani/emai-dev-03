@@ -26,7 +26,6 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 
 from conftest import PASSWORD, _auth
 
@@ -152,26 +151,27 @@ def test_cursor_encode_decode_roundtrip():
 
 
 def test_cursor_decode_rejects_garbage():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _decode_cursor
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError) as excinfo:
         _decode_cursor("not-base64!!!")
-    assert excinfo.value.status_code == 422
+    assert "Invalid cursor" in str(excinfo.value)
 
 
 def test_cursor_decode_rejects_missing_id_key():
-    """Payload missing ``id`` → 422 (not a 500)."""
+    """Payload missing ``id`` → MCPToolValidationError (dispatcher 422)."""
     import base64
     import json
 
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _decode_cursor
 
     bad = base64.urlsafe_b64encode(
         json.dumps({"created_at": "2026-04-28T12:00:00+00:00"}).encode()
     ).decode()
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _decode_cursor(bad)
-    assert excinfo.value.status_code == 422
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -196,29 +196,29 @@ def test_validate_arguments_defaults():
 
 
 def test_validate_arguments_limit_too_high():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError) as excinfo:
         _validate_arguments({"limit": 101})
-    assert excinfo.value.status_code == 422
-    assert "between 1 and 100" in excinfo.value.detail
+    assert "between 1 and 100" in str(excinfo.value)
 
 
 def test_validate_arguments_limit_zero():
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _validate_arguments({"limit": 0})
-    assert excinfo.value.status_code == 422
 
 
 def test_validate_arguments_grade_bool_rejected():
     """Booleans are an ``int`` subclass — reject explicitly."""
+    from app.mcp.tools._errors import MCPToolValidationError
     from app.mcp.tools.list_catalog import _validate_arguments
 
-    with pytest.raises(HTTPException) as excinfo:
+    with pytest.raises(MCPToolValidationError):
         _validate_arguments({"grade": True})
-    assert excinfo.value.status_code == 422
 
 
 def test_validate_arguments_strips_strings():
