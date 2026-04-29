@@ -2505,6 +2505,8 @@ S1 schema+backfill · S2 read pipeline · S3 write pipeline+overrides · S4 UI �
 
 **M1 status (2026-04-29):** All 21 M1 stripes + 2 cross-stripe fixes shipped to `integrate/cb-cmcp-001-m1` via parallel autonomous worktree agents (Wave 1: 6, Wave 2: 4, Wave 2.5: 3, Wave 3: 8, plus #4491 + #4501 cross-stripe fixes). **475 passed, 1 skipped on CMCP test suite.** 46 files changed, +15,437 lines net. Master snapshot tag `pre-cb-cmcp-001-m1` at `b3fca999` (rollback-ready). Topology: master ← epic/cb-cmcp-001 (M0 shipped) ← integrate/cb-cmcp-001-m1 (M1 ready for epic merge).
 
+**M1 invariant: NO PERSISTENCE.** Generation is in-memory only — no writes to `study_guides`, `content_artifacts`, audit log, or any other table. The streaming endpoint returns the artifact in the SSE completion event. Persistence lands in M3 (Workflow + Integration). Stripes that depend on artifact-by-ID fetch must be gated until M3.
+
 #### M1 stripes shipped
 
 **Wave 1 (6 foundational stripes):** 1A-1 GuardrailEngine (#4467), 1A-3 Artifact state machine (#4465), 1B-1 Port student context (#4469), 1C-1 Voice module registry (#4468), 1D-1 Alignment validator (#4466), 1F-1 Parent Companion port (#4464).
