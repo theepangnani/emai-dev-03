@@ -2501,7 +2501,23 @@ S1 schema+backfill · S2 read pipeline · S3 write pipeline+overrides · S4 UI �
 - Awaits user greenlight before any build stripe is opened.
 - Filed alongside the 2026-04-27 email-digest defect batch (#4327/#4328/#4329) so the design context is captured while it's fresh; **not bundled** into that batch — multi-parent sync is its own concern, large enough to warrant its own design doc + privacy review.
 
-### 6.150 Curriculum-Aligned Content Generation & MCP Server (CB-CMCP-001) — M0 ENGINEERING COMPLETE 2026-04-28 (integration → master pending user merge approval)
+### 6.150 Curriculum-Aligned Content Generation & MCP Server (CB-CMCP-001) — M0+M1 ENGINEERING COMPLETE 2026-04-29 (M0 on epic; M1 → epic pending user merge approval)
+
+**M1 status (2026-04-29):** All 21 M1 stripes + 2 cross-stripe fixes shipped to `integrate/cb-cmcp-001-m1` via parallel autonomous worktree agents (Wave 1: 6, Wave 2: 4, Wave 2.5: 3, Wave 3: 8, plus #4491 + #4501 cross-stripe fixes). **475 passed, 1 skipped on CMCP test suite.** 46 files changed, +15,437 lines net. Master snapshot tag `pre-cb-cmcp-001-m1` at `b3fca999` (rollback-ready). Topology: master ← epic/cb-cmcp-001 (M0 shipped) ← integrate/cb-cmcp-001-m1 (M1 ready for epic merge).
+
+#### M1 stripes shipped
+
+**Wave 1 (6 foundational stripes):** 1A-1 GuardrailEngine (#4467), 1A-3 Artifact state machine (#4465), 1B-1 Port student context (#4469), 1C-1 Voice module registry (#4468), 1D-1 Alignment validator (#4466), 1F-1 Parent Companion port (#4464).
+
+**Wave 2 (4 contract-wiring stripes):** 1A-2 CGP API route (#4478), 1B-2 ClassContextResolver (#4477), 1D-2 Validation pipeline composition (#4475), 1F-2 Parent Companion 5-section extension (#4476).
+
+**Wave 2.5 (3 integration stripes):** 1B-3 Envelope injection + telemetry (#4490), 1C-2 Voice hash stamping (#4489), 1E-1 SSE streaming endpoint (#4488).
+
+**Cross-stripe fixes:** #4491 test 2-tuple→3-tuple unpack (#4500), #4501 prod stream route 2-tuple→3-tuple unpack (#4503).
+
+**Wave 3 (8 polish stripes):** 1B-4 Generic badge frontend (#4509), 1C-3 Voice consistency audit (#4515), 1D-3 alignment_score in completion event (#4507), 1E-2 Latency telemetry + SLO (#4516), 1E-3 Frontend streaming hook (#4511), 1F-3 Parent Companion auto-emit (#4506), 1F-4 Parent Companion render page (#4520), 1F-5 RBAC matrix update (#4510).
+
+**Open follow-ups (non-blocking; tracked):** #4513 / #4514 (1F-5 caller contract + redundant SELECT, in-stripe fixed), #4517 / #4518 / #4519 (1E-3 SSE heartbeat policy + escape asymmetry + test flake hygiene), #4470 (1C-1 path traversal at admin-endpoint trust boundary).
 
 **Source PRDs + plan:**
 - `Requirement/Claude-ai-generated/CB-CMCP-001-PRD-v1.0.docx` (initial draft)
