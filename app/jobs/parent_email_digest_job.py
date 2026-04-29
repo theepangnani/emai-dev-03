@@ -143,6 +143,33 @@ def _sanitise_whatsapp_var(text: str) -> str:
     return s
 
 
+def _sanitise_whatsapp_section_block(text: str) -> str:
+    """#4502 — Sanitise a V2 sectioned section block for Twilio's Content API.
+
+    Twilio's Content API rejects newlines (and other control chars) inside
+    template variables. ``_sectioned_section_block`` produces multi-line text
+    (one bullet per line) that is correct for non-Twilio consumers (delivery
+    log, observability), but must be flattened to a single line at the V2 send
+    boundary.
+
+    Differs from ``_sanitise_whatsapp_var`` in one place: V2 blocks are already
+    bulleted with leading ``- `` markers, so the V1 paragraph-break-to-bullet
+    substitution (``\\n{2,}`` → `` • ``) would inject a redundant separator.
+    Here every newline (single or repeated) collapses to a space.
+    """
+    s = text.replace('\r\n', '\n').replace('\r', '\n')
+    # Single \n / \t → space (V2 blocks own their own bullet markers).
+    s = re.sub(r'[\n\r\t]', ' ', s)
+    # Strip all remaining control chars (ASCII 0-31).
+    s = re.sub(r'[\x00-\x1f]', ' ', s)
+    # Collapse whitespace runs.
+    s = re.sub(r'\s+', ' ', s).strip()
+    # Per-variable 1024 cap, with truncation marker.
+    if len(s) > 1024:
+        s = s[:1021] + "..."
+    return s
+
+
 def _send_sectioned_whatsapp_v2(
     to_phone: str,
     content_sid: str,
@@ -175,15 +202,23 @@ def _send_sectioned_whatsapp_v2(
         sectioned.get("action_items") or [], _of("action_items")
     )
 
+    # #4502 — sanitise each section block at the V2 send boundary. Twilio's
+    # Content API rejects \n in variables (HTTP 400). _sectioned_section_block
+    # itself still emits multi-line text for non-Twilio consumers (delivery
+    # log, observability); we only flatten right before send.
+    sanitised_urgent_block = _sanitise_whatsapp_section_block(urgent_block)
+    sanitised_announcements_block = _sanitise_whatsapp_section_block(announcements_block)
+    sanitised_action_items_block = _sanitise_whatsapp_section_block(action_items_block)
+
     sanitised_parent_name = re.sub(r'[\x00-\x1f]', ' ', parent_name).strip()
     return send_whatsapp_template(
         to_phone,
         content_sid,
         {
             "1": sanitised_parent_name,
-            "2": urgent_block,
-            "3": announcements_block,
-            "4": action_items_block,
+            "2": sanitised_urgent_block,
+            "3": sanitised_announcements_block,
+            "4": sanitised_action_items_block,
         },
     )
 
