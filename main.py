@@ -1073,6 +1073,52 @@ finally:
         _kp_lock_conn.close()
 
 
+# Default digest_format → "sectioned" (#4484, #4485). PG-only column-default
+# update (SQLite doesn't support ALTER COLUMN ... SET DEFAULT without a table
+# rebuild). Existing rows are NOT touched — only the column default — so any
+# explicit/implicit parent choice is preserved. New integrations default to
+# "sectioned", which already enforces the ≤3-item-per-section cap, "And N
+# more" CTA, and Urgent-first ordering. Wrapped in pg_try_advisory_lock for
+# Cloud Run safety (3 retries × 5s — see CLAUDE.md migration-locking section).
+_dfmt_lock_conn = None
+_dfmt_lock_acquired = False
+try:
+    if _is_pg:
+        _dfmt_lock_conn = engine.connect()
+        for _dfmt_attempt in range(1, 4):
+            _dfmt_result = _dfmt_lock_conn.execute(text("SELECT pg_try_advisory_lock(4484)"))
+            _dfmt_lock_acquired = _dfmt_result.scalar()
+            if _dfmt_lock_acquired:
+                logger.info("Acquired advisory lock 4484 for parent_digest_settings.digest_format default migration (attempt %d)", _dfmt_attempt)
+                break
+            logger.warning("Advisory lock 4484 held by another instance (attempt %d/3), retrying in 5s...", _dfmt_attempt)
+            time.sleep(5)
+        if not _dfmt_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4484 after 3 attempts — running parent_digest_settings.digest_format default migration without lock")
+
+        with engine.connect() as _conn:
+            try:
+                _conn.execute(text(
+                    "ALTER TABLE parent_digest_settings ALTER COLUMN digest_format SET DEFAULT 'sectioned'"
+                ))
+                _conn.commit()
+                logger.info("parent_digest_settings.digest_format default → 'sectioned' migration completed (#4484, #4485)")
+            except Exception as _dfmt_col_err:
+                _conn.rollback()
+                logger.warning("parent_digest_settings.digest_format default migration note: %s", _dfmt_col_err)
+except Exception as _dfmt_err:
+    logger.warning("parent_digest_settings.digest_format default migration outer note: %s", _dfmt_err)
+finally:
+    if _dfmt_lock_conn is not None:
+        if _dfmt_lock_acquired:
+            try:
+                _dfmt_lock_conn.execute(text("SELECT pg_advisory_unlock(4484)"))
+                _dfmt_lock_conn.commit()
+            except Exception:
+                pass
+        _dfmt_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 

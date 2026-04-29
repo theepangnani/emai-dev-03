@@ -211,6 +211,49 @@ class TestGetSettings:
         assert data["delivery_time"] == "07:00"
         assert data["timezone"] == "America/Toronto"
 
+    def test_default_digest_format_is_sectioned(self, db_session):
+        """#4484, #4485 — new ParentDigestSettings rows default to 'sectioned'.
+
+        The sectioned path enforces ≤3 items per section + 'And N more' CTA
+        + Urgent-first ordering, killing both the 3-item-cap bypass (#4484)
+        and the Quick-Note-renders-at-bottom defect (#4485)."""
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+        from app.models.parent_gmail_integration import (
+            ParentGmailIntegration,
+            ParentDigestSettings,
+        )
+
+        # Use a unique email so this test is independent of `setup`.
+        parent = User(
+            email="default_format_parent@test.com",
+            full_name="Default Format Parent",
+            role=UserRole.PARENT,
+            hashed_password=get_password_hash(PASSWORD),
+        )
+        db_session.add(parent)
+        db_session.flush()
+
+        integration = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="default_format@gmail.com",
+            google_id="default_format_gid",
+            access_token="t",
+            refresh_token="t",
+            child_school_email="default_format_child@school.ca",
+        )
+        db_session.add(integration)
+        db_session.flush()
+
+        # Construct ParentDigestSettings WITHOUT an explicit digest_format
+        # so we exercise the model column default.
+        settings_row = ParentDigestSettings(integration_id=integration.id)
+        db_session.add(settings_row)
+        db_session.commit()
+        db_session.refresh(settings_row)
+
+        assert settings_row.digest_format == "sectioned"
+
     def test_get_settings_nonexistent(self, client, setup):
         headers = _auth(client, PARENT_EMAIL)
         resp = client.get(f"{PREFIX}/settings/99999", headers=headers)
