@@ -1,7 +1,7 @@
-"""
-CB-CMCP-001 — Curriculum-Mapped Content Pipeline services package.
+"""CMCP (Curriculum Mapping & Companion Pack) services — CB-CMCP-001.
 
-This package houses the M1+ generation-pipeline services. M0 stripes
-ship the data layer (``app/models/curriculum.py`` etc.); M1 stripes
-ship the prompt/state/route layer here under ``app.services.cmcp``.
+Houses curriculum-aware MCP services (artifact state machine, validators,
+generators, parent companion, etc.). Pure-logic modules in this package
+must not perform DB or network I/O so they can be reused across worker,
+API, and test contexts.
 """
