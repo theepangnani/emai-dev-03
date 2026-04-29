@@ -299,8 +299,10 @@ def test_generate_happy_path_returns_prompt_and_se_codes(
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
-    # Response shape (matches GenerationPreview).
+    # Response shape (matches GenerationPreview). M3α prequel (#4575)
+    # adds the persisted ``id`` field.
     assert set(body.keys()) == {
+        "id",
         "prompt",
         "se_codes_targeted",
         "voice_module_id",

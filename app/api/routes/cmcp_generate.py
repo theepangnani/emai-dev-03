@@ -51,6 +51,7 @@ The voice-module pointer remains ``None`` until 1C-1's registry ships.
 """
 from __future__ import annotations
 
+import json
 import logging
 from time import perf_counter
 from uuid import uuid4
@@ -62,6 +63,7 @@ from sqlalchemy.orm import Session
 from app.api.routes.curriculum import require_cmcp_enabled
 from app.db.database import get_db
 from app.models.curriculum import CEGStrand, CEGSubject
+from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
 from app.schemas.cmcp import (
     CMCPGenerateRequest,
@@ -69,8 +71,10 @@ from app.schemas.cmcp import (
     GenerationRequest,
     HTTPContentType,
     HTTPDifficulty,
+    ParentCompanionArtifactResponse,
     TargetPersona,
 )
+from app.services.cmcp.artifact_persistence import persist_cmcp_artifact
 from app.services.cmcp.class_context_resolver import (
     ClassContextEnvelope,
     ClassContextResolver,
@@ -79,6 +83,10 @@ from app.services.cmcp.generation_telemetry import emit_latency_telemetry
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
+)
+from app.services.cmcp.parent_companion_service import (
+    BridgeDeepLinkPayload,
+    ParentCompanionContent,
 )
 from app.services.cmcp.voice_registry import VoiceRegistry
 
@@ -399,10 +407,172 @@ def generate_cmcp_preview_sync(
         )
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    # M3α prequel (#4575): persist the artifact so M3 surface stripes
+    # (review queue, self-study, dispatcher, parent companion fetch)
+    # have a real ``study_guides.id`` to drive their flows. M1 invariant
+    # was "no persistence"; M3 flips that on. The sync route persists
+    # the prompt as ``content`` since this stripe doesn't call Claude.
+    title = f"CMCP {payload.content_type}"
+    artifact_id: int | None = None
+    try:
+        artifact = persist_cmcp_artifact(
+            db=db,
+            user=current_user,
+            title=title,
+            content=prompt,
+            http_content_type=payload.content_type,
+            target_persona=persona,
+            se_codes=se_codes,
+            voice_module_hash=voice_module_hash,
+            envelope=envelope,
+            course_id=payload.course_id,
+        )
+        artifact_id = artifact.id
+    except Exception:
+        # Defensive: persistence must not block the preview from
+        # returning. M3 surface stripes will treat ``id=None`` as "not
+        # yet persisted" and skip their flows. Logged so ops can spot
+        # systemic failures.
+        logger.exception(
+            "CMCP sync persist failed user_id=%s content_type=%s",
+            current_user.id,
+            payload.content_type,
+        )
+
     return GenerationPreview(
+        id=artifact_id,
         prompt=prompt,
         se_codes_targeted=se_codes,
         voice_module_id=voice_module_id,
         voice_module_hash=voice_module_hash,
         persona=persona,
+    )
+
+
+# ---------------------------------------------------------------------------
+# M3α prequel (#4575) — GET /api/cmcp/artifacts/{id}/parent-companion
+# ---------------------------------------------------------------------------
+
+
+def _build_parent_companion_from_row(
+    artifact: StudyGuide,
+) -> ParentCompanionContent:
+    """Return the row's persisted parent companion or a minimal stub.
+
+    Stream-route auto-emit (M1-F 1F-3) stores the JSON-serialized
+    5-section content in ``parent_summary``. The sync route doesn't run
+    AI in M1, so parent-persona sync artifacts have ``parent_summary IS
+    NULL``. To keep the GET endpoint usable for both cases without
+    re-architecting ai_service (out of scope for #4575), we deserialize
+    when JSON is present and fall back to a minimal stub built from the
+    row's stored content when it isn't.
+
+    The stub is well-typed (passes the ``ParentCompanionContent``
+    validators including ``min_length=3`` on ``talking_points``) so the
+    frontend Parent Companion page can render a degraded — but not
+    broken — view until M3 lands a real AI-driven flow.
+    """
+    if artifact.parent_summary:
+        try:
+            data = json.loads(artifact.parent_summary)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            data = None
+        if isinstance(data, dict):
+            try:
+                return ParentCompanionContent(**data)
+            except Exception:
+                # Fall through to the stub if the persisted JSON is
+                # malformed — better to render a stub than 500 the
+                # endpoint with a row that an older version wrote.
+                logger.warning(
+                    "CMCP parent-companion: stored JSON in artifact %s "
+                    "failed schema validation; returning stub",
+                    artifact.id,
+                )
+
+    # Stub — built so the page can render something coherent for sync-
+    # route parent-persona artifacts (M1 invariant: no AI call). Three
+    # talking_points to satisfy ``min_length=3``.
+    return ParentCompanionContent(
+        se_explanation=(
+            "This artifact is a parent-facing curriculum-aligned guide. "
+            "A richer companion will be available once content generation "
+            "completes."
+        ),
+        talking_points=[
+            "Ask your child what they're studying this week.",
+            "Encourage them to explain a concept in their own words.",
+            "Celebrate effort over perfect answers.",
+        ],
+        coaching_prompts=[
+            "What's one thing you're confident about?",
+            "Where do you feel stuck right now?",
+        ],
+        how_to_help_without_giving_answer=(
+            "Favor open questions and process over revealing solutions. "
+            "Ask 'how would you start?' rather than naming the answer."
+        ),
+        bridge_deep_link_payload=BridgeDeepLinkPayload(),
+    )
+
+
+@router.get(
+    "/artifacts/{artifact_id}/parent-companion",
+    response_model=ParentCompanionArtifactResponse,
+)
+def get_artifact_parent_companion(
+    artifact_id: int,
+    current_user: User = Depends(require_cmcp_enabled),
+    db: Session = Depends(get_db),
+) -> ParentCompanionArtifactResponse:
+    """Return the persisted parent companion content for *artifact_id*.
+
+    Visibility mirrors the MCP ``get_artifact`` matrix (creator + linked
+    parents + course teacher + admin / curriculum admin / board admin
+    with matching board_id). 404 covers both "no row" and "no access"
+    so we don't leak artifact existence to unrelated callers — the MCP
+    surface differentiates 403/404 because callers there are already
+    role-allowlisted, but the public REST surface deliberately does not.
+
+    422 fires when the artifact exists + the caller has visibility but
+    the row is not a parent-persona artifact. Surface stripes can use
+    the 422 to decide between "show this companion" vs "this is a
+    student artifact, the auto-emitted companion is on a sibling row".
+    """
+    # Lazy import to avoid the cmcp_generate ↔ mcp.tools circular at
+    # module-load time (mcp.tools.generate_content imports
+    # ``generate_cmcp_preview_sync`` from this module).
+    from app.mcp.tools.get_artifact import _user_can_view
+
+    artifact = (
+        db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
+    )
+    if artifact is None:
+        raise HTTPException(
+            status_code=404, detail=f"Artifact {artifact_id} not found"
+        )
+
+    if not _user_can_view(artifact, current_user, db):
+        # Match 404 — don't leak existence. The MCP tool deliberately
+        # uses 403 here because the catalog has already gated access by
+        # role; the public REST surface can be probed by any
+        # authenticated user, so we collapse 403/404 to avoid the
+        # existence oracle.
+        raise HTTPException(
+            status_code=404, detail=f"Artifact {artifact_id} not found"
+        )
+
+    if artifact.requested_persona != "parent":
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Artifact {artifact_id} is not a parent-persona artifact "
+                f"(requested_persona={artifact.requested_persona!r})"
+            ),
+        )
+
+    content = _build_parent_companion_from_row(artifact)
+    return ParentCompanionArtifactResponse(
+        artifact_id=artifact.id,
+        content=content,
     )
