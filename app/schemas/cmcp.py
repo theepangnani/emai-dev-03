@@ -183,6 +183,20 @@ class CMCPGenerateRequest(BaseModel):
             "the route derives the persona from ``current_user.role``."
         ),
     )
+    course_id: int | None = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Optional ``courses.id`` the artifact will be anchored to. When "
+            "supplied, the M1-B 1B-2 ``ClassContextResolver`` pulls the "
+            "course-scoped envelope (course materials, recent GC announcements, "
+            "teacher email digest, matching APPROVED library artifacts) and "
+            "the M1-B 1B-3 stripe injects it into the prompt under "
+            "``[CLASS_CONTEXT]``. When None, the route falls back to "
+            "CEG-only generic content (``fallback_used=True`` on the "
+            "envelope's audit metadata)."
+        ),
+    )
 
 
 class GenerationPreview(BaseModel):

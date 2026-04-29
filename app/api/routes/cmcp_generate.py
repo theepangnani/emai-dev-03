@@ -9,8 +9,8 @@ HTTP entry-point for the Curriculum-Mapped Content Pipeline. Wraps the
 - standard JWT auth (``get_current_user`` is invoked first so unauth
   requests always see 401, even when the flag is OFF).
 
-Stripe scope (per #4471 + plan §7 M1-A 1A-2)
---------------------------------------------
+Stripe scope (per #4471 + plan §7 M1-A 1A-2 + M1-B 1B-3 #4479)
+---------------------------------------------------------------
 - Validate the request body (``CMCPGenerateRequest``).
 - Resolve ``subject_code`` + ``strand_code`` to the CEG IDs the engine
   consumes. Subject lookup is case-insensitive (matches
@@ -18,6 +18,15 @@ Stripe scope (per #4471 + plan §7 M1-A 1A-2)
   subject and is also case-insensitive on the ministry strand code.
 - Derive ``target_persona`` from ``current_user.role`` when the body
   doesn't override it.
+- Resolve the M1-B 1B-2 ``ClassContextEnvelope`` for the request when
+  ``course_id`` is supplied; pass it to ``GuardrailEngine.build_prompt``
+  so the prompt is grounded in the teacher's own materials. When
+  ``course_id`` is None the resolver returns an empty envelope with
+  ``fallback_used=True`` and the prompt falls back to CEG-only generic
+  content.
+- Emit the ``cmcp.generation.envelope`` telemetry log line per A1
+  acceptance criteria (envelope_size, cited_source_count, fallback_used,
+  course_id, target_se_codes_count).
 - Build the prompt via ``GuardrailEngine.build_prompt()`` and return
   it in a ``GenerationPreview``.
 
@@ -57,6 +66,10 @@ from app.schemas.cmcp import (
     HTTPContentType,
     HTTPDifficulty,
     TargetPersona,
+)
+from app.services.cmcp.class_context_resolver import (
+    ClassContextEnvelope,
+    ClassContextResolver,
 )
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
@@ -236,19 +249,90 @@ def generate_cmcp_preview(
     )
 
     engine = GuardrailEngine(db)
+
+    # M1-B 1B-3 (#4479): build the class-context envelope BEFORE composing
+    # the prompt so the GuardrailEngine can ground its output in the
+    # teacher's own materials. We resolve the SE list first (cheap CEG
+    # query) so the resolver can populate input (d) — APPROVED library
+    # artifacts whose SE codes overlap the target set. ``course_id`` is
+    # optional on the request body; when None, the resolver returns an
+    # empty envelope with ``fallback_used=True`` and the prompt falls
+    # back to CEG-only generic content.
+    try:
+        target_se_codes = engine.get_target_se_codes(engine_request)
+    except NoCurriculumMatchError as exc:
+        # Same 422 path as ``build_prompt`` would raise — surface it
+        # before the resolver query so we don't waste DB round-trips
+        # building an envelope for a request that's about to fail.
+        logger.info(
+            "CMCP generate 422 — no CEG match for grade=%s subject=%s strand=%s topic=%r",
+            engine_request.grade,
+            subject.code,
+            strand.code,
+            engine_request.topic,
+        )
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if not target_se_codes:
+        # ``get_target_se_codes`` returns [] only when no SEs match;
+        # ``build_prompt`` would raise ``NoCurriculumMatchError`` next
+        # so short-circuit with the same 422.
+        logger.info(
+            "CMCP generate 422 — empty SE list for grade=%s subject=%s strand=%s topic=%r",
+            engine_request.grade,
+            subject.code,
+            strand.code,
+            engine_request.topic,
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "No CEG specific expectations matched the request. Refusing "
+                "to compose an unanchored prompt."
+            ),
+        )
+
+    envelope: ClassContextEnvelope = ClassContextResolver().resolve(
+        user_id=current_user.id,
+        course_id=payload.course_id,
+        target_se_codes=target_se_codes,
+        db=db,
+    )
+
+    # Structured telemetry per A1 acceptance criteria (#4479). Five
+    # fields are required: envelope_size, cited_source_count,
+    # fallback_used, course_id, target_se_codes_count. ``extra=`` keeps
+    # the values on the LogRecord so a JSON formatter (M3 telemetry)
+    # can promote them to top-level fields without restringifying.
+    logger.info(
+        "cmcp.generation.envelope course_id=%s envelope_size=%d "
+        "cited_source_count=%d fallback_used=%s target_se_codes_count=%d",
+        payload.course_id,
+        envelope.envelope_size,
+        envelope.cited_source_count,
+        envelope.fallback_used,
+        len(target_se_codes),
+        extra={
+            "event": "cmcp.generation.envelope",
+            "course_id": payload.course_id,
+            "envelope_size": envelope.envelope_size,
+            "cited_source_count": envelope.cited_source_count,
+            "fallback_used": envelope.fallback_used,
+            "target_se_codes_count": len(target_se_codes),
+        },
+    )
+
     try:
         prompt, se_codes = engine.build_prompt(
             engine_request,
-            class_context_envelope=None,
+            class_context_envelope=envelope.model_dump(),
             voice_module_path=None,
             target_persona=persona,
         )
     except NoCurriculumMatchError as exc:
-        # The engine refuses to compose an unanchored prompt. Surface
-        # this to the caller as a 422 — the request was syntactically
-        # valid but no CEG rows match the (grade, subject, strand,
-        # topic) tuple, which is a curated-data problem the caller
-        # needs to know about.
+        # Defensive: ``get_target_se_codes`` already gated this path,
+        # but keep the catch so a race between the two queries doesn't
+        # surface as a 500.
         logger.info(
             "CMCP generate 422 — no CEG match for grade=%s subject=%s strand=%s topic=%r",
             engine_request.grade,
