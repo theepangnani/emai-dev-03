@@ -70,6 +70,8 @@ from typing import Any, Mapping
 
 from sqlalchemy.orm import Session
 
+from app.mcp.tools._visibility import resolve_caller_board_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,26 +86,6 @@ class MCPArtifactNotFoundError(LookupError):
 
 class MCPArtifactAccessDeniedError(PermissionError):
     """Raised when the caller's role disallows visibility to the artifact."""
-
-
-# ---------------------------------------------------------------------------
-# BOARD_ADMIN board-resolver
-# ---------------------------------------------------------------------------
-
-
-def _resolve_caller_board_id(user: Any) -> str | None:
-    """Best-effort lookup of the caller's board id.
-
-    ``User`` does not currently carry a ``board_id`` column (board
-    affiliation is a CB-CMCP-001 M3-E concern). Until that lands, prefer
-    a ``board_id`` attribute on the user row if a downstream stripe adds
-    it; otherwise return ``None``. With ``None`` resolved, BOARD_ADMINs
-    will be denied access to every artifact via the matrix below — a
-    safe, conservative default that mirrors the rest of the app's
-    "deny by default until the data shape catches up" pattern (see
-    ``can_access_parent_companion`` in ``app/api/deps.py``).
-    """
-    return getattr(user, "board_id", None)
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +168,7 @@ def _user_can_view(artifact: Any, user: Any, db: Session) -> bool:
     # M3-E ships) would be granted blanket read on every legacy
     # artifact, which is the wrong direction for a least-privilege role.
     if user.has_role(UserRole.BOARD_ADMIN):
-        caller_board = _resolve_caller_board_id(user)
+        caller_board = resolve_caller_board_id(user)
         if caller_board is not None and artifact.board_id is not None:
             if str(caller_board) == str(artifact.board_id):
                 return True

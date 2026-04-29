@@ -48,6 +48,8 @@ from typing import Any, Mapping
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.mcp.tools._visibility import resolve_caller_board_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -202,20 +204,6 @@ def _opt_int(args: Mapping[str, Any], key: str) -> int | None:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_caller_board_id(user: Any) -> str | None:
-    """Best-effort lookup of a BOARD_ADMIN caller's board id.
-
-    Mirrors :func:`app.mcp.tools.get_artifact._resolve_caller_board_id`.
-    The ``User`` model does not currently carry a ``board_id`` column
-    (board affiliation is a CB-CMCP-001 M3-E concern); until that lands,
-    we read an attribute off the user instance if a downstream stripe
-    sets one, otherwise return ``None``. Returning ``None`` collapses
-    the BOARD_ADMIN scope filter to "no rows visible" — the same
-    deny-by-default posture as 2B-2.
-    """
-    return getattr(user, "board_id", None)
-
-
 def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-untyped-def]
     """Narrow ``query`` to artifacts the caller's role may see.
 
@@ -257,7 +245,7 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
         return query
 
     if role_name == "BOARD_ADMIN":
-        caller_board = _resolve_caller_board_id(current_user)
+        caller_board = resolve_caller_board_id(current_user)
         if caller_board is None:
             # No resolvable board → fail closed. Mirrors 2B-2 row-level
             # behaviour: BOARD_ADMINs never see legacy unscoped rows.
