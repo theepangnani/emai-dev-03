@@ -177,6 +177,24 @@ class ToolDescriptor:
         }
 
 
+def _list_catalog_handler(
+    arguments: Mapping[str, Any], current_user: Any, db: Any
+) -> Any:
+    """Thin wrapper that defers the import of ``list_catalog.list_catalog``.
+
+    CB-CMCP-001 M2-B 2B-3 (#4554). The concrete handler lives in
+    :mod:`app.mcp.tools.list_catalog`; importing it at module top would
+    drag the SQLAlchemy model layer into this registry's import path
+    (the registry is intentionally model-free — see module docstring).
+    The wrapper keeps the registry import-light and lets the conftest
+    model-reload pattern continue to work without re-entering this
+    module.
+    """
+    from app.mcp.tools.list_catalog import list_catalog as _impl
+
+    return _impl(arguments, current_user, db)
+
+
 # ---------------------------------------------------------------------------
 # Stub tool registry — 2B-1..2B-4 placeholders
 # ---------------------------------------------------------------------------
@@ -240,26 +258,44 @@ TOOLS: dict[str, ToolDescriptor] = {
     "list_catalog": ToolDescriptor(
         name="list_catalog",
         description=(
-            "List APPROVED CB-CMCP content artifacts the caller may access, "
-            "optionally filtered by subject / grade / strand."
+            "List CB-CMCP content artifacts the caller may access. "
+            "Cursor-paginated; default state APPROVED; optional subject "
+            "/ grade / content_type filters. Returns "
+            "{artifacts: [...], next_cursor}. Pagination contract: a "
+            "page may be empty with next_cursor still set when the "
+            "subject_code/grade post-filter trims a window — clients "
+            "must paginate by checking next_cursor is None, not by "
+            "checking artifacts is empty."
         ),
         input_schema={
             "type": "object",
             "properties": {
                 "subject_code": {"type": ["string", "null"]},
                 "grade": {"type": ["integer", "null"]},
-                "strand_code": {"type": ["string", "null"]},
+                "state": {
+                    "type": ["string", "null"],
+                    "default": "APPROVED",
+                },
+                "content_type": {"type": ["string", "null"]},
+                "cursor": {"type": ["string", "null"]},
                 "limit": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100,
-                    "default": 25,
+                    "default": 20,
                 },
             },
             "additionalProperties": False,
         },
-        roles=("PARENT", "STUDENT", "TEACHER", "ADMIN"),
-        handler=_stub_handler("list_catalog"),
+        roles=(
+            "PARENT",
+            "STUDENT",
+            "TEACHER",
+            "BOARD_ADMIN",
+            "CURRICULUM_ADMIN",
+            "ADMIN",
+        ),
+        handler=_list_catalog_handler,
     ),
     "generate_content": ToolDescriptor(
         name="generate_content",
