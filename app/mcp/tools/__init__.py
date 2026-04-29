@@ -54,6 +54,9 @@ from typing import Any, Callable, Mapping
 # CB-CMCP-001 M2-B 2B-2 (#4553) — concrete handler for ``get_artifact``.
 from app.mcp.tools.get_artifact import get_artifact_handler
 
+# CB-CMCP-001 M2-B 2B-4 (#4555) — concrete handler for ``generate_content``.
+from app.mcp.tools.generate_content import generate_content_handler
+
 # ---------------------------------------------------------------------------
 # Stub error
 # ---------------------------------------------------------------------------
@@ -296,7 +299,13 @@ TOOLS: dict[str, ToolDescriptor] = {
             "additionalProperties": False,
         },
         roles=("TEACHER", "ADMIN"),
-        handler=_stub_handler("generate_content"),
+        # CB-CMCP-001 M2-B 2B-4 (#4555): wire the real handler. The
+        # PARENT/STUDENT self-study generation path (D3=C in the locked
+        # design) is intentionally deferred to M3-B — keeping the role
+        # tuple narrow (TEACHER + ADMIN) here means M2 ships exactly the
+        # surface the M1 REST route already exposes, with no scope creep
+        # into multi-persona templates the M3-B sub-stripes own.
+        handler=generate_content_handler,
     ),
 }
 

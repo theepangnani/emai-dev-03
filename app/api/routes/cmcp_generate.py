@@ -250,7 +250,7 @@ def generate_cmcp_preview(
     _start_perf = perf_counter()
     _request_id = uuid4().hex
     try:
-        return _generate_cmcp_preview_inner(
+        return generate_cmcp_preview_sync(
             payload=payload,
             current_user=current_user,
             db=db,
@@ -264,13 +264,26 @@ def generate_cmcp_preview(
         )
 
 
-def _generate_cmcp_preview_inner(
+def generate_cmcp_preview_sync(
     payload: CMCPGenerateRequest,
     current_user: User,
     db: Session,
 ) -> GenerationPreview:
-    """Inner generation flow extracted so the outer handler can wrap it
-    in a timing/telemetry try/finally without indenting the entire body.
+    """Build a CEG-anchored ``GenerationPreview`` for *payload*.
+
+    This is the shared service-layer entry-point for both the REST route
+    above and the MCP transport's ``generate_content`` tool (CB-CMCP-001
+    M2-B 2B-4 #4555). Both surfaces want identical behaviour: resolve
+    subject + strand → derive persona → build prompt → return preview.
+    Extracting it here keeps the prompt-construction pipeline in *one*
+    place — the MCP tool imports this function rather than duplicating
+    the resolve / build / preview logic.
+
+    Raises ``HTTPException`` (422) on bad subject / strand / empty SE
+    list — the route layer surfaces the status as-is, and the MCP tool
+    layer re-raises so the dispatcher can map it to the MCP error shape.
+    Synchronous + side-effect-free apart from the structured telemetry
+    log line emitted on success.
     """
     subject, strand = _resolve_subject_and_strand(
         db, payload.subject_code, payload.strand_code
