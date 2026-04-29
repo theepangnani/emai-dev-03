@@ -1,6 +1,9 @@
 """MCP (Model Context Protocol) authentication & role-based tool authorization.
 
 CB-CMCP-001 M2-A 2A-1 (#4549) — initial port from ``class-bridge-phase-2``.
+CB-CMCP-001 M2-A 2A-3 (#4551) — wire ``BOARD_ADMIN`` / ``CURRICULUM_ADMIN``
+into :data:`ROLE_TOOLS` (empty allowlist for now; M3-* / 2B-* stripes
+populate per-role tool surface).
 
 MCP clients authenticate by sending a JWT Bearer token in the
 ``Authorization`` header. The ``fastapi-mcp`` library forwards this header
@@ -21,8 +24,10 @@ later stripes:
    :class:`PermissionError` when a role lacks access to a tool.
 
 This stripe **does not** register MCP routes or instantiate
-``FastApiMCP`` — that's 2A-2 territory. It also does **not** wire role
-entries for ``BOARD_ADMIN`` / ``CURRICULUM_ADMIN`` — that's 2A-3.
+``FastApiMCP`` — that's 2A-2 territory. As of 2A-3 (#4551), the
+``BOARD_ADMIN`` / ``CURRICULUM_ADMIN`` keys exist in :data:`ROLE_TOOLS`
+with empty allowlists; their concrete tool surface is filled in by
+later M3-E + curriculum-admin stripes.
 
 Per-tool calls in production still go through the existing
 ``app.api.deps.get_current_user`` dependency, which performs full
@@ -186,9 +191,10 @@ async def authenticate_mcp_request(
 # Maps each role to the subset of MCP operation IDs it may invoke.
 # ``None`` means *all* tools (admin).
 #
-# This is the ported phase-2 mapping. ``BOARD_ADMIN`` / ``CURRICULUM_ADMIN``
-# entries land in 2A-3 (CB-CMCP-001 M2-A) when their tool surface is
-# defined; do not extend this dict here.
+# Phase-2 ported the four legacy roles. CB-CMCP-001 M2-A 2A-3 (#4551)
+# adds the two new admin roles with empty allowlists so the dispatcher
+# recognizes them; concrete tools land in M3-E + later curriculum-admin
+# stripes.
 
 ROLE_TOOLS: dict[str, list[str] | None] = {
     "PARENT": [
@@ -257,6 +263,13 @@ ROLE_TOOLS: dict[str, list[str] | None] = {
         "get_notification_settings_api_notifications_settings_get",
     ],
     "ADMIN": None,  # Full access to all MCP tools
+    # CB-CMCP-001 M2-A 2A-3 (#4551) — populated by future M3-E +
+    # curriculum-admin stripes. Empty list intentionally denies all
+    # tools today; the explicit key keeps the role visible to the
+    # dispatcher (so unknown-role 403 paths don't fire for newly minted
+    # users with these roles).
+    "BOARD_ADMIN": [],
+    "CURRICULUM_ADMIN": [],
 }
 
 
