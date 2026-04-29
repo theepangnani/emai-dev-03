@@ -188,6 +188,7 @@ logger.info("Database tables created/verified")
 # 4413 study_guides CMCP extension columns (#4413)
 # 4414 userrole enum extension (#4414)
 # 4428 ceg_expectations curriculum-admin review columns (#4428)
+# 4448 users.roles widen String(50) -> String(120) (#4452)
 # ============================================================================
 
 # CRITICAL: Add UTDF columns synchronously before any request can hit the model.
@@ -1414,6 +1415,58 @@ finally:
             except Exception:
                 pass
         _cmcp_review_lock_conn.close()
+
+
+# CB-CMCP-001 S1 (#4452) — widen ``users.roles`` from VARCHAR(50) to VARCHAR(120)
+# so multi-role users with the new BOARD_ADMIN (11) + CURRICULUM_ADMIN (16)
+# values fit without silent truncation. The full 6-role string
+# "parent,student,teacher,admin,BOARD_ADMIN,CURRICULUM_ADMIN" is 57 chars,
+# already over the old 50-char ceiling. Idempotent — PG ALTER TABLE ... ALTER
+# COLUMN ... TYPE VARCHAR(120) is metadata-only when widening (no row rewrite,
+# no data loss). SQLite stores VARCHAR as TEXT internally and ignores length,
+# so the widening is a no-op there but the schema rebuilt by ``create_all``
+# already reflects ``String(120)``. Wrapped in pg_try_advisory_lock for
+# Cloud Run safety (3 retries x 5s — see CLAUDE.md migration-locking section).
+_ur_widen_lock_conn = None
+_ur_widen_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _ur_widen_time
+        _ur_widen_lock_conn = engine.connect()
+        for _ur_widen_attempt in range(1, 4):
+            _ur_widen_result = _ur_widen_lock_conn.execute(text("SELECT pg_try_advisory_lock(4448)"))
+            _ur_widen_lock_acquired = _ur_widen_result.scalar()
+            if _ur_widen_lock_acquired:
+                logger.info("Acquired advisory lock 4448 for users.roles widen migration (attempt %d)", _ur_widen_attempt)
+                break
+            logger.warning("Advisory lock 4448 held by another instance (attempt %d/3), retrying in 5s...", _ur_widen_attempt)
+            _ur_widen_time.sleep(5)
+        if not _ur_widen_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4448 after 3 attempts — running users.roles widen migration without lock")
+
+        with engine.connect() as _conn:
+            try:
+                _conn.execute(text(
+                    "ALTER TABLE users ALTER COLUMN roles TYPE VARCHAR(120)"
+                ))
+                _conn.commit()
+                logger.info("users.roles widen migration completed (#4452)")
+            except Exception as _ur_widen_col_err:
+                _conn.rollback()
+                logger.warning("users.roles widen migration note: %s", _ur_widen_col_err)
+    # SQLite: no-op. ``Base.metadata.create_all`` rebuilds the schema with the
+    # new String(120) length on test/dev startup; SQLite ignores VARCHAR length.
+except Exception as _ur_widen_err:
+    logger.warning("users.roles widen migration outer note: %s", _ur_widen_err)
+finally:
+    if _ur_widen_lock_conn is not None:
+        if _ur_widen_lock_acquired:
+            try:
+                _ur_widen_lock_conn.execute(text("SELECT pg_advisory_unlock(4448)"))
+                _ur_widen_lock_conn.commit()
+            except Exception:
+                pass
+        _ur_widen_lock_conn.close()
 
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
