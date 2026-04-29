@@ -491,7 +491,7 @@ def test_engine_renders_new_envelope_shape_with_all_four_categories(
     }
 
     engine = GuardrailEngine(db_session)
-    prompt, _ = engine.build_prompt(
+    prompt, _, _ = engine.build_prompt(
         request,
         class_context_envelope=envelope,
         target_persona="teacher",
@@ -535,7 +535,7 @@ def test_engine_legacy_dict_envelope_still_renders(
     }
 
     engine = GuardrailEngine(db_session)
-    prompt, _ = engine.build_prompt(
+    prompt, _, _ = engine.build_prompt(
         request,
         class_context_envelope=envelope,
         target_persona="teacher",
@@ -564,7 +564,7 @@ def test_engine_empty_envelope_renders_fallback_placeholder(
     )
 
     engine = GuardrailEngine(db_session)
-    prompt, _ = engine.build_prompt(
+    prompt, _, _ = engine.build_prompt(
         request,
         class_context_envelope={
             "course_contents": [],
