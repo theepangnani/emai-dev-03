@@ -575,3 +575,330 @@ def test_stream_no_curriculum_match_returns_422(
     )
     assert resp.status_code == 422
     assert "specific expectations" in resp.json()["detail"].lower()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 1F-3 (#4497) — Parent Companion auto-emit on student-facing artifacts
+# ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def student_user(db_session):
+    from app.models.user import UserRole
+
+    return _make_user(db_session, UserRole.STUDENT)
+
+
+def _student_companion_payload() -> dict:
+    """A clean, lint-safe 5-section parent companion JSON payload.
+
+    Mirrors the shape ``ParentCompanionService.generate_5_section`` parses
+    out of the AI's raw JSON response. Used to drive the mocked Claude
+    call inside the auto-emit path so tests never hit the real API.
+    """
+    return {
+        "se_explanation": (
+            "Your child is working on adding fractions with unlike denominators. "
+            "This week focuses on finding common denominators before combining."
+        ),
+        "talking_points": [
+            "Ask them to walk you through one practice problem out loud.",
+            "Explore where fractions show up in cooking together.",
+            "Share a real-world example you encountered today.",
+        ],
+        "coaching_prompts": [
+            "What does the denominator tell us about the size of each piece?",
+            "Why did you pick that as the common denominator?",
+        ],
+        "how_to_help_without_giving_answer": (
+            "Stay curious and ask questions instead of solving it for them. "
+            "If they get stuck, prompt them to draw a fraction model and try again."
+        ),
+    }
+
+
+def test_stream_student_facing_auto_emits_parent_companion(
+    client, student_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """Student persona + STUDY_GUIDE → completion event carries
+    ``parent_companion`` with the 5-section structure.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, student_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(
+        ["This is ", "a study ", "guide on fractions."]
+    )
+    companion_payload = _student_companion_payload()
+
+    with _patch_stream(fake_stream), patch(
+        "app.services.cmcp.parent_companion_service.generate_content",
+        new_callable=AsyncMock,
+    ) as mock_companion_call:
+        mock_companion_call.return_value = (
+            _json.dumps(companion_payload),
+            "end_turn",
+        )
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+
+    assert completion["persona"] == "student"
+    assert completion["content_type"] == "STUDY_GUIDE"
+    assert completion["parent_companion"] is not None
+
+    pc = completion["parent_companion"]
+    assert pc["se_explanation"].startswith("Your child")
+    assert len(pc["talking_points"]) == 3
+    assert len(pc["coaching_prompts"]) == 2
+    assert "Stay curious" in pc["how_to_help_without_giving_answer"]
+    # bridge_deep_link_payload is always present (constructed by service).
+    assert "bridge_deep_link_payload" in pc
+
+    # Companion service was called exactly once with the accumulated full
+    # content (verifies we hand it the streamed artifact, not an empty
+    # string or just the last chunk).
+    assert mock_companion_call.await_count == 1
+    user_prompt = mock_companion_call.await_args.kwargs["prompt"]
+    assert "This is a study guide on fractions." in user_prompt
+
+
+def test_stream_teacher_persona_does_not_auto_emit_parent_companion(
+    client, teacher_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """Teacher persona must NOT auto-emit Parent Companion — wastes
+    tokens and the audience is wrong (per #4497 acceptance criteria).
+    Mock the companion service to assert it's never called.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, teacher_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(["Teacher-facing ", "study guide."])
+
+    with _patch_stream(fake_stream), patch(
+        "app.services.cmcp.parent_companion_service.generate_content",
+        new_callable=AsyncMock,
+    ) as mock_companion_call:
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+
+    assert completion["persona"] == "teacher"
+    assert completion["parent_companion"] is None
+    # The companion service was never even consulted — no token spend.
+    assert mock_companion_call.await_count == 0
+
+
+def test_stream_parent_persona_does_not_auto_emit_parent_companion(
+    client, parent_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """Parent persona artifacts also don't trigger auto-emit — the
+    primary artifact is already parent-facing, no companion needed.
+    Tightens the gate against an inverted persona check.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, parent_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(["Parent-facing study guide."])
+
+    with _patch_stream(fake_stream), patch(
+        "app.services.cmcp.parent_companion_service.generate_content",
+        new_callable=AsyncMock,
+    ) as mock_companion_call:
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+
+    assert completion["persona"] == "parent"
+    assert completion["parent_companion"] is None
+    assert mock_companion_call.await_count == 0
+
+
+@pytest.mark.parametrize(
+    "long_form_type", ["STUDY_GUIDE", "SAMPLE_TEST", "ASSIGNMENT"]
+)
+def test_stream_all_long_form_student_types_auto_emit(
+    client,
+    student_user,
+    cmcp_flag_on,
+    seeded_cmcp_curriculum,
+    long_form_type,
+):
+    """All three long-form student-facing types reach the auto-emit path.
+
+    Mutation-test guard for a regression that hardcoded the gate to
+    ``content_type == 'STUDY_GUIDE'`` only.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, student_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type=long_form_type)
+
+    fake_stream = _make_fake_stream(["artifact body"])
+    companion_payload = _student_companion_payload()
+
+    with _patch_stream(fake_stream), patch(
+        "app.services.cmcp.parent_companion_service.generate_content",
+        new_callable=AsyncMock,
+    ) as mock_companion_call:
+        mock_companion_call.return_value = (
+            _json.dumps(companion_payload),
+            "end_turn",
+        )
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+
+    assert completion["parent_companion"] is not None
+    assert mock_companion_call.await_count == 1
+
+
+def test_stream_companion_failure_is_non_fatal(
+    client, student_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """When ``ParentCompanionService.generate_5_section`` returns ``None``
+    (Claude fail / lint trip / parse fail) the primary stream still
+    completes cleanly with ``parent_companion: null`` rather than
+    surfacing an SSE error frame.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, student_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(["primary artifact body"])
+
+    with _patch_stream(fake_stream), patch(
+        "app.api.routes.cmcp_generate_stream.ParentCompanionService.generate_5_section",
+        new_callable=AsyncMock,
+    ) as mock_companion:
+        # Service returns None on any failure mode (already logged).
+        mock_companion.return_value = None
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    # Primary stream still completes — companion failure must NOT surface
+    # as event: error.
+    error_frames = [f for f in frames if f["event"] == "error"]
+    assert error_frames == []
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+    assert completion["parent_companion"] is None
+    # And the service was actually called — the gate fired.
+    assert mock_companion.await_count == 1
+
+
+def test_stream_companion_unexpected_exception_is_swallowed(
+    client, student_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """If ``generate_5_section`` raises (against its documented contract),
+    the route catches it and emits ``parent_companion: null`` — must
+    never corrupt the SSE response with a 500 / partial body.
+    """
+    import json as _json
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, student_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(["primary content"])
+
+    with _patch_stream(fake_stream), patch(
+        "app.api.routes.cmcp_generate_stream.ParentCompanionService.generate_5_section",
+        new_callable=AsyncMock,
+    ) as mock_companion:
+        mock_companion.side_effect = RuntimeError("Claude blew up unexpectedly")
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    complete = next(f for f in frames if f["event"] == "complete")
+    completion = _json.loads(complete["data"])
+    assert completion["parent_companion"] is None
+
+
+def test_stream_companion_skipped_when_primary_stream_errors(
+    client, student_user, cmcp_flag_on, seeded_cmcp_curriculum
+):
+    """When the primary Claude stream errors mid-flight, the route must
+    NOT spend tokens on the Parent Companion — there's no artifact to
+    summarize. Auto-emit only runs after a clean ``done`` frame.
+    """
+    from unittest.mock import AsyncMock
+
+    headers = _auth(client, student_user.email)
+    body = _payload(seeded_cmcp_curriculum, content_type="STUDY_GUIDE")
+
+    fake_stream = _make_fake_stream(
+        chunks=["partial..."],
+        terminal_event={
+            "event": "error",
+            "data": "AI generation failed: APITimeoutError",
+        },
+    )
+
+    with _patch_stream(fake_stream), patch(
+        "app.api.routes.cmcp_generate_stream.ParentCompanionService.generate_5_section",
+        new_callable=AsyncMock,
+    ) as mock_companion:
+        resp = client.post(
+            "/api/cmcp/generate/stream",
+            json=body,
+            headers=headers,
+        )
+
+    assert resp.status_code == 200, resp.text
+    frames = _parse_sse(resp.text)
+    error_frames = [f for f in frames if f["event"] == "error"]
+    assert len(error_frames) == 1
+    # No completion frame, and no companion call.
+    assert not any(f["event"] == "complete" for f in frames)
+    assert mock_companion.await_count == 0

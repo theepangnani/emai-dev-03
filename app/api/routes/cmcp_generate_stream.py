@@ -21,6 +21,18 @@ Stripe scope (per #4481 + plan §7 M1-E 1E-1)
   + voice-module pointer (None until 1C-1).
 - On stream errors yield ``event: error`` with a user-safe message.
 
+1F-3 extension (#4497) — Parent Companion auto-emit
+---------------------------------------------------
+After the primary Claude stream completes cleanly for a student-facing
+artifact (``persona='student'`` AND ``content_type`` in
+``STUDENT_FACING_CONTENT_TYPES``), the route synchronously calls
+``ParentCompanionService.generate_5_section()`` against the accumulated
+full content and surfaces the structured 5-section result on the
+``event: complete`` payload under the ``parent_companion`` key. The
+auto-emit is best-effort — if Claude fails or the lint trips, the
+service returns ``None`` and the completion event carries
+``parent_companion: null`` rather than failing the primary generation.
+
 Out of scope (deferred)
 -----------------------
 - Per-content-type latency telemetry — 1E-2 wave 3.
@@ -29,6 +41,8 @@ Out of scope (deferred)
   later stripe; this route makes the basic Claude call only.
 - Voice-module registry hookup — 1C-1 / 1C-2.
 - Persisting an artifact row — 1A-3 state machine.
+- **Persisting the auto-emitted Parent Companion** — M3 territory.
+  1F-3 ships the inline auto-emit only.
 
 SSE wire format
 ---------------
@@ -60,12 +74,17 @@ from app.api.routes.cmcp_generate import (
 from app.api.routes.curriculum import require_cmcp_enabled
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.cmcp import CMCPGenerateRequest, TargetPersona
+from app.schemas.cmcp import (
+    STUDENT_FACING_CONTENT_TYPES,
+    CMCPGenerateRequest,
+    TargetPersona,
+)
 from app.services.ai_service import generate_content_stream
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
 )
+from app.services.cmcp.parent_companion_service import ParentCompanionService
 from app.services.cmcp.voice_registry import VoiceRegistry
 
 logger = logging.getLogger(__name__)
@@ -186,7 +205,62 @@ def generate_cmcp_stream(
         "voice_module_hash": voice_module_hash,
         "persona": persona,
         "content_type": payload.content_type,
+        # 1F-3 (#4497): populated below if the persona+content_type pair
+        # hits the auto-emit gate. ``None`` for teacher- and parent-facing
+        # generations OR when the auto-emit fails for any reason — the
+        # primary generation never depends on auto-emit success.
+        "parent_companion": None,
     }
+
+    # Snapshot the inputs the Parent Companion service needs that aren't
+    # accessible from inside the event-stream coroutine without re-querying
+    # the DB. ``se_codes`` came from the engine prompt build above.
+    target_se_codes: list[str] = list(se_codes)
+    # ``full_name`` is required-non-null on the User model, but fall back
+    # to the email-local-part for safety so the companion prompt always
+    # gets a usable identifier.
+    student_name: str | None = current_user.full_name
+    if not student_name and current_user.email:
+        student_name = current_user.email.split("@")[0]
+    subject_label = subject.name
+
+    async def _maybe_emit_parent_companion(
+        full_content: str,
+    ) -> dict | None:
+        """Auto-emit the 5-section Parent Companion when gate fires.
+
+        Gate: ``persona == 'student'`` AND ``content_type`` in
+        ``STUDENT_FACING_CONTENT_TYPES``. Returns the serialized
+        ``ParentCompanionContent`` dict on success, ``None`` when the
+        gate is closed OR when ``generate_5_section`` returns ``None``
+        (Claude fail / answer-key lint trip / JSON parse failure — all
+        already logged by the service).
+
+        Wrapped in a broad ``try/except`` so an unexpected service-side
+        error never bubbles up and corrupts the SSE response — auto-emit
+        is best-effort by design.
+        """
+        if persona != "student":
+            return None
+        if payload.content_type not in STUDENT_FACING_CONTENT_TYPES:
+            return None
+        if not full_content or not full_content.strip():
+            return None
+        try:
+            companion = await ParentCompanionService.generate_5_section(
+                study_guide_content=full_content,
+                student_name=student_name,
+                subject=subject_label,
+                target_se_codes=target_se_codes,
+            )
+        except Exception:
+            logger.exception(
+                "CMCP stream parent-companion auto-emit failed unexpectedly"
+            )
+            return None
+        if companion is None:
+            return None
+        return companion.model_dump()
 
     async def event_stream() -> AsyncIterator[str]:
         """Yield SSE frames for the duration of the Claude stream.
@@ -196,7 +270,12 @@ def generate_cmcp_stream(
         yields ``{"event": "chunk"|"done"|"error", "data": ...}`` dicts
         and never raises mid-stream. We re-frame those into the SSE
         wire format the issue specifies.
+
+        Accumulates the streamed text into ``full_content`` so the
+        1F-3 Parent Companion auto-emit can run against the complete
+        artifact once the primary stream finishes cleanly.
         """
+        full_content_parts: list[str] = []
         try:
             async for ai_event in generate_content_stream(
                 prompt="Generate the requested content per the system prompt.",
@@ -204,11 +283,23 @@ def generate_cmcp_stream(
             ):
                 ev_type = ai_event.get("event")
                 if ev_type == "chunk":
-                    yield _sse_chunk(ai_event.get("data", ""))
+                    chunk_text = ai_event.get("data", "")
+                    full_content_parts.append(chunk_text)
+                    yield _sse_chunk(chunk_text)
                 elif ev_type == "done":
-                    # Stream finished cleanly — emit the completion
-                    # event with the curriculum metadata so the client
-                    # can finalize the artifact view in one frame.
+                    # Stream finished cleanly — run the Parent Companion
+                    # auto-emit (no-op for non-student personas) then
+                    # emit the completion event with the curriculum
+                    # metadata + optional companion payload.
+                    done_data = ai_event.get("data") or {}
+                    full_content = (
+                        done_data.get("full_content")
+                        if isinstance(done_data, dict)
+                        else None
+                    ) or "".join(full_content_parts)
+                    completion_payload["parent_companion"] = (
+                        await _maybe_emit_parent_companion(full_content)
+                    )
                     yield _sse_event("complete", completion_payload)
                     return
                 elif ev_type == "error":
