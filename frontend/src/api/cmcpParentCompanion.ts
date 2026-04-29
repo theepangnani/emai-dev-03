@@ -1,3 +1,4 @@
+// TODO(M3, #4531): Endpoint requires content_artifacts persistence which lands in M3. Page is gated until then.
 /**
  * CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion artifact API client.
  *
@@ -6,9 +7,14 @@
  * 1F-2 ``ParentCompanionService.generate_5_section()``. The shape mirrors the
  * Pydantic model in ``app/services/cmcp/parent_companion_service.py``.
  *
- * The endpoint itself is wired by 1F-3 (auto-emit on student-facing
- * generation). Until that lands, this client returns whatever the artifact
- * endpoint serves; the page component handles loading/error/empty states.
+ * GATING (M1 followup #4531): The backend GET endpoint does NOT exist in M1.
+ * M1 ships parent_companion content inline on the SSE generation/stream
+ * completion event only. The fetch-by-artifact-id pattern requires M3's
+ * `content_artifacts` table writes. Until M3 lands, the corresponding
+ * `<Route path="/parent/companion/:artifact_id">` registration is commented
+ * out in `App.tsx`, so this client and `ParentCompanionPage` are not
+ * reachable from the running app. They are kept in tree (and unit-tested
+ * with mocks) to minimize churn when M3 wires the GET endpoint.
  */
 import { api } from './client';
 
