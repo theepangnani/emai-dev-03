@@ -52,6 +52,8 @@ The voice-module pointer remains ``None`` until 1C-1's registry ships.
 from __future__ import annotations
 
 import logging
+from time import perf_counter
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
@@ -73,6 +75,7 @@ from app.services.cmcp.class_context_resolver import (
     ClassContextEnvelope,
     ClassContextResolver,
 )
+from app.services.cmcp.generation_telemetry import emit_latency_telemetry
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
     NoCurriculumMatchError,
@@ -238,6 +241,36 @@ def generate_cmcp_preview(
     targeted + the resolved persona, so the upcoming 1E-1 streaming
     worker can wire on top without forking the gating + resolution
     logic.
+    """
+    # 1E-2 (#4495): start the latency timer at request entry. ``perf_counter``
+    # is monotonic so the delta is unaffected by wall-clock adjustments.
+    # The timer + request_id are scoped to this handler — emitting happens
+    # in a try/finally below so even 422 / 500 paths produce a telemetry
+    # line for breach analysis.
+    _start_perf = perf_counter()
+    _request_id = uuid4().hex
+    try:
+        return _generate_cmcp_preview_inner(
+            payload=payload,
+            current_user=current_user,
+            db=db,
+        )
+    finally:
+        _latency_ms = int((perf_counter() - _start_perf) * 1000)
+        emit_latency_telemetry(
+            content_type=payload.content_type,
+            latency_ms=_latency_ms,
+            request_id=_request_id,
+        )
+
+
+def _generate_cmcp_preview_inner(
+    payload: CMCPGenerateRequest,
+    current_user: User,
+    db: Session,
+) -> GenerationPreview:
+    """Inner generation flow extracted so the outer handler can wrap it
+    in a timing/telemetry try/finally without indenting the entire body.
     """
     subject, strand = _resolve_subject_and_strand(
         db, payload.subject_code, payload.strand_code
