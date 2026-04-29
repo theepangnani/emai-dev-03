@@ -45,9 +45,9 @@ import logging
 from datetime import datetime
 from typing import Any, Mapping
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.mcp.tools._errors import MCPToolValidationError
 from app.mcp.tools._visibility import resolve_caller_board_id
 
 logger = logging.getLogger(__name__)
@@ -93,9 +93,9 @@ def _encode_cursor(created_at: datetime, row_id: int) -> str:
 def _decode_cursor(cursor: str) -> tuple[datetime | None, int]:
     """Decode an opaque cursor back into ``(created_at, id)``.
 
-    Raises :class:`HTTPException` (422) on malformed input — opaque
-    cursors should be treated like a token: garbage in → caller error,
-    not a 500.
+    Raises :class:`MCPToolValidationError` on malformed input — the
+    dispatcher translates that to ``422``. Opaque cursors should be
+    treated like a token: garbage in → caller error, not a 500.
     """
     try:
         raw = base64.urlsafe_b64decode(cursor.encode("ascii"))
@@ -103,9 +103,8 @@ def _decode_cursor(cursor: str) -> tuple[datetime | None, int]:
         created_iso = payload.get("created_at")
         row_id = int(payload["id"])
     except (ValueError, KeyError, binascii.Error, json.JSONDecodeError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid cursor: {exc}",
+        raise MCPToolValidationError(
+            f"Invalid cursor: {exc}"
         ) from exc
 
     if created_iso is None:
@@ -113,9 +112,8 @@ def _decode_cursor(cursor: str) -> tuple[datetime | None, int]:
     try:
         created_at = datetime.fromisoformat(created_iso)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Invalid cursor created_at: {exc}",
+        raise MCPToolValidationError(
+            f"Invalid cursor created_at: {exc}"
         ) from exc
     return created_at, row_id
 
@@ -148,17 +146,12 @@ def _validate_arguments(arguments: Mapping[str, Any]) -> dict[str, Any]:
         try:
             limit = int(limit_raw)
         except (TypeError, ValueError) as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid limit: {exc}",
+            raise MCPToolValidationError(
+                f"Invalid limit: {exc}"
             ) from exc
     if limit < 1 or limit > MAX_LIMIT:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"limit must be between 1 and {MAX_LIMIT} "
-                f"(got {limit})"
-            ),
+        raise MCPToolValidationError(
+            f"limit must be between 1 and {MAX_LIMIT} (got {limit})"
         )
     out["limit"] = limit
     return out
@@ -170,10 +163,7 @@ def _opt_str(args: Mapping[str, Any], key: str) -> str | None:
     if val is None:
         return None
     if not isinstance(val, str):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{key!r} must be a string",
-        )
+        raise MCPToolValidationError(f"{key!r} must be a string")
     val = val.strip()
     return val or None
 
@@ -186,16 +176,12 @@ def _opt_int(args: Mapping[str, Any], key: str) -> int | None:
     if isinstance(val, bool):
         # ``bool`` is an ``int`` subclass — guard explicitly so a
         # ``True``/``False`` doesn't slip through as ``1``/``0``.
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{key!r} must be an integer",
-        )
+        raise MCPToolValidationError(f"{key!r} must be an integer")
     try:
         return int(val)
     except (TypeError, ValueError) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"{key!r} must be an integer ({exc})",
+        raise MCPToolValidationError(
+            f"{key!r} must be an integer ({exc})"
         ) from exc
 
 

@@ -21,9 +21,9 @@ both legacy and CMCP-aware UI surfaces from one tool result.
 
 Failure modes
 -------------
-- Unknown ``artifact_id``                         → :class:`MCPArtifactNotFoundError`
+- Unknown ``artifact_id``                         → :class:`MCPToolNotFoundError`
   (the route layer maps to 404).
-- Caller's role lacks visibility to the artifact  → :class:`MCPArtifactAccessDeniedError`
+- Caller's role lacks visibility to the artifact  → :class:`MCPToolAccessDeniedError`
   (the route layer maps to 403).
 
 We intentionally raise distinct exceptions (rather than returning the
@@ -70,6 +70,10 @@ from typing import Any, Mapping
 
 from sqlalchemy.orm import Session
 
+from app.mcp.tools._errors import (
+    MCPToolAccessDeniedError,
+    MCPToolNotFoundError,
+)
 from app.mcp.tools._visibility import resolve_caller_board_id
 
 logger = logging.getLogger(__name__)
@@ -78,14 +82,12 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Tool-specific exceptions — translated to HTTP statuses by the route layer.
 # ---------------------------------------------------------------------------
-
-
-class MCPArtifactNotFoundError(LookupError):
-    """Raised when no ``study_guides`` row matches ``artifact_id``."""
-
-
-class MCPArtifactAccessDeniedError(PermissionError):
-    """Raised when the caller's role disallows visibility to the artifact."""
+#
+# CB-CMCP-001 M2 follow-up (#4566) — the artifact-specific exception
+# names were consolidated into the shared
+# :mod:`app.mcp.tools._errors` module so every M2-B tool raises the
+# same domain exception types. The dispatcher's translation layer is
+# the single source of truth for the exception → HTTP-status mapping.
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +289,7 @@ def get_artifact_handler(
         # ``bool`` is a subclass of ``int`` in Python; reject it
         # explicitly so ``True``/``False`` doesn't silently become
         # ``1``/``0`` row lookups.
-        raise MCPArtifactNotFoundError(
+        raise MCPToolNotFoundError(
             "Argument 'artifact_id' must be an integer"
         )
 
@@ -295,7 +297,7 @@ def get_artifact_handler(
         db.query(StudyGuide).filter(StudyGuide.id == raw_id).first()
     )
     if artifact is None:
-        raise MCPArtifactNotFoundError(
+        raise MCPToolNotFoundError(
             f"No artifact with id={raw_id}"
         )
 
@@ -309,7 +311,7 @@ def get_artifact_handler(
             current_user.id,
             getattr(current_user.role, "value", None),
         )
-        raise MCPArtifactAccessDeniedError(
+        raise MCPToolAccessDeniedError(
             f"Access denied to artifact {raw_id}"
         )
 
@@ -317,7 +319,5 @@ def get_artifact_handler(
 
 
 __all__ = [
-    "MCPArtifactAccessDeniedError",
-    "MCPArtifactNotFoundError",
     "get_artifact_handler",
 ]

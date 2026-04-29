@@ -44,24 +44,45 @@ prompt-build logic").
 
 Failure modes (mapped to MCP transport)
 ---------------------------------------
+- ``cmcp.enabled`` OFF → :class:`MCPToolAccessDeniedError` (dispatcher
+  → 403). Mirrors the REST surface's ``require_cmcp_enabled`` 403.
 - Bad input shape (Pydantic ``ValidationError``) → re-raised as
-  ``HTTPException(422)`` so the route layer surfaces it as 422 with
-  the offending field path in the detail.
-- Subject / strand resolution miss → ``HTTPException(422)`` (raised
-  by :func:`generate_cmcp_preview_sync`).
-- Empty CEG SE list for the request → ``HTTPException(422)``.
-- ``NoCurriculumMatchError`` from the engine → ``HTTPException(422)``.
+  :class:`MCPToolValidationError` carrying the structured ``errors()``
+  list as ``details`` so the dispatcher emits a FastAPI-compatible 422.
+- Non-mapping ``arguments`` → :class:`MCPToolValidationError` (422).
+- Subject / strand resolution miss → ``HTTPException(422)`` raised by
+  :func:`generate_cmcp_preview_sync` — left as-is because that helper
+  is a route-layer collaborator (the REST surface uses the same path
+  and we don't own its exception contract from here).
+- Empty CEG SE list for the request → ``HTTPException(422)`` (same).
+- ``NoCurriculumMatchError`` from the engine → ``HTTPException(422)``
+  (same).
 - Anything else bubbles up to the route layer's 500 path.
+
+Why we still let ``HTTPException`` propagate from
+``generate_cmcp_preview_sync``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The CB-CMCP-001 REST route (``POST /api/cmcp/generate``) and this MCP
+tool share that helper byte-for-byte. Re-translating its
+``HTTPException(422)`` into :class:`MCPToolValidationError` here would
+mean catching every variant the helper might raise, which couples this
+module to the helper's internal error vocabulary. The dispatcher
+already handles ``HTTPException`` cleanly (FastAPI's default error
+machinery), so leaving those bubbles up keeps the helper as the single
+source of truth for its own contract.
 """
 from __future__ import annotations
 
 from typing import Any, Mapping
 
-from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.routes.cmcp_generate import generate_cmcp_preview_sync
+from app.mcp.tools._errors import (
+    MCPToolAccessDeniedError,
+    MCPToolValidationError,
+)
 from app.models.user import User
 from app.schemas.cmcp import CMCPGenerateRequest
 from app.services.feature_flag_service import is_feature_enabled
@@ -111,12 +132,15 @@ def generate_content_handler(
         ``voice_module_id``, ``voice_module_hash``, ``persona``.
 
     Raises:
-        HTTPException: 403 when ``cmcp.enabled`` is OFF. 422 on
-            input-validation / curriculum-resolution failures
-            (re-raised from :func:`generate_cmcp_preview_sync`). Other
-            HTTP errors propagate verbatim. Non-HTTP errors (e.g., DB
-            failure) bubble up so the MCP route layer's 500 path
-            catches them.
+        MCPToolAccessDeniedError: 403 when ``cmcp.enabled`` is OFF.
+        MCPToolValidationError: 422 on input-validation failures (bad
+            arguments shape, Pydantic schema mismatch).
+        HTTPException: 422 from
+            :func:`generate_cmcp_preview_sync` for curriculum-resolution
+            misses (left untouched — that helper is the REST surface's
+            collaborator and owns its own contract).
+        Non-HTTP errors (e.g., DB failure) bubble up so the MCP route
+        layer's 500 path catches them.
     """
     # Curriculum-flag gate — defense-in-depth over the route's
     # ``require_cmcp_enabled`` (#4561 review pass-1). The MCP
@@ -124,13 +148,11 @@ def generate_content_handler(
     # admin flipping ``cmcp.enabled`` OFF would disable the REST
     # surface but leave the MCP path serving content. We mirror the
     # route's 403 status so the failure looks identical on both
-    # transports.
+    # transports — the dispatcher translates
+    # :class:`MCPToolAccessDeniedError` to 403.
     if not is_feature_enabled(_CMCP_FEATURE_FLAG_KEY, db=db):
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "CB-CMCP-001 generation is disabled (cmcp.enabled OFF)"
-            ),
+        raise MCPToolAccessDeniedError(
+            "CB-CMCP-001 generation is disabled (cmcp.enabled OFF)"
         )
 
     # Type guard — ``CMCPGenerateRequest.model_validate`` accepts
@@ -140,10 +162,7 @@ def generate_content_handler(
     # ``dict``, but defending here keeps direct service-layer callers
     # honest (#4561 review pass-1).
     if not isinstance(arguments, Mapping):
-        raise HTTPException(
-            status_code=422,
-            detail="arguments must be a JSON object",
-        )
+        raise MCPToolValidationError("arguments must be a JSON object")
 
     # Input validation via the existing Pydantic schema. We deliberately
     # round-trip through ``model_validate`` rather than the route's
@@ -155,9 +174,14 @@ def generate_content_handler(
         payload = CMCPGenerateRequest.model_validate(arguments)
     except ValidationError as exc:
         # ``exc.errors()`` is the structured Pydantic error list — pass
-        # it through verbatim so MCP clients can highlight the offending
-        # field. Matches FastAPI's own 422 body shape.
-        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+        # it through verbatim via the ``details`` keyword so MCP
+        # clients can highlight the offending field. The dispatcher
+        # uses ``details`` (when present) as the HTTP body's ``detail``
+        # field, matching FastAPI's own 422 shape.
+        raise MCPToolValidationError(
+            "Invalid arguments",
+            details=exc.errors(),
+        ) from exc
 
     preview = generate_cmcp_preview_sync(
         payload=payload,
