@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { googleApi } from '../api/client';
 import { useFeature } from '../hooks/useFeatureToggle';
 import { useBotProtection } from '../hooks/useBotProtection';
 import { PasswordInput } from '../components/PasswordInput';
 import { ReportBugLink } from '../components/ReportBugLink';
+import { sanitizeReturnPath } from '../utils/sanitizeReturnPath';
 import './Auth.css';
 
 export function Login() {
@@ -19,17 +20,27 @@ export function Login() {
   const { user, login, loginWithToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const waitlistEnabled = useFeature('waitlist_enabled');
   const botProtection = useBotProtection();
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const oauthProcessedRef = useRef(false);
 
-  // Redirect to dashboard once user is loaded (after OAuth or if already logged in)
+  // Resolve the post-login redirect target. Prefer router state (`from`)
+  // populated by ProtectedRoute, fall back to `?redirect=` query param
+  // (covers fresh-tab opens where router state is lost), default to
+  // `/dashboard`. Same-origin sanitization prevents open-redirect.
+  const fromState = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+  const fromQuery = searchParams.get('redirect');
+  const redirectTarget =
+    sanitizeReturnPath(fromState) || sanitizeReturnPath(fromQuery) || '/dashboard';
+
+  // Redirect to intended path once user is loaded (after OAuth or if already logged in)
   useEffect(() => {
     if (user) {
-      navigate('/dashboard', { replace: true });
+      navigate(redirectTarget, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTarget]);
 
   // Handle OAuth callback — set the token, then let the user-loaded effect navigate
   useEffect(() => {
@@ -103,7 +114,7 @@ export function Login() {
       await login(identifier, password, { website, started_at });
       setLockoutSeconds(0);
       setRemainingAttempts(null);
-      navigate('/dashboard');
+      navigate(redirectTarget, { replace: true });
     } catch (err: any) {
       const status = err?.response?.status;
       const detail = err?.response?.data?.detail || '';

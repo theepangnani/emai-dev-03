@@ -1,6 +1,21 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+
+// Spy on Navigate's props so we can assert state.from without rendering a
+// second route. Using vi.importActual + spread keeps every other react-router
+// export real (avoids mock-shadow shadowing useNavigate, useLocation, etc.).
+const navigateSpy = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return {
+    ...actual,
+    Navigate: (props: Record<string, unknown>) => {
+      navigateSpy(props)
+      return null
+    },
+  }
+})
 
 // Mock AuthContext
 const mockUseAuth = vi.fn()
@@ -10,9 +25,9 @@ vi.mock('../context/AuthContext', () => ({
 
 import { ProtectedRoute } from './ProtectedRoute'
 
-function renderProtected(allowedRoles?: string[]) {
+function renderProtected(allowedRoles?: string[], initialEntry: string = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <ProtectedRoute allowedRoles={allowedRoles}>
         <div data-testid="protected-content">Secret Content</div>
       </ProtectedRoute>
@@ -21,6 +36,10 @@ function renderProtected(allowedRoles?: string[]) {
 }
 
 describe('ProtectedRoute', () => {
+  beforeEach(() => {
+    navigateSpy.mockClear()
+  })
+
   it('shows loading while auth is loading', () => {
     mockUseAuth.mockReturnValue({ user: null, isLoading: true })
     renderProtected()
@@ -32,6 +51,23 @@ describe('ProtectedRoute', () => {
     mockUseAuth.mockReturnValue({ user: null, isLoading: false })
     renderProtected()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
+    expect(navigateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/login' }),
+    )
+  })
+
+  it('preserves the originating path in Navigate state when redirecting to /login (#4486)', () => {
+    mockUseAuth.mockReturnValue({ user: null, isLoading: false })
+    renderProtected(undefined, '/email-digest')
+    expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
+    expect(navigateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/login',
+        state: expect.objectContaining({
+          from: expect.objectContaining({ pathname: '/email-digest' }),
+        }),
+      }),
+    )
   })
 
   it('renders children when authenticated and no role restriction', () => {

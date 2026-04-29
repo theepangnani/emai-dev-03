@@ -11,6 +11,7 @@ const mockSearchParams = new URLSearchParams()
 const mockSetSearchParams = vi.fn()
 const mockGetAuthUrl = vi.fn()
 let mockWaitlistEnabled = false
+let mockLocationState: unknown = null
 
 vi.mock('../context/AuthContext', () => ({
   useAuth: () => ({
@@ -26,6 +27,13 @@ vi.mock('react-router-dom', async () => {
     ...actual,
     useNavigate: () => mockNavigate,
     useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+    useLocation: () => ({
+      pathname: '/login',
+      search: '',
+      hash: '',
+      state: mockLocationState,
+      key: 'test',
+    }),
   }
 })
 
@@ -61,9 +69,11 @@ describe('Login', () => {
     vi.clearAllMocks()
     mockUser = null
     mockWaitlistEnabled = false
+    mockLocationState = null
     // Reset search params to empty
     mockSearchParams.delete('token')
     mockSearchParams.delete('error')
+    mockSearchParams.delete('redirect')
   })
 
   it('renders email and password inputs and submit button', () => {
@@ -110,7 +120,83 @@ describe('Login', () => {
 
     expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123', { started_at: expect.any(Number), website: '' })
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/dashboard')
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    })
+  })
+
+  // #4486 D6 — post-login redirect must preserve the intended deep-link path.
+  it('navigates to state.from.pathname after password login when set by ProtectedRoute', async () => {
+    mockLocationState = { from: { pathname: '/email-digest' } }
+    mockLogin.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderWithProviders(<Login />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/email-digest', { replace: true })
+    })
+  })
+
+  it('falls back to ?redirect= query param when state.from is absent', async () => {
+    mockSearchParams.set('redirect', '/tasks')
+    mockLogin.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderWithProviders(<Login />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/tasks', { replace: true })
+    })
+  })
+
+  it('ignores ?redirect=https://evil.com and falls back to /dashboard', async () => {
+    mockSearchParams.set('redirect', 'https://evil.com')
+    mockLogin.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderWithProviders(<Login />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    })
+  })
+
+  it('ignores ?redirect=//evil.com (protocol-relative) and falls back to /dashboard', async () => {
+    mockSearchParams.set('redirect', '//evil.com')
+    mockLogin.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    renderWithProviders(<Login />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/^password$/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+    })
+  })
+
+  it('navigates to state.from.pathname after OAuth user-loaded effect', async () => {
+    mockLocationState = { from: { pathname: '/email-digest' } }
+    mockUser = { id: 1, role: 'parent' }
+
+    renderWithProviders(<Login />)
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/email-digest', { replace: true })
     })
   })
 
