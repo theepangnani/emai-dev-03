@@ -260,6 +260,22 @@ def test_study_guide_uses_course_content_id(client, db_session, family):
     from app.models.course_content import CourseContent
     from app.models.study_guide import StudyGuide
 
+    # #4573 — force ID divergence. course_content and study_guide are
+    # separate tables with independent auto-increment sequences, both starting
+    # at 1 in a fresh DB. If pytest's collection order means the first row
+    # inserted into each table happens during this test, both rows get id=1
+    # and the precondition assertion below fails before the real contract is
+    # validated. Inserting a filler CourseContent advances its sequence past
+    # whatever the StudyGuide is going to land on.
+    filler = CourseContent(
+        title="filler — #4573 ID-divergence guard",
+        course_id=family["course"].id,
+        content_type="notes",
+        created_by_user_id=family["parent"].id,
+    )
+    db_session.add(filler)
+    db_session.commit()
+
     cc = CourseContent(
         title="Act Guide Content",
         course_id=family["course"].id,
