@@ -17,10 +17,15 @@ Endpoint
 Response
 --------
 - 302 ``Location: /parent/companion/{artifact_id}`` on success.
+- 401 when the caller is unauthenticated. Auth resolves via
+  ``require_cmcp_enabled`` (which calls ``get_current_user`` first)
+  *before* the handler body runs, so the surface allow-list and the
+  artifact lookup are unreachable to anonymous callers — flag-state
+  probing without a valid token is not possible.
 - 404 when the artifact doesn't exist OR the caller has no visibility
   (collapsed to avoid the existence oracle, mirrors
   ``GET /api/cmcp/artifacts/{id}/parent-companion``).
-- 422 on unknown surface.
+- 422 on unknown surface (only reachable post-auth).
 
 Visibility
 ----------
