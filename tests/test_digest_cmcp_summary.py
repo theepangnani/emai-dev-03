@@ -238,7 +238,13 @@ def test_returns_none_for_states_outside_visible_set(db_session, skipped_state):
 
 def test_returns_none_for_cross_family_parent(db_session):
     """An unrelated parent (no link to the artifact's child + not the
-    creator) gets None — no cross-family leak."""
+    creator) gets None — no cross-family leak.
+
+    Family-B parent has their OWN linked kid (different user_id) so
+    this test also guards against the failure mode "any parent with at
+    least one linked kid sees all artifacts" — the bug caught here is
+    a stronger signal than "parent with zero kids" alone.
+    """
     # Family A — owns the artifact.
     family_a_parent = _make_parent(db_session, full_name="Family A")
     kid_a_user, kid_a_student = _make_kid(db_session, full_name="Alex A")
@@ -247,15 +253,33 @@ def test_returns_none_for_cross_family_parent(db_session):
         db_session, user_id=kid_a_user.id, state=ArtifactState.APPROVED
     )
 
-    # Family B — unrelated parent + child.
+    # Family B — unrelated parent WITH their own linked kid (key
+    # mutation guard: if visibility were "any parent with ≥1 kid sees
+    # everything", this assertion would still fail because Family-B
+    # has a kid but is asking about Family-A's artifact).
     family_b_parent = _make_parent(db_session, full_name="Family B")
+    kid_b_user, kid_b_student = _make_kid(db_session, full_name="Bea B")
+    _link_parent_child(db_session, family_b_parent, kid_b_student)
 
     # Family-B parent has no link to kid_a_user → must not see the
-    # artifact even though state is APPROVED.
+    # artifact even though state is APPROVED and Family-B has their
+    # own (unrelated) linked child.
     result = render_cb_cmcp_artifact_summary(
         artifact.id, family_b_parent.id, kid_a_user.id, db_session
     )
     assert result is None
+
+    # Sanity guard: Family-B parent should still be able to see
+    # artifacts owned by their own kid (this proves the gate isn't
+    # "deny everything" — it's specifically denying cross-family).
+    own_artifact = _make_artifact(
+        db_session, user_id=kid_b_user.id, state=ArtifactState.APPROVED
+    )
+    own_result = render_cb_cmcp_artifact_summary(
+        own_artifact.id, family_b_parent.id, kid_b_user.id, db_session
+    )
+    assert own_result is not None
+    assert own_result["kid_name"] == "Bea"
 
 
 def test_returns_none_for_unknown_artifact_id(db_session):
