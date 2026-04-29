@@ -332,7 +332,13 @@ def test_stream_study_guide_returns_event_stream_with_chunks_and_complete(
     import json as _json
     completion = _json.loads(complete_frames[0]["data"])
     assert completion["se_codes_targeted"] == ["B2.1", "B2.2"]
-    assert completion["voice_module_id"] is None
+    # 1C-2 hookup: stream route resolves the parent voice module via
+    # ``VoiceRegistry.active_module_id("parent")`` and surfaces both the
+    # module ID and its content hash on the completion frame, mirroring
+    # the 1A-2 sync route.
+    assert completion["voice_module_id"] == "parent_coach_v1"
+    assert isinstance(completion["voice_module_hash"], str)
+    assert len(completion["voice_module_hash"]) == 64  # SHA-256 hex
     assert completion["persona"] == "parent"  # parent_user → parent
     assert completion["content_type"] == "STUDY_GUIDE"
 
