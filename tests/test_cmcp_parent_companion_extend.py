@@ -23,6 +23,7 @@ from app.services.cmcp.parent_companion_service import (
     MAX_TALKING_POINTS,
     MIN_TALKING_POINTS,
     PARENT_COMPANION_5_SECTION_SYSTEM_PROMPT,
+    BridgeDeepLinkPayload,
     ParentCompanionContent,
     ParentCompanionService,
 )
@@ -113,11 +114,10 @@ async def test_generate_5_section_returns_content_with_all_fields():
         assert len(result.talking_points) == 3
         assert len(result.coaching_prompts) >= 1
         assert result.how_to_help_without_giving_answer
-        assert result.bridge_deep_link_payload == {
-            "child_id": 42,
-            "week_summary": "Week of Apr 27",
-            "deep_link_target": "bridge:/kids/42/week",
-        }
+        assert isinstance(result.bridge_deep_link_payload, BridgeDeepLinkPayload)
+        assert result.bridge_deep_link_payload.child_id == 42
+        assert result.bridge_deep_link_payload.week_summary == "Week of Apr 27"
+        assert result.bridge_deep_link_payload.deep_link_target == "bridge:/kids/42/week"
 
         # System prompt routed correctly.
         call_kwargs = mock_gen.await_args.kwargs
@@ -446,6 +446,40 @@ async def test_generate_5_section_rejects_marker_in_how_to_help_field():
         assert result is None
 
 
+@pytest.mark.parametrize(
+    "evasion_phrase",
+    [
+        "answer :",  # extra space before colon
+        "the  answer  is",  # collapsed multi-space variant
+        "ANSWER:\t42",  # tab whitespace + uppercase
+        "answer\nkey",  # newline between words
+        "Solution:\t",  # solution with tab
+    ],
+)
+@pytest.mark.asyncio
+async def test_generate_5_section_lint_resists_whitespace_evasion(evasion_phrase):
+    """A2 acceptance hardening: whitespace-padded markers must still be caught.
+
+    The lint normalizes whitespace before substring matching, so adversarial
+    or accidental variants like 'answer :' (extra space) or 'the  answer  is'
+    (double space) trip it the same as the canonical marker.
+    """
+    payload = _valid_payload(talking_points_count=3)
+    payload["se_explanation"] = (
+        f"Your child is learning division. {evasion_phrase} 12 divided by 3 is 4. "
+        "This week we work on long division."
+    )
+    with patch(
+        "app.services.cmcp.parent_companion_service.generate_content",
+        new_callable=AsyncMock,
+    ) as mock_gen:
+        mock_gen.return_value = (json.dumps(payload), "end_turn")
+        result = await ParentCompanionService.generate_5_section(
+            study_guide_content="Content."
+        )
+        assert result is None
+
+
 @pytest.mark.asyncio
 async def test_generate_5_section_clean_output_passes_lint():
     """Sanity: a payload with NO markers is accepted and returned as-is."""
@@ -532,11 +566,10 @@ async def test_generate_5_section_deep_link_payload_defaults_to_none_fields():
             study_guide_content="Content."
         )
         assert result is not None
-        assert result.bridge_deep_link_payload == {
-            "child_id": None,
-            "week_summary": None,
-            "deep_link_target": None,
-        }
+        assert isinstance(result.bridge_deep_link_payload, BridgeDeepLinkPayload)
+        assert result.bridge_deep_link_payload.child_id is None
+        assert result.bridge_deep_link_payload.week_summary is None
+        assert result.bridge_deep_link_payload.deep_link_target is None
 
 
 # ---------------------------------------------------------------------------

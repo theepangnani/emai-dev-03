@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import re
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.core.logging_config import get_logger
 from app.services.ai_service import generate_content
@@ -85,6 +85,18 @@ Hard rules:
 - Output PURE JSON only. No surrounding text, no code fences."""
 
 
+class BridgeDeepLinkPayload(BaseModel):
+    """Typed payload for the Bridge deep link (rendered in 1F-4).
+
+    Builds a contract for the next stripe so consumers get static field
+    validation rather than untyped dict access.
+    """
+
+    child_id: int | str | None = None
+    week_summary: str | None = None
+    deep_link_target: str | None = None
+
+
 class ParentCompanionContent(BaseModel):
     """Structured 5-section parent companion output (FR-02.6 / A2).
 
@@ -108,8 +120,9 @@ class ParentCompanionContent(BaseModel):
     how_to_help_without_giving_answer: str = Field(
         ..., description="Guidance for the parent on supporting the child without revealing answers."
     )
-    bridge_deep_link_payload: dict = Field(
-        ..., description="Payload for the Bridge deep link (rendered in 1F-4)."
+    bridge_deep_link_payload: BridgeDeepLinkPayload = Field(
+        default_factory=BridgeDeepLinkPayload,
+        description="Payload for the Bridge deep link (rendered in 1F-4).",
     )
 
 
@@ -130,19 +143,33 @@ def _contains_answer_key_markers(text: str) -> tuple[bool, str | None]:
     """Auditable lint: check the text for forbidden answer-key markers.
 
     Returns (True, marker) if any marker is present, else (False, None).
-    Case-insensitive substring match.
+    The match is case-insensitive AND whitespace-tolerant: the text is
+    lowercased, runs of whitespace are collapsed to a single space, and
+    whitespace adjacent to punctuation (``:``) is stripped before substring
+    matching. Adversarial variants like ``"answer :"`` (space before colon),
+    ``"the  answer  is"`` (double-space), or ``"ANSWER:\\t42"`` all trip the
+    lint the same as their canonical form.
     """
     if not text:
         return False, None
-    lowered = text.lower()
+    # Normalize: lowercase, collapse whitespace, strip whitespace around colons.
+    normalized = text.lower()
+    normalized = re.sub(r"\s+", " ", normalized)
+    normalized = re.sub(r"\s*:\s*", ":", normalized)
     for marker in ANSWER_KEY_MARKERS:
-        if marker in lowered:
+        if marker in normalized:
             return True, marker
     return False, None
 
 
 def _scan_content_for_answer_keys(content: ParentCompanionContent) -> tuple[bool, str | None]:
-    """Scan every text field of the structured content for answer-key markers."""
+    """Scan every text field of the structured content for answer-key markers.
+
+    NOTE: ``bridge_deep_link_payload`` is intentionally excluded — it is
+    built from caller-provided structured fields (child_id, week_summary,
+    deep_link_target), not model output, so it cannot leak answer keys
+    from the AI response.
+    """
     text_fields: list[str] = [
         content.se_explanation,
         content.how_to_help_without_giving_answer,
@@ -349,11 +376,11 @@ Do not reveal answers anywhere in the JSON."""
             return None
 
         # Build the deep-link payload from caller-provided context.
-        bridge_deep_link_payload: dict = {
-            "child_id": child_id,
-            "week_summary": week_summary,
-            "deep_link_target": deep_link_target,
-        }
+        bridge_deep_link_payload = BridgeDeepLinkPayload(
+            child_id=child_id,
+            week_summary=week_summary,
+            deep_link_target=deep_link_target,
+        )
 
         try:
             content = ParentCompanionContent(
@@ -365,8 +392,7 @@ Do not reveal answers anywhere in the JSON."""
                 ),
                 bridge_deep_link_payload=bridge_deep_link_payload,
             )
-        except Exception as e:
-            # Pydantic ValidationError covers the structural failures here.
+        except ValidationError as e:
             logger.warning(f"Parent companion 5-section: schema validation failed: {e}")
             return None
 
