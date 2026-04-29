@@ -63,6 +63,18 @@ _CACHE_TTL = 300  # seconds
 _cache: dict[str, tuple[float, Any]] = {}
 
 
+def _cache_role_key(current_user: User) -> str:
+    """Return a stable role tag for cache scoping.
+
+    Role MUST participate in the cache key so that role-conditional
+    payload fields (added by future stripes — e.g. teacher-only
+    annotation, grade-publication gates) cannot serve a parent's
+    payload to an admin or vice versa.  ``"none"`` covers users mid-
+    onboarding whose ``role`` is NULL.
+    """
+    return current_user.role.value if current_user.role else "none"
+
+
 def _cache_get(key: str) -> Any | None:
     """Return cached value for ``key`` if present and not expired, else ``None``."""
     entry = _cache.get(key)
@@ -162,7 +174,7 @@ def get_student_profile(
     student = _get_student_or_404(student_id, db)
     _assert_access(current_user, student, db)
 
-    cache_key = f"profile:{student_id}"
+    cache_key = f"profile:{student_id}:{_cache_role_key(current_user)}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -223,7 +235,7 @@ def get_student_assignments(
     student = _get_student_or_404(student_id, db)
     _assert_access(current_user, student, db)
 
-    cache_key = f"assignments:{student_id}"
+    cache_key = f"assignments:{student_id}:{_cache_role_key(current_user)}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -241,12 +253,18 @@ def get_student_assignments(
     for sa in student_assignments:
         a = sa.assignment
         due = a.due_date
-        overdue = (
-            due is not None
-            and due.tzinfo is not None
-            and due < now
-            and sa.status not in ("submitted", "graded")
-        )
+        # SQLite (dev/test) returns naive datetimes from a
+        # ``DateTime(timezone=True)`` column, while Postgres returns
+        # aware ones — normalize both paths to UTC-aware so the overdue
+        # check works identically in both environments.
+        if due is not None:
+            due_aware = due if due.tzinfo is not None else due.replace(tzinfo=timezone.utc)
+            overdue = (
+                due_aware < now
+                and sa.status not in ("submitted", "graded")
+            )
+        else:
+            overdue = False
         percentage: float | None = None
         if sa.grade is not None and a.max_points and a.max_points > 0:
             percentage = round(sa.grade / a.max_points * 100, 1)
@@ -296,7 +314,7 @@ def get_student_study_history(
     student = _get_student_or_404(student_id, db)
     _assert_access(current_user, student, db)
 
-    cache_key = f"study_history:{student_id}"
+    cache_key = f"study_history:{student_id}:{_cache_role_key(current_user)}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached
@@ -389,7 +407,7 @@ def get_student_weak_areas(
     student = _get_student_or_404(student_id, db)
     _assert_access(current_user, student, db)
 
-    cache_key = f"weak_areas:{student_id}"
+    cache_key = f"weak_areas:{student_id}:{_cache_role_key(current_user)}"
     cached = _cache_get(cache_key)
     if cached is not None:
         return cached

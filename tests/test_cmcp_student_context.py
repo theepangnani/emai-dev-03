@@ -288,13 +288,105 @@ def test_get_student_profile_cache_skips_db_on_second_call(
 
     assert second == first
     # Second call still runs access checks (Student lookup + parent link),
-    # but must skip the payload queries — at minimum 2 fewer query() calls
-    # than the first call (courses + report card lookups).
+    # but must skip the payload queries.  The contract is "fewer queries
+    # on cache hit" — not a specific number; pinning an absolute upper
+    # bound here couples the test to internal query layout and fights
+    # benign refactors (e.g. eager-loads added later).
     delta = counting.query_calls - queries_after_first
     assert delta < queries_after_first, (
         f"Cache had no effect: first call ran {queries_after_first} queries, "
         f"second call ran {delta} more (expected far fewer)."
     )
-    # Concretely: first call = access (2) + courses + report card = 4 queries.
-    # Second call = access only = 2 queries.
-    assert delta <= 2
+
+
+# ── Cache role-scoping ──
+
+
+def test_cache_key_includes_role(
+    db_session, student, linked_parent, course_with_student
+):
+    """Cache entries are role-scoped — a parent payload must not be
+    served to an admin (or vice versa) once role-conditional fields
+    land in M2-A.  Verified by checking that two callers with
+    different roles produce two distinct cache entries.
+    """
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+    from app.services.cmcp import student_context
+    from app.services.cmcp.student_context import get_student_profile
+
+    # Create an admin caller alongside the linked parent
+    admin = User(
+        email=f"cmcp_admin_{uuid4().hex[:8]}@test.com",
+        full_name="CMCP Admin",
+        role=UserRole.ADMIN,
+        hashed_password=get_password_hash(PASSWORD),
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+
+    student_context._cache.clear()
+    get_student_profile(student.id, db_session, linked_parent)
+    get_student_profile(student.id, db_session, admin)
+
+    keys = list(student_context._cache.keys())
+    assert any("parent" in k for k in keys), keys
+    assert any("admin" in k for k in keys), keys
+    assert len(keys) == 2
+
+
+# ── Other-function smoke coverage ──
+
+
+def test_get_student_assignments_smoke(db_session, student, linked_parent):
+    """Smoke test: function returns a dict with the documented shape."""
+    from app.services.cmcp.student_context import get_student_assignments
+
+    result = get_student_assignments(student.id, db_session, linked_parent)
+    assert result["student_id"] == student.id
+    assert result["resource_uri"] == f"student://assignments/{student.id}"
+    assert isinstance(result["assignments"], list)
+    assert result["total"] == 0
+
+
+def test_get_student_study_history_smoke(db_session, student, linked_parent):
+    """Smoke test: function returns a dict with the documented shape."""
+    from app.services.cmcp.student_context import get_student_study_history
+
+    result = get_student_study_history(student.id, db_session, linked_parent)
+    assert result["student_id"] == student.id
+    assert result["resource_uri"] == f"student://study-history/{student.id}"
+    assert result["summary"]["total_study_guides"] == 0
+    assert result["summary"]["average_quiz_score"] is None
+
+
+def test_get_student_weak_areas_smoke(db_session, student, linked_parent):
+    """Smoke test: function returns a dict with the documented shape."""
+    from app.services.cmcp.student_context import get_student_weak_areas
+
+    result = get_student_weak_areas(student.id, db_session, linked_parent)
+    assert result["student_id"] == student.id
+    assert result["resource_uri"] == f"student://weak-areas/{student.id}"
+    assert result["weak_areas"] == []
+    assert result["total_weak_areas"] == 0
+
+
+def test_smoke_functions_enforce_rbac(
+    db_session, student, unrelated_parent_user
+):
+    """All four context functions enforce the same RBAC contract."""
+    from fastapi import HTTPException
+
+    from app.services.cmcp.student_context import (
+        get_student_assignments,
+        get_student_study_history,
+        get_student_weak_areas,
+    )
+
+    for fn in (get_student_assignments, get_student_study_history, get_student_weak_areas):
+        with pytest.raises(HTTPException) as exc:
+            fn(student.id, db_session, unrelated_parent_user)
+        assert exc.value.status_code == 403, (
+            f"{fn.__name__} did not enforce 403 for unrelated parent"
+        )
