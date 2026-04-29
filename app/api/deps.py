@@ -240,7 +240,13 @@ def can_access_course(db: Session, user: User, course_id: int) -> bool:
 # CB-CMCP-001 M1-F 1F-5 (#4499) — Parent Companion access matrix
 # ---------------------------------------------------------------------------
 
-def can_access_parent_companion(db: Session, user: User, artifact_id: int) -> bool:
+def can_access_parent_companion(
+    db: Session,
+    user: User,
+    artifact_id: int,
+    *,
+    artifact=None,
+) -> bool:
     """Check if a user can access a Parent Companion content artifact.
 
     Implements the FR-05 access-control matrix amendment for the
@@ -269,21 +275,40 @@ def can_access_parent_companion(db: Session, user: User, artifact_id: int) -> bo
     the helper signature stable even if the storage table moves in a
     later stripe.
 
-    Returns ``False`` when the artifact does not exist; routes that
-    need to distinguish 404 from 403 should look up the artifact
-    themselves first.
+    **Caller contract (#4513):** the caller MUST verify the artifact's
+    content type is ``PARENT_COMPANION`` before invoking this helper.
+    The helper does not re-check the content type — the ``study_guides``
+    table also holds STUDY_GUIDE / WORKSHEET / QUIZ / SAMPLE_TEST /
+    ASSIGNMENT artifacts, and applying the FR-05 matrix to those would
+    incorrectly deny access to roles that should have it (e.g. STUDENT
+    accessing their own STUDY_GUIDE). Routes that gate Parent Companion
+    content should use :func:`require_parent_companion_access` (which
+    expects a verified Parent Companion artifact id) or filter by
+    ``requested_persona == "parent"`` / a future ``content_type`` column
+    before delegating to this helper.
+
+    To save a redundant SELECT in the dependency factory case, callers
+    that have already fetched the ``StudyGuide`` row may pass it via
+    the ``artifact`` keyword. When ``artifact is None`` (the default),
+    the helper looks up by ``artifact_id``; non-existent rows return
+    ``False`` (the dependency factory converts that to a 404).
     """
     from app.models.course import Course
     from app.models.student import Student, parent_students
     from app.models.study_guide import StudyGuide
     from app.models.teacher import Teacher
 
-    # Look up the artifact first — non-existent artifacts get no access
-    # regardless of role (so a missing artifact reads as "no access" both
-    # to the helper's callers and to the dependency factory below).
-    artifact = db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
+    # Look up the artifact only when the caller didn't pass one in.
+    # Non-existent artifacts get no access regardless of role (so a
+    # missing artifact reads as "no access" both to the helper's
+    # callers and to the dependency factory below — the dep maps that
+    # to 404).
     if artifact is None:
-        return False
+        artifact = (
+            db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
+        )
+        if artifact is None:
+            return False
 
     # ADMIN bypass — full access regardless of multi-role combinations.
     if user.has_role(UserRole.ADMIN):
@@ -392,18 +417,21 @@ def require_parent_companion_access(artifact_id: int):
     ) -> User:
         from app.models.study_guide import StudyGuide
 
-        # Distinguish 404 (no such artifact) from 403 (forbidden) so
-        # routes using this dependency don't have to redo the lookup.
-        exists = (
-            db.query(StudyGuide.id).filter(StudyGuide.id == artifact_id).first()
+        # Single SELECT (#4514) — fetch the artifact once, pass it
+        # through to the helper to avoid a second round-trip on the
+        # protected read path.
+        artifact = (
+            db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
         )
-        if exists is None:
+        if artifact is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Parent Companion artifact not found",
             )
 
-        if not can_access_parent_companion(db, current_user, artifact_id):
+        if not can_access_parent_companion(
+            db, current_user, artifact_id, artifact=artifact
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions for Parent Companion content",
