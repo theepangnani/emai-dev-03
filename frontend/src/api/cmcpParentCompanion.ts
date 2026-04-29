@@ -1,4 +1,3 @@
-// TODO(M3, #4531): Endpoint requires content_artifacts persistence which lands in M3. Page is gated until then.
 /**
  * CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion artifact API client.
  *
@@ -7,14 +6,10 @@
  * 1F-2 ``ParentCompanionService.generate_5_section()``. The shape mirrors the
  * Pydantic model in ``app/services/cmcp/parent_companion_service.py``.
  *
- * GATING (M1 followup #4531): The backend GET endpoint does NOT exist in M1.
- * M1 ships parent_companion content inline on the SSE generation/stream
- * completion event only. The fetch-by-artifact-id pattern requires M3's
- * `content_artifacts` table writes. Until M3 lands, the corresponding
- * `<Route path="/parent/companion/:artifact_id">` registration is commented
- * out in `App.tsx`, so this client and `ParentCompanionPage` are not
- * reachable from the running app. They are kept in tree (and unit-tested
- * with mocks) to minimize churn when M3 wires the GET endpoint.
+ * M3α prequel (#4575) wired the backend endpoint, so this client is now live.
+ * The endpoint returns ``{ artifact_id, content }`` where ``content`` matches
+ * the 5-section ``ParentCompanionContent`` schema below; this client unwraps
+ * to the inner ``content`` so existing call-sites keep their existing shape.
  */
 import { api } from './client';
 
@@ -32,16 +27,21 @@ export interface ParentCompanionContent {
   bridge_deep_link_payload: BridgeDeepLinkPayload;
 }
 
+interface ParentCompanionArtifactResponse {
+  artifact_id: number;
+  content: ParentCompanionContent;
+}
+
 export const cmcpParentCompanionApi = {
   /**
    * Fetch the Parent Companion 5-section content for a given artifact id.
-   * Throws (axios error) on 401/403/404; the page component catches and
+   * Throws (axios error) on 401/403/404/422; the page component catches and
    * renders the error state.
    */
   get: async (artifactId: string | number): Promise<ParentCompanionContent> => {
-    const response = await api.get(
+    const response = await api.get<ParentCompanionArtifactResponse>(
       `/api/cmcp/artifacts/${encodeURIComponent(String(artifactId))}/parent-companion`,
     );
-    return response.data as ParentCompanionContent;
+    return response.data.content;
   },
 };

@@ -321,7 +321,9 @@ def test_teacher_generates_study_guide_returns_preview_shape(
     content = body["content"]
 
     # Full GenerationPreview shape — keys match the REST route exactly.
+    # M3α prequel (#4575): adds the persisted ``id`` field.
     assert set(content.keys()) == {
+        "id",
         "prompt",
         "se_codes_targeted",
         "voice_module_id",
