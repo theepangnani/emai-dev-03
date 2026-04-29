@@ -29,10 +29,21 @@ from app.services.cmcp.alignment_validator import (
     REVIEW_THRESHOLD,
     AlignmentValidator,
     ValidationResult,
-    _normalize_code,
 )
 
 logger = get_logger(__name__)
+
+
+def _normalize_code(code: str) -> str:
+    """Normalize an SE code for case-insensitive, whitespace-tolerant matching.
+
+    Local copy of the same helper in `alignment_validator.py` — kept private
+    here so the pipeline does not depend on a private symbol of the 1D-1
+    module. Semantics MUST stay identical to `alignment_validator._normalize_code`
+    so that union/intersection set operations against the second-pass result
+    project onto the same canonical form.
+    """
+    return code.strip().upper()
 
 
 class ValidationPipelineResult(BaseModel):
@@ -66,34 +77,33 @@ class ValidationPipelineResult(BaseModel):
 def _compute_first_pass(
     model_self_report_se_codes: list[str],
     expected_se_codes: list[str],
-) -> tuple[list[str], list[str], float]:
-    """Compute first-pass matched/uncovered SE codes and coverage rate.
+) -> tuple[list[str], float]:
+    """Compute first-pass matched SE codes and coverage rate.
 
     Mirrors ``alignment_validator._compute_coverage`` semantics — case- and
     whitespace-insensitive matching against ``expected_se_codes``. The
-    ``matched`` / ``uncovered`` lists are returned in the original casing of
+    ``matched`` list is returned in the original casing of
     ``expected_se_codes`` so downstream consumers see the canonical SE code.
 
     Empty ``expected_se_codes`` yields a 0.0 coverage rate (the caller
     surfaces this as a failure — see ``ValidationPipeline.validate``).
+
+    Note: per-pass uncovered lists are not surfaced; the pipeline only needs
+    the BOTH-passes intersection of uncovered codes, which is computed
+    directly from the union of matched codes downstream.
     """
     if not expected_se_codes:
-        return [], [], 0.0
+        return [], 0.0
 
     self_reported_codes = {
         _normalize_code(c) for c in model_self_report_se_codes if c
     }
-
-    matched: list[str] = []
-    uncovered: list[str] = []
-    for code in expected_se_codes:
-        if _normalize_code(code) in self_reported_codes:
-            matched.append(code)
-        else:
-            uncovered.append(code)
-
+    matched = [
+        code for code in expected_se_codes
+        if _normalize_code(code) in self_reported_codes
+    ]
     coverage_rate = len(matched) / len(expected_se_codes)
-    return matched, uncovered, coverage_rate
+    return matched, coverage_rate
 
 
 class ValidationPipeline:
@@ -109,10 +119,10 @@ class ValidationPipeline:
     """
 
     def __init__(self, validator: AlignmentValidator | None = None):
-        # AlignmentValidator's `validate` is a staticmethod, so any instance
-        # (or the class itself) is functionally equivalent. We accept an
-        # instance so callers/tests can inject a stub class with a custom
-        # `validate` coroutine.
+        # AlignmentValidator's `validate` is a staticmethod, so calling it on
+        # any instance is equivalent. We accept an instance (rather than the
+        # class) so callers/tests can inject a stub instance with a custom
+        # `validate` coroutine via duck-typing.
         self.validator: AlignmentValidator = validator or AlignmentValidator()
 
     async def validate(
@@ -162,7 +172,7 @@ class ValidationPipeline:
                 uncovered_se_codes_intersection=[],
             )
 
-        first_matched, first_uncovered, first_coverage_rate = _compute_first_pass(
+        first_matched, first_coverage_rate = _compute_first_pass(
             model_self_report_se_codes=model_self_report_se_codes or [],
             expected_se_codes=expected_se_codes,
         )

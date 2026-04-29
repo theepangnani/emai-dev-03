@@ -458,12 +458,13 @@ async def test_flag_for_review_boundary():
     """alignment_score >= 0.95 → no flag; < 0.95 → flag."""
     expected = ["A1", "A2", "A3", "A4", "A5"]
     self_report = expected  # 1.0
+    # The pipeline recomputes flag_for_review from alignment_score and
+    # ignores the second-pass flag — we don't override it here.
     stub = _StubValidator(_make_second_pass_result(
         passed=True,
         coverage_rate=0.95,  # just at threshold
         matched_se_codes=["A1", "A2", "A3", "A4"],
         uncovered_se_codes=["A5"],
-        flag_for_review=False,
     ))
 
     pipeline = ValidationPipeline(validator=stub)
