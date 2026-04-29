@@ -252,6 +252,16 @@ export function useCmcpGenerationStream(): UseCmcpGenerationStreamReturn {
       abortRef.current.abort();
       abortRef.current = null;
     }
+    // Transition out of `connecting` / `streaming` so the skeleton
+    // stops showing immediately. Without this the AbortError thrown
+    // by `fetch` is swallowed by the catch (intentional cancel) and
+    // the hook would stay `streaming: true` indefinitely. Matches the
+    // pattern in `useStudyGuideStream`.
+    setState((prev) =>
+      prev.status === 'connecting' || prev.status === 'streaming'
+        ? { ...prev, status: 'idle' }
+        : prev,
+    );
   }, []);
 
   const reset = useCallback(() => {
