@@ -39,6 +39,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.services.cmcp.parent_companion_service import ParentCompanionContent
+
 
 # Locked content types (per plan §7 M1-A acceptance gate listing all five).
 # The ``content_type`` is consumed by 1A-2's generation route to pick the
@@ -311,16 +313,19 @@ class StreamCompletionEvent(BaseModel):
     content_type: HTTPContentType = Field(
         ..., description="HTTP-side artifact type the request targeted."
     )
-    parent_companion: dict | None = Field(
+    parent_companion: ParentCompanionContent | None = Field(
         default=None,
         description=(
             "Parent Companion derivative auto-emitted alongside the primary "
             "student artifact when ``persona='student'`` and ``content_type`` "
-            "is in ``STUDENT_FACING_CONTENT_TYPES``. Serialized form of "
-            "``ParentCompanionContent`` (5-section structure per FR-02.6 / "
-            "Amendment A2). ``None`` for teacher- and parent-facing "
-            "generations OR when auto-emit fails (non-fatal — the primary "
-            "generation always succeeds independently)."
+            "is in ``STUDENT_FACING_CONTENT_TYPES``. The 5-section "
+            "``ParentCompanionContent`` structure (per FR-02.6 / Amendment "
+            "A2) is now exposed as a typed nested model so consumers "
+            "(frontend hook, future MCP clients, OpenAPI schema) get "
+            "field-level guarantees rather than an untyped ``dict``. "
+            "``None`` for teacher- and parent-facing generations OR when "
+            "auto-emit fails (non-fatal — the primary generation always "
+            "succeeds independently)."
         ),
     )
     alignment_score: float | None = Field(

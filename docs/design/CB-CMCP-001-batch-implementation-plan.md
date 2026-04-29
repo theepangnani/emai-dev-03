@@ -400,6 +400,12 @@ Goal: CEG built and validated; cost model published; reviewer onboarded; M0 hard
 
 Goal: First curriculum-aligned artifacts generated end-to-end with all four authenticity amendments wired up. Internal-only flag; not yet user-visible.
 
+> **M1 invariant: NO PERSISTENCE.** Generation is in-memory only — no writes to
+> `study_guides`, `content_artifacts`, audit log, or any other table. The
+> streaming endpoint returns the artifact in the SSE completion event.
+> Persistence lands in M3 (Workflow + Integration). Stripes that depend on
+> artifact-by-ID fetch must be gated until M3.
+
 #### Batch M1-A — Guardrail Engine + prompt builders
 
 | Stripe | Scope | Reuses |
@@ -503,6 +509,8 @@ Goal: MCP server live, internal testing complete. **Per D1=C: end-user MCP only;
 Goal: Teacher review workflow live; Bridge / DCI / Digest integration shipped; first user-visible flag ramp.
 
 **Sequencing flexibility:** Batch M3-B (Self-study path implementation, D3=C) only depends on the M1 state machine — not on the M3-A teacher-review queue. It can ship as early as late M2 to derisk the D3 decision and validate the SELF_STUDY state-machine path before M3-A is built.
+
+**M1 carry-over refactor (#4533):** When M3-A persistence + M3-C surface dispatcher + M3-D Tasks emit land on the generation path, refactor `app/api/routes/cmcp_generate_stream.py` — extract `_resolve_envelope`, `_resolve_voice`, `_run_validation`, `_emit_completion` helpers when persistence rewrite happens. The route grew to ~450 LOC across 1B-3 / 1C-2 / 1D-3 / 1E-2 / 1F-3 in M1; refactoring it pre-M3 would be throwaway work since M3 rewrites the completion path anyway.
 
 #### Batch M3-A — Teacher Review Queue UI
 
