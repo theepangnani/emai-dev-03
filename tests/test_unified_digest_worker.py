@@ -1498,6 +1498,40 @@ def test_send_sectioned_whatsapp_v2_strips_control_chars():
     assert "gamma" in urgent_var
     assert "delta" in urgent_var
     assert "end" in urgent_var
+
+
+def test_sanitise_whatsapp_section_block_strips_html_tags():
+    """#4505 SUGG-2 — `_sanitise_whatsapp_section_block` defensively scrubs
+    HTML tags / unterminated tags / lone angle brackets, mirroring the #4006
+    pattern in `_sanitise_whatsapp_var`. Source AI output occasionally leaks
+    tag fragments (`<b>`, `<script>`, unterminated `<sup`) which Twilio's
+    Content API rejects."""
+    from app.jobs.parent_email_digest_job import _sanitise_whatsapp_section_block
+
+    dirty = (
+        "- <b>Bold item</b> in urgent section\n"
+        "- Item with <script>alert('x')</script> tag\n"
+        "- Item with unterminated <sup tag fragment"
+    )
+    cleaned = _sanitise_whatsapp_section_block(dirty)
+
+    # No HTML markup survives.
+    assert "<" not in cleaned
+    assert ">" not in cleaned
+    assert "<b>" not in cleaned
+    assert "</b>" not in cleaned
+    assert "<script>" not in cleaned
+    assert "</script>" not in cleaned
+    assert "<sup" not in cleaned
+    # Real content survives.
+    assert "Bold item" in cleaned
+    assert "in urgent section" in cleaned
+    assert "alert" in cleaned  # script body text remains (markup gone)
+    assert "unterminated" in cleaned
+    # Newlines were also collapsed (sanitiser's primary contract).
+    assert "\n" not in cleaned
+
+
 # #4502 — V2 → V1 → freeform actual fallback chain (unified path).
 #
 # PR #4104's commit message claimed this contract but shipped mutually
