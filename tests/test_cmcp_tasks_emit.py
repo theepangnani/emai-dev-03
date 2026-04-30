@@ -578,3 +578,42 @@ def test_approve_endpoint_emits_tasks_for_enrolled_students(
     assert len(rows) == 2
     assignees = sorted(r.assigned_to_user_id for r in rows)
     assert assignees == sorted(u.id for u in student_users)
+
+
+# ── Telemetry shape (#4703) ─────────────────────────────────────────
+
+
+def test_emit_tasks_logs_structured_event_on_dispatch(
+    db_session, teacher_user, caplog
+):
+    """Per-artifact dispatch summary must include ``cmcp.tasks.dispatch_completed``
+    in ``extra={"event": ...}`` so log-aggregation can pivot on it (#4703).
+    """
+    import logging
+
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.task_dispatcher import emit_tasks_for_approved_artifact
+
+    course = _make_course(db_session, teacher_user)
+    s_user, s_rec = _make_student(db_session)
+    _enroll_student(db_session, s_rec, course)
+
+    artifact = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course.id,
+        state=ArtifactState.APPROVED,
+    )
+
+    with caplog.at_level(
+        logging.INFO, logger="app.services.cmcp.task_dispatcher"
+    ):
+        emit_tasks_for_approved_artifact(artifact.id, db_session)
+
+    events = [
+        getattr(r, "event", None)
+        for r in caplog.records
+        if r.name == "app.services.cmcp.task_dispatcher"
+    ]
+    assert "cmcp.tasks.emitted" in events
+    assert "cmcp.tasks.dispatch_completed" in events

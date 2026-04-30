@@ -197,6 +197,10 @@ def emit_tasks_for_approved_artifact(
         logger.info(
             "cmcp.tasks.emit skipped: no course_id artifact_id=%s",
             artifact_id,
+            extra={
+                "event": "cmcp.tasks.skipped_no_course",
+                "artifact_id": artifact_id,
+            },
         )
         return 0
 
@@ -207,6 +211,11 @@ def emit_tasks_for_approved_artifact(
             "course_id=%s",
             artifact_id,
             course_id,
+            extra={
+                "event": "cmcp.tasks.skipped_no_enrollment",
+                "artifact_id": artifact_id,
+                "course_id": course_id,
+            },
         )
         return 0
 
@@ -246,6 +255,12 @@ def emit_tasks_for_approved_artifact(
                     artifact_id,
                     existing.id,
                     student_user_id,
+                    extra={
+                        "event": "cmcp.tasks.skipped_user_deleted",
+                        "artifact_id": artifact_id,
+                        "task_id": existing.id,
+                        "assigned_to_user_id": student_user_id,
+                    },
                 )
                 continue
 
@@ -281,6 +296,14 @@ def emit_tasks_for_approved_artifact(
                     artifact_id,
                     task.id,
                     student_user_id,
+                    extra={
+                        "event": "cmcp.tasks.emitted",
+                        "artifact_id": artifact_id,
+                        "task_id": task.id,
+                        "assigned_to_user_id": student_user_id,
+                        "course_id": course_id,
+                        "action": "created",
+                    },
                 )
             else:
                 # Update path — light-touch refresh of the server-owned
@@ -311,6 +334,12 @@ def emit_tasks_for_approved_artifact(
                         artifact_id,
                         existing.id,
                         student_user_id,
+                        extra={
+                            "event": "cmcp.tasks.skipped_user_edited",
+                            "artifact_id": artifact_id,
+                            "task_id": existing.id,
+                            "assigned_to_user_id": student_user_id,
+                        },
                     )
                     continue
 
@@ -339,6 +368,14 @@ def emit_tasks_for_approved_artifact(
                         artifact_id,
                         existing.id,
                         student_user_id,
+                        extra={
+                            "event": "cmcp.tasks.emitted",
+                            "artifact_id": artifact_id,
+                            "task_id": existing.id,
+                            "assigned_to_user_id": student_user_id,
+                            "course_id": course_id,
+                            "action": "updated",
+                        },
                     )
         except Exception:
             # Per-student isolation: a single failed commit must not
@@ -360,6 +397,13 @@ def emit_tasks_for_approved_artifact(
         course_id,
         len(student_user_ids),
         emitted,
+        extra={
+            "event": "cmcp.tasks.dispatch_completed",
+            "artifact_id": artifact_id,
+            "course_id": course_id,
+            "enrolled_count": len(student_user_ids),
+            "emitted_count": emitted,
+        },
     )
     return emitted
 
