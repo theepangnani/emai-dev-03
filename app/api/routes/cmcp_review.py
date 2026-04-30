@@ -134,7 +134,21 @@ def _user_can_review(artifact: StudyGuide, user: User, db: Session) -> bool:
     M2-B's row-level visibility for TEACHERs (``_user_can_view``).
     Other roles → False (the route layer 403s before reaching here, but
     keep the defence-in-depth).
+
+    SELF_STUDY denial (3B-3 / #4585): the review queue is for
+    PENDING_REVIEW class-distributable artifacts — SELF_STUDY rows are
+    private learner workspace and never enter the review pipeline. We
+    deny here as defence-in-depth even for ADMIN so a stray
+    PATCH/approve/reject targeted at a SELF_STUDY artifact (e.g. via a
+    direct id guess) cannot mutate state. The list endpoint already
+    filters ``state == PENDING_REVIEW`` so SELF_STUDY rows never
+    surface in the queue itself; this guards the by-id endpoints.
     """
+    from app.services.cmcp.artifact_state import ArtifactState
+
+    if artifact.state == ArtifactState.SELF_STUDY:
+        return False
+
     if user.has_role(UserRole.ADMIN):
         return True
 

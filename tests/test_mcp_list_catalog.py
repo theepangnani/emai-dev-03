@@ -106,10 +106,11 @@ class _RecordingQuery:
     standing up a real DB.
     """
 
-    def __init__(self, all_result=None, subquery_result=None):
+    def __init__(self, all_result=None, subquery_result=None, first_result=None):
         self.calls: list[tuple[str, tuple]] = []
         self._all_result = all_result or []
         self._subquery_result = subquery_result
+        self._first_result = first_result
 
     def filter(self, *args, **kw):
         self.calls.append(("filter", args))
@@ -133,6 +134,13 @@ class _RecordingQuery:
 
     def all(self):
         return list(self._all_result)
+
+    def first(self):
+        # 3B-3 (#4585): SELF_STUDY scoping looks up the caller's
+        # ``Student`` row to walk to linked-parent ids. Tests that
+        # don't seed a Student return ``None`` (no parent linkage),
+        # which the scope handles as "caller-only family list".
+        return self._first_result
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -413,9 +421,10 @@ def test_handler_parent_role_triggers_kids_subquery(monkeypatch, app):
     """PARENT scoping must build a subquery from ``parent_students``.
 
     We don't run this against a real DB (route-level test below covers
-    that); we just confirm ``db.query`` is invoked TWICE — once for the
-    main StudyGuide query and once for the parent_students/students
-    subquery — proving the kid-scope branch was entered.
+    that); we just confirm ``db.query`` is invoked THREE times — once
+    for the main StudyGuide query, once for the SELF_STUDY family
+    allowlist lookup (3B-3 / #4585), and once for the parent_students
+    /students subquery — proving the kid-scope branch was entered.
     """
     from sqlalchemy import select
 
@@ -457,14 +466,18 @@ def test_handler_parent_role_triggers_kids_subquery(monkeypatch, app):
             return real_subq
 
     sub_q = _SubQ()
+    # 3B-3 (#4585): ``_apply_role_scope`` now also builds the SELF_STUDY
+    # family allowlist for PARENT, which is an extra ``db.query`` →
+    # ``.all()`` lookup that returns ``[]`` here (no children seeded).
+    family_q = _RecordingQuery(all_result=[])
     db = MagicMock()
-    db.query.side_effect = [main_q, sub_q]
+    db.query.side_effect = [main_q, family_q, sub_q]
 
     list_catalog({}, parent, db)
 
-    # Both queries fired: the main StudyGuide query and the kid subquery.
-    assert db.query.call_count == 2
-    # The subquery had a join(parent_students, ...) call.
+    # All three queries fired: main, family allowlist, kid subquery.
+    assert db.query.call_count == 3
+    # The kid subquery had a join(parent_students, ...) call.
     assert any(c[0] == "join" for c in sub_q.calls)
 
 

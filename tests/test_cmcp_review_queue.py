@@ -574,7 +574,13 @@ def test_approve_transitions_state_and_records_reviewer(
 def test_approve_wrong_state_409(
     client, db_session, teacher_user, cmcp_flag_on
 ):
-    """Approving a non-PENDING_REVIEW row 409s."""
+    """Approving a non-PENDING_REVIEW row 409s.
+
+    Uses ``APPROVED`` as the wrong-state stand-in: ``SELF_STUDY`` would
+    404 here (3B-3 / #4585 denies SELF_STUDY at the review-queue
+    visibility check, before the state check fires), so we use a state
+    that is visible-but-not-mutable to exercise the 409 path.
+    """
     from app.models.study_guide import StudyGuide
     from app.services.cmcp.artifact_state import ArtifactState
 
@@ -583,7 +589,7 @@ def test_approve_wrong_state_409(
         db_session,
         user_id=teacher_user.id,
         course_id=course,
-        state=ArtifactState.SELF_STUDY,
+        state=ArtifactState.APPROVED,
     )
     try:
         headers = _auth(client, teacher_user.email)

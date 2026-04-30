@@ -212,6 +212,16 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
     - Anything else (None / unknown) → empty result. The route layer
       403s before we get here for unknown roles, but keep the
       defence-in-depth.
+
+    SELF_STUDY override (3B-3 / #4585)
+    ----------------------------------
+    Per D3=C, SELF_STUDY-state rows are private to a family pair. The
+    extra filter below excludes any SELF_STUDY row whose ``user_id``
+    isn't the caller or one of their linked-children/linked-parents
+    user ids. ``ADMIN`` keeps the catch-all bypass (mirrors
+    ``_user_can_view``); ``CURRICULUM_ADMIN`` / ``BOARD_ADMIN`` /
+    ``TEACHER`` lose access to SELF_STUDY rows even when the
+    standard matrix would otherwise show them.
     """
     # Lazy imports inside services that catch broadly — see CLAUDE.md
     # "lazy-import ORM models" rule for why this isn't at module top.
@@ -220,6 +230,7 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
     from app.models.study_guide import StudyGuide
     from app.models.teacher import Teacher
     from app.models.user import UserRole  # noqa: F401
+    from app.services.cmcp.artifact_state import ArtifactState
 
     role = current_user.role if current_user is not None else None
     if role is None:
@@ -227,8 +238,61 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
 
     role_name = role.name if hasattr(role, "name") else str(role).upper()
 
-    if role_name in ("ADMIN", "CURRICULUM_ADMIN"):
+    # ADMIN — full bypass (matches ``_user_can_view``). No SELF_STUDY
+    # narrowing applied either, so ops/debug retains visibility.
+    if role_name == "ADMIN":
         return query
+
+    # ── Family allowlist for SELF_STUDY rows ─────────────────────────────
+    # The 3B-3 SELF_STUDY rule splits visibility from the standard
+    # role-scope: a SELF_STUDY row owned by a family member is visible
+    # to the caller (kid sees parent's SELF_STUDY, parent sees kid's
+    # SELF_STUDY) even when the standard scope would deny it (e.g. the
+    # standard STUDENT scope is "own user_id only"). Build the family
+    # allowlist now and apply the override at the end.
+    family_user_ids: list[int] = [current_user.id]
+    if role_name == "PARENT":
+        kid_user_ids_for_family = [
+            row[0]
+            for row in db.query(Student.user_id)
+            .join(
+                parent_students,
+                parent_students.c.student_id == Student.id,
+            )
+            .filter(parent_students.c.parent_id == current_user.id)
+            .all()
+        ]
+        family_user_ids.extend(kid_user_ids_for_family)
+    elif role_name == "STUDENT":
+        student_record = (
+            db.query(Student)
+            .filter(Student.user_id == current_user.id)
+            .first()
+        )
+        if student_record is not None:
+            parent_user_ids_for_family = [
+                row[0]
+                for row in db.query(parent_students.c.parent_id)
+                .filter(parent_students.c.student_id == student_record.id)
+                .all()
+            ]
+            family_user_ids.extend(parent_user_ids_for_family)
+    # TEACHER / BOARD_ADMIN / CURRICULUM_ADMIN keep ``family_user_ids``
+    # at just ``[current_user.id]``: they only see their own
+    # SELF_STUDY rows (e.g. a teacher who personally self-initiated)
+    # and never a learner's private artifact via the class/board branch.
+
+    if role_name == "CURRICULUM_ADMIN":
+        # CURRICULUM_ADMIN sees all non-SELF_STUDY rows; SELF_STUDY rows
+        # are private to the family pair, with the curriculum-admin
+        # capped to their own self-initiated artifacts (caller in
+        # family_user_ids). This narrows the previously-open
+        # CURRICULUM_ADMIN scope so curriculum work doesn't leak into
+        # private learner workspaces.
+        return query.filter(
+            (StudyGuide.state != ArtifactState.SELF_STUDY)
+            | (StudyGuide.user_id.in_(family_user_ids))
+        )
 
     if role_name == "BOARD_ADMIN":
         caller_board = resolve_caller_board_id(current_user)
@@ -239,6 +303,11 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
         return query.filter(
             StudyGuide.board_id.is_not(None),
             StudyGuide.board_id == str(caller_board),
+            # SELF_STUDY rows are denied to BOARD_ADMIN even when the
+            # board_id matches — the family override only opens up the
+            # caller's own self-initiated artifacts.
+            (StudyGuide.state != ArtifactState.SELF_STUDY)
+            | (StudyGuide.user_id.in_(family_user_ids)),
         )
 
     if role_name == "TEACHER":
@@ -255,9 +324,16 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
             .filter(Course.teacher_id.in_(teacher_pk_subq))
             .subquery()
         )
+        # TEACHER cannot see a student's SELF_STUDY artifact via the
+        # course-pinned branch — SELF_STUDY rows are private to the
+        # family pair. The teacher only sees their own self-initiated
+        # SELF_STUDY artifacts (caller in family_user_ids).
         return query.filter(
             (StudyGuide.user_id == current_user.id)
-            | (StudyGuide.course_id.in_(owned_course_ids))
+            | (
+                (StudyGuide.course_id.in_(owned_course_ids))
+                & (StudyGuide.state != ArtifactState.SELF_STUDY)
+            )
         )
 
     if role_name == "PARENT":
@@ -270,13 +346,30 @@ def _apply_role_scope(query, current_user, db: Session):  # type: ignore[no-unty
             .filter(parent_students.c.parent_id == current_user.id)
             .subquery()
         )
+        # Parent's standard scope (own + linked-children) already
+        # matches the SELF_STUDY family allowlist for a PARENT (a
+        # parent can only have linked-children pairs, not linked-
+        # parents), so no extra narrowing is needed.
         return query.filter(
             (StudyGuide.user_id == current_user.id)
             | (StudyGuide.user_id.in_(kid_user_ids))
         )
 
     if role_name == "STUDENT":
-        return query.filter(StudyGuide.user_id == current_user.id)
+        # STUDENT's standard scope is "own user_id only" — but for
+        # SELF_STUDY the family override extends visibility to the
+        # student's linked PARENTS (parent's self-study is visible to
+        # their kid). Apply the SELF_STUDY family allowlist as an
+        # additional OR branch so a child can see a parent's
+        # self-study without widening visibility on non-SELF_STUDY
+        # rows.
+        return query.filter(
+            (StudyGuide.user_id == current_user.id)
+            | (
+                (StudyGuide.state == ArtifactState.SELF_STUDY)
+                & (StudyGuide.user_id.in_(family_user_ids))
+            )
+        )
 
     # Defence in depth — unknown role shouldn't reach the dispatcher
     # because the registry's allowlist gates first, but if it does, fail
