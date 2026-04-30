@@ -19,9 +19,15 @@ Returns ``None`` (block omitted, **not** an error) when:
   * ``parent_summary`` is empty / unparseable / has no talking points.
 
 Out of scope (per #4579):
-  * surface dispatcher fan-out (3C-1, Wave 2);
-  * telemetry (3C-5, Wave 1 sibling — adopt ``log_rendered`` if/when
-    that helper merges).
+  * surface dispatcher fan-out (3C-1, Wave 2).
+
+Telemetry (3C-5): the renderer calls
+:func:`app.services.cmcp.surface_telemetry.log_rendered` with
+``surface=SURFACE_DCI`` immediately before returning the payload, so
+the M3 acceptance metric "render rate per surface" is computable from
+the standard ``cmcp.surface.rendered`` log feed. The legacy
+``dci.block.rendered`` info line is kept for backwards-compat with any
+extractors that already match it.
 """
 from __future__ import annotations
 
@@ -303,8 +309,9 @@ def render_cmcp_coach_card(
         "open_link": f"/parent/companion/{int(artifact.id)}",
     }
 
-    # Structured render log so 3C-5 (telemetry) can adopt without a code
-    # change once its ``surface_telemetry.log_rendered`` helper merges.
+    # Legacy structured render log — kept for backwards-compat with any
+    # extractors that already match ``dci.block.rendered``. Do not remove
+    # without coordinating with the metrics pipeline.
     logger.info(
         "cb_cmcp_coach_card rendered artifact_id=%s kid_id=%s subject=%s "
         "talking_points=%d",
@@ -318,6 +325,36 @@ def render_cmcp_coach_card(
             "artifact_id": payload["artifact_id"],
             "kid_id": kid_id,
         },
+    )
+
+    # Canonical surface-telemetry render line (3C-5). The M3 acceptance
+    # metric "render rate per surface" is derived from this event. The
+    # ``user_id`` field in the helper is the *viewer*'s user row id — for
+    # the DCI surface the viewer is the kid, so we resolve
+    # ``Student.user_id`` from the supplied ``kid_id`` (which is a
+    # ``students.id``, not a ``users.id``). Lazy-import the model — see
+    # the ``_resolve_child_name`` comment for why module-top imports
+    # break under conftest reloads. If the kid is unmapped (None or no
+    # row), pass ``user_id=None`` — telemetry must never raise and break
+    # the render path.
+    from app.services.cmcp.surface_telemetry import (  # noqa: PLC0415
+        SURFACE_DCI,
+        log_rendered,
+    )
+
+    viewer_id: Optional[int] = None
+    if kid_id is not None:
+        from app.models.student import Student  # noqa: PLC0415
+
+        student_row = (
+            db.query(Student).filter(Student.id == int(kid_id)).first()
+        )
+        if student_row is not None and student_row.user_id is not None:
+            viewer_id = int(student_row.user_id)
+    log_rendered(
+        artifact_id=int(artifact.id),
+        surface=SURFACE_DCI,
+        user_id=viewer_id,
     )
     return payload
 
