@@ -1,0 +1,140 @@
+/* CB-CMCP-001 M3-H 3H-1 (#4663) — Coverage heatmap styles.
+ *
+ * Inherits the Bridge palette already pulled forward by the CMCP review
+ * page. No new design tokens; only local rules used by this component.
+ */
+
+.coverage-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.coverage-heatmap-header,
+.coverage-heatmap-row {
+  display: grid;
+  grid-template-columns: 140px repeat(var(--coverage-cols, 8), minmax(56px, 1fr));
+  gap: 4px;
+  align-items: stretch;
+}
+
+.coverage-heatmap-corner,
+.coverage-heatmap-col {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6b645b;
+  padding: 8px 4px;
+  border-bottom: 1px solid #e5ddd1;
+  text-align: center;
+  font-weight: 500;
+}
+
+.coverage-heatmap-corner {
+  text-align: left;
+}
+
+.coverage-heatmap-rowhead {
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: 14px;
+  color: #1c1a16;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+}
+
+.coverage-heatmap-cell {
+  border-radius: 6px;
+  padding: 14px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #1c1a16;
+  border: 1px solid transparent;
+  min-height: 44px;
+}
+
+.coverage-heatmap-cell-empty {
+  background: #fce9e4;
+  color: #8a2e16;
+  border-color: #f1c4b8;
+}
+
+.coverage-heatmap-cell-sparse {
+  background: #f6ead3;
+  color: #7a5a1a;
+  border-color: #e8d6a8;
+}
+
+.coverage-heatmap-cell-covered {
+  background: #e6efe8;
+  color: #23523f;
+  border-color: #c2d8c8;
+}
+
+.coverage-heatmap-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid #e5ddd1;
+  font-size: 12px;
+  color: #6b645b;
+}
+
+.coverage-heatmap-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coverage-heatmap-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.coverage-heatmap-swatch-empty {
+  background: #fce9e4;
+  border-color: #f1c4b8;
+}
+
+.coverage-heatmap-swatch-sparse {
+  background: #f6ead3;
+  border-color: #e8d6a8;
+}
+
+.coverage-heatmap-swatch-covered {
+  background: #e6efe8;
+  border-color: #c2d8c8;
+}
+
+.coverage-heatmap-empty {
+  border: 1px dashed #e5ddd1;
+  border-radius: 8px;
+  padding: 32px 24px;
+  text-align: center;
+  background: #fbf8f2;
+  color: #6b645b;
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.coverage-heatmap-empty h3 {
+  font-family: "Fraunces", "Georgia", serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #1c1a16;
+  margin: 0 0 8px 0;
+}
+
+.coverage-heatmap-empty p {
+  margin: 0;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
