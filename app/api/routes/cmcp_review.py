@@ -584,6 +584,14 @@ def approve_review_artifact(
 
     409 on any other source state (the queue should never serve a row
     in a different state, but defence-in-depth).
+
+    On successful state transition, fires the surface dispatcher
+    (3C-1) in-process to fan-out the artifact to the three M3α
+    surfaces (Bridge / DCI / Digest). The dispatcher is best-effort:
+    a failure on any surface is logged + recorded in the audit table
+    but never raised back to the caller — the approve still returns
+    200 even when one or more surfaces fail. M3β can layer a cross-
+    process worker on top of the same dispatch contract.
     """
     artifact = _load_review_artifact(artifact_id, current_user, db)
 
@@ -613,6 +621,25 @@ def approve_review_artifact(
             "reviewer_id": current_user.id,
         },
     )
+
+    # CB-CMCP-001 M3-C 3C-1 (#4586) — fan-out to the three M3α surfaces.
+    # Lazy import to keep the route module light + dodge any import-cycle
+    # risk between routes ↔ services. Wrapped in try/except so a
+    # dispatcher-internal blow-up never breaks the approve response —
+    # dispatcher contract is "best-effort, failures are ops-only".
+    try:
+        from app.services.cmcp.surface_dispatcher import (  # noqa: PLC0415
+            dispatch_artifact_to_surfaces,
+        )
+
+        dispatch_artifact_to_surfaces(artifact.id, db)
+    except Exception:  # pragma: no cover — defence-in-depth
+        logger.exception(
+            "cmcp.review.approve dispatcher raised — swallowed so approve "
+            "still returns 200 artifact_id=%s",
+            artifact.id,
+        )
+
     return _to_detail(artifact)
 
 
