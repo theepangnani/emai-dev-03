@@ -1548,6 +1548,104 @@ finally:
         _ur_widen_lock_conn.close()
 
 
+# CB-CMCP-001 M3-C 3C-1 (#4586) — Surface dispatcher audit table.
+# Creates ``cmcp_surface_dispatches`` (one row per artifact + surface +
+# (parent_id, kid_id) tuple). ``Base.metadata.create_all`` already
+# handles SQLite test/dev environments; the explicit CREATE keeps PG
+# Cloud Run cold starts self-describing under a single advisory-lock
+# boundary. Wrapped in try/except so startup never blocks.
+#
+# Idempotent. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries x 5s — see CLAUDE.md migration-locking section).
+_cmcp_sd_lock_conn = None
+_cmcp_sd_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _cmcp_sd_time
+        _cmcp_sd_lock_conn = engine.connect()
+        for _cmcp_sd_attempt in range(1, 4):
+            _cmcp_sd_result = _cmcp_sd_lock_conn.execute(text("SELECT pg_try_advisory_lock(4586)"))
+            _cmcp_sd_lock_acquired = _cmcp_sd_result.scalar()
+            if _cmcp_sd_lock_acquired:
+                logger.info("Acquired advisory lock 4586 for cmcp_surface_dispatches migration (attempt %d)", _cmcp_sd_attempt)
+                break
+            logger.warning("Advisory lock 4586 held by another instance (attempt %d/3), retrying in 5s...", _cmcp_sd_attempt)
+            _cmcp_sd_time.sleep(5)
+        if not _cmcp_sd_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4586 after 3 attempts — running cmcp_surface_dispatches migration without lock")
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                _conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS cmcp_surface_dispatches (
+                        id SERIAL PRIMARY KEY,
+                        artifact_id INTEGER NOT NULL,
+                        surface VARCHAR(16) NOT NULL,
+                        parent_id INTEGER NULL,
+                        kid_id INTEGER NULL,
+                        status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                        attempts INTEGER NOT NULL DEFAULT 1,
+                        last_error VARCHAR(500) NULL,
+                        dispatched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT uq_cmcp_surface_dispatch_tuple
+                            UNIQUE (artifact_id, surface, parent_id, kid_id)
+                    )
+                """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_artifact_id "
+                    "ON cmcp_surface_dispatches(artifact_id)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_surface "
+                    "ON cmcp_surface_dispatches(surface)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_parent_id "
+                    "ON cmcp_surface_dispatches(parent_id)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatch_artifact_surface "
+                    "ON cmcp_surface_dispatches(artifact_id, surface)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatch_parent_surface "
+                    "ON cmcp_surface_dispatches(parent_id, surface)"
+                ))
+            else:
+                _conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS cmcp_surface_dispatches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        artifact_id INTEGER NOT NULL,
+                        surface VARCHAR(16) NOT NULL,
+                        parent_id INTEGER NULL,
+                        kid_id INTEGER NULL,
+                        status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                        attempts INTEGER NOT NULL DEFAULT 1,
+                        last_error VARCHAR(500) NULL,
+                        dispatched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        CONSTRAINT uq_cmcp_surface_dispatch_tuple
+                            UNIQUE (artifact_id, surface, parent_id, kid_id)
+                    )
+                """))
+            _conn.commit()
+            logger.info("cmcp_surface_dispatches migration completed (#4586)")
+        except Exception as _cmcp_sd_col_err:
+            _conn.rollback()
+            logger.warning("cmcp_surface_dispatches migration note: %s", _cmcp_sd_col_err)
+except Exception as _cmcp_sd_err:
+    logger.warning("cmcp_surface_dispatches migration outer note: %s", _cmcp_sd_err)
+finally:
+    if _cmcp_sd_lock_conn is not None:
+        if _cmcp_sd_lock_acquired:
+            try:
+                _cmcp_sd_lock_conn.execute(text("SELECT pg_advisory_unlock(4586)"))
+                _cmcp_sd_lock_conn.commit()
+            except Exception:
+                pass
+        _cmcp_sd_lock_conn.close()
+
+
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
 from app.db.migrations import run_startup_migrations
 

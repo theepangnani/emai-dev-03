@@ -78,6 +78,7 @@ from app.models.curriculum import (
     CEGExpectation,
     CurriculumVersion,
 )
+from app.models.cmcp_surface_dispatch import CMCPSurfaceDispatch
 
 
 __all__ = [
@@ -183,4 +184,5 @@ __all__ = [
     "CEGStrand",
     "CEGExpectation",
     "CurriculumVersion",
+    "CMCPSurfaceDispatch",
 ]
