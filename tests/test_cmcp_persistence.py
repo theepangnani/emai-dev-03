@@ -379,7 +379,7 @@ def test_stream_persist_inserts_row_on_done(
         with patch(
             "app.api.routes.cmcp_generate_stream._run_alignment_pipeline",
             new_callable=AsyncMock,
-            return_value=(None, False),
+            return_value=(None, False, None, None),
         ):
             resp = client.post(
                 "/api/cmcp/generate/stream", json=body, headers=headers
@@ -447,7 +447,7 @@ def test_stream_persist_stores_parent_companion_in_parent_summary(
     ), patch(
         "app.api.routes.cmcp_generate_stream._run_alignment_pipeline",
         new_callable=AsyncMock,
-        return_value=(None, False),
+        return_value=(None, False, None, None),
     ):
         resp = client.post(
             "/api/cmcp/generate/stream", json=body, headers=headers

@@ -374,6 +374,26 @@ class StreamCompletionEvent(BaseModel):
             "the score cleared the review threshold."
         ),
     )
+    embedding_scores: dict[str, float] | None = Field(
+        default=None,
+        description=(
+            "M3β fu (#4696 / 3I-2): per-SE max cosine-similarity scores "
+            "from the embedding-similarity third pass that runs when the "
+            "validator is supplied a SQLAlchemy session. ``None`` when the "
+            "embedding pass did not run (legacy callers, validator skipped, "
+            "or M1-D first/second composition already failed and the "
+            "embedding round-trip was elided as a cost-saver)."
+        ),
+    )
+    embedding_threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "M3β fu (#4696 / 3I-2): cosine-similarity threshold used by the "
+            "embedding pass. ``None`` when the embedding pass did not run."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
