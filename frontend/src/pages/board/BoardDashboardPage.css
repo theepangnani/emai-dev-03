@@ -1,0 +1,145 @@
+/* CB-CMCP-001 M3-H 3H-1 (#4663) — Board admin dashboard styles.
+ *
+ * Mirrors the Bridge palette already used by the CMCP review page; no new
+ * global tokens are introduced.
+ */
+
+.board-dashboard-page {
+  --bridge-ivory: #f5f1ea;
+  --bridge-paper: #fbf8f2;
+  --bridge-ink: #1c1a16;
+  --bridge-muted: #6b645b;
+  --bridge-hair: #e5ddd1;
+  --bridge-rust: #b04a2c;
+
+  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--bridge-ink);
+  padding: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.board-dashboard-page h1,
+.board-dashboard-page h2,
+.board-dashboard-page h3 {
+  font-family: "Fraunces", "Georgia", serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.board-dashboard-header {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--bridge-hair);
+  margin-bottom: 24px;
+}
+
+.board-dashboard-kicker {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bridge-rust);
+  font-weight: 500;
+}
+
+.board-dashboard-title {
+  font-size: 28px;
+  line-height: 1.1;
+  margin-top: 6px;
+  letter-spacing: -0.02em;
+  color: var(--bridge-ink);
+}
+
+.board-dashboard-subtitle {
+  margin-top: 8px;
+  color: var(--bridge-muted);
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.board-dashboard-pill-empty,
+.board-dashboard-pill-sparse,
+.board-dashboard-pill-covered {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.board-dashboard-pill-empty {
+  background: #fce9e4;
+  color: #8a2e16;
+}
+
+.board-dashboard-pill-sparse {
+  background: #f6ead3;
+  color: #7a5a1a;
+}
+
+.board-dashboard-pill-covered {
+  background: #e6efe8;
+  color: #23523f;
+}
+
+.board-dashboard-section {
+  margin-top: 24px;
+}
+
+.board-dashboard-state-msg {
+  padding: 24px;
+  color: var(--bridge-muted);
+  text-align: center;
+  border: 1px dashed var(--bridge-hair);
+  border-radius: 8px;
+  background: var(--bridge-paper);
+}
+
+.board-dashboard-error {
+  padding: 24px;
+  border: 1px solid #f1c4b8;
+  background: #fce9e4;
+  border-radius: 8px;
+  color: #7a2f18;
+}
+
+.board-dashboard-error h3 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.board-dashboard-disabled {
+  padding: 32px 24px;
+  text-align: center;
+  border: 1px dashed var(--bridge-hair);
+  border-radius: 8px;
+  background: var(--bridge-paper);
+  color: var(--bridge-muted);
+}
+
+.board-dashboard-disabled h2 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: var(--bridge-ink);
+}
+
+.board-dashboard-board-picker {
+  margin-top: 16px;
+}
+
+.board-dashboard-board-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.board-dashboard-board-picker input {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--bridge-hair);
+  border-radius: 4px;
+  background: var(--bridge-paper);
+}
