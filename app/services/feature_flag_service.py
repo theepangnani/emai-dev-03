@@ -21,7 +21,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.database import SessionLocal
-from app.models.feature_flag import FeatureFlag
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +57,15 @@ def is_feature_enabled(key: str, db: Optional[Session] = None) -> bool:
         session = db  # type: ignore[assignment]
 
     try:
+        # Lazy import — conftest reloads ``app.models.*`` after this
+        # service module is already loaded; a module-top
+        # ``from app.models.feature_flag import FeatureFlag`` would pin
+        # the pre-reload class against an old registry, causing
+        # ``KeyError: 'User'`` cascades on later queries. Per the
+        # CLAUDE memory pattern (lazy-import ORM models inside services
+        # that catch broadly).
+        from app.models.feature_flag import FeatureFlag
+
         flag = (
             session.query(FeatureFlag)
             .filter(FeatureFlag.key == normalized_key)
@@ -86,3 +94,36 @@ def is_dci_enabled(db: Optional[Session] = None) -> bool:
     closed on DB errors via the underlying helper.
     """
     return is_feature_enabled(DCI_V1_ENABLED, db=db)
+
+
+def require_cmcp_enabled_no_auth(db: Session) -> None:
+    """Auth-free CMCP kill-switch gate (CB-CMCP-001 M3β follow-up #4695).
+
+    Mirrors :func:`app.api.routes.curriculum.require_cmcp_enabled` but
+    drops the ``get_current_user`` step. Public LTI launch + any other
+    deliberately auth-free CMCP surface route MUST call this *before*
+    doing token validation / DB lookups so flipping ``cmcp.enabled``
+    OFF actually disables every CMCP entry point — not just the
+    authenticated ones.
+
+    Raises
+    ------
+    HTTPException
+        ``status_code=403`` when the flag is OFF, matching the response
+        every other CMCP surface emits when the kill-switch fires.
+        Raised with a generic detail (``"CB-CMCP-001 is not enabled"``)
+        identical to the authed gate so a caller can't pivot off the
+        error body to distinguish flag-OFF from flag-ON-bad-sig — the
+        LTI launch path uses 401 for any signature/structure failure
+        regardless of flag state, so a probing caller learns nothing
+        new about flag state from token shape variation.
+    """
+    # HTTPException is a FastAPI dep — keep the import local so this
+    # service module stays usable from non-FastAPI contexts (background
+    # jobs, scripts).
+    from fastapi import HTTPException
+
+    if not is_feature_enabled(CMCP_ENABLED, db=db):
+        raise HTTPException(
+            status_code=403, detail="CB-CMCP-001 is not enabled"
+        )

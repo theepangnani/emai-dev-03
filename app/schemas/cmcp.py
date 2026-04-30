@@ -425,3 +425,44 @@ class ParentCompanionArtifactResponse(BaseModel):
             "row so the page can render a degraded but well-typed view."
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# M3β follow-up #4694 — GET /api/cmcp/artifacts/{id}/student-view response
+# ---------------------------------------------------------------------------
+
+
+class StudentArtifactViewResponse(BaseModel):
+    """Response body for ``GET /api/cmcp/artifacts/{id}/student-view``.
+
+    Minimal student-facing artifact projection — the LTI launch surface
+    redirects STUDENT-validated tokens to ``/student/artifact/{id}``,
+    and that page calls this endpoint to render title + content. This
+    is intentionally a thin pass-through (no parent-companion 5-section
+    decomposition) because the LMS-launching student needs the actual
+    artifact, not coaching scaffolding for a parent.
+
+    M4 may extend with structured sections, drill anchors, etc.; today
+    the contract is: fetch what's safe to render to the resolved
+    STUDENT, on the same visibility matrix everyone else uses.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    artifact_id: int = Field(..., description="``study_guides.id``.")
+    title: str = Field(..., description="Artifact title (display).")
+    content: str = Field(
+        ...,
+        description=(
+            "Raw artifact content as stored on the row. Markdown for the "
+            "study-guide-style content types. The student page renders "
+            "this as plain text / markdown without further processing."
+        ),
+    )
+    guide_type: str = Field(
+        ...,
+        description=(
+            "Artifact ``guide_type`` (study_guide / quiz / flashcards / "
+            "etc.) so the student page can pick a renderer hint."
+        ),
+    )

@@ -642,3 +642,96 @@ def test_get_parent_companion_422_for_non_parent_persona(
             StudyGuide.id == artifact.id
         ).delete(synchronize_session=False)
         db_session.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CB-CMCP-001 M3β follow-up #4694 — GET /api/cmcp/artifacts/{id}/student-view
+# (Companion to the LTI launch redirect target.)
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_get_student_view_200_for_creator_student(
+    client, db_session, student_user, cmcp_flag_on
+):
+    """STUDENT creator of a student-persona artifact → 200 + raw fields."""
+    artifact = _seed_non_parent_artifact(db_session, student_user.id)
+    try:
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            f"/api/cmcp/artifacts/{artifact.id}/student-view",
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["artifact_id"] == artifact.id
+        assert body["title"] == artifact.title
+        assert body["content"] == artifact.content
+        assert body["guide_type"] == artifact.guide_type
+    finally:
+        from app.models.study_guide import StudyGuide
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == artifact.id
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+def test_get_student_view_404_for_unknown_id(
+    client, student_user, cmcp_flag_on
+):
+    """Unknown artifact id → 404 (matches parent-companion convention)."""
+    headers = _auth(client, student_user.email)
+    resp = client.get(
+        "/api/cmcp/artifacts/99999999/student-view", headers=headers
+    )
+    assert resp.status_code == 404
+
+
+def test_get_student_view_404_for_unrelated_caller(
+    client, db_session, student_user, parent_user, cmcp_flag_on
+):
+    """Unrelated user (no visibility) → 404 (collapsed, no leak)."""
+    # Artifact owned by ``student_user``; ``parent_user`` has no
+    # parent_students link to ``student_user`` so the visibility check
+    # denies. Collapses to 404 to match the parent-companion contract.
+    artifact = _seed_non_parent_artifact(db_session, student_user.id)
+    try:
+        headers = _auth(client, parent_user.email)
+        resp = client.get(
+            f"/api/cmcp/artifacts/{artifact.id}/student-view",
+            headers=headers,
+        )
+        assert resp.status_code == 404
+    finally:
+        from app.models.study_guide import StudyGuide
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == artifact.id
+        ).delete(synchronize_session=False)
+        db_session.commit()
+
+
+def test_get_student_view_403_when_flag_off(
+    client, db_session, student_user
+):
+    """``cmcp.enabled`` OFF → 403 (kill switch).
+
+    Deliberately does NOT use ``cmcp_flag_on`` so the flag stays in its
+    default-OFF state; the route should 403 before hitting any other
+    logic.
+    """
+    artifact = _seed_non_parent_artifact(db_session, student_user.id)
+    try:
+        headers = _auth(client, student_user.email)
+        resp = client.get(
+            f"/api/cmcp/artifacts/{artifact.id}/student-view",
+            headers=headers,
+        )
+        assert resp.status_code == 403
+    finally:
+        from app.models.study_guide import StudyGuide
+
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == artifact.id
+        ).delete(synchronize_session=False)
+        db_session.commit()
