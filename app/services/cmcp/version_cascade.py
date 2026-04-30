@@ -16,9 +16,17 @@ D9=B mapping:
 - ``scope_substantive`` SE change → APPROVED artifacts referencing
                                     that SE move to ``PENDING_REVIEW``.
 
-Stripe 3G-3 (notification) DEPENDS on this — it observes the audit
-rows produced here (``action='cmcp.artifact.cascade_flagged'``) and
-fans out the teacher-side notification.
+Stripe 3G-3 (#4665, notification) layers on top of the cascade write
+in :func:`_notify_cascade_flagged`: per successful APPROVED →
+PENDING_REVIEW transition we emit one in-app
+``NotificationType.CMCP_CASCADE_FLAGGED`` row to the artifact's owner
+(teacher) via the existing CB-MCNI multi-channel helper, linking to
+``/teacher/review/{artifact_id}``. The notification call is
+best-effort and never propagates — a notification failure must not
+roll back the cascade transition or its audit row. Email +
+ClassBridge-message channels are intentionally excluded so a
+substantive curriculum re-version that flags hundreds of artifacts
+does not flood teacher inboxes.
 
 Inputs (intentionally substrate-agnostic, mirroring 3G-1's classifier):
 
@@ -104,6 +112,114 @@ logger = logging.getLogger(__name__)
 # (3G-3 notification observer, future analytics queries) can import
 # the same symbol instead of re-typing the string and drifting.
 CASCADE_AUDIT_ACTION = "cmcp.artifact.cascade_flagged"
+
+# 3G-3 (#4665) — notification side-effect emitted to the artifact owner
+# (teacher) after each cascade-driven APPROVED → PENDING_REVIEW write.
+# Pinned as a constant so 3G-3 tests + downstream observers can import
+# the same string the service emits and stay in lockstep with the
+# notification type.
+CASCADE_NOTIFICATION_TYPE_VALUE = "cmcp.cascade.flagged"
+
+
+def _notify_cascade_flagged(
+    *,
+    db: Session,
+    artifact: StudyGuide,
+    se_code: str,
+    from_version: str,
+    to_version: str,
+) -> None:
+    """Best-effort owner notification for a cascade-flagged artifact.
+
+    3G-3 (#4665) per D9=B: when a cascade transitions an APPROVED
+    artifact to PENDING_REVIEW, notify the artifact's owner (teacher)
+    via the existing CB-MCNI dev-03 notification service so the row
+    appears in their review queue without polling.
+
+    The notification is emitted via
+    :func:`app.services.notification_service.send_multi_channel_notification`
+    on the in-app channel only — email + ClassBridge-message channels
+    are intentionally excluded so a substantive curriculum re-version
+    that flags hundreds of artifacts at once does not flood the
+    teacher's inbox. The teacher sees one in-app row per flagged
+    artifact, linking to ``/teacher/review/{artifact_id}`` (the 3A-2
+    review queue route).
+
+    Failure modes (all best-effort — never propagate):
+
+    - Owner ``user_id`` is unset / row deleted before lookup
+      (``user_id`` column is non-nullable on study_guides, so this is
+      defense-in-depth rather than a real-world path) → warn + skip.
+    - ``send_multi_channel_notification`` raises (e.g. DB error in the
+      Notification insert, send-helper bug) → warn + swallow. The
+      cascade state transition + audit row are already in the session
+      and must not roll back because of a notification failure.
+
+    The lazy imports mirror the pattern in
+    :func:`app.services.task_sync_service._notify_task_upgraded`
+    (CB-TASKSYNC-001 I6) — keeping the notification service out of
+    this module's top-level imports so a notification-service import
+    error never breaks the cascade itself.
+    """
+    owner_id = getattr(artifact, "user_id", None)
+    if owner_id is None:
+        logger.warning(
+            "cmcp.cascade.notify.skipped reason=no_owner artifact_id=%s "
+            "se_code=%s",
+            getattr(artifact, "id", None),
+            se_code,
+        )
+        return
+
+    try:
+        from app.models.notification import NotificationType
+        from app.models.user import User
+        from app.services.notification_service import (
+            send_multi_channel_notification,
+        )
+
+        recipient = db.query(User).filter(User.id == owner_id).first()
+        if recipient is None:
+            # Owner row deleted (e.g., teacher account purged) — no
+            # one to notify, but the audit row still records the
+            # cascade. Warn so an ops query for orphaned cascades can
+            # find it.
+            logger.warning(
+                "cmcp.cascade.notify.skipped reason=owner_not_found "
+                "artifact_id=%s owner_id=%s se_code=%s",
+                getattr(artifact, "id", None),
+                owner_id,
+                se_code,
+            )
+            return
+
+        title_preview = (getattr(artifact, "title", "") or "")[:80]
+        cascade_reason = (
+            f"Curriculum {se_code} changed substantively from "
+            f"{from_version or '(unknown)'} to {to_version or '(unknown)'}"
+        )
+        send_multi_channel_notification(
+            db=db,
+            recipient=recipient,
+            sender=None,
+            title="Artifact flagged for re-review",
+            content=(
+                f"'{title_preview}' needs re-review. {cascade_reason}."
+            ),
+            notification_type=NotificationType.CMCP_CASCADE_FLAGGED,
+            link=f"/teacher/review/{artifact.id}",
+            channels=["app_notification"],
+            source_type="study_guide",
+            source_id=artifact.id,
+        )
+    except Exception:
+        # Best-effort: a notification failure must not roll back the
+        # cascade transition or its audit row. Log + swallow.
+        logger.exception(
+            "cmcp.cascade.notify.error artifact_id=%s se_code=%s",
+            getattr(artifact, "id", None),
+            se_code,
+        )
 
 
 @dataclass
@@ -324,6 +440,18 @@ def apply_version_cascade(
                 to_version=to_version,
             ):
                 result.flagged_artifact_ids.append(artifact.id)
+                # 3G-3 (#4665) — fire owner notification AFTER the
+                # state transition + audit row are in the session.
+                # _notify_cascade_flagged is best-effort: it never
+                # raises, so a notification failure cannot roll back
+                # the cascade write.
+                _notify_cascade_flagged(
+                    db=db,
+                    artifact=artifact,
+                    se_code=se_code,
+                    from_version=from_version,
+                    to_version=to_version,
+                )
 
     # Sort + dedupe outputs for deterministic test + log behavior.
     result.flagged_artifact_ids = sorted(set(result.flagged_artifact_ids))
@@ -349,6 +477,7 @@ def apply_version_cascade(
 
 __all__ = [
     "CASCADE_AUDIT_ACTION",
+    "CASCADE_NOTIFICATION_TYPE_VALUE",
     "CascadeResult",
     "apply_version_cascade",
 ]
