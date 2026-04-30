@@ -11,6 +11,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests as _requests
 from jose import jwt, JWTError
@@ -1498,12 +1499,17 @@ def _build_kid_view(
     today_end_utc: datetime,
     week_start_utc: datetime,
     week_end_utc: datetime,
+    parent_tz: ZoneInfo,
 ) -> DashboardKidView:
     """Shape a kid's tasks into the dashboard's per-kid response payload.
 
     `tasks_for_kid` must already be filtered to the kid's assignee_id and
     pre-loaded with the ``course`` relationship. The function does NO DB
     work — partitions tasks by today vs. week and builds the day buckets.
+
+    ``parent_tz`` is used to compute the day-bucket key in the parent's
+    local zone so a task due 9 PM EDT on the 30th doesn't bucket into
+    "May 1" because the UTC date has already rolled (#4630).
     """
     urgent_items: list[DashboardUrgentItem] = []
     week_buckets: dict[str, list[DashboardUrgentItem]] = {}
@@ -1531,10 +1537,12 @@ def _build_kid_view(
         if due_utc <= today_end_utc:
             urgent_items.append(item)
 
-        # Weekly bucket: the calendar day key is computed in UTC so the
-        # response is timezone-stable; the frontend localizes for display.
+        # Weekly bucket: the calendar day key is computed in the parent's
+        # local timezone so it lines up with the date the parent sees on
+        # their calendar (#4630). The response stays timezone-stable
+        # because each ``due_date`` is still emitted in UTC.
         if week_start_utc <= due_utc <= week_end_utc:
-            day_key = due_utc.date().isoformat()
+            day_key = due_utc.astimezone(parent_tz).date().isoformat()
             week_buckets.setdefault(day_key, []).append(item)
 
     # Stable ordering inside each bucket: earliest due first, then title.
@@ -1579,14 +1587,44 @@ def get_email_digest_dashboard(
     Read-only; safe to poll. Powers the post-login destination at
     ``/email-digest``. See ``docs/design/CB-EDIGEST-002-prd.md`` §F1-F6.
     """
-    now = datetime.now(timezone.utc)
-    # Today window: full UTC day. The frontend renders in the parent's
-    # timezone — backend keeps the contract simple (UTC + ISO dates).
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start + timedelta(days=1) - timedelta(microseconds=1)
+    # Resolve parent timezone (#4630). Every Ontario user is on UTC-4/-5,
+    # so computing today/week boundaries in UTC drops evening deadlines
+    # from the urgent list and shows next-morning tasks as "today" during
+    # certain hours. Look up the configured timezone from any of this
+    # parent's ParentDigestSettings rows; fall back to America/Toronto
+    # (the install default) if missing or invalid.
+    parent_tz_name = "America/Toronto"
+    digest_settings_row = (
+        db.query(ParentDigestSettings)
+        .join(
+            ParentGmailIntegration,
+            ParentGmailIntegration.id == ParentDigestSettings.integration_id,
+        )
+        .filter(ParentGmailIntegration.parent_id == current_user.id)
+        .first()
+    )
+    if digest_settings_row and digest_settings_row.timezone:
+        parent_tz_name = digest_settings_row.timezone
+
+    try:
+        parent_tz = ZoneInfo(parent_tz_name)
+    except (ZoneInfoNotFoundError, ValueError):
+        # Defensive fallback — never 500 on a bad/typo'd tz string.
+        parent_tz = ZoneInfo("America/Toronto")
+
+    now_local = datetime.now(parent_tz)
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end_local = today_start_local + timedelta(days=1) - timedelta(microseconds=1)
     # Week window: rolling 7 days starting today. Matches PRD §F2 ("this
     # week's deadlines"); past-week styling is a frontend concern.
-    week_end = (today_start + timedelta(days=7)) - timedelta(microseconds=1)
+    week_end_local = (today_start_local + timedelta(days=7)) - timedelta(microseconds=1)
+
+    # Convert to UTC once for DB filtering + comparison; response stays
+    # in UTC (the contract callers already rely on).
+    today_start = today_start_local.astimezone(timezone.utc)
+    today_end = today_end_local.astimezone(timezone.utc)
+    week_end = week_end_local.astimezone(timezone.utc)
+    now = now_local.astimezone(timezone.utc)
 
     # Profiles + integrations are needed for both content and empty-state
     # resolution; load both regardless of the eventual return path so the
@@ -1640,6 +1678,7 @@ def get_email_digest_dashboard(
                 today_end_utc=today_end,
                 week_start_utc=today_start,
                 week_end_utc=week_end,
+                parent_tz=parent_tz,
             )
         )
 
