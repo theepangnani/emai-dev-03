@@ -48,6 +48,7 @@ from app.api.routes import cmcp_generate  # CB-CMCP-001 M1-A 1A-2 (#4471)
 from app.api.routes import cmcp_generate_stream  # CB-CMCP-001 M1-E 1E-1 (#4481)
 from app.api.routes import cmcp_review  # CB-CMCP-001 M3-A 3A-1 (#4576)
 from app.api.routes import cmcp_surface_click  # CB-CMCP-001 M3-C 3C-5 (#4581)
+from app.api.routes import bridge_cmcp  # CB-CMCP-001 M3-C 3C-4 (#4587)
 from app.mcp.routes import router as mcp_router  # CB-CMCP-001 M2-A 2A-2 (#4550)
 
 # Initialize logging first (auto-determines level based on environment)
@@ -1897,6 +1898,7 @@ app.include_router(cmcp_generate.router, prefix="/api")  # CB-CMCP-001 M1-A 1A-2
 app.include_router(cmcp_generate_stream.router, prefix="/api")  # CB-CMCP-001 M1-E 1E-1 (#4481)
 app.include_router(cmcp_review.router, prefix="/api")  # CB-CMCP-001 M3-A 3A-1 (#4576)
 app.include_router(cmcp_surface_click.router, prefix="/api")  # CB-CMCP-001 M3-C 3C-5 (#4581)
+app.include_router(bridge_cmcp.router, prefix="/api")  # CB-CMCP-001 M3-C 3C-4 (#4587)
 # CB-CMCP-001 M2-A 2A-2 (#4550): MCP transport router. Mounted at the
 # top-level /mcp prefix (not /api/mcp) so MCP clients can target the
 # canonical MCP path. Per-route guard ``require_mcp_enabled`` returns
