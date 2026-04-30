@@ -543,17 +543,26 @@ class TestSurfaceTelemetry:
         """Renderer must still emit telemetry — with ``user_id=None`` —
         when the supplied ``kid_id`` doesn't resolve to a Student row.
         Telemetry never fail-closes on the render path (fallback path of
-        the issue's "If kid is unmapped..." rule)."""
+        the issue's "If kid is unmapped..." rule).
+
+        Also asserts the legacy ``dci.block.rendered`` event still fires
+        on this path — the kid-unmapped branch is precisely where the
+        new + legacy events diverge most (legacy uses ``kid_id``
+        directly, new uses ``Student.user_id``), so a regression that
+        gates the legacy emit on a successful Student lookup would
+        silently break legacy extractors only on this path. Capture
+        BOTH loggers so both events are visible.
+        """
         artifact = _make_artifact(
             db_session,
             user_id=parent_user.id,
             parent_summary=_good_parent_companion(),
         )
 
-        caplog.set_level(
-            logging.INFO,
-            logger="app.services.cmcp.surface_telemetry",
-        )
+        # Capture both the surface-telemetry logger AND the
+        # cmcp_coach_card logger — the legacy event rides the renderer's
+        # own logger.
+        caplog.set_level(logging.INFO)
         payload = render_cmcp_coach_card(
             artifact.id, 9_999_999, db_session
         )
@@ -569,6 +578,16 @@ class TestSurfaceTelemetry:
         assert rec.artifact_id == artifact.id
         assert rec.surface == "dci"
         assert rec.user_id is None
+
+        legacy = [
+            rec
+            for rec in caplog.records
+            if getattr(rec, "event", None) == "dci.block.rendered"
+        ]
+        assert len(legacy) == 1, (
+            "legacy dci.block.rendered must still fire on the "
+            "kid-unmapped path (backwards-compat with existing extractors)"
+        )
 
     def test_legacy_dci_block_rendered_event_still_emitted(
         self, db_session, parent_user, kid_student, caplog
@@ -596,3 +615,37 @@ class TestSurfaceTelemetry:
             if getattr(rec, "event", None) == "dci.block.rendered"
         ]
         assert len(legacy) == 1
+
+    def test_no_surface_telemetry_when_block_omitted(
+        self, db_session, parent_user, kid_student, caplog
+    ):
+        """When the renderer returns ``None`` (e.g. non-renderable
+        state, missing parent_summary, no talking points, missing
+        artifact, None artifact_id), no ``cmcp.surface.rendered`` line
+        should fire — render-rate must only count actual user-visible
+        renders, not skipped blocks. Mirrors the digest renderer's
+        existing absence-of-telemetry guard.
+        """
+        # Non-renderable state (DRAFT) — renderer returns None per the
+        # _RENDERABLE_STATES filter.
+        draft_artifact = _make_artifact(
+            db_session,
+            user_id=parent_user.id,
+            state=ArtifactState.DRAFT,
+            parent_summary=_good_parent_companion(),
+        )
+
+        caplog.set_level(
+            logging.INFO, logger="app.services.cmcp.surface_telemetry"
+        )
+        result = render_cmcp_coach_card(
+            draft_artifact.id, kid_student.id, db_session
+        )
+        assert result is None
+
+        matches = [
+            rec
+            for rec in caplog.records
+            if getattr(rec, "event", None) == "cmcp.surface.rendered"
+        ]
+        assert len(matches) == 0

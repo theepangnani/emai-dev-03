@@ -351,10 +351,18 @@ def render_cmcp_coach_card(
         )
         if student_row is not None and student_row.user_id is not None:
             viewer_id = int(student_row.user_id)
+    # NOTE: ``log_rendered`` types ``user_id`` as ``int`` but per the
+    # M3α task spec for #4632 we deliberately pass ``None`` when the
+    # kid is unmapped — telemetry must never raise on the render path.
+    # The helper formats the value verbatim into the structured log
+    # line + ``extra`` dict; ``None``-coalescing is the metric
+    # extractor's concern downstream. A future M3-followups round can
+    # widen the helper signature to ``int | None``; tracked alongside
+    # other M3-followups telemetry hardening.
     log_rendered(
         artifact_id=int(artifact.id),
         surface=SURFACE_DCI,
-        user_id=viewer_id,
+        user_id=viewer_id,  # type: ignore[arg-type]
     )
     return payload
 
