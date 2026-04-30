@@ -647,3 +647,54 @@ def test_task_patch_complete_xp_failure_does_not_break_endpoint(
 
     assert resp.status_code == 200, resp.text
     assert resp.json()["is_completed"] is True
+
+
+# ── Telemetry shape (#4703) ─────────────────────────────────────────
+
+
+def test_award_xp_logs_structured_event_on_award(
+    db_session, teacher_user, student_user, caplog
+):
+    """``cmcp.xp.awarded`` INFO log must include structured ``extra``
+    fields so log-aggregation can pivot on it (#4703).
+    """
+    import logging
+
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.xp_eligibility import (
+        award_xp_for_completed_artifact,
+    )
+
+    course = _make_course(db_session, teacher_user)
+    _enroll_student(db_session, student_user, course)
+    artifact = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course.id,
+        state=ArtifactState.APPROVED,
+        guide_type="quiz",
+    )
+
+    with caplog.at_level(
+        logging.INFO, logger="app.services.cmcp.xp_eligibility"
+    ):
+        awarded = award_xp_for_completed_artifact(
+            artifact_id=artifact.id,
+            student_user_id=student_user.id,
+            task_source="cmcp_artifact",
+            db=db_session,
+        )
+
+    assert awarded == 10
+    awarded_records = [
+        r
+        for r in caplog.records
+        if r.name == "app.services.cmcp.xp_eligibility"
+        and getattr(r, "event", None) == "cmcp.xp.awarded"
+    ]
+    assert len(awarded_records) == 1
+    rec = awarded_records[0]
+    assert rec.artifact_id == artifact.id
+    assert rec.student_user_id == student_user.id
+    assert rec.content_type == "quiz"
+    assert rec.xp_awarded == 10

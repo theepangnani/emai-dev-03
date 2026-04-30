@@ -184,6 +184,12 @@ def award_xp_for_completed_artifact(
                 artifact_id,
                 student_user_id,
                 task_source,
+                extra={
+                    "event": "cmcp.xp.skipped_self_study",
+                    "artifact_id": artifact_id,
+                    "student_user_id": student_user_id,
+                    "task_source": task_source,
+                },
             )
             return 0
 
@@ -247,6 +253,11 @@ def award_xp_for_completed_artifact(
                 "student_user_id=%s",
                 artifact_id,
                 student_user_id,
+                extra={
+                    "event": "cmcp.xp.skipped_already_claimed",
+                    "artifact_id": artifact_id,
+                    "student_user_id": student_user_id,
+                },
             )
             return 0
 
@@ -298,6 +309,15 @@ def award_xp_for_completed_artifact(
             final_xp,
             multiplier,
             summary.total_xp,
+            extra={
+                "event": "cmcp.xp.awarded",
+                "artifact_id": artifact_id,
+                "student_user_id": student_user_id,
+                "content_type": content_type,
+                "xp_awarded": final_xp,
+                "multiplier": multiplier,
+                "total_xp": summary.total_xp,
+            },
         )
         return final_xp
 
