@@ -70,7 +70,15 @@ export function BoardDashboardPage() {
   const { enabled: cmcpEnabled, isLoading: flagLoading } =
     useFeatureFlagState('cmcp.enabled');
   const [searchParams] = useSearchParams();
+  // Two pieces of state for the admin board picker: `adminBoardInput`
+  // tracks what the user is typing (controlled <input>), and
+  // `appliedAdminBoard` is the value the query actually fetches against.
+  // Decoupling the two prevents per-keystroke API calls — the admin must
+  // submit the form (via Enter or the explicit button) before the query
+  // fires, so partial values like "T" / "TD" / "TDS" never hit the
+  // backend (avoids 404 noise + audit-log pollution).
   const [adminBoardInput, setAdminBoardInput] = useState<string>('');
+  const [appliedAdminBoard, setAppliedAdminBoard] = useState<string>('');
 
   const adminBoardOverride = searchParams.get('board_id');
   const profileBoard = userBoardId(user);
@@ -78,9 +86,9 @@ export function BoardDashboardPage() {
 
   // BOARD_ADMIN → must use their stamped board_id (backend would 404 any
   // other value anyway). ADMIN → can override via ?board_id= query param,
-  // or via the inline input below.
+  // or via the submitted input below (NOT the in-progress input).
   const adminFallback = userIsAdmin
-    ? (adminBoardOverride ?? (adminBoardInput.trim() || null))
+    ? (adminBoardOverride ?? (appliedAdminBoard.trim() || null))
     : null;
   const effectiveBoardId = profileBoard ?? adminFallback;
 
@@ -140,6 +148,11 @@ export function BoardDashboardPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                // Only commit the value to the query on explicit submit
+                // — see comment on `appliedAdminBoard` state. Trimming
+                // here so a stray space doesn't make the query fire on
+                // an effectively-empty value.
+                setAppliedAdminBoard(adminBoardInput.trim());
               }}
               className="board-dashboard-board-picker"
             >
@@ -153,6 +166,9 @@ export function BoardDashboardPage() {
                   placeholder="e.g. TDSB"
                 />
               </label>
+              <button type="submit" className="board-dashboard-submit-btn">
+                Inspect
+              </button>
             </form>
           </div>
         ) : (

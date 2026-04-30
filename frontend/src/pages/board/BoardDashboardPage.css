@@ -126,6 +126,11 @@
 
 .board-dashboard-board-picker {
   margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .board-dashboard-board-picker label {
@@ -142,4 +147,21 @@
   border: 1px solid var(--bridge-hair);
   border-radius: 4px;
   background: var(--bridge-paper);
+}
+
+.board-dashboard-submit-btn {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border: 1px solid var(--bridge-rust);
+  border-radius: 4px;
+  background: var(--bridge-rust);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.board-dashboard-submit-btn:hover {
+  background: #8a3a22;
+  border-color: #8a3a22;
 }

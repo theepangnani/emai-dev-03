@@ -10,6 +10,7 @@
  *   - Coverage map derivation parses SE codes correctly.
  */
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactElement, ReactNode } from 'react';
@@ -251,8 +252,34 @@ describe('BoardDashboardPage', () => {
     renderPage(<BoardDashboardPage />);
 
     expect(screen.getByText(/Pick a board to inspect/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Board id:/)).toBeInTheDocument();
+    const input = screen.getByLabelText(/Board id:/) as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe('');
+    // Submit button must exist so the picker isn't a per-keystroke firehose.
+    expect(
+      screen.getByRole('button', { name: /Inspect/ }),
+    ).toBeInTheDocument();
     expect(mockGetCatalog).not.toHaveBeenCalled();
+  });
+
+  it('admin board picker does not call the API on every keystroke', async () => {
+    mockUseAuth.mockReturnValue({ user: adminUser, isLoading: false });
+    mockGetCatalog.mockResolvedValue({ artifacts: [], next_cursor: null });
+
+    const user = userEvent.setup();
+    renderPage(<BoardDashboardPage />);
+
+    const input = screen.getByLabelText(/Board id:/);
+    // Type a 4-letter board id — must NOT fire one call per keystroke.
+    await user.type(input, 'TDSB');
+    expect(mockGetCatalog).not.toHaveBeenCalled();
+
+    // Pressing Enter (form submit) commits the value; query fires once.
+    await user.keyboard('{Enter}');
+    await waitFor(() => {
+      expect(mockGetCatalog).toHaveBeenCalledWith('TDSB', { limit: 200 });
+    });
+    expect(mockGetCatalog).toHaveBeenCalledTimes(1);
   });
 
   it('shows loading state while the query is pending', () => {
