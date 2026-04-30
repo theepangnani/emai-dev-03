@@ -2031,6 +2031,29 @@ describe('EmailDigestPage — CB-EDIGEST-002 dashboard flag gate (#4594)', () =>
     expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
   });
 
+  // #4691 — trailing slash must also escape the dashboard branch.
+  it('renders unified UI on /email-digest/settings/ with trailing slash even when dashboard flag is ON', async () => {
+    flagEnabledMock.mockReturnValue(true); // unified V2 ON
+    dashboardFlagMock.mockReturnValue(true); // dashboard gate ON
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest/settings/'] });
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Sync & Send' })).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
+  });
+
+  // #4689 — flat sibling MUST NOT bypass dashboard.
+  it('renders DashboardView (not unified UI) on /email-digest/settings-billing (flat sibling)', async () => {
+    flagEnabledMock.mockReturnValue(true);
+    dashboardFlagMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest/settings-billing'] });
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view-stub')).toBeInTheDocument();
+    });
+  });
+
   it('forces legacy via ?legacy=1 even when dashboard flag is ON', async () => {
     flagEnabledMock.mockReturnValue(true);
     dashboardFlagMock.mockReturnValue(true);

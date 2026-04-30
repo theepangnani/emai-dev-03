@@ -1,5 +1,5 @@
 /** CB-EDIGEST-002 E5 (#4593) — DashboardHeader unit tests. */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactElement } from 'react';
@@ -9,6 +9,12 @@ import { DashboardHeader } from './DashboardHeader';
 function renderWithRouter(ui: ReactElement) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
+
+beforeEach(() => {
+  // #4690 — Reset the telemetry accumulator so the click-emits test starts
+  // from a known empty state regardless of prior test ordering.
+  if (typeof window !== 'undefined') window.__cb_telemetry__ = [];
+});
 
 afterEach(() => {
   vi.useRealTimers();
@@ -89,5 +95,22 @@ describe('DashboardHeader', () => {
     const link = screen.getByRole('link', { name: /open digest settings/i });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/email-digest/settings');
+  });
+
+  // #4690 — Settings link click must emit dashboard.settings_click telemetry
+  // matching the existing dashboard.page_view / dashboard.refresh_clicked pattern.
+  it('emits dashboard.settings_click telemetry on Settings link click', () => {
+    if (typeof window !== 'undefined') window.__cb_telemetry__ = [];
+    renderWithRouter(
+      <DashboardHeader
+        parentName="Maya"
+        lastRefreshedAt={null}
+        isRefreshing={false}
+        onRefresh={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('link', { name: /open digest settings/i }));
+    const events = window.__cb_telemetry__ ?? [];
+    expect(events.some((e) => e.event === 'dashboard.settings_click')).toBe(true);
   });
 });

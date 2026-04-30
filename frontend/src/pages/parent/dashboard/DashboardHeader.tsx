@@ -9,6 +9,7 @@
  */
 import type { JSX } from 'react';
 import { Link } from 'react-router-dom';
+import { emit } from '../../../lib/telemetry';
 
 interface DashboardHeaderProps {
   parentName: string;
@@ -120,7 +121,17 @@ export function DashboardHeader({
 
   return (
     <header className="edigest-dashboard-header">
-      <style>{`@keyframes edigest-spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes edigest-spin { to { transform: rotate(360deg); } }
+        .edigest-dashboard-header__settings:hover {
+          background: var(--bridge-hover, #f5f0e6);
+          color: var(--bridge-ink, #1c1a16);
+        }
+        .edigest-dashboard-header__settings:focus-visible {
+          outline: 2px solid var(--bridge-accent, #1c1a16);
+          outline-offset: 2px;
+        }
+      `}</style>
       <div className="edigest-dashboard-header__text">
         <h1
           className="edigest-dashboard-header__title"
@@ -160,6 +171,7 @@ export function DashboardHeader({
           to="/email-digest/settings"
           aria-label="Open digest settings"
           className="edigest-dashboard-header__settings"
+          onClick={() => emit('dashboard.settings_click')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
