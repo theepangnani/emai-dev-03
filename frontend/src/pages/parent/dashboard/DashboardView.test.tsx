@@ -10,6 +10,14 @@ import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithProviders } from '../../../test/helpers';
 import type { DashboardResponse } from './types';
 
+/* ── Mock useAuth (DashboardView reads parent name for greeting) ── */
+
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 1, full_name: 'Test Parent', role: 'parent' },
+  }),
+}));
+
 /* ── Mock the API module ─────────────────────────────────── */
 
 const mockGetDashboard = vi.fn();
@@ -35,7 +43,7 @@ vi.mock('./TodaySection', () => ({
     onItemClick,
   }: {
     kids: { id: number; first_name: string; urgent_items: { id: string; title: string }[] }[];
-    onItemClick: (item: { id: string; title: string }) => void;
+    onItemClick: (kid_id: number, item: { id: string; title: string } | null) => void;
   }) => (
     <div data-testid="mock-today">
       {kids.map((k) =>
@@ -44,7 +52,7 @@ vi.mock('./TodaySection', () => ({
             key={it.id}
             type="button"
             data-testid={`mock-today-item-${it.id}`}
-            onClick={() => onItemClick(it as never)}
+            onClick={() => onItemClick(k.id, it as never)}
           >
             {it.title}
           </button>
@@ -70,28 +78,33 @@ vi.mock('./DashboardHeader', () => ({
 
 vi.mock('./ItemDrilldownModal', () => ({
   ItemDrilldownModal: ({
+    open,
     item,
     onClose,
     onMarkDone,
   }: {
-    item: { id: string; title: string };
+    open: boolean;
+    item: { id: string; title: string } | null;
     onClose: () => void;
-    onMarkDone: (item: { id: string; title: string }) => void;
-  }) => (
-    <div data-testid="mock-modal" data-item-id={item.id}>
-      <span data-testid="mock-modal-title">{item.title}</span>
-      <button type="button" data-testid="mock-modal-close" onClick={onClose}>
-        Close
-      </button>
-      <button
-        type="button"
-        data-testid="mock-modal-mark-done"
-        onClick={() => onMarkDone(item)}
-      >
-        Mark done
-      </button>
-    </div>
-  ),
+    onMarkDone: (item_id: string) => Promise<void>;
+  }) => {
+    if (!open || !item) return null;
+    return (
+      <div data-testid="mock-modal" data-item-id={item.id}>
+        <span data-testid="mock-modal-title">{item.title}</span>
+        <button type="button" data-testid="mock-modal-close" onClick={onClose}>
+          Close
+        </button>
+        <button
+          type="button"
+          data-testid="mock-modal-mark-done"
+          onClick={() => onMarkDone(item.id)}
+        >
+          Mark done
+        </button>
+      </div>
+    );
+  },
 }));
 
 vi.mock('./EmptyStates', () => ({
