@@ -398,6 +398,10 @@ def _resolve_recipients(
             db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
         )
         if artifact is None:
+            # Defensive — the public dispatcher entry point already
+            # short-circuits on missing artifact upstream. Kept here
+            # so direct callers of ``_resolve_recipients`` still get a
+            # safe default.
             return [(None, None)]
 
         owner_user_id = artifact.user_id
@@ -568,6 +572,13 @@ def dispatch_artifact_to_surfaces(
                         (time.monotonic_ns() - started_at_ns) // 1_000_000
                     ),
                 )
+                # Per-recipient telemetry: one log line per (artifact,
+                # surface, recipient) triple. Co-parent families
+                # generate N>1 lines per surface per artifact, so the
+                # 24h-surface-rate metric in 3C-5 must dedupe by
+                # ``artifact_id`` (NOT a naive count) when computing
+                # rate-per-approval. Tracked as a docstring update
+                # against ``surface_telemetry.log_dispatched``.
                 try:
                     log_dispatched(
                         artifact_id=artifact_id,

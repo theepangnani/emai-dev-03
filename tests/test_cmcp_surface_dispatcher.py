@@ -258,9 +258,7 @@ def test_dispatch_retry_recovery(db_session, teacher_user, caplog):
     assert len(bridge_records) == 1
 
 
-def test_dispatch_audit_failure_recovers_via_retry(
-    db_session, teacher_user, monkeypatch
-):
+def test_dispatch_audit_failure_recovers_via_retry(db_session, teacher_user):
     """Audit-write returning None on first call → retried; recovers on 2nd."""
     from app.services.cmcp.artifact_state import ArtifactState
     from app.services.cmcp import surface_dispatcher
@@ -286,12 +284,14 @@ def test_dispatch_audit_failure_recovers_via_retry(
             return None  # simulates audit-write failure
         return real_record(db, **kwargs)
 
-    monkeypatch.setattr(
-        surface_dispatcher, "_record_dispatch", flaky_record
-    )
-    outcomes = surface_dispatcher.dispatch_artifact_to_surfaces(
-        art.id, db_session
-    )
+    # Use ``patch.object`` for consistency with the rest of the file
+    # (every other test in this module patches via ``unittest.mock``).
+    with patch.object(
+        surface_dispatcher, "_record_dispatch", side_effect=flaky_record
+    ):
+        outcomes = surface_dispatcher.dispatch_artifact_to_surfaces(
+            art.id, db_session
+        )
     # Every surface recovered via retry → "ok".
     assert outcomes == {"bridge": "ok", "dci": "ok", "digest": "ok"}
 
