@@ -697,3 +697,96 @@ def test_handler_uses_overfetch_loop_max_passes(monkeypatch):
     assert out.next_cursor is not None
     # And we capped at MAX_OVERFETCH_PASSES (didn't walk the table).
     assert pass_counter["n"] == MAX_OVERFETCH_PASSES
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Audit log (#4698) — Bill 194: catalog GET writes a `cmcp.board.catalog_listed`
+# row with the board_id + page_size + filter shape in the JSON details.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_catalog_get_writes_audit_row(
+    client,
+    cmcp_flag_on,
+    db_session,
+    board_admin_tdsb,
+    patch_resolve_board,
+):
+    """A successful catalog GET writes a `cmcp.board.catalog_listed` audit row.
+
+    Verifies the Bill-194 audit trail: the audited row must contain
+    the board_id + the caller's user_id + the page_size + the filter
+    shape so a regulator can later trace who looked at what.
+    """
+    import json
+
+    from app.models.audit_log import AuditLog
+
+    unique_board = f"AUDIT_{uuid4().hex[:6].upper()}"
+    patch_resolve_board({board_admin_tdsb.id: unique_board})
+
+    _seed_artifact(
+        db_session,
+        user_id=board_admin_tdsb.id,
+        title="Auditable row",
+        state="APPROVED",
+        board_id=unique_board,
+        # SE code prefix MATH so the subject_code filter doesn't drop it.
+        se_codes=["MATH.5.A.1"],
+    )
+
+    headers = _auth(client, board_admin_tdsb.email)
+    resp = client.get(
+        f"/api/board/{unique_board}/catalog?subject_code=MATH&content_type=study_guide",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    rows = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "cmcp.board.catalog_listed")
+        .filter(AuditLog.user_id == board_admin_tdsb.id)
+        .all()
+    )
+    assert len(rows) >= 1, "expected one cmcp.board.catalog_listed audit row"
+    latest = rows[-1]
+    assert latest.resource_type == "board_catalog"
+    details = json.loads(latest.details)
+    assert details["board_id"] == unique_board
+    assert details["page_size"] == 1
+    assert details["filters"]["subject_code"] == "MATH"
+    assert details["filters"]["content_type"] == "study_guide"
+    assert details["filters"]["state"] == "APPROVED"
+
+
+def test_catalog_get_403_writes_no_audit_row(
+    client,
+    cmcp_flag_on,
+    db_session,
+    parent_user,
+):
+    """A 403'd request must NOT leak an audit row (handler never runs).
+
+    The audit row is written inside the handler, after the role gate
+    + cross-board check pass. A non-allowlisted role hits the role gate
+    before the handler — no audit row should be written for the
+    rejected request (otherwise an attacker could pollute the log).
+    """
+    from app.models.audit_log import AuditLog
+
+    pre_count = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "cmcp.board.catalog_listed")
+        .count()
+    )
+    headers = _auth(client, parent_user.email)
+    resp = client.get("/api/board/TDSB/catalog", headers=headers)
+    assert resp.status_code == 403
+    post_count = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "cmcp.board.catalog_listed")
+        .count()
+    )
+    assert post_count == pre_count, (
+        "403 path must not emit cmcp.board.catalog_listed"
+    )
