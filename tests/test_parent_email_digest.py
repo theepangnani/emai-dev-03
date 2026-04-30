@@ -1573,6 +1573,10 @@ class TestDashboardTimezone:
         """Parent in EDT sees a task due 23:00 EDT (= 03:00 UTC tomorrow)
         as urgent at 18:00 EDT (= 22:00 UTC). UTC-only logic would drop
         it because the UTC date has already rolled.
+
+        Also asserts a task due ~01:00 EDT next day (= 05:00 UTC) is NOT
+        urgent today — pins both edges of the today_end_local boundary
+        so a half-fix that only shifts today_start can't slip through.
         """
         parent, teacher = self._make_parent_with_tz(
             db_session, "America/Toronto"
@@ -1581,15 +1585,26 @@ class TestDashboardTimezone:
             db_session, parent, "Theo", "tz_kid_theo@test.com"
         )
 
-        # Task due 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
-        due_utc = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
+        # IN-WINDOW: 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
+        in_due = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
         _add_task(
             db_session,
             creator=teacher,
             assignee=kid_user,
             title="Late EDT homework",
-            due_date=due_utc,
+            due_date=in_due,
             source_message_id="msg-tz-1",
+        )
+        # OUT-OF-WINDOW: 2026-04-30 01:00 EDT = 2026-04-30 05:00 UTC.
+        # This is past local midnight in EDT — should be tomorrow's task.
+        out_due = datetime(2026, 4, 30, 5, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Tomorrow EDT homework",
+            due_date=out_due,
+            source_message_id="msg-tz-1-out",
         )
 
         # "Now" frozen at 2026-04-29 18:00 EDT = 22:00 UTC.
@@ -1602,11 +1617,18 @@ class TestDashboardTimezone:
         data = resp.json()
         assert len(data["kids"]) == 1
         urgent = data["kids"][0]["urgent_items"]
+        urgent_ids = {item["source_email_id"] for item in urgent}
         # Task IS in today's urgent — the EDT calendar day still ends
         # at 03:59:59.999999 UTC tomorrow.
-        assert any(item["source_email_id"] == "msg-tz-1" for item in urgent), (
+        assert "msg-tz-1" in urgent_ids, (
             "Task due 23:00 EDT must appear urgent for an EDT parent at "
             "18:00 EDT (UTC-only logic would drop it)."
+        )
+        # Task is NOT in today's urgent — 01:00 EDT next day falls past
+        # the parent-local today_end boundary.
+        assert "msg-tz-1-out" not in urgent_ids, (
+            "Task due 01:00 EDT next day must NOT be urgent today — "
+            "asserts the today_end boundary is parent-local, not UTC."
         )
 
     def test_dashboard_uses_parent_timezone_falls_back_when_invalid(

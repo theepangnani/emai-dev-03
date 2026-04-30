@@ -1590,8 +1590,12 @@ def get_email_digest_dashboard(
     # Resolve parent timezone (#4630). Every Ontario user is on UTC-4/-5,
     # so computing today/week boundaries in UTC drops evening deadlines
     # from the urgent list and shows next-morning tasks as "today" during
-    # certain hours. Look up the configured timezone from any of this
-    # parent's ParentDigestSettings rows; fall back to America/Toronto
+    # certain hours. Look up the configured timezone from this parent's
+    # most-recently-updated ParentDigestSettings row (a parent may have
+    # multiple Gmail integrations + settings; the latest-updated one
+    # reflects the timezone the parent actually configured most
+    # recently — undefined `.first()` ordering would silently pick
+    # whichever row the planner returned). Fall back to America/Toronto
     # (the install default) if missing or invalid.
     parent_tz_name = "America/Toronto"
     digest_settings_row = (
@@ -1601,6 +1605,7 @@ def get_email_digest_dashboard(
             ParentGmailIntegration.id == ParentDigestSettings.integration_id,
         )
         .filter(ParentGmailIntegration.parent_id == current_user.id)
+        .order_by(ParentDigestSettings.updated_at.desc())
         .first()
     )
     if digest_settings_row and digest_settings_row.timezone:
@@ -1608,8 +1613,17 @@ def get_email_digest_dashboard(
 
     try:
         parent_tz = ZoneInfo(parent_tz_name)
-    except (ZoneInfoNotFoundError, ValueError):
-        # Defensive fallback — never 500 on a bad/typo'd tz string.
+    except Exception:  # noqa: BLE001 — never 500 on garbage tz strings
+        # Defensive fallback. ``ZoneInfo`` raises ``ZoneInfoNotFoundError``
+        # for unknown zones and ``ValueError`` for empty strings, but the
+        # underlying tzdata library can also raise ``OSError`` /
+        # ``KeyError`` for corrupt installs. Catch broadly + log so a bad
+        # input never breaks the whole dashboard.
+        logger.warning(
+            "dashboard_invalid_timezone parent_id=%s tz=%r — falling back",
+            current_user.id,
+            parent_tz_name,
+        )
         parent_tz = ZoneInfo("America/Toronto")
 
     now_local = datetime.now(parent_tz)
