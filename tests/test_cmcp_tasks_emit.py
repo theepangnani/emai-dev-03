@@ -384,6 +384,100 @@ def test_emit_tasks_sticky_user_deleted(db_session, teacher_user):
     assert rows[0].source_status == "user_deleted"
 
 
+def test_emit_tasks_preserves_user_edited_title(db_session, teacher_user):
+    """A user-renamed Task must NOT be overwritten on re-approve (CB-TASKSYNC §6.13.1)."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.task import Task
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.task_dispatcher import (
+        TASK_SOURCE_CMCP_ARTIFACT,
+        emit_tasks_for_approved_artifact,
+    )
+
+    course = _make_course(db_session, teacher_user)
+    s_user, s_rec = _make_student(db_session)
+    _enroll_student(db_session, s_rec, course)
+
+    artifact = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course.id,
+        state=ArtifactState.APPROVED,
+        title="Original artifact title",
+        content="Original artifact content body.",
+    )
+
+    # First emit creates the Task.
+    emit_tasks_for_approved_artifact(artifact.id, db_session)
+    task = (
+        db_session.query(Task)
+        .filter(Task.source == TASK_SOURCE_CMCP_ARTIFACT)
+        .filter(Task.source_ref == str(artifact.id))
+        .first()
+    )
+    assert task is not None
+
+    # Simulate a student edit that occurred AFTER the auto-create grace
+    # window (60s): bump updated_at well past created_at + grace AND
+    # past source_created_at + grace, so ``_is_user_edited`` returns True.
+    user_edit_time = datetime.now(timezone.utc) + timedelta(minutes=5)
+    task.title = "Student renamed this task"
+    task.updated_at = user_edit_time
+    db_session.commit()
+
+    # Update the artifact and re-emit — student rename must survive.
+    artifact.title = "Teacher renamed artifact"
+    artifact.content = "Teacher updated artifact content."
+    db_session.commit()
+    emit_tasks_for_approved_artifact(artifact.id, db_session)
+
+    db_session.refresh(task)
+    assert task.title == "Student renamed this task", (
+        "User-edited title was overwritten by re-approve — violates CB-TASKSYNC §6.13.1"
+    )
+
+
+def test_emit_tasks_creator_is_artifact_owner_not_student(db_session, teacher_user):
+    """Tasks must be attributed to the teacher (artifact owner), never to the student.
+
+    Guards against the previous ``creator_id or student_user_id`` fallback
+    that could self-attribute a Task to the student if ``artifact.user_id``
+    was ever NULL.
+    """
+    from app.models.task import Task
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.task_dispatcher import (
+        TASK_SOURCE_CMCP_ARTIFACT,
+        emit_tasks_for_approved_artifact,
+    )
+
+    course = _make_course(db_session, teacher_user)
+    s_user, s_rec = _make_student(db_session)
+    _enroll_student(db_session, s_rec, course)
+
+    artifact = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course.id,
+        state=ArtifactState.APPROVED,
+    )
+
+    emitted = emit_tasks_for_approved_artifact(artifact.id, db_session)
+    assert emitted == 1
+
+    task = (
+        db_session.query(Task)
+        .filter(Task.source == TASK_SOURCE_CMCP_ARTIFACT)
+        .filter(Task.source_ref == str(artifact.id))
+        .one()
+    )
+    assert task.created_by_user_id == teacher_user.id
+    assert task.created_by_user_id != s_user.id, (
+        "Task self-attributed to student — violates ops attribution invariant"
+    )
+
+
 # ── Approve endpoint integration ──────────────────────────────────────
 
 

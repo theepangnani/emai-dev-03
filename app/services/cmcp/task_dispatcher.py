@@ -213,7 +213,18 @@ def emit_tasks_for_approved_artifact(
     source_ref = str(artifact_id)
     title = (artifact.title or f"Study task {artifact_id}").strip()
     description = (artifact.content or "")[:1000] or None
-    creator_id = artifact.user_id  # the teacher / admin who owns the artifact
+    # Prefer the artifact owner (teacher/admin) for ``created_by_user_id``;
+    # fall back to the approver (``reviewed_by_user_id``) for legacy rows
+    # where ``user_id`` is NULL. Never self-attribute the Task to the
+    # student — that would falsify ops queries that ask "which staff
+    # created tasks for which students?".
+    creator_id = artifact.user_id or getattr(artifact, "reviewed_by_user_id", None)
+    if creator_id is None:
+        logger.warning(
+            "cmcp.tasks.emit skipped: no creator_id artifact_id=%s",
+            artifact_id,
+        )
+        return 0
     now = _now_utc()
     emitted = 0
 
@@ -248,7 +259,7 @@ def emit_tasks_for_approved_artifact(
                     .first()
                 )
                 task = Task(
-                    created_by_user_id=creator_id or student_user_id,
+                    created_by_user_id=creator_id,
                     assigned_to_user_id=student_user_id,
                     title=title,
                     description=description,
@@ -276,6 +287,33 @@ def emit_tasks_for_approved_artifact(
                 # fields. Don't touch ``is_completed`` / ``completed_at``
                 # — those are user-owned (matches CB-TASKSYNC §6.13.1
                 # "preserve user completion" rule).
+                #
+                # User-edit stickiness: if the student renamed/edited the
+                # Task after the auto-create grace window, do NOT overwrite
+                # their changes on a re-approve — only flip status back to
+                # 'active' if the row was previously source_deleted, then
+                # refresh the server-touch baseline and move on. Mirrors
+                # ``task_sync_service.upsert_task_from_assignment``'s
+                # ``_is_user_edited`` short-circuit.
+                from app.services.task_sync_service import _is_user_edited  # noqa: PLC0415
+
+                if _is_user_edited(existing):
+                    if existing.source_status in ("source_deleted", None):
+                        existing.source_status = "active"
+                        existing.archived_at = None
+                    existing.source_created_at = now
+                    db.commit()
+                    db.refresh(existing)
+                    emitted += 1
+                    logger.info(
+                        "cmcp.tasks.emit skipped_user_edited artifact_id=%s "
+                        "task_id=%s assigned_to_user_id=%s",
+                        artifact_id,
+                        existing.id,
+                        student_user_id,
+                    )
+                    continue
+
                 changed = False
                 if title and existing.title != title:
                     existing.title = title
