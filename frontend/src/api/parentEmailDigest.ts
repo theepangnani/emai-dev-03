@@ -305,3 +305,23 @@ export const assignDiscoveredSchoolEmail = (id: number, child_profile_id: number
 
 export const dismissDiscoveredSchoolEmail = (id: number) =>
   api.delete(`/api/parent/email-digest/discovered-school-emails/${id}`);
+
+// ---------------------------------------------------------------------------
+// Dashboard (CB-EDIGEST-002 — #4594)
+// ---------------------------------------------------------------------------
+// `GET /api/parent/email-digest/dashboard` is the new aggregated endpoint
+// that powers the Email-Digest Dashboard surface (E1 sibling stripe).
+// Shape lives in `pages/parent/dashboard/types.ts` so backend + frontend
+// stripes import from the same source.
+import type { DashboardResponse } from '../pages/parent/dashboard/types';
+
+export type { DashboardResponse } from '../pages/parent/dashboard/types';
+
+/**
+ * Fetch the dashboard response. The `since` window controls how far back
+ * the server scans monitored emails — defaults to "today" per the PRD.
+ */
+export const getDashboard = (since: string = 'today') =>
+  api.get<DashboardResponse>('/api/parent/email-digest/dashboard', {
+    params: { since },
+  });

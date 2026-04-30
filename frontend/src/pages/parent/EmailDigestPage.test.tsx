@@ -111,16 +111,33 @@ vi.mock('../../components/ConfirmModal', () => ({
 
 // Feature-flag mock — default OFF (legacy UI). Individual tests override via
 // `flagEnabledMock.mockReturnValue(true)` to exercise the unified branch.
+//
+// CB-EDIGEST-002 (#4594): the `email_digest_dashboard_v1` flag is force-OFF
+// in this test suite so the existing unified-page tests keep exercising the
+// list UI. The dashboard branch has its own coverage in
+// `pages/parent/dashboard/DashboardView.test.tsx`. Tests that need the
+// dashboard branch can override via `dashboardFlagMock.mockReturnValue(true)`.
 const flagEnabledMock = vi.fn<(key: string) => boolean>(() => false);
+const dashboardFlagMock = vi.fn<(key: string) => boolean>(() => false);
 vi.mock('../../hooks/useFeatureToggle', async () => {
   const actual = await vi.importActual<typeof import('../../hooks/useFeatureToggle')>(
     '../../hooks/useFeatureToggle',
   );
   return {
     ...actual,
-    useFeatureFlagEnabled: (key: string) => flagEnabledMock(key),
+    useFeatureFlagEnabled: (key: string) => {
+      if (key === 'email_digest_dashboard_v1') {
+        return dashboardFlagMock(key);
+      }
+      return flagEnabledMock(key);
+    },
   };
 });
+
+// Stub DashboardView so flag-gate tests don't pull in its API queries.
+vi.mock('./dashboard/DashboardView', () => ({
+  DashboardView: () => <div data-testid="dashboard-view-stub" />,
+}));
 
 function buildIntegration(overrides: Partial<EmailDigestIntegration> = {}): EmailDigestIntegration {
   return {
@@ -201,6 +218,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   confirmResolveValue = true;
   flagEnabledMock.mockReturnValue(false);
+  dashboardFlagMock.mockReturnValue(false);
   mockGetSettings.mockResolvedValue({
     data: {
       id: 1,
@@ -1942,5 +1960,54 @@ describe('EmailDigestPage — discovered school emails (#4329)', () => {
     await waitFor(() => {
       expect(mockDismissDiscoveredSchoolEmail).toHaveBeenCalledWith(7);
     });
+  });
+});
+
+describe('EmailDigestPage — CB-EDIGEST-002 dashboard flag gate (#4594)', () => {
+  it('renders the unified UI when email_digest_dashboard_v1 is OFF (and unified flag ON)', async () => {
+    flagEnabledMock.mockReturnValue(true); // unified V2 flag ON
+    dashboardFlagMock.mockReturnValue(false); // dashboard gate OFF
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      // Unified UI: "Sync & Send" section is unique to EmailDigestPageUnified.
+      expect(screen.getByRole('heading', { name: 'Sync & Send' })).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
+  });
+
+  it('renders the legacy UI when both flags are OFF', async () => {
+    flagEnabledMock.mockReturnValue(false); // unified V2 flag OFF
+    dashboardFlagMock.mockReturnValue(false); // dashboard gate OFF
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      // Legacy UI shows the WhatsApp section as a top-level card.
+      expect(screen.getByText('Receive Digest on WhatsApp')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
+  });
+
+  it('renders DashboardView when email_digest_dashboard_v1 is ON', async () => {
+    flagEnabledMock.mockReturnValue(true); // unified V2 flag ON
+    dashboardFlagMock.mockReturnValue(true); // dashboard gate ON
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view-stub')).toBeInTheDocument();
+    });
+    // Legacy/unified UI must NOT also render.
+    expect(screen.queryByRole('heading', { name: 'Sync & Send' })).not.toBeInTheDocument();
+  });
+
+  it('forces legacy via ?legacy=1 even when dashboard flag is ON', async () => {
+    flagEnabledMock.mockReturnValue(true);
+    dashboardFlagMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest?legacy=1'] });
+    await waitFor(() => {
+      expect(screen.getByText('Receive Digest on WhatsApp')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
   });
 });
