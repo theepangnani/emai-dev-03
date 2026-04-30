@@ -785,6 +785,33 @@ def regenerate_review_artifact(
                         "replaces_artifact_id": artifact_id,
                     },
                 )
+                # M3α IMP follow-up (#4639) — harden the
+                # delete+compensating-audit pair with an interim
+                # commit so a downstream failure (artifact-update,
+                # final commit) doesn't roll back the compensating
+                # row and re-open the audit-integrity gap. Mirrors
+                # ``persist_cmcp_artifact``'s own commit-after-create
+                # pattern so the audit pair is atomic with the
+                # phantom row's lifecycle. The trade-off — regenerate
+                # is no longer fully atomic across phantom-delete +
+                # content-replace — is acceptable: failure after this
+                # point leaves the original artifact untouched + a
+                # consistent audit trail. Re-fetch the artifact since
+                # ``commit`` expires identity-mapped instances.
+                db.commit()
+                artifact = (
+                    db.query(StudyGuide)
+                    .filter(StudyGuide.id == artifact_id)
+                    .first()
+                )
+                if artifact is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=(
+                            f"Artifact {artifact_id} disappeared during "
+                            f"regenerate cleanup"
+                        ),
+                    )
         except Exception:
             logger.exception(
                 "cmcp.review.regenerate cleanup failed; leaking fresh row "

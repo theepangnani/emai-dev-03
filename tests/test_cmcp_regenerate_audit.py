@@ -290,6 +290,235 @@ def test_regenerate_writes_compensating_audit_row_for_phantom(
         db_session.commit()
 
 
+@pytest.fixture()
+def seeded_cmcp_curriculum(db_session):
+    """Seed a Grade-7 CEG slice with two SEs for the integration test."""
+    from app.models.curriculum import (
+        CEGExpectation,
+        CEGStrand,
+        CEGSubject,
+        CurriculumVersion,
+        EXPECTATION_TYPE_OVERALL,
+        EXPECTATION_TYPE_SPECIFIC,
+    )
+
+    suffix = uuid4().hex[:6].upper()
+    subject_code = f"S{suffix}"
+    strand_code = "B"
+    version_slug = f"test-regenaud-{uuid4().hex[:6]}"
+
+    subject = CEGSubject(code=subject_code, name="Mathematics")
+    db_session.add(subject)
+    db_session.flush()
+
+    strand = CEGStrand(
+        subject_id=subject.id, code=strand_code, name="Number Sense"
+    )
+    db_session.add(strand)
+    db_session.flush()
+
+    version = CurriculumVersion(
+        subject_id=subject.id,
+        grade=7,
+        version=version_slug,
+        change_severity=None,
+        notes="test seed",
+    )
+    db_session.add(version)
+    db_session.flush()
+
+    oe = CEGExpectation(
+        ministry_code="B2",
+        cb_code=f"CB-G7-{subject_code}-B2",
+        subject_id=subject.id,
+        strand_id=strand.id,
+        grade=7,
+        expectation_type=EXPECTATION_TYPE_OVERALL,
+        description="Demonstrate understanding of fractions, decimals, percents.",
+        curriculum_version_id=version.id,
+    )
+    db_session.add(oe)
+    db_session.flush()
+
+    se1 = CEGExpectation(
+        ministry_code="B2.1",
+        cb_code=f"CB-G7-{subject_code}-B2-SE1",
+        subject_id=subject.id,
+        strand_id=strand.id,
+        grade=7,
+        expectation_type=EXPECTATION_TYPE_SPECIFIC,
+        parent_oe_id=oe.id,
+        description="Add and subtract fractions with unlike denominators.",
+        curriculum_version_id=version.id,
+    )
+    se2 = CEGExpectation(
+        ministry_code="B2.2",
+        cb_code=f"CB-G7-{subject_code}-B2-SE2",
+        subject_id=subject.id,
+        strand_id=strand.id,
+        grade=7,
+        expectation_type=EXPECTATION_TYPE_SPECIFIC,
+        parent_oe_id=oe.id,
+        description="Multiply and divide decimal numbers to thousandths.",
+        curriculum_version_id=version.id,
+    )
+    db_session.add_all([se1, se2])
+    db_session.commit()
+
+    expectation_ids = [oe.id, se1.id, se2.id]
+    yield {
+        "subject_code": subject_code,
+        "strand_code": strand_code,
+    }
+
+    from app.models.curriculum import CEGExpectation as _E
+
+    db_session.query(_E).filter(_E.id.in_(expectation_ids)).delete(
+        synchronize_session=False
+    )
+    db_session.query(CurriculumVersion).filter(
+        CurriculumVersion.id == version.id
+    ).delete(synchronize_session=False)
+    db_session.query(CEGStrand).filter(
+        CEGStrand.id == strand.id
+    ).delete(synchronize_session=False)
+    db_session.query(CEGSubject).filter(
+        CEGSubject.id == subject.id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+def test_regenerate_compensating_audit_full_path_no_mock(
+    client,
+    db_session,
+    teacher_user,
+    cmcp_flag_on,
+    seeded_cmcp_curriculum,
+):
+    """End-to-end (no mock of ``generate_cmcp_preview_sync``).
+
+    Mutation-test guard for the audit-emit pipeline:
+
+    - The real ``persist_cmcp_artifact`` runs and emits the phantom
+      ``cmcp.artifact.created`` audit row.
+    - The regenerate cleanup deletes the phantom + emits the
+      compensating ``cmcp.artifact.deleted_during_regenerate`` row.
+    - Post-regenerate, both audit rows exist and reference the same
+      phantom resource_id.
+
+    If ``persist_cmcp_artifact`` ever drops the audit emit, this test
+    fails on the ``created_rows`` assertion — the mock-based companion
+    test would still pass because it manually emits the row. So this
+    closes the IMP #4640 mutation-test gap.
+    """
+    from app.models.audit_log import AuditLog
+    from app.models.course import Course
+    from app.models.study_guide import StudyGuide
+    from app.services.cmcp.artifact_state import ArtifactState
+
+    course = _make_course_owned_by(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.PENDING_REVIEW,
+        content="Original prompt.",
+    )
+
+    try:
+        headers = _auth(client, teacher_user.email)
+        body = {
+            "request": {
+                "grade": 7,
+                "subject_code": seeded_cmcp_curriculum["subject_code"],
+                "strand_code": seeded_cmcp_curriculum["strand_code"],
+                "content_type": "QUIZ",
+                "difficulty": "GRADE_LEVEL",
+                "course_id": course,
+            }
+        }
+        resp = client.post(
+            f"/api/cmcp/review/{art.id}/regenerate",
+            json=body,
+            headers=headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        db_session.expire_all()
+
+        # Original artifact survives + content was replaced.
+        survived = (
+            db_session.query(StudyGuide)
+            .filter(StudyGuide.id == art.id)
+            .first()
+        )
+        assert survived is not None
+        assert survived.content != "Original prompt."
+
+        # The phantom row's id is whatever ``persist_cmcp_artifact``
+        # generated — find it via the audit log (filter by user_id +
+        # action + resource_id != art.id).
+        created_rows = (
+            db_session.query(AuditLog)
+            .filter(
+                AuditLog.action == "cmcp.artifact.created",
+                AuditLog.user_id == teacher_user.id,
+            )
+            .all()
+        )
+        # The original artifact in this test was seeded directly via
+        # _seed_artifact (which doesn't write an audit row), so any
+        # cmcp.artifact.created rows for this user came from the real
+        # persist_cmcp_artifact during this regenerate call.
+        assert len(created_rows) >= 1, (
+            "expected persist_cmcp_artifact to emit a real "
+            "cmcp.artifact.created audit row during regenerate; if "
+            "this fails, persist_cmcp_artifact's audit emit was "
+            "dropped (IMP #4640 mutation-test guard)"
+        )
+        phantom_id_from_audit = created_rows[-1].resource_id
+        # Phantom should NOT equal the original artifact id (different
+        # row inserted then deleted).
+        assert phantom_id_from_audit != art.id
+
+        # Compensating row exists, points at the same phantom id, and
+        # references the original artifact.
+        compensating_rows = (
+            db_session.query(AuditLog)
+            .filter(
+                AuditLog.action
+                == "cmcp.artifact.deleted_during_regenerate",
+                AuditLog.user_id == teacher_user.id,
+            )
+            .all()
+        )
+        assert len(compensating_rows) == 1
+        comp = compensating_rows[0]
+        assert comp.resource_id == phantom_id_from_audit
+        details = json.loads(comp.details)
+        assert details["replaces_artifact_id"] == art.id
+
+        # Phantom row is gone.
+        assert (
+            db_session.query(StudyGuide)
+            .filter(StudyGuide.id == phantom_id_from_audit)
+            .first()
+            is None
+        )
+    finally:
+        db_session.query(StudyGuide).filter(
+            StudyGuide.id == art.id
+        ).delete(synchronize_session=False)
+        # Defensive cleanup of any leaked phantom row.
+        db_session.query(StudyGuide).filter(
+            StudyGuide.user_id == teacher_user.id
+        ).delete(synchronize_session=False)
+        db_session.query(Course).filter(Course.id == course).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+
+
 def test_regenerate_no_phantom_no_compensating_audit_row(
     client, db_session, teacher_user, cmcp_flag_on
 ):
