@@ -258,6 +258,116 @@ def test_dispatch_retry_recovery(db_session, teacher_user, caplog):
     assert len(bridge_records) == 1
 
 
+def test_dispatch_success_after_retry_persists_correct_attempts(
+    db_session, teacher_user
+):
+    """Success-after-retry honesty (#4633).
+
+    When the per-surface emitter succeeds on attempt 2 (transient
+    failure recovered), the ``cmcp_surface_dispatches`` row must show
+    ``attempts=2``, ``status='ok'``, ``last_error=None``. Without the
+    fix, the row writes ``attempts=1`` because the emitters hard-code
+    that value and the dispatcher only re-recorded attempts on the
+    failure branch — making flaky surfaces look healthy in ops.
+    """
+    from app.models.cmcp_surface_dispatch import CMCPSurfaceDispatch
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp import surface_dispatcher
+    from app.services.cmcp.surface_dispatcher import (
+        dispatch_artifact_to_surfaces,
+    )
+
+    course = _make_course(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.APPROVED,
+    )
+
+    # Track per-surface call counts. The first call on each surface
+    # raises (simulating a transient PG deadlock); the second call
+    # falls through to the real emitter so the audit row + retry
+    # tuple shape match production.
+    real_emitters = dict(surface_dispatcher._SURFACE_EMITTERS)
+    call_counts: dict[str, int] = {"bridge": 0, "dci": 0, "digest": 0}
+
+    def make_flaky(surface_name: str):
+        real = real_emitters[surface_name]
+
+        def flaky(**kwargs):
+            call_counts[surface_name] += 1
+            if call_counts[surface_name] < 2:
+                raise RuntimeError(f"transient {surface_name} failure")
+            return real(**kwargs)
+
+        return flaky
+
+    flaky_emitters = {s: make_flaky(s) for s in ("bridge", "dci", "digest")}
+
+    with patch.dict(
+        surface_dispatcher._SURFACE_EMITTERS,
+        flaky_emitters,
+        clear=False,
+    ):
+        outcomes = dispatch_artifact_to_surfaces(art.id, db_session)
+
+    assert outcomes == {"bridge": "ok", "dci": "ok", "digest": "ok"}
+    # Every surface needed exactly 2 attempts.
+    assert call_counts == {"bridge": 2, "dci": 2, "digest": 2}
+
+    rows = (
+        db_session.query(CMCPSurfaceDispatch)
+        .filter(CMCPSurfaceDispatch.artifact_id == art.id)
+        .all()
+    )
+    assert len(rows) == 3
+    for row in rows:
+        assert row.status == "ok", f"surface={row.surface}"
+        assert row.attempts == 2, (
+            f"surface={row.surface} attempts={row.attempts} "
+            "(expected 2 — success-after-retry must record true count)"
+        )
+        assert row.last_error is None, f"surface={row.surface}"
+
+
+def test_dispatch_first_attempt_success_records_attempts_one(
+    db_session, teacher_user
+):
+    """First-attempt-success keeps the emitter's ``attempts=1`` write.
+
+    Guards against an over-eager re-record that would write a second
+    audit row (or overwrite the emitter's row needlessly) on the
+    common happy path. The fix only re-records when ``attempts_used >
+    1``.
+    """
+    from app.models.cmcp_surface_dispatch import CMCPSurfaceDispatch
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.surface_dispatcher import (
+        dispatch_artifact_to_surfaces,
+    )
+
+    course = _make_course(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.APPROVED,
+    )
+
+    dispatch_artifact_to_surfaces(art.id, db_session)
+
+    rows = (
+        db_session.query(CMCPSurfaceDispatch)
+        .filter(CMCPSurfaceDispatch.artifact_id == art.id)
+        .all()
+    )
+    assert len(rows) == 3
+    for row in rows:
+        assert row.status == "ok"
+        assert row.attempts == 1
+
+
 def test_dispatch_audit_failure_recovers_via_retry(db_session, teacher_user):
     """Audit-write returning None on first call → retried; recovers on 2nd."""
     from app.services.cmcp.artifact_state import ArtifactState

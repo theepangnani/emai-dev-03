@@ -566,6 +566,28 @@ def dispatch_artifact_to_surfaces(
             )
 
             if success:
+                # Success-after-retry honesty (#4633): the per-surface
+                # emitters hard-code ``attempts=1`` in their initial
+                # audit write because they have no view of the retry
+                # budget. When the call succeeds on attempt N>1, the
+                # row written on attempt N still says ``attempts=1`` —
+                # which silently hides flaky surfaces in the ops
+                # dashboard. Re-record here with the true ``attempts``
+                # so the audit column is honest. The unique tuple
+                # ``(artifact_id, surface, parent_id, kid_id)`` makes
+                # this an UPSERT — updates the row written by the
+                # emitter on its successful attempt, no duplicate row.
+                if attempts_used > 1:
+                    _record_dispatch(
+                        db,
+                        artifact_id=artifact_id,
+                        surface=surface,
+                        parent_id=parent_id,
+                        kid_id=kid_id,
+                        status="ok",
+                        attempts=attempts_used,
+                        last_error=None,
+                    )
                 elapsed_ms = max(
                     0,
                     int(
