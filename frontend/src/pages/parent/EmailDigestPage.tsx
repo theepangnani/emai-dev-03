@@ -122,10 +122,13 @@ export function EmailDigestPage() {
   const unifiedEnabled = useFeatureFlagEnabled('parent.unified_digest_v2');
   const dashboardEnabled = useFeatureFlagEnabled('email_digest_dashboard_v1');
   const legacyForced = searchParams.get('legacy') === '1';
-  // startsWith (not strict ===) so trailing slashes + future nested settings
-  // sub-routes (e.g. /email-digest/settings/whatsapp) keep escaping the
-  // dashboard branch.
-  const isSettingsPath = location.pathname.startsWith('/email-digest/settings');
+  // Match the bare settings path OR any nested sub-route (e.g.
+  // /email-digest/settings/whatsapp), but NOT flat siblings like
+  // /email-digest/settings-billing — #4689 tightened this from a naive
+  // startsWith to avoid false-positives on hypothetical sibling routes.
+  const isSettingsPath =
+    location.pathname === '/email-digest/settings' ||
+    location.pathname.startsWith('/email-digest/settings/');
   if (legacyForced) {
     return <EmailDigestPageLegacy />;
   }
