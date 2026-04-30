@@ -756,20 +756,40 @@ def regenerate_review_artifact(
     # update — leaking a fresh row is a soft cost, the artifact update
     # is the user-visible operation.
     if preview.id is not None and preview.id != artifact.id:
+        phantom_artifact_id = preview.id
         try:
             stale = (
                 db.query(StudyGuide)
-                .filter(StudyGuide.id == preview.id)
+                .filter(StudyGuide.id == phantom_artifact_id)
                 .first()
             )
             if stale is not None:
                 db.delete(stale)
                 db.flush()
+                # M3α IMP (#4634) — ``persist_cmcp_artifact`` already
+                # wrote a ``cmcp.artifact.created`` audit row pointing
+                # at the phantom id and committed it. Now that we're
+                # cleaning up the phantom, write a compensating audit
+                # entry so the Bill 194 trail doesn't reference a
+                # deleted ``resource_id``. Lazy-import to mirror the
+                # persistence module's convention.
+                from app.services.audit_service import log_action
+
+                log_action(
+                    db,
+                    user_id=current_user.id,
+                    action="cmcp.artifact.deleted_during_regenerate",
+                    resource_type="study_guide",
+                    resource_id=phantom_artifact_id,
+                    details={
+                        "replaces_artifact_id": artifact_id,
+                    },
+                )
         except Exception:
             logger.exception(
                 "cmcp.review.regenerate cleanup failed; leaking fresh row "
                 "id=%s — will be cleaned up by a future janitor",
-                preview.id,
+                phantom_artifact_id,
             )
             db.rollback()
             # Re-fetch the artifact since rollback detached it.
