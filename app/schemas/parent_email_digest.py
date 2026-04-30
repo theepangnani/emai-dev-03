@@ -374,3 +374,80 @@ class DiscoveredAssignBody(BaseModel):
 class DiscoveredAssignResponse(BaseModel):
     status: str
     child_profile_id: int
+
+
+# ---------------------------------------------------------------------------
+# Email Digest Dashboard (CB-EDIGEST-002 E1, #4589)
+#
+# Aggregated read-only view powering the parent dashboard at /email-digest:
+# the "what's urgent today, by kid" hero + Mon-Sun week grid + edge states
+# (no_kids / paused / first_run / calm / null). Wired to:
+#   GET /api/parent/email-digest/dashboard?since=today
+# ---------------------------------------------------------------------------
+
+
+class DashboardUrgentItem(BaseModel):
+    """One urgent item rendered on the dashboard.
+
+    `id` is a string so the same shape can later carry non-numeric IDs (e.g.
+    if we surface raw email-derived items that pre-date Task creation).
+    `source_email_id` mirrors ``Task.source_message_id`` when the item came
+    from the digest pipeline.
+    """
+
+    id: str
+    title: str
+    due_date: Optional[datetime] = None
+    course_or_context: Optional[str] = None
+    source_email_id: Optional[str] = None
+
+
+class DashboardWeeklyDay(BaseModel):
+    """One day of the Mon-Sun week grid for a kid.
+
+    `day` is an ISO date string ("YYYY-MM-DD") — frontend localizes to the
+    parent's timezone for rendering.
+    """
+
+    day: str
+    items: list[DashboardUrgentItem] = []
+
+
+class DashboardKidView(BaseModel):
+    """Per-kid section of the dashboard.
+
+    `id` is the ParentChildProfile.id (NOT the Student.user_id) so the
+    frontend keys stably even when the underlying student account is
+    detached (CB-PEDI-002 contract).
+    """
+
+    id: int
+    first_name: str
+    urgent_items: list[DashboardUrgentItem] = []
+    weekly_deadlines: list[DashboardWeeklyDay] = []
+    all_clear: bool
+
+
+DashboardEmptyState = Literal[
+    "calm",
+    "no_kids",
+    "paused",
+    "auth_expired",
+    "first_run",
+]
+
+
+class DashboardResponse(BaseModel):
+    """Top-level dashboard payload.
+
+    `kids` is ordered by descending count of urgent items (PRD §F6 — kid
+    section with the most urgent items appears first). `empty_state` is one
+    of the canonical sentinels or null when normal content renders.
+    `last_digest_at` reflects the most recent ``DigestDeliveryLog.delivered_at``
+    for the parent and is null when no digest has been sent yet.
+    """
+
+    kids: list[DashboardKidView] = []
+    empty_state: Optional[DashboardEmptyState] = None
+    refreshed_at: datetime
+    last_digest_at: Optional[datetime] = None

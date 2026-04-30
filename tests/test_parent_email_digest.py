@@ -973,3 +973,518 @@ class TestSenderNameFilter:
             me.get("sender_name") == "Name Only Sender" and me.get("email_address") is None
             for me in resp.json()
         )
+
+
+# ---------------------------------------------------------------------------
+# Email Digest Dashboard (CB-EDIGEST-002 E1, #4589)
+# ---------------------------------------------------------------------------
+
+
+DASHBOARD_PARENT_EMAIL = "dashboard_parent@test.com"
+DASHBOARD_TEACHER_EMAIL = "dashboard_teacher@test.com"
+
+
+def _make_dashboard_parent(db_session):
+    """Create a dedicated parent + teacher for dashboard tests.
+
+    Isolated from the shared `setup` fixture so empty-state tests can drive
+    the no_kids / paused / first_run conditions independently of the other
+    suite data.
+    """
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    parent = (
+        db_session.query(User).filter(User.email == DASHBOARD_PARENT_EMAIL).first()
+    )
+    if parent is None:
+        hashed = get_password_hash(PASSWORD)
+        parent = User(
+            email=DASHBOARD_PARENT_EMAIL,
+            full_name="Dashboard Parent",
+            role=UserRole.PARENT,
+            hashed_password=hashed,
+        )
+        db_session.add(parent)
+        db_session.commit()
+        db_session.refresh(parent)
+
+    teacher = (
+        db_session.query(User).filter(User.email == DASHBOARD_TEACHER_EMAIL).first()
+    )
+    if teacher is None:
+        hashed = get_password_hash(PASSWORD)
+        teacher = User(
+            email=DASHBOARD_TEACHER_EMAIL,
+            full_name="Dashboard Teacher",
+            role=UserRole.TEACHER,
+            hashed_password=hashed,
+        )
+        db_session.add(teacher)
+        db_session.commit()
+        db_session.refresh(teacher)
+
+    return parent, teacher
+
+
+def _make_kid(db_session, parent, first_name, email):
+    """Create a Student User + ParentChildProfile bound to `parent`."""
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import ParentChildProfile
+    from app.models.user import User, UserRole
+
+    kid_user = db_session.query(User).filter(User.email == email).first()
+    if kid_user is None:
+        kid_user = User(
+            email=email,
+            full_name=first_name,
+            role=UserRole.STUDENT,
+            hashed_password=get_password_hash(PASSWORD),
+        )
+        db_session.add(kid_user)
+        db_session.commit()
+        db_session.refresh(kid_user)
+
+    profile = (
+        db_session.query(ParentChildProfile)
+        .filter(
+            ParentChildProfile.parent_id == parent.id,
+            ParentChildProfile.student_id == kid_user.id,
+        )
+        .first()
+    )
+    if profile is None:
+        profile = ParentChildProfile(
+            parent_id=parent.id,
+            student_id=kid_user.id,
+            first_name=first_name,
+        )
+        db_session.add(profile)
+        db_session.commit()
+        db_session.refresh(profile)
+    return kid_user, profile
+
+
+def _add_task(
+    db_session,
+    *,
+    creator,
+    assignee,
+    title,
+    due_date,
+    source_message_id=None,
+):
+    """Insert a Task assigned to `assignee` with the given due_date."""
+    from app.models.task import Task
+
+    task = Task(
+        created_by_user_id=creator.id,
+        assigned_to_user_id=assignee.id,
+        title=title,
+        due_date=due_date,
+        priority="medium",
+        is_completed=False,
+        source="email_digest",
+        source_message_id=source_message_id,
+    )
+    db_session.add(task)
+    db_session.commit()
+    db_session.refresh(task)
+    return task
+
+
+def _purge_dashboard_state(db_session, parent_id):
+    """Reset all CB-EDIGEST-002 inputs for `parent_id`.
+
+    Called at the top of every dashboard test so tests can run in any order
+    under the session-scoped DB fixture without inheriting tasks / profiles
+    / integrations / logs from sibling tests.
+    """
+    from app.models.parent_gmail_integration import (
+        DigestDeliveryLog,
+        ParentChildProfile,
+        ParentGmailIntegration,
+    )
+    from app.models.task import Task
+
+    profiles = (
+        db_session.query(ParentChildProfile)
+        .filter(ParentChildProfile.parent_id == parent_id)
+        .all()
+    )
+    student_ids = [p.student_id for p in profiles if p.student_id is not None]
+    if student_ids:
+        db_session.query(Task).filter(
+            Task.assigned_to_user_id.in_(student_ids)
+        ).delete(synchronize_session=False)
+
+    db_session.query(ParentChildProfile).filter(
+        ParentChildProfile.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.query(DigestDeliveryLog).filter(
+        DigestDeliveryLog.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.query(ParentGmailIntegration).filter(
+        ParentGmailIntegration.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+class TestDashboard:
+    """GET /api/parent/email-digest/dashboard — CB-EDIGEST-002 E1 (#4589)."""
+
+    def test_dashboard_no_kids(self, client, db_session):
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "no_kids"
+        assert data["kids"] == []
+        assert data["last_digest_at"] is None
+        assert data["refreshed_at"] is not None
+
+    def test_dashboard_all_paused(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Avery", "dashboard_kid_avery@test.com")
+
+        # Two integrations: one inactive, one paused into the future.
+        integ_a = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="paused_a@gmail.com",
+            google_id="gid_a",
+            access_token="t",
+            refresh_token="r",
+            is_active=False,
+        )
+        integ_b = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="paused_b@gmail.com",
+            google_id="gid_b",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+            paused_until=datetime.now(timezone.utc) + timedelta(days=14),
+        )
+        db_session.add_all([integ_a, integ_b])
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ_a.id))
+        db_session.add(ParentDigestSettings(integration_id=integ_b.id))
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "paused"
+
+    def test_dashboard_first_run(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Riley", "dashboard_kid_riley@test.com")
+
+        # Active integration, no DigestDeliveryLog row yet.
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="firstrun@gmail.com",
+            google_id="gid_fr",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "first_run"
+        assert data["last_digest_at"] is None
+
+    def test_dashboard_all_clear(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Sky", "dashboard_kid_sky@test.com")
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="calm@gmail.com",
+            google_id="gid_calm",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=2,
+                digest_content="Calm digest",
+                channels_used="in_app,email",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "calm"
+        assert len(data["kids"]) == 1
+        assert data["kids"][0]["all_clear"] is True
+        assert data["kids"][0]["urgent_items"] == []
+        assert data["last_digest_at"] is not None
+
+    def test_dashboard_normal_multi_kid(self, client, db_session):
+        """Multi-kid normal path: empty_state=null + ordering by urgent count."""
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        kid_a_user, profile_a = _make_kid(
+            db_session, parent, "Alice", "dashboard_kid_alice@test.com"
+        )
+        kid_b_user, profile_b = _make_kid(
+            db_session, parent, "Bobby", "dashboard_kid_bobby@test.com"
+        )
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="multi@gmail.com",
+            google_id="gid_multi",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=3,
+                channels_used="in_app",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        # Bobby gets 2 urgent items today; Alice gets 1 urgent today + 1 in
+        # 3 days (week-only). The multi-kid section ordering should put
+        # Bobby first (more urgent items).
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_a_user,
+            title="Alice — read chapter 3",
+            due_date=now + timedelta(hours=4),
+            source_message_id="msg-a-1",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_a_user,
+            title="Alice — book report",
+            due_date=now + timedelta(days=3),
+            source_message_id="msg-a-2",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_b_user,
+            title="Bobby — math worksheet",
+            due_date=now + timedelta(hours=2),
+            source_message_id="msg-b-1",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_b_user,
+            title="Bobby — overdue spelling",
+            due_date=now - timedelta(hours=6),
+            source_message_id="msg-b-2",
+        )
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        assert data["empty_state"] is None
+        assert len(data["kids"]) == 2
+        # PRD §F6 — kid with most urgent items first.
+        assert data["kids"][0]["first_name"] == "Bobby"
+        assert data["kids"][1]["first_name"] == "Alice"
+
+        bobby = data["kids"][0]
+        alice = data["kids"][1]
+        assert len(bobby["urgent_items"]) == 2
+        assert bobby["all_clear"] is False
+        assert all(item["source_email_id"] for item in bobby["urgent_items"])
+
+        assert len(alice["urgent_items"]) == 1
+        # Alice has 1 urgent (today) + 1 future weekly task → 2 weekly buckets.
+        assert len(alice["weekly_deadlines"]) >= 1
+        assert all("day" in d and "items" in d for d in alice["weekly_deadlines"])
+
+    def test_dashboard_tie_break_preserves_creation_order(self, client, db_session):
+        """Pass-1 review I3 + pass-2 mutation hardening: when two kids have
+        equal urgent counts, the secondary order MUST be
+        ParentChildProfile.created_at ASC.
+
+        Names chosen so creation order (Zara → Aiden) is the OPPOSITE of
+        alphabetical order — distinguishes the stable creation-order
+        contract from an accidental swap to alphabetical sort. The
+        implementation relies on Python's stable list.sort + the primary
+        `ORDER BY created_at ASC` from the profile query.
+        """
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        # Profile creation order: Zara first, then Aiden. Both get exactly
+        # 1 urgent task each → tie-break by creation order, NOT
+        # alphabetical (which would put Aiden first).
+        kid_c_user, _ = _make_kid(
+            db_session, parent, "Zara", "dashboard_kid_zara@test.com"
+        )
+        kid_d_user, _ = _make_kid(
+            db_session, parent, "Aiden", "dashboard_kid_aiden@test.com"
+        )
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="tiebreak@gmail.com",
+            google_id="gid_tb",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=1,
+                channels_used="in_app",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_c_user,
+            title="Zara — task A",
+            due_date=now + timedelta(hours=2),
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_d_user,
+            title="Aiden — task A",
+            due_date=now + timedelta(hours=2),
+        )
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        kids = resp.json()["kids"]
+        # Zara was created first → must come first under stable
+        # tie-break, even though "Aiden" sorts alphabetically before "Zara".
+        assert [k["first_name"] for k in kids] == ["Zara", "Aiden"]
+        assert all(len(k["urgent_items"]) == 1 for k in kids)
+
+    def test_dashboard_rbac_403(self, client, db_session):
+        """Non-parent role gets 403 from require_role(PARENT)."""
+        # Use the existing teacher seed from the shared `setup` fixture's pool.
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        non_parent_email = "dashboard_non_parent@test.com"
+        existing = (
+            db_session.query(User).filter(User.email == non_parent_email).first()
+        )
+        if existing is None:
+            db_session.add(
+                User(
+                    email=non_parent_email,
+                    full_name="Dashboard Student",
+                    role=UserRole.STUDENT,
+                    hashed_password=get_password_hash(PASSWORD),
+                )
+            )
+            db_session.commit()
+
+        headers = _auth(client, non_parent_email)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 403
+
+    def test_dashboard_since_validation_rejects_unknown(self, client, db_session):
+        """Pass-1 review I4: `since` is a Literal["today"]; unknown values
+        must return 422 rather than being silently accepted."""
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard?since=tomorrow", headers=headers)
+        assert resp.status_code == 422, resp.text
+
+    def test_dashboard_rate_limit_60(self, client, db_session, app):
+        """61st call within the same minute trips the 60/min limiter."""
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        app.state.limiter.enabled = True
+        app.state.limiter.reset()
+        try:
+            for _ in range(60):
+                resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+                assert resp.status_code == 200, resp.text
+            resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+            assert resp.status_code == 429
+        finally:
+            app.state.limiter.enabled = False
+            app.state.limiter.reset()
