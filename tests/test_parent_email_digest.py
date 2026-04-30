@@ -1360,13 +1360,15 @@ class TestDashboard:
         assert all("day" in d and "items" in d for d in alice["weekly_deadlines"])
 
     def test_dashboard_tie_break_preserves_creation_order(self, client, db_session):
-        """Pass-1 review I3: when two kids have equal urgent counts, the
-        secondary order MUST be ParentChildProfile.created_at ASC.
+        """Pass-1 review I3 + pass-2 mutation hardening: when two kids have
+        equal urgent counts, the secondary order MUST be
+        ParentChildProfile.created_at ASC.
 
-        The implementation relies on Python's stable list.sort + the
-        primary `ORDER BY created_at ASC` from the profile query. This
-        test pins that contract so a future swap to an unstable comparator
-        surfaces as a regression.
+        Names chosen so creation order (Zara → Aiden) is the OPPOSITE of
+        alphabetical order — distinguishes the stable creation-order
+        contract from an accidental swap to alphabetical sort. The
+        implementation relies on Python's stable list.sort + the primary
+        `ORDER BY created_at ASC` from the profile query.
         """
         from app.models.parent_gmail_integration import (
             DigestDeliveryLog,
@@ -1377,13 +1379,14 @@ class TestDashboard:
         parent, teacher = _make_dashboard_parent(db_session)
         _purge_dashboard_state(db_session, parent.id)
 
-        # Profile creation order: Casey first, then Drew. Both get exactly
-        # 1 urgent task each → tie-break by creation order.
+        # Profile creation order: Zara first, then Aiden. Both get exactly
+        # 1 urgent task each → tie-break by creation order, NOT
+        # alphabetical (which would put Aiden first).
         kid_c_user, _ = _make_kid(
-            db_session, parent, "Casey", "dashboard_kid_casey@test.com"
+            db_session, parent, "Zara", "dashboard_kid_zara@test.com"
         )
         kid_d_user, _ = _make_kid(
-            db_session, parent, "Drew", "dashboard_kid_drew@test.com"
+            db_session, parent, "Aiden", "dashboard_kid_aiden@test.com"
         )
 
         integ = ParentGmailIntegration(
@@ -1413,14 +1416,14 @@ class TestDashboard:
             db_session,
             creator=teacher,
             assignee=kid_c_user,
-            title="Casey — task A",
+            title="Zara — task A",
             due_date=now + timedelta(hours=2),
         )
         _add_task(
             db_session,
             creator=teacher,
             assignee=kid_d_user,
-            title="Drew — task A",
+            title="Aiden — task A",
             due_date=now + timedelta(hours=2),
         )
 
@@ -1428,7 +1431,9 @@ class TestDashboard:
         resp = client.get(f"{PREFIX}/dashboard", headers=headers)
         assert resp.status_code == 200, resp.text
         kids = resp.json()["kids"]
-        assert [k["first_name"] for k in kids] == ["Casey", "Drew"]
+        # Zara was created first → must come first under stable
+        # tie-break, even though "Aiden" sorts alphabetically before "Zara".
+        assert [k["first_name"] for k in kids] == ["Zara", "Aiden"]
         assert all(len(k["urgent_items"]) == 1 for k in kids)
 
     def test_dashboard_rbac_403(self, client, db_session):
