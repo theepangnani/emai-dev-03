@@ -34,7 +34,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { useAuth } from '../../context/AuthContext';
 import { useFeatureFlagState } from '../../hooks/useFeatureToggle';
@@ -43,6 +43,7 @@ import { CoverageHeatmap } from '../../components/board/CoverageHeatmap';
 import { deriveCoverageMap } from './deriveCoverageMap';
 
 import './BoardDashboardPage.css';
+import './BoardCatalogPage.css';
 
 const PAGE_LIMIT = 200;
 
@@ -198,6 +199,11 @@ export function BoardDashboardPage() {
           <span className="board-dashboard-pill-sparse">1–3</span>{' '}
           <span className="board-dashboard-pill-covered">4+</span>.
         </p>
+        <nav className="board-catalog-nav" aria-label="Board admin views">
+          <Link to="/board/catalog" className="board-catalog-nav-link">
+            Catalog browse →
+          </Link>
+        </nav>
       </header>
 
       <section className="board-dashboard-section">

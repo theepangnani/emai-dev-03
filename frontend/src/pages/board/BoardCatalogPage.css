@@ -1,0 +1,152 @@
+/* CB-CMCP-001 M3-H 3H-2 (#4666) — Board catalog browse page styles.
+ *
+ * Layered on top of BoardDashboardPage.css so the Bridge palette stays
+ * consistent across the two board-admin views.
+ */
+
+.board-catalog-nav {
+  margin-top: 12px;
+}
+
+.board-catalog-nav-link {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bridge-rust);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--bridge-rust);
+  padding-bottom: 1px;
+}
+
+.board-catalog-nav-link:hover {
+  color: #8a3a22;
+  border-color: #8a3a22;
+}
+
+.board-catalog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--bridge-hair);
+  border-radius: 8px;
+  background: var(--bridge-paper);
+}
+
+.board-catalog-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.board-catalog-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--bridge-muted);
+}
+
+.board-catalog-filters input {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--bridge-hair);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--bridge-ink);
+  min-width: 120px;
+}
+
+.board-catalog-secondary-btn {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border: 1px solid var(--bridge-hair);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--bridge-ink);
+  cursor: pointer;
+}
+
+.board-catalog-secondary-btn:hover:not(:disabled) {
+  background: var(--bridge-paper);
+  border-color: var(--bridge-rust);
+  color: var(--bridge-rust);
+}
+
+.board-catalog-secondary-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.board-catalog-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.board-catalog-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--bridge-paper);
+  border: 1px solid var(--bridge-hair);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.board-catalog-table th,
+.board-catalog-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--bridge-hair);
+}
+
+.board-catalog-table th {
+  background: var(--bridge-ivory);
+  font-weight: 500;
+  color: var(--bridge-ink);
+}
+
+.board-catalog-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.board-catalog-table tbody tr:hover {
+  background: var(--bridge-ivory);
+}
+
+.board-catalog-sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.board-catalog-sort-btn:hover {
+  color: var(--bridge-rust);
+}
+
+.board-catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.board-catalog-page-indicator {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  color: var(--bridge-muted);
+}

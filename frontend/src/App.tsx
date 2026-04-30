@@ -141,6 +141,8 @@ const CEGReviewPage = lazyRetry(() => import('./pages/admin/CEGReviewPage').then
 const TeacherReviewQueuePage = lazyRetry(() => import('./pages/teacher/ReviewQueuePage').then((m) => ({ default: m.ReviewQueuePage })));
 // CB-CMCP-001 M3-H 3H-1 (#4663) — board admin dashboard (coverage heatmap); gated to BOARD_ADMIN + ADMIN + cmcp.enabled flag.
 const BoardDashboardPage = lazyRetry(() => import('./pages/board/BoardDashboardPage').then((m) => ({ default: m.BoardDashboardPage })));
+// CB-CMCP-001 M3-H 3H-2 (#4666) — board admin catalog browse page; gated to BOARD_ADMIN + ADMIN + cmcp.enabled flag.
+const BoardCatalogPage = lazyRetry(() => import('./pages/board/BoardCatalogPage').then((m) => ({ default: m.BoardCatalogPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -484,6 +486,19 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['BOARD_ADMIN', 'admin']}>
                     <BoardDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3-H 3H-2 (#4666) — board admin catalog browse.
+                  RBAC: BOARD_ADMIN + ADMIN. Backend
+                  /api/board/{board_id}/catalog (3E-1) and
+                  /api/board/{board_id}/catalog/export.csv (3E-3) enforce
+                  the same gate independently — this route gate is purely UX. */}
+              <Route
+                path="/board/catalog"
+                element={
+                  <ProtectedRoute allowedRoles={['BOARD_ADMIN', 'admin']}>
+                    <BoardCatalogPage />
                   </ProtectedRoute>
                 }
               />
