@@ -310,6 +310,12 @@ def lti_launch(
         resource_id=artifact.id,
         details={"board_token_type": "lti_launch", "kid_id": token_kid_id},
     )
+    # CB-CMCP-001 #4710 — ``log_action`` uses a SAVEPOINT (``db.begin_nested``)
+    # and only flushes — the row is buffered until the outer transaction
+    # commits. ``get_db()`` does NOT auto-commit on close, so we explicitly
+    # commit here; without this, the audit row is silently dropped on session
+    # close (same pattern as ``board_catalog.py`` audit calls).
+    db.commit()
 
     # CB-CMCP-001 #4703 — structured-event INFO matching the M3 telemetry
     # convention (``cmcp.<area>.<verb>`` under ``extra.event``). The
