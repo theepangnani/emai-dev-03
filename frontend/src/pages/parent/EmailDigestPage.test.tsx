@@ -2000,6 +2000,37 @@ describe('EmailDigestPage — CB-EDIGEST-002 dashboard flag gate (#4594)', () =>
     expect(screen.queryByRole('heading', { name: 'Sync & Send' })).not.toBeInTheDocument();
   });
 
+  // #4681 — DashboardView MUST be wrapped in DashboardLayout so the sidebar
+  // / nav / logo chrome is present (legacy and unified branches already wrap).
+  it('wraps DashboardView in DashboardLayout when dashboard flag is ON', async () => {
+    flagEnabledMock.mockReturnValue(true);
+    dashboardFlagMock.mockReturnValue(true);
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view-stub')).toBeInTheDocument();
+    });
+    // The DashboardLayout mock renders a wrapper div with data-testid="layout".
+    // The dashboard-view stub must be inside it.
+    const layout = screen.getByTestId('layout');
+    expect(within(layout).getByTestId('dashboard-view-stub')).toBeInTheDocument();
+  });
+
+  // #4682 — Settings sub-path escapes the dashboard branch so parents can
+  // still reach the legacy/unified settings UI when the dashboard flag is ON.
+  it('renders the legacy/unified settings UI on /email-digest/settings even when dashboard flag is ON', async () => {
+    flagEnabledMock.mockReturnValue(true); // unified V2 ON
+    dashboardFlagMock.mockReturnValue(true); // dashboard gate ON
+    mockListIntegrations.mockResolvedValue({ data: [buildIntegration()] });
+    renderWithProviders(<EmailDigestPage />, { initialEntries: ['/email-digest/settings'] });
+    await waitFor(() => {
+      // Unified UI: "Sync & Send" section is unique to EmailDigestPageUnified.
+      expect(screen.getByRole('heading', { name: 'Sync & Send' })).toBeInTheDocument();
+    });
+    // Dashboard view must NOT render on the settings sub-path.
+    expect(screen.queryByTestId('dashboard-view-stub')).not.toBeInTheDocument();
+  });
+
   it('forces legacy via ?legacy=1 even when dashboard flag is ON', async () => {
     flagEnabledMock.mockReturnValue(true);
     dashboardFlagMock.mockReturnValue(true);
