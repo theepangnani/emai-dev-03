@@ -288,6 +288,8 @@ class _StubPipeline:
         expected_se_codes: list[str],
         grade: int,
         subject_code: str,
+        db=None,
+        embedding_threshold: float | None = None,
     ) -> ValidationPipelineResult:
         _StubPipeline.calls.append({
             "generated_content": generated_content,
@@ -295,6 +297,8 @@ class _StubPipeline:
             "expected_se_codes": list(expected_se_codes),
             "grade": grade,
             "subject_code": subject_code,
+            "db": db,
+            "embedding_threshold": embedding_threshold,
         })
         if _StubPipeline.raise_on_validate:
             raise RuntimeError("simulated validator failure")

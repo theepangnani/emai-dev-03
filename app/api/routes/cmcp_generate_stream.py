@@ -304,6 +304,12 @@ def generate_cmcp_stream(
         # gate, in M1.
         "alignment_score": None,
         "flag_for_review": False,
+        # M3β fu (#4696 / 3I-2): populated below from the validator's
+        # embedding-similarity third pass. ``None`` when the validator
+        # was skipped or the M1-D composition already failed (the
+        # embedding round-trip is elided as a cost-saver in that case).
+        "embedding_scores": None,
+        "embedding_threshold": None,
     }
 
     # Snapshot the inputs the Parent Companion service needs that aren't
@@ -408,16 +414,35 @@ def generate_cmcp_stream(
                     completion_payload["parent_companion"] = (
                         await _maybe_emit_parent_companion(full_content)
                     )
-                    alignment_score, flag_for_review = (
-                        await _run_alignment_pipeline(
+                    # M3β fu (#4696): supply a fresh ``SessionLocal`` to
+                    # the validator so the 3I-2 embedding-similarity pass
+                    # actually runs in production — the request-scoped
+                    # ``db`` may already be closed by the time this async
+                    # generator drains, mirroring the persistence call
+                    # below. Wrap in try/finally so a validator exception
+                    # never leaks an open session.
+                    _validator_db = SessionLocal()
+                    try:
+                        (
+                            alignment_score,
+                            flag_for_review,
+                            embedding_scores,
+                            embedding_threshold,
+                        ) = await _run_alignment_pipeline(
                             generated_content=full_content,
                             expected_se_codes=se_codes_list,
                             grade=validator_grade,
                             subject_code=validator_subject_code,
+                            db=_validator_db,
                         )
-                    )
+                    finally:
+                        _validator_db.close()
                     completion_payload["alignment_score"] = alignment_score
                     completion_payload["flag_for_review"] = flag_for_review
+                    completion_payload["embedding_scores"] = embedding_scores
+                    completion_payload["embedding_threshold"] = (
+                        embedding_threshold
+                    )
 
                     # M3α prequel (#4575): persist the artifact row
                     # before emitting the completion frame so the M3
@@ -511,12 +536,14 @@ async def _run_alignment_pipeline(
     expected_se_codes: list[str],
     grade: int,
     subject_code: str,
-) -> tuple[float | None, bool]:
-    """Run the 1D-2 ``ValidationPipeline`` and return ``(score, flag)``.
+    db: Session | None = None,
+) -> tuple[float | None, bool, dict[str, float] | None, float | None]:
+    """Run the 1D-2 ``ValidationPipeline`` and return its surfaced fields.
 
-    Returns ``(None, False)`` when the validator was skipped (empty
-    content / no expected SEs) or raised — alignment is a soft signal
-    in M1, not a generation gate, so a pipeline exception MUST NOT
+    Returns ``(score, flag, embedding_scores, embedding_threshold)``.
+    Returns ``(None, False, None, None)`` when the validator was skipped
+    (empty content / no expected SEs) or raised — alignment is a soft
+    signal in M1, not a generation gate, so a pipeline exception MUST NOT
     block the artifact from reaching the client.
 
     The streaming route does not currently ask the model to emit a
@@ -525,11 +552,17 @@ async def _run_alignment_pipeline(
     "self-report" — i.e., we trust the prompt's anchoring — so the
     composed ``alignment_score`` collapses to the second-pass coverage
     rate, which is the only independent signal we have in M1.
+
+    M3β fu (#4696): when ``db`` is supplied, the 3I-2 embedding-similarity
+    pass runs as a third gate inside ``ValidationPipeline.validate`` and
+    its scores + threshold are surfaced back to the caller for inclusion
+    in the completion frame / persisted artifact metadata. Legacy callers
+    that omit ``db`` keep the score-based ``flag_for_review`` semantics.
     """
     if not generated_content or not generated_content.strip():
-        return None, False
+        return None, False, None, None
     if not expected_se_codes:
-        return None, False
+        return None, False, None, None
     try:
         pipeline = ValidationPipeline()
         result = await pipeline.validate(
@@ -538,6 +571,7 @@ async def _run_alignment_pipeline(
             expected_se_codes=list(expected_se_codes),
             grade=grade,
             subject_code=subject_code,
+            db=db,
         )
     except Exception:
         # Validator failure must not block the artifact — log + ship
@@ -548,5 +582,10 @@ async def _run_alignment_pipeline(
             grade,
             subject_code,
         )
-        return None, False
-    return result.alignment_score, result.flag_for_review
+        return None, False, None, None
+    return (
+        result.alignment_score,
+        result.flag_for_review,
+        result.embedding_scores,
+        result.embedding_threshold,
+    )
