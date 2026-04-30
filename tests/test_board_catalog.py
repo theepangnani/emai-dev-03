@@ -742,11 +742,13 @@ def test_catalog_get_writes_audit_row(
     )
     assert resp.status_code == 200, resp.text
 
-    # Force a fresh read so we see only committed rows. ``log_action``
-    # uses a SAVEPOINT and only flushes — without ``db.commit()`` in
-    # the handler, this query would return zero rows (the audit row
-    # would die with the request session). This is the regression net
-    # for the missing-commit class of bug.
+    # Read from a fresh ``SessionLocal()`` rather than the test
+    # fixture ``db_session`` — defensive read across session
+    # boundaries. NOTE: SQLAlchemy's connection pool means even a
+    # fresh session can see SAVEPOINT-flushed rows, so this is not by
+    # itself a guarantee that ``db.commit()`` ran in the handler;
+    # the explicit commit is required for production durability and
+    # matches the convention in ``cmcp_review.py``.
     from app.db.database import SessionLocal
 
     fresh = SessionLocal()

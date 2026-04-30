@@ -842,10 +842,12 @@ def test_export_writes_audit_row(
     )
     assert resp.status_code == 200, resp.text
 
-    # Fresh session — only committed rows visible. ``log_action``
-    # SAVEPOINT-flushes; without an explicit ``db.commit()`` in the
-    # handler, the row would die on session close. This catches the
-    # missing-commit regression class.
+    # Read from a fresh ``SessionLocal()`` for cross-session sanity.
+    # The pool-sharing semantics in SQLAlchemy mean this isn't a
+    # mutation-test against a missing ``db.commit()`` (a fresh session
+    # backed by the same engine pool can still see SAVEPOINT-flushed
+    # rows). The explicit commit in the handler is convention-aligned
+    # with ``cmcp_review.py`` and required for production durability.
     from app.db.database import SessionLocal
 
     fresh = SessionLocal()
