@@ -546,3 +546,119 @@ def test_handler_cross_board_raises_404_no_gcs_call(monkeypatch):
     assert excinfo.value.status_code == 404
     fake_gcs.upload_file.assert_not_called()
     fake_gcs.generate_signed_url.assert_not_called()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CSV-formula-injection neutralization
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_csv_safe_neutralizes_formula_prefixes():
+    """``_csv_safe`` prefixes formula-trigger strings with a literal ``'``."""
+    from app.api.routes.board_catalog import _csv_safe
+
+    # Each of the OWASP-listed formula triggers gets neutralized.
+    for prefix in ("=", "+", "-", "@", "\t", "\r"):
+        assert _csv_safe(f"{prefix}danger") == f"'{prefix}danger"
+
+    # Benign strings + non-strings pass through untouched.
+    assert _csv_safe("Plain title") == "Plain title"
+    assert _csv_safe("") == ""
+    assert _csv_safe(123) == 123
+    assert _csv_safe(None) is None
+
+
+def test_export_csv_neutralizes_formula_in_title(
+    client,
+    cmcp_flag_on,
+    db_session,
+    board_admin_tdsb,
+    patch_resolve_board,
+    mock_gcs,
+):
+    """Title starting with ``=`` is rendered as ``'=...`` in the CSV.
+
+    Open-in-Sheets would otherwise execute the cell as a formula. The
+    leading single-quote forces text rendering. This is the OWASP CSV-
+    injection mitigation.
+    """
+    unique_board = f"INJECT_{uuid4().hex[:6].upper()}"
+    patch_resolve_board({board_admin_tdsb.id: unique_board})
+
+    _seed_artifact(
+        db_session,
+        user_id=board_admin_tdsb.id,
+        title='=HYPERLINK("evil.test","steal")',
+        state="APPROVED",
+        board_id=unique_board,
+    )
+
+    headers = _auth(client, board_admin_tdsb.email)
+    resp = client.post(
+        f"/api/board/{unique_board}/catalog/export.csv", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    csv_text = mock_gcs.upload_file.call_args.args[1].decode("utf-8")
+    # The rendered cell starts with ``'=`` — formula is neutralized.
+    assert "'=HYPERLINK" in csv_text
+    # And the un-prefixed form is NOT present (would trip Sheets).
+    # Use a regex-style check: bare "=HYPERLINK" never appears without
+    # the leading ``'``. csv.writer quotes the cell, so the literal
+    # substring ``"=HYPERLINK"`` (with double-quote) would mark
+    # injection; the safe form is ``"'=HYPERLINK"``.
+    assert '"=HYPERLINK' not in csv_text
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Hard cap — too many artifacts → 413
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_export_over_cap_returns_413(monkeypatch):
+    """If a board has more APPROVED rows than the cap, return 413.
+
+    Exercised at the handler level so we don't have to seed 50k+ rows
+    in SQLite — the test patches ``_query_all_approved_artifacts`` to
+    return a synthetic over-cap list and verifies the early-exit
+    happens before the GCS upload helper fires.
+    """
+    from fastapi import HTTPException
+
+    from app.api.routes import board_catalog as bc_module
+
+    fake_gcs = MagicMock()
+    monkeypatch.setattr(bc_module, "gcs_service", fake_gcs)
+    # Avoid the real DB by stubbing the coverage_map + artifact loader.
+    monkeypatch.setattr(
+        bc_module, "compute_coverage_map", lambda board_id, db: {}
+    )
+    over_cap = bc_module.MAX_EXPORT_ARTIFACT_ROWS + 1
+    fake_artifact = SimpleNamespace(
+        id=1,
+        title="x",
+        content_type="study_guide",
+        state="APPROVED",
+        subject_code=None,
+        grade=None,
+        se_codes=[],
+        alignment_score=None,
+        ai_engine=None,
+        course_id=None,
+        created_at=None,
+    )
+    monkeypatch.setattr(
+        bc_module,
+        "_query_all_approved_artifacts",
+        lambda db, *, board_id: [fake_artifact] * over_cap,
+    )
+
+    db = MagicMock()
+    user = _board_admin_mock(board_id="TDSB")
+
+    with pytest.raises(HTTPException) as excinfo:
+        bc_module.export_board_catalog_csv(
+            board_id="TDSB", current_user=user, db=db
+        )
+    assert excinfo.value.status_code == 413
+    fake_gcs.upload_file.assert_not_called()
+    fake_gcs.generate_signed_url.assert_not_called()

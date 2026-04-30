@@ -363,6 +363,31 @@ def get_board_catalog(
 #: Per spec: 1 hour (3600 seconds).
 SIGNED_CSV_TTL_SECONDS = 3600
 
+#: Hard upper bound on artifact rows in a single CSV export. Above this
+#: the endpoint returns 413 (caller should add filters / paginate via
+#: the JSON catalog). Pilot boards are <5k rows; 50k leaves headroom
+#: while preventing OOM on the in-memory CSV builder + GCS upload.
+MAX_EXPORT_ARTIFACT_ROWS = 50_000
+
+#: Characters that — at the start of a CSV cell — Excel / Google Sheets
+#: interpret as a formula. Free-text fields prefixed with one of these
+#: get a leading single-quote inserted to neutralize formula parsing.
+#: (See OWASP "CSV Injection" / "Formula Injection".)
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value: Any) -> Any:
+    """Neutralize CSV-formula injection on string cells.
+
+    Returns the value unchanged unless it's a non-empty string starting
+    with one of :data:`_CSV_FORMULA_PREFIXES`, in which case a literal
+    ``'`` is prepended so Excel / Sheets render the cell as plain text.
+    Non-string values pass through untouched.
+    """
+    if isinstance(value, str) and value and value[0] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
 
 class BoardCatalogExportResponse(BaseModel):
     """Response envelope for a CSV-export request.
@@ -438,10 +463,12 @@ def _build_catalog_csv_bytes(
         writer.writerow(
             [
                 art.id,
-                art.title,
+                # Free-text fields neutralized against CSV-formula injection
+                # (OWASP) before reaching Excel / Sheets.
+                _csv_safe(art.title),
                 art.content_type,
                 art.state,
-                art.subject_code or "",
+                _csv_safe(art.subject_code or ""),
                 art.grade if art.grade is not None else "",
                 # Pipe-separate SE codes so the CSV stays one-row-per-artifact.
                 "|".join(art.se_codes) if art.se_codes else "",
@@ -450,7 +477,7 @@ def _build_catalog_csv_bytes(
                     if art.alignment_score is not None
                     else ""
                 ),
-                art.ai_engine or "",
+                _csv_safe(art.ai_engine or ""),
                 art.course_id if art.course_id is not None else "",
                 art.created_at or "",
             ]
@@ -522,6 +549,25 @@ def export_board_catalog_csv(
     coverage_map = compute_coverage_map(board_id, db)
     artifacts = _query_all_approved_artifacts(db, board_id=str(board_id))
 
+    # Hard cap — protect the worker from OOM on a runaway export.
+    # Pilot boards are <5k rows today; the cap is loose enough to never
+    # bite real data while stopping the unbounded growth path.
+    if len(artifacts) > MAX_EXPORT_ARTIFACT_ROWS:
+        logger.warning(
+            "board_catalog_export over_cap board=%s artifacts=%s cap=%s",
+            board_id,
+            len(artifacts),
+            MAX_EXPORT_ARTIFACT_ROWS,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"Catalog has {len(artifacts)} artifacts; export cap is "
+                f"{MAX_EXPORT_ARTIFACT_ROWS}. Use the JSON catalog with "
+                f"filters to scope a smaller export."
+            ),
+        )
+
     csv_bytes = _build_catalog_csv_bytes(
         board_id=str(board_id),
         coverage_map=coverage_map,
@@ -565,4 +611,5 @@ __all__ = [
     "BoardCatalogResponse",
     "BoardCatalogExportResponse",
     "SIGNED_CSV_TTL_SECONDS",
+    "MAX_EXPORT_ARTIFACT_ROWS",
 ]
