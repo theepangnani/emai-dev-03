@@ -53,6 +53,7 @@ def _make_study_guide(
     se_codes: list[str] | None,
     state: str,
     title_suffix: str = "",
+    alignment_score=None,
 ):
     """Insert a StudyGuide row with the supplied state + se_codes."""
     from app.models.study_guide import StudyGuide
@@ -66,6 +67,7 @@ def _make_study_guide(
         relationship_type="version",
         state=state,
         se_codes=se_codes,
+        alignment_score=alignment_score,
     )
     db_session.add(sg)
     db_session.commit()
@@ -323,6 +325,8 @@ def test_audit_log_captures_cascade_event(db_session, parent_user):
     assert payload["from_version"] == "2020-rev1"
     assert payload["to_version"] == "2024"
     assert payload["severity"] == SEVERITY_SCOPE_SUBSTANTIVE
+    # #4697 — artifact had no prior alignment_score, so cleared_alignment=False.
+    assert payload["cleared_alignment"] is False
 
 
 def test_audit_log_one_row_per_flagged_artifact(db_session, parent_user):
@@ -522,6 +526,114 @@ def test_mixed_diff_substantive_plus_wording_only(db_session, parent_user):
     assert result.flagged_artifact_ids == [sg_sub.id]
     assert result.substantive_se_codes == [cb_substantive]
     assert result.wording_only_se_count == 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# #4697 — stale alignment_score is nulled during cascade
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_cascade_clears_stale_alignment_score(db_session, parent_user):
+    """#4697 (Path B) — APPROVED artifact with alignment_score=0.85
+    transitions to PENDING_REVIEW with alignment_score=None so the UI
+    cannot display a score that was computed against a now-stale SE
+    definition."""
+    from decimal import Decimal
+
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.version_cascade import apply_version_cascade
+
+    cb_code = f"CB-CLEAR-{uuid4().hex[:6]}"
+    sg = _make_study_guide(
+        db_session,
+        user_id=parent_user.id,
+        se_codes=[cb_code],
+        state=ArtifactState.APPROVED,
+        alignment_score=Decimal("0.850"),
+    )
+    # Sanity: pre-cascade alignment_score is populated.
+    db_session.refresh(sg)
+    assert sg.alignment_score is not None
+
+    apply_version_cascade(
+        [_substantive_pair(cb_code=cb_code)],
+        db_session,
+    )
+    db_session.commit()
+    db_session.refresh(sg)
+
+    assert sg.state == ArtifactState.PENDING_REVIEW
+    assert sg.alignment_score is None
+
+
+def test_cascade_audit_row_carries_cleared_alignment_true(
+    db_session, parent_user
+):
+    """#4697 — audit row's details include cleared_alignment=True when a
+    non-NULL alignment_score was nulled by the cascade."""
+    from decimal import Decimal
+
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.version_cascade import (
+        CASCADE_AUDIT_ACTION,
+        apply_version_cascade,
+    )
+
+    cb_code = f"CB-CLEAR-AUDIT-{uuid4().hex[:6]}"
+    sg = _make_study_guide(
+        db_session,
+        user_id=parent_user.id,
+        se_codes=[cb_code],
+        state=ArtifactState.APPROVED,
+        alignment_score=Decimal("0.850"),
+    )
+
+    apply_version_cascade(
+        [_substantive_pair(cb_code=cb_code)],
+        db_session,
+    )
+    db_session.commit()
+
+    rows = _audit_rows_for(db_session, CASCADE_AUDIT_ACTION, sg.id)
+    assert len(rows) == 1
+    payload = json.loads(rows[0].details)
+    assert payload["cleared_alignment"] is True
+
+
+def test_cascade_audit_row_cleared_alignment_false_when_score_was_null(
+    db_session, parent_user
+):
+    """#4697 — audit row's details include cleared_alignment=False when
+    the artifact had no alignment_score at cascade time, so an ops
+    query can distinguish "we cleared a stale score" from "no score
+    was ever written"."""
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.version_cascade import (
+        CASCADE_AUDIT_ACTION,
+        apply_version_cascade,
+    )
+
+    cb_code = f"CB-CLEAR-NULL-{uuid4().hex[:6]}"
+    sg = _make_study_guide(
+        db_session,
+        user_id=parent_user.id,
+        se_codes=[cb_code],
+        state=ArtifactState.APPROVED,
+        alignment_score=None,
+    )
+
+    apply_version_cascade(
+        [_substantive_pair(cb_code=cb_code)],
+        db_session,
+    )
+    db_session.commit()
+    db_session.refresh(sg)
+
+    assert sg.alignment_score is None
+    rows = _audit_rows_for(db_session, CASCADE_AUDIT_ACTION, sg.id)
+    assert len(rows) == 1
+    payload = json.loads(rows[0].details)
+    assert payload["cleared_alignment"] is False
 
 
 def test_classify_falls_back_to_old_se_cb_code_when_new_is_deleted(

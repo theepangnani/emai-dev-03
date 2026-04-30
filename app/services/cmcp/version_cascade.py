@@ -52,7 +52,21 @@ Audit row contract (per 3B-1 ``log_action`` pattern):
 - ``resource_id``   = the artifact id that was reflagged
 - ``user_id``       = ``None`` (system-driven cascade — no actor)
 - ``details``       = ``{"se_code": str, "from_version": str,
-                          "to_version": str, "severity": "scope_substantive"}``
+                          "to_version": str, "severity": "scope_substantive",
+                          "cleared_alignment": bool}``
+
+Stale alignment score nulling (#4697 — Path B):
+
+- ``alignment_score`` is nulled alongside the APPROVED → PENDING_REVIEW
+  state flip. The original validation ran against a now-stale SE
+  definition, so the persisted score is misleading once the SE has
+  shifted substantively. Re-validation runs on next approve via the
+  approve handler (Path A is deferred to M4 — see #4697). The audit
+  row's ``details["cleared_alignment"]`` is ``True`` when the score
+  was non-NULL prior to the transition (so an ops query can tell the
+  difference between "we cleared a stale score" and "no score was
+  ever written"); it is ``False`` when ``alignment_score`` was
+  already ``None`` at cascade time.
 
 Cross-dialect notes:
 
@@ -303,7 +317,16 @@ def _cascade_artifact_to_pending_review(
         # to ARCHIVED or APPROVED_VERIFIED between our SELECT and write.
         return False
 
+    # #4697 (Path B) — null the persisted alignment_score alongside the
+    # state flip. The score was computed against the OLD SE definition;
+    # the SE has now shifted substantively, so the score is stale and
+    # the UI must show "score unavailable" until re-validation runs on
+    # next approve. ``cleared_alignment`` records whether we actually
+    # nulled a non-NULL value, so an ops query can distinguish "we
+    # cleared a stale score" from "no score was ever written".
+    cleared_alignment = artifact.alignment_score is not None
     artifact.state = ArtifactState.PENDING_REVIEW
+    artifact.alignment_score = None
     db.flush()  # populate UPDATE without committing — caller commits.
 
     log_action(
@@ -317,6 +340,7 @@ def _cascade_artifact_to_pending_review(
             "from_version": from_version,
             "to_version": to_version,
             "severity": SEVERITY_SCOPE_SUBSTANTIVE,
+            "cleared_alignment": cleared_alignment,
         },
     )
     return True
@@ -335,6 +359,13 @@ def _approved_artifacts_for_se(db: Session, se_code: str) -> list[StudyGuide]:
     see the cascade SE next time they open the row. Stripe 3G-3
     (notification) can layer broader visibility on top if needed.
     """
+    # TODO: switch to dialect-specific JSON-array filter when scale
+    # demands; M3β volumes are bounded by teacher review throughput
+    # (re-review-ready APPROVED rows for a given subject/grade slice
+    # are not millions), so the in-Python membership check below is
+    # acceptable. Pushdown candidates: PG `se_codes ? :se_code` (JSONB
+    # has-key), SQLite `EXISTS (SELECT 1 FROM json_each(se_codes) WHERE
+    # value = :se_code)`. See #4697 review S4.
     rows = (
         db.query(StudyGuide)
         .filter(StudyGuide.state == ArtifactState.APPROVED)
