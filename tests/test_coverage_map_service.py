@@ -90,15 +90,20 @@ def covmap_user(db_session):
 
 @pytest.fixture()
 def cleanup_artifacts(db_session):
-    """Remove any ``study_guides`` rows the test seeded.
+    """Remove any ``study_guides`` rows from before AND after each test.
 
     The session-scoped DB fixture in ``conftest.py`` keeps rows across
-    tests; without explicit cleanup, board="TDSB" rows from one test
-    would bleed into the next.
+    tests, so other CMCP test files that seed board="TDSB" artifacts
+    (board_catalog, board_signed_csv, version_cascade, etc.) leave
+    rows that pollute coverage-map counts. Clean BEFORE the test runs
+    so this file's count assertions only see this test's seeded rows,
+    and AFTER so we don't pollute downstream tests.
     """
-    yield
     from app.models.study_guide import StudyGuide
 
+    db_session.query(StudyGuide).delete(synchronize_session=False)
+    db_session.commit()
+    yield
     db_session.query(StudyGuide).delete(synchronize_session=False)
     db_session.commit()
 
