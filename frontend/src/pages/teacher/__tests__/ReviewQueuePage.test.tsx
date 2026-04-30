@@ -265,6 +265,28 @@ describe('ReviewQueuePage', () => {
     confirmSpy.mockRestore();
   });
 
+  it('renders an error when the queue load fails', async () => {
+    mockListQueue.mockRejectedValue(new Error('queue boom'));
+    renderPage(<ReviewQueuePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('queue boom');
+    });
+  });
+
+  it('surfaces the approve error in the detail panel', async () => {
+    mockApprove.mockRejectedValue(new Error('approve boom'));
+    const user = userEvent.setup();
+    renderPage(<ReviewQueuePage />);
+
+    const approveBtn = await screen.findByTestId('cmcp-review-approve-btn');
+    await user.click(approveBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('approve boom');
+    });
+  });
+
   it('edit flow opens the textarea, sends PATCH, and exits edit mode', async () => {
     mockEditArtifact.mockResolvedValue({
       ...sampleArtifact,
