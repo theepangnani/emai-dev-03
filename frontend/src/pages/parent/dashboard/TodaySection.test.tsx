@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TodaySection } from './TodaySection';
+import { TodaySection, relativeDueLabel } from './TodaySection';
 import type { KidSection, UrgentItem } from './TodaySection';
 
 function makeItem(overrides: Partial<UrgentItem> = {}): UrgentItem {
@@ -149,6 +149,34 @@ describe('TodaySection', () => {
     expect(handler).toHaveBeenCalledWith(11, null);
   });
 
+  it('renders relative due-date pill for items with due_date', () => {
+    // Use a fixed "now" so the test is timezone- and date-stable.
+    const now = new Date(2026, 4, 1, 12, 0, 0); // Fri, May 1 2026, noon local
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+
+    const items = [
+      makeItem({
+        id: 'today',
+        title: 'Today task',
+        due_date: new Date(2026, 4, 1, 18, 0, 0).toISOString(),
+      }),
+      makeItem({
+        id: 'tmrw',
+        title: 'Tomorrow task',
+        due_date: new Date(2026, 4, 2, 9, 0, 0).toISOString(),
+      }),
+    ];
+    const kid = makeKid({ urgent_items: items });
+
+    render(<TodaySection kids={[kid]} onItemClick={vi.fn()} />);
+
+    expect(screen.getByText('Due today')).toBeInTheDocument();
+    expect(screen.getByText('Due tomorrow')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
   it('uses Bridge skin CSS variables (scoped under .bridge-page)', () => {
     const kid = makeKid({
       urgent_items: [makeItem({ id: 'css-check' })],
@@ -165,5 +193,45 @@ describe('TodaySection', () => {
     expect(root).toHaveClass('today-section');
     // Cards reuse the bridge-card primitive so they inherit Bridge tokens.
     expect(container.querySelector('.bridge-card')).not.toBeNull();
+  });
+});
+
+describe('relativeDueLabel', () => {
+  // Anchor "now" to a fixed local-midday weekday so weekday-name assertions
+  // are deterministic regardless of test runner timezone.
+  const now = new Date(2026, 4, 1, 12, 0, 0); // Fri, May 1 2026, noon
+
+  it('returns null for null input', () => {
+    expect(relativeDueLabel(null, now)).toBeNull();
+  });
+
+  it('returns null for unparseable input', () => {
+    expect(relativeDueLabel('not-a-date', now)).toBeNull();
+  });
+
+  it('returns "Due today" for same calendar day', () => {
+    const due = new Date(2026, 4, 1, 18, 0, 0).toISOString();
+    expect(relativeDueLabel(due, now)).toBe('Due today');
+  });
+
+  it('returns "Due tomorrow" for next calendar day', () => {
+    const due = new Date(2026, 4, 2, 9, 0, 0).toISOString();
+    expect(relativeDueLabel(due, now)).toBe('Due tomorrow');
+  });
+
+  it('returns "Due {weekday}" for items 2-6 days out', () => {
+    // May 4 2026 is a Monday.
+    const due = new Date(2026, 4, 4, 9, 0, 0).toISOString();
+    expect(relativeDueLabel(due, now)).toBe('Due Monday');
+  });
+
+  it('returns absolute "Due {Mon} {D}" for items >= 7 days out', () => {
+    const due = new Date(2026, 4, 15, 9, 0, 0).toISOString();
+    expect(relativeDueLabel(due, now)).toBe('Due May 15');
+  });
+
+  it('returns "Overdue" for past due dates', () => {
+    const due = new Date(2026, 3, 30, 9, 0, 0).toISOString(); // Apr 30
+    expect(relativeDueLabel(due, now)).toBe('Overdue');
   });
 });

@@ -47,13 +47,24 @@ const WEEKDAY_NAMES = [
 ];
 
 /**
- * Compute a relative due-date label for the pill. Returns "Due today",
- * "Due tomorrow", or "Due {weekday}". Returns null when due_date is null
- * or unparseable so callers can omit the pill.
+ * Compute a relative due-date label for the pill. Returns:
+ *   - "Overdue"          when diffDays < 0
+ *   - "Due today"        when diffDays === 0
+ *   - "Due tomorrow"     when diffDays === 1
+ *   - "Due {weekday}"    when 1 < diffDays < 7
+ *   - "Due {Mon} {D}"    when diffDays >= 7  (e.g. "Due May 15")
+ *   - null               when dueIso is null or unparseable
  *
  * Comparison is done at calendar-day granularity in the local timezone.
+ * NOTE: date-only ISO strings (e.g. "2026-05-01") parse as UTC midnight,
+ * which can drift by 1 calendar day in non-UTC zones. E1 should pass
+ * timezone-aware ISO timestamps; #4618 tracks the timezone-only fix.
  */
-function relativeDueLabel(dueIso: string | null, now: Date = new Date()): string | null {
+// eslint-disable-next-line react-refresh/only-export-components
+export function relativeDueLabel(
+  dueIso: string | null,
+  now: Date = new Date(),
+): string | null {
   if (!dueIso) return null;
   const due = new Date(dueIso);
   if (Number.isNaN(due.getTime())) return null;
@@ -65,13 +76,15 @@ function relativeDueLabel(dueIso: string | null, now: Date = new Date()): string
     (startOfDay(due) - startOfDay(now)) / (24 * 60 * 60 * 1000),
   );
 
+  if (diffDays < 0) return 'Overdue';
   if (diffDays === 0) return 'Due today';
   if (diffDays === 1) return 'Due tomorrow';
-  if (diffDays > 1 && diffDays < 7) {
+  if (diffDays < 7) {
     return `Due ${WEEKDAY_NAMES[due.getDay()]}`;
   }
-  if (diffDays < 0) return 'Overdue';
-  return `Due ${WEEKDAY_NAMES[due.getDay()]}`;
+  // Long-tail: render absolute date so we never show an ambiguous weekday
+  // for an item due e.g. 6 weeks out.
+  return `Due ${due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
 /** Stable sort: urgent_items.length DESC, id ASC. */
@@ -130,7 +143,7 @@ export function TodaySection({ kids, onItemClick }: TodaySectionProps): JSX.Elem
                 return (
                   <li
                     key={item.id}
-                    className="is-clickable today-section__item"
+                    className="today-section__item"
                     data-testid={`today-item-${item.id}`}
                   >
                     <button
