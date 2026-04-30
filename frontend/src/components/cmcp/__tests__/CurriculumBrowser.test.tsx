@@ -168,7 +168,9 @@ describe('CurriculumBrowser', () => {
       expect(screen.getByText('Selected (2)')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Remove B1.1' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Remove SE code B1.1' }),
+    );
 
     expect(onChange).toHaveBeenLastCalledWith(['C2.1']);
     expect(screen.getByText('Selected (1)')).toBeInTheDocument();

@@ -60,7 +60,7 @@
  * Uses existing global tokens (--color-*, --radius-*, --font-*) defined
  * in index.css / THEME.md (Bridge theme). No new tokens are introduced.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import {
   curriculumBrowserApi,
@@ -88,6 +88,9 @@ export function CurriculumBrowser({
   initialSelection,
   grade,
 }: CurriculumBrowserProps) {
+  // Stable component-level prefix used to scope checkbox ids so multiple
+  // <CurriculumBrowser /> instances on the same page do not collide.
+  const checkboxIdPrefix = useId();
   // ── Subject list ─────────────────────────────────────────────────────
   const [courses, setCourses] = useState<CourseListItem[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -98,6 +101,16 @@ export function CurriculumBrowser({
   const [coursesById, setCoursesById] = useState<Record<string, CurriculumCourse>>(
     {},
   );
+  // Mirror of ``coursesById`` kept in a ref so the per-subject fetch
+  // effect can read the cache without depending on the state itself.
+  // Depending on ``coursesById`` would re-fire the effect after every
+  // successful fetch (the very setState that caused the cache hit), an
+  // unnecessary render-loop hop. The ref is updated via ``useEffect``
+  // below so React's render-state and ref-state stay in sync.
+  const coursesByIdRef = useRef(coursesById);
+  useEffect(() => {
+    coursesByIdRef.current = coursesById;
+  }, [coursesById]);
   // Per-subject error map. Keeping the error keyed by code (rather than a
   // single scalar) avoids a stale-error race when the user flips subjects
   // mid-fetch — switching to a healthy subject silently clears the prior
@@ -162,10 +175,12 @@ export function CurriculumBrowser({
 
   // ── Per-subject detail fetch (cached) ─────────────────────────────────
   // Like the courses fetch, no synchronous setState in the effect body —
-  // loading state is derived from the cache below.
+  // loading state is derived from the cache below. The cache check reads
+  // ``coursesByIdRef.current`` so the effect deps don't include the cache
+  // map (which would re-fire the effect after every successful fetch).
   useEffect(() => {
     if (!effectiveActiveCourseCode) return;
-    if (coursesById[effectiveActiveCourseCode]) return; // cache hit
+    if (coursesByIdRef.current[effectiveActiveCourseCode]) return; // cache hit
 
     let cancelled = false;
     const code = effectiveActiveCourseCode;
@@ -200,7 +215,7 @@ export function CurriculumBrowser({
     return () => {
       cancelled = true;
     };
-  }, [effectiveActiveCourseCode, coursesById]);
+  }, [effectiveActiveCourseCode]);
 
   // Derived loading / error state for the active subject.
   const detailError = effectiveActiveCourseCode
@@ -212,27 +227,30 @@ export function CurriculumBrowser({
     !detailError;
 
   // ── Selection handlers ───────────────────────────────────────────────
+  // Compute the next list outside the functional updater so the parent
+  // ``onSelectionChange`` callback fires exactly once per user interaction.
+  // Calling the parent callback inside a functional updater would invoke
+  // it twice in StrictMode (React intentionally double-invokes updaters
+  // in dev) — confusing for parents that have side-effects in the
+  // callback (analytics, logging).
   const toggleCode = useCallback(
     (code: string) => {
-      setSelection((prev) => {
-        const idx = prev.indexOf(code);
-        const next = idx === -1 ? [...prev, code] : prev.filter((c) => c !== code);
-        onSelectionChange(next);
-        return next;
-      });
+      const idx = selection.indexOf(code);
+      const next =
+        idx === -1 ? [...selection, code] : selection.filter((c) => c !== code);
+      setSelection(next);
+      onSelectionChange(next);
     },
-    [onSelectionChange],
+    [selection, onSelectionChange],
   );
 
   const removeCode = useCallback(
     (code: string) => {
-      setSelection((prev) => {
-        const next = prev.filter((c) => c !== code);
-        onSelectionChange(next);
-        return next;
-      });
+      const next = selection.filter((c) => c !== code);
+      setSelection(next);
+      onSelectionChange(next);
     },
-    [onSelectionChange],
+    [selection, onSelectionChange],
   );
 
   const toggleStrand = useCallback((subject: string, strand: string) => {
@@ -379,6 +397,7 @@ export function CurriculumBrowser({
                     <ul className="cmcp-curriculum-browser-expectations">
                       {strand.expectations.map((exp) => {
                         const isSelected = selectionSet.has(exp.code);
+                        const inputId = `${checkboxIdPrefix}-tree-${exp.code}`;
                         return (
                           <li
                             key={exp.code}
@@ -388,22 +407,30 @@ export function CurriculumBrowser({
                                 ? ' cmcp-curriculum-browser-expectation-selected'
                                 : '')
                             }
-                            onClick={() => toggleCode(exp.code)}
                           >
                             <input
+                              id={inputId}
                               type="checkbox"
                               className="cmcp-curriculum-browser-expectation-checkbox"
                               checked={isSelected}
                               onChange={() => toggleCode(exp.code)}
-                              onClick={(e) => e.stopPropagation()}
                               aria-label={`Select expectation ${exp.code}`}
                             />
-                            <span className="cmcp-curriculum-browser-expectation-code">
+                            {/* <label htmlFor> handles click + keyboard
+                                semantics natively — no JS event juggling
+                                between the row and the input. */}
+                            <label
+                              htmlFor={inputId}
+                              className="cmcp-curriculum-browser-expectation-code"
+                            >
                               {exp.code}
-                            </span>
-                            <span className="cmcp-curriculum-browser-expectation-desc">
+                            </label>
+                            <label
+                              htmlFor={inputId}
+                              className="cmcp-curriculum-browser-expectation-desc"
+                            >
                               {exp.description}
-                            </span>
+                            </label>
                           </li>
                         );
                       })}
@@ -495,7 +522,7 @@ export function CurriculumBrowser({
                 type="button"
                 className="cmcp-curriculum-browser-chip-remove"
                 onClick={() => removeCode(code)}
-                aria-label={`Remove ${code}`}
+                aria-label={`Remove SE code ${code}`}
               >
                 <span aria-hidden="true">×</span>
               </button>
