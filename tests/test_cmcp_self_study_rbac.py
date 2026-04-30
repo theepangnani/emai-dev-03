@@ -360,8 +360,22 @@ class TestRowLevelSelfStudyVisibility:
         not class-distributable. Even a teacher whose roster includes
         the student gets no read access to that student's SELF_STUDY
         artifact.
+
+        Mutation guard (#4613 review pass 2 / S1): the artifact is
+        pinned to the teacher's course so the standard FR-05 matrix's
+        TEACHER course-branch WOULD have granted access on a non-
+        SELF_STUDY row. With the SELF_STUDY override removed, this test
+        would flip to True — exactly the regression the override exists
+        to prevent. Without this pinning, the test passes-with-or-
+        without the override (dead-weight per CLAUDE.md mutation rule).
         """
         from app.mcp.tools.get_artifact import _user_can_view
+
+        # Pin to the teacher's course so the standard matrix would
+        # otherwise grant access (course-branch).
+        kid_self_study_artifact.course_id = teacher_course.id
+        db_session.add(kid_self_study_artifact)
+        db_session.commit()
 
         assert (
             _user_can_view(

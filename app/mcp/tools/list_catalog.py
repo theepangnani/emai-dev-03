@@ -197,20 +197,27 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
 
     Mirrors the access-matrix in 2B-2's ``get_artifact``:
 
-    - ``ADMIN`` / ``CURRICULUM_ADMIN`` → every artifact (no narrowing).
+    - ``ADMIN`` → every artifact (no narrowing).
+    - ``CURRICULUM_ADMIN`` → every non-SELF_STUDY artifact + own
+      self-initiated SELF_STUDY artifacts (3B-3 / #4585 narrowed the
+      previously-open scope so curriculum work doesn't leak into
+      private learner workspaces).
     - ``BOARD_ADMIN`` → artifacts whose ``board_id`` matches the
       admin's board scope AND ``board_id IS NOT NULL`` (legacy rows
       with a NULL ``board_id`` are denied — same conservative default
       as 2B-2's ``_user_can_view``). When the caller has no resolvable
       ``board_id`` (the M2 default until M3-E lands), the result is an
-      empty selection.
+      empty selection. SELF_STUDY rows are denied even on board match.
     - ``TEACHER`` → artifacts authored by the teacher OR pinned to a
       course the teacher owns. Course ownership is detected via
       ``courses.teacher_id → teachers.user_id == current_user.id`` so
       this stripe doesn't depend on the assignment-context graph.
+      SELF_STUDY rows are denied via the course branch (private to
+      family, not class-distributable).
     - ``PARENT`` → artifacts authored by the parent OR by any of their
-      linked students.
-    - ``STUDENT`` → artifacts authored by the student.
+      linked students. Same scope covers SELF_STUDY family pair.
+    - ``STUDENT`` → artifacts authored by the student, plus SELF_STUDY
+      rows owned by their linked PARENTS (3B-3 family override).
     - Anything else (None / unknown) → empty result. The route layer
       403s before we get here for unknown roles, but keep the
       defence-in-depth.
@@ -263,20 +270,16 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
         state_filter is None or state_filter == ArtifactState.SELF_STUDY
     )
 
-    # ── Family allowlist for SELF_STUDY rows ─────────────────────────────
-    # The 3B-3 SELF_STUDY rule splits visibility from the standard
-    # role-scope: a SELF_STUDY row owned by a family member is visible
-    # to the caller (kid sees parent's SELF_STUDY, parent sees kid's
-    # SELF_STUDY) even when the standard scope would deny it (e.g. the
-    # standard STUDENT scope is "own user_id only").
-    #
-    # We only build the allowlist for STUDENT — the only role whose
-    # standard scope doesn't already cover their family pair. PARENT's
+    # ── Family allowlist for SELF_STUDY rows (STUDENT only) ───────────────
+    # The 3B-3 SELF_STUDY rule extends STUDENT visibility to artifacts
+    # owned by their linked PARENTS. STUDENT is the only role whose
+    # standard scope doesn't already cover the family pair — PARENT's
     # standard scope (own + linked-children) already IS the family
-    # allowlist; CURRICULUM_ADMIN / BOARD_ADMIN / TEACHER use the
-    # caller-only allowlist (just ``[current_user.id]``) because they
-    # never get a family-pair grant on a learner's SELF_STUDY artifact.
-    family_user_ids: list[int] = [current_user.id]
+    # allowlist. CURRICULUM_ADMIN / BOARD_ADMIN / TEACHER never get a
+    # family-pair grant on a learner's SELF_STUDY artifact; their
+    # SELF_STUDY override predicate uses ``current_user.id`` directly
+    # (caller-as-creator only).
+    student_self_study_family_ids: list[int] = [current_user.id]
     if self_study_could_match and role_name == "STUDENT":
         student_record = (
             db.query(Student)
@@ -290,20 +293,19 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
                 .filter(parent_students.c.student_id == student_record.id)
                 .all()
             ]
-            family_user_ids.extend(parent_user_ids_for_family)
+            student_self_study_family_ids.extend(parent_user_ids_for_family)
 
     if role_name == "CURRICULUM_ADMIN":
         # CURRICULUM_ADMIN sees all non-SELF_STUDY rows; SELF_STUDY rows
         # are private to the family pair, with the curriculum-admin
-        # capped to their own self-initiated artifacts (caller in
-        # family_user_ids). This narrows the previously-open
-        # CURRICULUM_ADMIN scope so curriculum work doesn't leak into
-        # private learner workspaces.
+        # capped to their own self-initiated artifacts. This narrows
+        # the previously-open CURRICULUM_ADMIN scope so curriculum work
+        # doesn't leak into private learner workspaces.
         if not self_study_could_match:
             return query
         return query.filter(
             (StudyGuide.state != ArtifactState.SELF_STUDY)
-            | (StudyGuide.user_id.in_(family_user_ids))
+            | (StudyGuide.user_id == current_user.id)
         )
 
     if role_name == "BOARD_ADMIN":
@@ -319,11 +321,11 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
         if not self_study_could_match:
             return scoped
         # SELF_STUDY rows are denied to BOARD_ADMIN even when the
-        # board_id matches — the family override only opens up the
-        # caller's own self-initiated artifacts.
+        # board_id matches — the override only opens up the caller's
+        # own self-initiated artifacts.
         return scoped.filter(
             (StudyGuide.state != ArtifactState.SELF_STUDY)
-            | (StudyGuide.user_id.in_(family_user_ids))
+            | (StudyGuide.user_id == current_user.id)
         )
 
     if role_name == "TEACHER":
@@ -351,6 +353,13 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
         # course-pinned branch — SELF_STUDY rows are private to the
         # family pair. The teacher only sees their own self-initiated
         # SELF_STUDY artifacts (caller-as-creator branch).
+        #
+        # D3=C invariant: ``TEACHER + course_id`` resolves to
+        # ``PENDING_REVIEW`` (never ``SELF_STUDY``) in
+        # ``persist_cmcp_artifact._resolve_state``, so a SELF_STUDY
+        # row with a course_id should not exist by construction. The
+        # ``state != SELF_STUDY`` clause is therefore defence-in-depth
+        # against a row that the persistence layer should never produce.
         return query.filter(
             (StudyGuide.user_id == current_user.id)
             | (
@@ -394,7 +403,7 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
             (StudyGuide.user_id == current_user.id)
             | (
                 (StudyGuide.state == ArtifactState.SELF_STUDY)
-                & (StudyGuide.user_id.in_(family_user_ids))
+                & (StudyGuide.user_id.in_(student_self_study_family_ids))
             )
         )
 
