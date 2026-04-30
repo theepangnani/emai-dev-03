@@ -374,6 +374,26 @@ class StreamCompletionEvent(BaseModel):
             "the score cleared the review threshold."
         ),
     )
+    embedding_scores: dict[str, float] | None = Field(
+        default=None,
+        description=(
+            "M3β fu (#4696 / 3I-2): per-SE max cosine-similarity scores "
+            "from the embedding-similarity third pass that runs when the "
+            "validator is supplied a SQLAlchemy session. ``None`` when the "
+            "embedding pass did not run (legacy callers, validator skipped, "
+            "or M1-D first/second composition already failed and the "
+            "embedding round-trip was elided as a cost-saver)."
+        ),
+    )
+    embedding_threshold: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "M3β fu (#4696 / 3I-2): cosine-similarity threshold used by the "
+            "embedding pass. ``None`` when the embedding pass did not run."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -403,5 +423,46 @@ class ParentCompanionArtifactResponse(BaseModel):
             "``parent_summary`` JSON when populated by the M1-F 1F-3 "
             "auto-emit; otherwise a minimal stub built from the artifact "
             "row so the page can render a degraded but well-typed view."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# M3β follow-up #4694 — GET /api/cmcp/artifacts/{id}/student-view response
+# ---------------------------------------------------------------------------
+
+
+class StudentArtifactViewResponse(BaseModel):
+    """Response body for ``GET /api/cmcp/artifacts/{id}/student-view``.
+
+    Minimal student-facing artifact projection — the LTI launch surface
+    redirects STUDENT-validated tokens to ``/student/artifact/{id}``,
+    and that page calls this endpoint to render title + content. This
+    is intentionally a thin pass-through (no parent-companion 5-section
+    decomposition) because the LMS-launching student needs the actual
+    artifact, not coaching scaffolding for a parent.
+
+    M4 may extend with structured sections, drill anchors, etc.; today
+    the contract is: fetch what's safe to render to the resolved
+    STUDENT, on the same visibility matrix everyone else uses.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    artifact_id: int = Field(..., description="``study_guides.id``.")
+    title: str = Field(..., description="Artifact title (display).")
+    content: str = Field(
+        ...,
+        description=(
+            "Raw artifact content as stored on the row. Markdown for the "
+            "study-guide-style content types. The student page renders "
+            "this as plain text / markdown without further processing."
+        ),
+    )
+    guide_type: str = Field(
+        ...,
+        description=(
+            "Artifact ``guide_type`` (study_guide / quiz / flashcards / "
+            "etc.) so the student page can pick a renderer hint."
         ),
     )

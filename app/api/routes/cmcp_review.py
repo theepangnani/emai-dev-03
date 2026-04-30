@@ -697,6 +697,24 @@ def approve_review_artifact(
             artifact.id,
         )
 
+    # CB-CMCP-001 M3-D 3D-1 (#4652) — emit Task rows for enrolled students
+    # when the approved artifact is course-pinned. Best-effort like the
+    # surface dispatcher above: any blow-up here is logged + swallowed so
+    # the approve endpoint still returns 200. Lazy import + sibling
+    # service module per the dispatcher pattern.
+    try:
+        from app.services.cmcp.task_dispatcher import (  # noqa: PLC0415
+            emit_tasks_for_approved_artifact,
+        )
+
+        emit_tasks_for_approved_artifact(artifact.id, db)
+    except Exception:  # pragma: no cover — defence-in-depth
+        logger.exception(
+            "cmcp.review.approve task emit raised — swallowed so approve "
+            "still returns 200 artifact_id=%s",
+            artifact.id,
+        )
+
     return _to_detail(artifact)
 
 

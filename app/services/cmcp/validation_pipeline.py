@@ -1,5 +1,5 @@
 """
-Validation Pipeline for CB-CMCP-001 (#4473, M1-D 1D-2).
+Validation Pipeline for CB-CMCP-001 (#4473, M1-D 1D-2; extended in #4664, M3-I 3I-2).
 
 Composes the model's first-pass self-report (`se_codes_covered`) with the
 second-pass `AlignmentValidator` (1D-1, shipped) into a single gate. Per locked
@@ -15,13 +15,24 @@ Composition (per #4473 spec):
 - ``alignment_score = mean(first_pass_coverage_rate, second_pass.coverage_rate)``
 - ``flag_for_review = alignment_score < REVIEW_THRESHOLD``
 
+3I-2 extension (#4664, D4=B in M3):
+- When a SQLAlchemy ``Session`` is supplied to ``validate()``, an additional
+  embedding-similarity pass (``validate_embedding_alignment`` from 3I-1)
+  runs after the M1-D first/second passes. The M1-D composition is treated
+  as the new "first-pass" gate; the embedding pass is the new "second-pass"
+  gate. Both gates must clear for ``flag_for_review=False``. If the M1-D
+  composition fails, the embedding pass is skipped (cost saver) and the
+  M1-D failure reason is preserved on ``second_pass_result.error``.
+- Existing callers that do NOT pass a ``Session`` keep the legacy
+  score-based ``flag_for_review`` semantics unchanged (backwards compat).
+
 Out of scope (per #4473):
 - Writing ``alignment_score`` to the artifact — 1D-3 (Wave 3).
-- Embedding-similarity validator — M3-I per D4=B in M3.
 """
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
 from app.services.cmcp.alignment_validator import (
@@ -29,6 +40,10 @@ from app.services.cmcp.alignment_validator import (
     REVIEW_THRESHOLD,
     AlignmentValidator,
     ValidationResult,
+)
+from app.services.cmcp.embedding_alignment_validator import (
+    DEFAULT_THRESHOLD as EMBEDDING_DEFAULT_THRESHOLD,
+    validate_embedding_alignment,
 )
 
 logger = get_logger(__name__)
@@ -60,9 +75,19 @@ class ValidationPipelineResult(BaseModel):
             independent ``AlignmentValidator``.
         flag_for_review: True iff ``alignment_score < REVIEW_THRESHOLD``.
             Soft signal — composition can pass while still being flagged.
+            When 3I-2's embedding pass is enabled (``db`` supplied), this
+            is instead computed as ``not (M1-D.both_passed AND embedding.passed)``.
         matched_se_codes_union: Union of SE codes matched by either pass.
         uncovered_se_codes_intersection: SE codes missed by BOTH passes
             (i.e., neither the self-report nor the second pass covered them).
+        embedding_scores: Per-SE max cosine-similarity scores from 3I-1's
+            embedding validator. ``None`` when the embedding pass did not
+            run (no ``db`` supplied to ``validate``).
+        embedding_threshold: Cosine threshold used by the embedding pass.
+            ``None`` when the embedding pass did not run.
+        failed_embedding_ses: SE codes whose max embedding similarity fell
+            below ``embedding_threshold``. Empty list when the embedding
+            pass did not run, or when every SE cleared the threshold.
     """
 
     both_passed: bool
@@ -72,6 +97,9 @@ class ValidationPipelineResult(BaseModel):
     flag_for_review: bool
     matched_se_codes_union: list[str]
     uncovered_se_codes_intersection: list[str]
+    embedding_scores: dict[str, float] | None = None
+    embedding_threshold: float | None = None
+    failed_embedding_ses: list[str] = Field(default_factory=list)
 
 
 def _compute_first_pass(
@@ -132,6 +160,8 @@ class ValidationPipeline:
         expected_se_codes: list[str],
         grade: int,
         subject_code: str,
+        db: Session | None = None,
+        embedding_threshold: float = EMBEDDING_DEFAULT_THRESHOLD,
     ) -> ValidationPipelineResult:
         """Run both passes and compose the result.
 
@@ -144,11 +174,23 @@ class ValidationPipeline:
             grade: Student grade (1-12) — passed through to second pass.
             subject_code: Subject/course code (e.g., "MTH1W") — passed
                 through to second pass.
+            db: Optional SQLAlchemy session. When supplied, the 3I-1
+                embedding-similarity validator runs as a third pass after
+                the M1-D first/second composition. ``flag_for_review`` is
+                then computed as
+                ``not (M1-D.both_passed AND embedding.passed)``. When
+                omitted (legacy callers), the embedding pass is skipped
+                and ``flag_for_review`` keeps the score-based semantics.
+            embedding_threshold: Cosine-similarity threshold for the
+                embedding pass. Default ``EMBEDDING_DEFAULT_THRESHOLD``
+                (0.65) per #4658 spec. Ignored when ``db`` is None.
 
         Returns:
             ``ValidationPipelineResult`` capturing both passes plus the
             composed score / pass / flag. Never raises — second-pass errors
-            are captured in ``second_pass_result.error``.
+            are captured in ``second_pass_result.error``; embedding errors
+            are captured by surfacing them as a failed embedding pass
+            (every SE in ``failed_embedding_ses``, ``flag_for_review=True``).
         """
         # Empty expected_se_codes is a caller-contract bug. Mirror the 1D-1
         # AlignmentValidator's fail-safe behaviour rather than silently
@@ -187,6 +229,10 @@ class ValidationPipeline:
 
         both_passed = first_pass_passed and second_pass.passed
         alignment_score = (first_coverage_rate + second_pass.coverage_rate) / 2.0
+        # Legacy (1D-2) flag semantics: review-threshold on the composed
+        # score. The 3I-2 path below overrides this when a db Session is
+        # supplied so embedding failures escalate to flag_for_review=True
+        # even when the M1-D score crosses REVIEW_THRESHOLD.
         flag_for_review = alignment_score < REVIEW_THRESHOLD
 
         # Union/intersection over normalized codes; reproject onto the
@@ -206,6 +252,52 @@ class ValidationPipeline:
             else:
                 uncovered_intersection.append(code)
 
+        # ----- 3I-2 embedding-similarity third pass --------------------
+        # Only runs when caller supplies a db Session. The M1-D
+        # composition (first + second) above is treated as the new
+        # "first-pass" gate for the 3I-2 compose:
+        #   * If M1-D both_passed=False → skip the embedding call
+        #     (cost saver) and surface flag_for_review=True.
+        #   * If M1-D both_passed=True → run the embedding pass; flag
+        #     iff embedding fails.
+        embedding_scores: dict[str, float] | None = None
+        embedding_threshold_used: float | None = None
+        failed_embedding_ses: list[str] = []
+        if db is not None:
+            embedding_threshold_used = embedding_threshold
+            if not both_passed:
+                # Preserve the M1-D first-pass-fail reason; do not spend
+                # an embedding round-trip on an artifact we've already
+                # decided to flag.
+                embedding_scores = None
+                failed_embedding_ses = []
+                flag_for_review = True
+                logger.info(
+                    "ValidationPipeline (3I-2): skipping embedding pass — "
+                    "M1-D first-pass failed (first=%.2f second_passed=%s) "
+                    "grade=%s subject=%s",
+                    first_coverage_rate, second_pass.passed,
+                    grade, subject_code,
+                )
+            else:
+                emb_result = await validate_embedding_alignment(
+                    content=generated_content,
+                    se_codes=list(expected_se_codes),
+                    db=db,
+                    threshold=embedding_threshold,
+                )
+                emb_passed = bool(emb_result.get("passed"))
+                embedding_scores = dict(emb_result.get("scores") or {})
+                failed_embedding_ses = list(emb_result.get("failed_ses") or [])
+                # 3I-2 flag rule: flag iff EITHER pass failed.
+                flag_for_review = not (both_passed and emb_passed)
+                logger.info(
+                    "ValidationPipeline (3I-2): grade=%s subject=%s "
+                    "m1d_passed=%s emb_passed=%s emb_failed=%d flag=%s",
+                    grade, subject_code, both_passed, emb_passed,
+                    len(failed_embedding_ses), flag_for_review,
+                )
+
         logger.info(
             "ValidationPipeline: grade=%s subject=%s expected=%d "
             "first_pass=%.2f second_pass=%.2f score=%.2f both_passed=%s flag=%s",
@@ -222,4 +314,7 @@ class ValidationPipeline:
             flag_for_review=flag_for_review,
             matched_se_codes_union=matched_union,
             uncovered_se_codes_intersection=uncovered_intersection,
+            embedding_scores=embedding_scores,
+            embedding_threshold=embedding_threshold_used,
+            failed_embedding_ses=failed_embedding_ses,
         )

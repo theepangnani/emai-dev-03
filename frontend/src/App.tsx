@@ -108,6 +108,8 @@ const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage')
 // endpoint now exists and returns the persisted parent companion content
 // (or a minimal stub for sync-route artifacts where M1 doesn't run AI).
 const ParentCompanionPage = lazyRetry(() => import('./pages/parent/ParentCompanionPage').then((m) => ({ default: m.ParentCompanionPage })));
+// CB-CMCP-001 M3β follow-up #4694 — student-facing artifact view, redirect target for LTI launches.
+const StudentArtifactPage = lazyRetry(() => import('./pages/student/StudentArtifactPage').then((m) => ({ default: m.StudentArtifactPage })));
 const GmailOAuthCallbackPage = lazyRetry(() => import('./pages/GmailOAuthCallbackPage').then((m) => ({ default: m.GmailOAuthCallbackPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
@@ -139,6 +141,10 @@ const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeeds
 const CEGReviewPage = lazyRetry(() => import('./pages/admin/CEGReviewPage').then((m) => ({ default: m.CEGReviewPage })));
 // CB-CMCP-001 M3-A 3A-2 (#4582) — teacher review queue page; gated to TEACHER + ADMIN + cmcp.enabled flag.
 const TeacherReviewQueuePage = lazyRetry(() => import('./pages/teacher/ReviewQueuePage').then((m) => ({ default: m.ReviewQueuePage })));
+// CB-CMCP-001 M3-H 3H-1 (#4663) — board admin dashboard (coverage heatmap); gated to BOARD_ADMIN + ADMIN + cmcp.enabled flag.
+const BoardDashboardPage = lazyRetry(() => import('./pages/board/BoardDashboardPage').then((m) => ({ default: m.BoardDashboardPage })));
+// CB-CMCP-001 M3-H 3H-2 (#4666) — board admin catalog browse page; gated to BOARD_ADMIN + ADMIN + cmcp.enabled flag.
+const BoardCatalogPage = lazyRetry(() => import('./pages/board/BoardCatalogPage').then((m) => ({ default: m.BoardCatalogPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -263,6 +269,15 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent']}>
                     <ParentCompanionPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3β follow-up #4694 — student-facing artifact view (LTI launch target). */}
+              <Route
+                path="/student/artifact/:artifact_id"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudentArtifactPage />
                   </ProtectedRoute>
                 }
               />
@@ -469,6 +484,32 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['teacher', 'admin']}>
                     <TeacherReviewQueuePage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3-H 3H-1 (#4663) — board admin dashboard (coverage heatmap).
+                  RBAC: BOARD_ADMIN + ADMIN. The role values match UserRole.value:
+                  "BOARD_ADMIN" (uppercase) and "admin" (lowercase). Backend
+                  /api/board/{board_id}/catalog (3E-1) enforces the same gate
+                  independently — this route gate is purely UX. */}
+              <Route
+                path="/board/dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['BOARD_ADMIN', 'admin']}>
+                    <BoardDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3-H 3H-2 (#4666) — board admin catalog browse.
+                  RBAC: BOARD_ADMIN + ADMIN. Backend
+                  /api/board/{board_id}/catalog (3E-1) and
+                  /api/board/{board_id}/catalog/export.csv (3E-3) enforce
+                  the same gate independently — this route gate is purely UX. */}
+              <Route
+                path="/board/catalog"
+                element={
+                  <ProtectedRoute allowedRoles={['BOARD_ADMIN', 'admin']}>
+                    <BoardCatalogPage />
                   </ProtectedRoute>
                 }
               />

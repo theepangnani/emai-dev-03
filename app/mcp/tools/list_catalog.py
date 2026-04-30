@@ -49,6 +49,15 @@ from sqlalchemy.orm import Session
 
 from app.mcp.tools._errors import MCPToolValidationError
 from app.mcp.tools._visibility import resolve_caller_board_id
+# CB-CMCP-001 #4701 — the SE helpers + the shared summary projector now
+# live in ``app.services.cmcp._artifact_views``. ``_se_grade`` /
+# ``_se_subject`` are re-exported (kept in ``F401``-noqa) so existing
+# import sites keep working without an import-churn diff.
+from app.services.cmcp._artifact_views import (
+    _se_grade,  # noqa: F401 — re-exported for back-compat
+    _se_subject,  # noqa: F401 — re-exported for back-compat
+    cmcp_artifact_summary_v1,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -418,76 +427,34 @@ def _apply_role_scope(  # type: ignore[no-untyped-def]
 # ---------------------------------------------------------------------------
 
 
+#: Fields from the shared :func:`cmcp_artifact_summary_v1` projector that
+#: MCP ``list_catalog`` does NOT expose on its public response. The MCP
+#: tool's contract pre-#4701 omitted ``alignment_score`` + ``ai_engine``;
+#: keeping them out preserves backwards-compat for existing MCP clients.
+#: REST surfaces (board catalog) DO surface those fields — see
+#: :mod:`app.api.routes.board_catalog`.
+_MCP_LIST_CATALOG_OMIT_FIELDS: frozenset[str] = frozenset(
+    {"alignment_score", "ai_engine"}
+)
+
+
 def _row_to_summary(row) -> dict[str, Any]:  # type: ignore[no-untyped-def]
-    """Project a ``StudyGuide`` row to the public summary dict.
+    """Project a ``StudyGuide`` row to the public MCP summary dict.
 
     Deliberately small (no Markdown body) — clients fetch the full
     artifact via ``get_artifact`` (2B-2). This both keeps the list
     payload small for paginated UIs and avoids leaking large bodies for
     rows the caller might not actually open.
+
+    Delegates to the shared :func:`cmcp_artifact_summary_v1` projector
+    in :mod:`app.services.cmcp._artifact_views` (#4701) and strips the
+    fields the MCP contract does not surface (``alignment_score`` +
+    ``ai_engine`` are REST-only — see ``_MCP_LIST_CATALOG_OMIT_FIELDS``).
     """
-    created_at = row.created_at.isoformat() if row.created_at else None
-    return {
-        "id": row.id,
-        "title": row.title,
-        "guide_type": row.guide_type,
-        "content_type": row.guide_type,  # alias for MCP-spec consumers
-        "state": row.state,
-        "subject_code": _se_subject(row.se_codes),
-        "grade": row.grade if hasattr(row, "grade") else None,
-        "se_codes": list(row.se_codes) if row.se_codes else [],
-        "course_id": row.course_id,
-        "created_at": created_at,
-    }
-
-
-def _se_subject(se_codes: Any) -> str | None:
-    """Best-effort subject prefix from the first SE code.
-
-    Ontario SE codes are namespaced ``<SUBJECT>.<GRADE>.<STRAND>.<...>``
-    (e.g. ``MATH.5.A.1``); the prefix before the first ``.`` is the
-    canonical subject code. Returns ``None`` when the row carries no SE
-    codes — non-CMCP study-guide rows fall here, which is fine because
-    the response field is informational only (the list filter still
-    works through the explicit ``subject_code`` filter on the query).
-    """
-    if not se_codes:
-        return None
-    try:
-        first = se_codes[0]
-    except (IndexError, TypeError):
-        return None
-    if not isinstance(first, str) or "." not in first:
-        return None
-    return first.split(".", 1)[0].upper()
-
-
-def _se_grade(se_codes: Any) -> int | None:
-    """Best-effort grade integer from the first SE code.
-
-    Ontario SE codes are namespaced ``<SUBJECT>.<GRADE>.<STRAND>.<...>``;
-    the second segment is the grade. Returns ``None`` when the row has
-    no SE codes, the second segment isn't an integer, or the row's
-    schema doesn't expose a parseable code. Used by the Python-side
-    ``grade`` post-filter in :func:`list_catalog` because the
-    ``study_guides`` table has no dedicated ``grade`` column today (it's
-    embedded in the SE code; M3+ may add a real column).
-    """
-    if not se_codes:
-        return None
-    try:
-        first = se_codes[0]
-    except (IndexError, TypeError):
-        return None
-    if not isinstance(first, str):
-        return None
-    parts = first.split(".")
-    if len(parts) < 2:
-        return None
-    try:
-        return int(parts[1])
-    except ValueError:
-        return None
+    summary = cmcp_artifact_summary_v1(row)
+    for field in _MCP_LIST_CATALOG_OMIT_FIELDS:
+        summary.pop(field, None)
+    return summary
 
 
 # ---------------------------------------------------------------------------
