@@ -144,8 +144,6 @@ def _user_can_review(artifact: StudyGuide, user: User, db: Session) -> bool:
     filters ``state == PENDING_REVIEW`` so SELF_STUDY rows never
     surface in the queue itself; this guards the by-id endpoints.
     """
-    from app.services.cmcp.artifact_state import ArtifactState
-
     if artifact.state == ArtifactState.SELF_STUDY:
         return False
 

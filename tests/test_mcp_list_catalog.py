@@ -421,10 +421,15 @@ def test_handler_parent_role_triggers_kids_subquery(monkeypatch, app):
     """PARENT scoping must build a subquery from ``parent_students``.
 
     We don't run this against a real DB (route-level test below covers
-    that); we just confirm ``db.query`` is invoked THREE times — once
-    for the main StudyGuide query, once for the SELF_STUDY family
-    allowlist lookup (3B-3 / #4585), and once for the parent_students
-    /students subquery — proving the kid-scope branch was entered.
+    that); we just confirm ``db.query`` is invoked TWICE — once for the
+    main StudyGuide query and once for the parent_students/students
+    subquery — proving the kid-scope branch was entered.
+
+    Performance contract (3B-3 / #4585): a PARENT calling list_catalog
+    on the default ``state="APPROVED"`` filter must NOT incur an extra
+    SELF_STUDY family-allowlist DB lookup — the override is short-
+    circuited because the upstream state filter excludes SELF_STUDY.
+    A regression here would flip ``call_count`` to 3.
     """
     from sqlalchemy import select
 
@@ -466,19 +471,64 @@ def test_handler_parent_role_triggers_kids_subquery(monkeypatch, app):
             return real_subq
 
     sub_q = _SubQ()
-    # 3B-3 (#4585): ``_apply_role_scope`` now also builds the SELF_STUDY
-    # family allowlist for PARENT, which is an extra ``db.query`` →
-    # ``.all()`` lookup that returns ``[]`` here (no children seeded).
-    family_q = _RecordingQuery(all_result=[])
     db = MagicMock()
-    db.query.side_effect = [main_q, family_q, sub_q]
+    db.query.side_effect = [main_q, sub_q]
 
     list_catalog({}, parent, db)
 
-    # All three queries fired: main, family allowlist, kid subquery.
-    assert db.query.call_count == 3
+    # Both queries fired: the main StudyGuide query and the kid subquery.
+    # NOT three — the SELF_STUDY family allowlist short-circuits when
+    # the upstream state filter excludes SELF_STUDY (3B-3 / #4585).
+    assert db.query.call_count == 2
     # The kid subquery had a join(parent_students, ...) call.
     assert any(c[0] == "join" for c in sub_q.calls)
+
+
+def test_handler_student_role_self_study_state_triggers_family_lookup(
+    monkeypatch, app
+):
+    """STUDENT calling list_catalog with state=SELF_STUDY incurs the
+    family-allowlist DB lookup; default state=APPROVED does NOT.
+
+    Locks the perf contract from PR #4613 review — the SELF_STUDY
+    family-allowlist lookup must be skipped when the upstream state
+    filter already excludes SELF_STUDY (the dominant default-traffic
+    case). Mutation guard: a regression that runs the lookup
+    unconditionally would flip ``default_call_count`` from 1 to >=2.
+    """
+    from app.mcp.tools.list_catalog import list_catalog
+
+    student = _student_user()
+
+    # Default state (APPROVED) — only the main StudyGuide query should
+    # fire. No family-allowlist lookup, no Student row lookup.
+    default_db = MagicMock()
+    default_db.query.return_value = _RecordingQuery(all_result=[])
+    list_catalog({}, student, default_db)
+    default_call_count = default_db.query.call_count
+
+    # Explicit SELF_STUDY state — main query + Student row first()
+    # = 2 calls (the .first() returns ``None`` here so the
+    # parent_students walk is skipped). The contract we're locking is
+    # ">=2 calls when SELF_STUDY is in scope", not the exact 3 — the
+    # third call only fires when a Student row exists, which depends
+    # on test seed data.
+    self_study_db = MagicMock()
+    self_study_db.query.return_value = _RecordingQuery(
+        all_result=[], first_result=None
+    )
+    list_catalog({"state": "SELF_STUDY"}, student, self_study_db)
+    self_study_call_count = self_study_db.query.call_count
+
+    assert default_call_count == 1, (
+        f"STUDENT default-state list must skip the SELF_STUDY family "
+        f"lookup (got {default_call_count} db.query calls, expected 1)"
+    )
+    assert self_study_call_count >= 2, (
+        f"STUDENT SELF_STUDY-state list must run the Student-row "
+        f"lookup at minimum (got {self_study_call_count} db.query "
+        f"calls, expected >= 2)"
+    )
 
 
 def test_handler_teacher_role_includes_course_subquery(monkeypatch, app):

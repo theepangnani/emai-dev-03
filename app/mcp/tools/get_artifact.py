@@ -126,12 +126,11 @@ def _self_study_family_can_view(
     private to a family pair. This helper returns True iff:
 
     - ``user`` is the requestor (``artifact.user_id == user.id``), OR
-    - ``user`` is a PARENT linked to the STUDENT requestor (the
-      artifact's ``user_id`` is one of the caller's linked-children
-      user_ids), OR
-    - ``user`` is a STUDENT whose linked PARENT is the requestor (the
-      artifact's ``user_id`` belongs to a parent that this student is
-      linked to via ``parent_students``).
+    - ``user`` is a PARENT linked to the artifact owner via the
+      ``parent_students`` association (parent sees a child's
+      SELF_STUDY), OR
+    - ``user`` is a STUDENT whose linked PARENT owns the artifact
+      (child sees a parent's SELF_STUDY).
 
     BOARD_ADMIN, CURRICULUM_ADMIN, and TEACHER are intentionally NOT
     granted access — SELF_STUDY is a private learner workspace and the
@@ -141,63 +140,67 @@ def _self_study_family_can_view(
 
       "Visible only to requestor + their parent/child. Not the broader
        class roster, not BOARD_ADMIN."
+
+    Implementation note (#4613 review): collapsed to a single JOIN per
+    role-branch (instead of the original 3-step chain owner-lookup →
+    parent_students → Student.user_id). The JOIN itself encodes the
+    "owner is a Student linked to caller as parent" predicate, so the
+    explicit ``owner.has_role(STUDENT)`` check from the previous
+    revision is unnecessary — only Student rows can be the join target
+    on the kid side.
     """
     from app.models.student import Student, parent_students
-    from app.models.user import User, UserRole
+    from app.models.user import UserRole
 
     # Creator always sees their own artifact.
     if artifact.user_id == user.id:
         return True
 
-    # The owner of a SELF_STUDY artifact may be either a STUDENT or a
-    # PARENT (D3=C lets either self-initiate). We resolve the owner's
-    # role from the User row so we know which direction to walk the
-    # parent_students association.
-    owner = (
-        db.query(User).filter(User.id == artifact.user_id).first()
-    )
-    if owner is None:
-        # Defensive — a SELF_STUDY artifact whose owner row was deleted
-        # has no family pair to consult, fail closed.
+    # Only family roles (PARENT/STUDENT) can pick up access via the
+    # family override — everyone else short-circuits to False here so
+    # we don't issue any DB calls. ADMIN is handled *before* this
+    # helper is consulted (in ``_user_can_view``); BOARD_ADMIN +
+    # CURRICULUM_ADMIN + TEACHER never have a family-pair grant for a
+    # SELF_STUDY row.
+    is_parent_caller = user.has_role(UserRole.PARENT)
+    is_student_caller = user.has_role(UserRole.STUDENT)
+    if not (is_parent_caller or is_student_caller):
         return False
 
-    # Caller is a PARENT — grant if the artifact owner is one of the
-    # caller's linked children. We map parent → child Student rows →
-    # child User ids, then check membership.
-    if user.has_role(UserRole.PARENT) and owner.has_role(UserRole.STUDENT):
-        child_student_ids = [
-            row[0]
-            for row in db.query(parent_students.c.student_id)
+    # PARENT caller — grant if the artifact owner is a linked child.
+    # One JOIN: ``parent_students`` ↔ ``Student``, filtered to caller's
+    # parent_id and the artifact owner's user_id. ``.first()`` returns
+    # the row iff the link exists.
+    if is_parent_caller:
+        match = (
+            db.query(Student.user_id)
+            .join(
+                parent_students,
+                parent_students.c.student_id == Student.id,
+            )
             .filter(parent_students.c.parent_id == user.id)
-            .all()
-        ]
-        if child_student_ids:
-            child_user_ids = [
-                row[0]
-                for row in db.query(Student.user_id)
-                .filter(Student.id.in_(child_student_ids))
-                .all()
-            ]
-            if artifact.user_id in child_user_ids:
-                return True
-
-    # Caller is a STUDENT — grant if the artifact owner is one of the
-    # caller's linked parents. Symmetric to the PARENT branch above:
-    # student → own Student row → parent_students → parent User ids,
-    # then check membership.
-    if user.has_role(UserRole.STUDENT) and owner.has_role(UserRole.PARENT):
-        student_record = (
-            db.query(Student).filter(Student.user_id == user.id).first()
+            .filter(Student.user_id == artifact.user_id)
+            .first()
         )
-        if student_record is not None:
-            parent_user_ids = [
-                row[0]
-                for row in db.query(parent_students.c.parent_id)
-                .filter(parent_students.c.student_id == student_record.id)
-                .all()
-            ]
-            if artifact.user_id in parent_user_ids:
-                return True
+        if match is not None:
+            return True
+
+    # STUDENT caller — grant if the artifact owner is a linked parent.
+    # One JOIN: ``Student`` ↔ ``parent_students``, filtered to caller's
+    # student row and the artifact owner's user_id (matched as parent).
+    if is_student_caller:
+        match = (
+            db.query(parent_students.c.parent_id)
+            .join(
+                Student,
+                Student.id == parent_students.c.student_id,
+            )
+            .filter(Student.user_id == user.id)
+            .filter(parent_students.c.parent_id == artifact.user_id)
+            .first()
+        )
+        if match is not None:
+            return True
 
     return False
 
@@ -448,7 +451,5 @@ def get_artifact_handler(
 
 
 __all__ = [
-    "_self_study_family_can_view",
-    "_user_can_view",
     "get_artifact_handler",
 ]
