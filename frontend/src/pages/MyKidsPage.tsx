@@ -29,6 +29,7 @@ import { KidRail } from '../components/bridge/KidRail';
 import { ListCard } from '../components/bridge/ListCard';
 import { EmailDigestCard } from '../components/bridge/EmailDigestCard';
 import { QuickToolsCard } from '../components/bridge/QuickToolsCard';
+import { CmcpLearningCard } from '../components/bridge/CmcpLearningCard';
 import { useBridgeFonts } from '../components/bridge/fonts';
 import './BridgePage.css';
 import './DashboardGrid.css';
@@ -1020,6 +1021,17 @@ export function MyKidsPage() {
                   </ListCard>
                 </div>
               </>
+            );
+          })()}
+
+          {/* ── CB-CMCP-001 M3-C 3C-4 (#4587) — "What [child] is learning" ── */}
+          {selectedChild != null && (() => {
+            const childName =
+              children.find(c => c.student_id === selectedChild)?.full_name?.trim().split(/\s+/)[0] ?? 'this child';
+            return (
+              <div className="bridge-grid bridge-grid--cmcp-learning">
+                <CmcpLearningCard kidId={selectedChild} kidName={childName} />
+              </div>
             );
           })()}
 
