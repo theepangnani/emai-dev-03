@@ -627,6 +627,71 @@ def test_successful_launch_writes_audit_row(
             AuditLog.user_id == student_user.id,
         ).delete(synchronize_session=False)
         db_session.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CB-CMCP-001 M3β post-merge follow-up #4710 — audit row durability
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_audit_row_durable_across_sessions(
+    client, db_session, student_user, cmcp_flag_on
+):
+    """Regression test for #4710 — audit row must outlive the request session.
+
+    The route's ``log_action`` opens a SAVEPOINT and only flushes — the
+    row is buffered until the outer transaction commits. ``get_db()``
+    does NOT auto-commit on close, so without an explicit ``db.commit()``
+    in the route, the audit row is silently dropped on session close in
+    production.
+
+    Note on test-infrastructure limitation: dev-03's session-scoped
+    SQLite test pool shares connection state across ``SessionLocal()``
+    instances, so this test passes whether or not the route commits.
+    The mutation guard is the matching pattern documented in
+    ``board_catalog.py`` (caught in pass 1 of /pr-review #4706) — kept
+    here as a contract test + breadcrumb for prod-mode auditors.
+    """
+    from app.db.database import SessionLocal
+    from app.models.audit_log import AuditLog
+
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        token = _sign_token(
+            artifact_id=artifact.id, kid_id=student_user.id
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+
+        # Open a fresh session — bypasses any in-memory state from the
+        # route's session. If the route didn't commit, the row won't be
+        # visible here.
+        fresh = SessionLocal()
+        try:
+            rows = (
+                fresh.query(AuditLog)
+                .filter(AuditLog.action == "cmcp.lti.launched")
+                .filter(AuditLog.resource_id == artifact.id)
+                .filter(AuditLog.user_id == student_user.id)
+                .all()
+            )
+            assert len(rows) == 1, (
+                "Expected one durable cmcp.lti.launched row visible "
+                f"from a fresh session, got {len(rows)} — route may "
+                "be missing db.commit() after log_action."
+            )
+        finally:
+            fresh.close()
+    finally:
+        db_session.query(AuditLog).filter(
+            AuditLog.action == "cmcp.lti.launched",
+            AuditLog.resource_id == artifact.id,
+            AuditLog.user_id == student_user.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
         _cleanup_artifact(db_session, artifact.id)
 
 
