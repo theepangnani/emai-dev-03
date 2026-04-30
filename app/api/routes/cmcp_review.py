@@ -828,20 +828,40 @@ def regenerate_review_artifact(
     # update — leaking a fresh row is a soft cost, the artifact update
     # is the user-visible operation.
     if preview.id is not None and preview.id != artifact.id:
+        phantom_artifact_id = preview.id
+        cleanup_succeeded = False
         try:
             stale = (
                 db.query(StudyGuide)
-                .filter(StudyGuide.id == preview.id)
+                .filter(StudyGuide.id == phantom_artifact_id)
                 .first()
             )
             if stale is not None:
                 db.delete(stale)
                 db.flush()
+                # M3α IMP (#4634) — ``persist_cmcp_artifact`` already
+                # wrote a ``cmcp.artifact.created`` audit row pointing
+                # at the phantom id and committed it. Write a
+                # compensating audit entry here so the Bill 194 trail
+                # doesn't reference a deleted ``resource_id``.
+                from app.services.audit_service import log_action
+
+                log_action(
+                    db,
+                    user_id=current_user.id,
+                    action="cmcp.artifact.deleted_during_regenerate",
+                    resource_type="study_guide",
+                    resource_id=phantom_artifact_id,
+                    details={
+                        "replaces_artifact_id": artifact_id,
+                    },
+                )
+                cleanup_succeeded = True
         except Exception:
             logger.exception(
                 "cmcp.review.regenerate cleanup failed; leaking fresh row "
                 "id=%s — will be cleaned up by a future janitor",
-                preview.id,
+                phantom_artifact_id,
             )
             db.rollback()
             # Re-fetch the artifact since rollback detached it.
@@ -853,6 +873,29 @@ def regenerate_review_artifact(
             if artifact is None:
                 # Defensive — the row existed at the start of the
                 # request; vanishing mid-flight is a 500-class fault.
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        f"Artifact {artifact_id} disappeared during "
+                        f"regenerate cleanup"
+                    ),
+                )
+
+        # M3α IMP follow-up (#4643) — harden the delete+compensating-
+        # audit pair with an interim commit OUTSIDE the cleanup try-
+        # block. Inside the try, ``except Exception`` would swallow a
+        # commit failure + rollback the audit row, defeating #4639's
+        # guarantee. A commit failure here is a real 500 (the audit
+        # pair couldn't be hardened) and must propagate. The HTTPException
+        # raised post-commit is also outside the try so it propagates.
+        if cleanup_succeeded:
+            db.commit()
+            artifact = (
+                db.query(StudyGuide)
+                .filter(StudyGuide.id == artifact_id)
+                .first()
+            )
+            if artifact is None:
                 raise HTTPException(
                     status_code=500,
                     detail=(
