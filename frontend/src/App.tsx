@@ -248,6 +248,14 @@ function App() {
                 }
               />
               <Route
+                path="/email-digest/settings"
+                element={
+                  <ProtectedRoute allowedRoles={['parent']}>
+                    <EmailDigestPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/analytics"
                 element={
                   <ProtectedRoute allowedRoles={['parent', 'student', 'admin']}>
