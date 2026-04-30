@@ -50,12 +50,13 @@ from sqlalchemy.orm import Session
 from app.mcp.tools._errors import MCPToolValidationError
 from app.mcp.tools._visibility import resolve_caller_board_id
 # CB-CMCP-001 #4701 — the SE helpers + the shared summary projector now
-# live in ``app.services.cmcp._artifact_views``. Re-export the helpers
-# here so existing import sites keep working (e.g.
-# ``app.api.routes.board_catalog`` already imports them from this module).
-from app.services.cmcp._artifact_views import (  # noqa: F401
-    _se_grade,
-    _se_subject,
+# live in ``app.services.cmcp._artifact_views``. ``_se_grade`` /
+# ``_se_subject`` are re-exported (kept in ``F401``-noqa) so existing
+# import sites keep working without an import-churn diff.
+from app.services.cmcp._artifact_views import (
+    _se_grade,  # noqa: F401 — re-exported for back-compat
+    _se_subject,  # noqa: F401 — re-exported for back-compat
+    cmcp_artifact_summary_v1,
 )
 
 logger = logging.getLogger(__name__)
@@ -450,8 +451,6 @@ def _row_to_summary(row) -> dict[str, Any]:  # type: ignore[no-untyped-def]
     fields the MCP contract does not surface (``alignment_score`` +
     ``ai_engine`` are REST-only — see ``_MCP_LIST_CATALOG_OMIT_FIELDS``).
     """
-    from app.services.cmcp._artifact_views import cmcp_artifact_summary_v1
-
     summary = cmcp_artifact_summary_v1(row)
     for field in _MCP_LIST_CATALOG_OMIT_FIELDS:
         summary.pop(field, None)

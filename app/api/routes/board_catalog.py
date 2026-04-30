@@ -146,6 +146,14 @@ def _require_board_or_admin(
 # ---------------------------------------------------------------------------
 
 
+#: Fields from the shared :func:`cmcp_artifact_summary_v1` projector that
+#: REST ``board_catalog`` does NOT expose on its public response.
+#: ``guide_type`` is the MCP-spec alias of ``content_type`` — REST already
+#: surfaces ``content_type`` so the alias is redundant noise on the wire.
+#: Symmetric with :data:`app.mcp.tools.list_catalog._MCP_LIST_CATALOG_OMIT_FIELDS`.
+_BOARD_CATALOG_OMIT_FIELDS: frozenset[str] = frozenset({"guide_type"})
+
+
 def _row_to_artifact(row: Any) -> BoardCatalogArtifact:
     """Project a ``StudyGuide`` row to the public artifact summary.
 
@@ -156,11 +164,15 @@ def _row_to_artifact(row: Any) -> BoardCatalogArtifact:
     Delegates to the shared :func:`cmcp_artifact_summary_v1` projector
     in :mod:`app.services.cmcp._artifact_views` (#4701) so the public
     summary shape can't drift between the MCP + REST surfaces. The
-    extra ``guide_type`` key returned by the projector is silently
-    dropped by Pydantic (``BoardCatalogArtifact`` only declares
-    ``content_type``).
+    alias-only ``guide_type`` key returned by the projector is dropped
+    explicitly here (REST uses ``content_type``) so the splat into
+    ``BoardCatalogArtifact`` doesn't depend on Pydantic's default
+    ``extra="ignore"`` behaviour — a future ``extra="forbid"`` defence
+    would otherwise break this route at runtime.
     """
     summary = cmcp_artifact_summary_v1(row)
+    for field in _BOARD_CATALOG_OMIT_FIELDS:
+        summary.pop(field, None)
     return BoardCatalogArtifact(**summary)
 
 

@@ -138,10 +138,13 @@ def cmcp_artifact_summary_v1(row: Any) -> dict[str, Any]:
 
     Notes
     -----
-    Surfaces that don't want a field can drop it post-projection. The
+    Surfaces that don't want a field can drop it post-projection
+    (e.g. MCP ``list_catalog`` strips ``alignment_score`` + ``ai_engine``;
+    REST ``board_catalog`` strips the alias-only ``guide_type``). The
     review queue (which has surface-specific extras like
-    ``user_id`` + ``requested_persona``) is free to wrap this and add
-    fields on top.
+    ``user_id`` + ``requested_persona``) deliberately keeps its own
+    projector today; if its shape ever needs the common subset, it may
+    wrap this projector and add the review-only fields on top.
     """
     # ``alignment_score`` and ``ai_engine`` are only populated on
     # CMCP-pipeline rows; non-CMCP study guides (the catalog reuses the
