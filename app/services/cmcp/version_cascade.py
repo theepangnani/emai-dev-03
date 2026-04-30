@@ -85,7 +85,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable
 
 from sqlalchemy.orm import Session
 
@@ -114,10 +114,12 @@ class CascadeResult:
         flagged_artifact_ids: IDs of APPROVED study_guides that were
             transitioned to PENDING_REVIEW. Sorted ascending for
             deterministic test assertions.
-        substantive_se_codes: ``cb_code`` strings whose SE pairs
-            classified as ``scope_substantive`` and triggered at
-            least one artifact transition (or were checked but had
-            no APPROVED matches). Sorted ascending.
+        substantive_se_codes: ``cb_code`` strings of SE pairs that
+            classified as ``scope_substantive`` AND had a recoverable
+            cb_code (regardless of whether any APPROVED artifact
+            matched in this cascade run). Pairs with no recoverable
+            cb_code are skipped and NOT included here. Sorted
+            ascending and de-duplicated.
         wording_only_se_count: Count of SE pairs that classified as
             ``wording_only`` and were skipped — useful for
             observability ("CEG version landed; 47 SE pairs;
@@ -211,6 +213,11 @@ def _approved_artifacts_for_se(db: Session, se_code: str) -> list[StudyGuide]:
     non-NULL ``se_codes`` column; the JSON-array containment check is
     performed in Python (see module docstring rationale). The returned
     list is ordered by id ascending for deterministic transitions.
+
+    NOTE: Scope is APPROVED only per #4662. Artifacts already in
+    ``PENDING_REVIEW`` / ``IN_REVIEW`` are excluded — the teacher will
+    see the cascade SE next time they open the row. Stripe 3G-3
+    (notification) can layer broader visibility on top if needed.
     """
     rows = (
         db.query(StudyGuide)
@@ -231,7 +238,7 @@ def _approved_artifacts_for_se(db: Session, se_code: str) -> list[StudyGuide]:
 
 
 def apply_version_cascade(
-    version_diff: Sequence[dict] | Iterable[dict],
+    version_diff: Iterable[dict[str, Any]],
     db: Session,
 ) -> CascadeResult:
     """Cascade a CEG version diff to APPROVED study_guides.
@@ -269,6 +276,9 @@ def apply_version_cascade(
     result = CascadeResult()
     seen_se_codes: set[str] = set()
 
+    # Materialize once — caller may pass a generator and we iterate
+    # multiple times conceptually (one classify pass + one DB pass per
+    # substantive pair). Also lets us early-return on empty input.
     pairs = list(version_diff or [])
     if not pairs:
         return result
@@ -318,6 +328,22 @@ def apply_version_cascade(
     # Sort + dedupe outputs for deterministic test + log behavior.
     result.flagged_artifact_ids = sorted(set(result.flagged_artifact_ids))
     result.substantive_se_codes = sorted(seen_se_codes)
+
+    # One INFO line per cascade run — bridges to 3G-3 observability so
+    # an ops query for "why did 47 review-queue notifications fire?"
+    # finds the cascade run by timestamp + counts.
+    logger.info(
+        "cmcp.cascade.applied flagged=%d substantive=%d wording_only=%d",
+        len(result.flagged_artifact_ids),
+        len(result.substantive_se_codes),
+        result.wording_only_se_count,
+        extra={
+            "event": "cmcp.cascade.applied",
+            "flagged_artifact_count": len(result.flagged_artifact_ids),
+            "substantive_se_count": len(result.substantive_se_codes),
+            "wording_only_se_count": result.wording_only_se_count,
+        },
+    )
     return result
 
 
