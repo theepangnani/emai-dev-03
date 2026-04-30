@@ -42,7 +42,11 @@ Out of scope
 """
 from __future__ import annotations
 
+import csv
+import io
 import logging
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -63,7 +67,9 @@ from app.mcp.tools.list_catalog import (
     _se_subject,
 )
 from app.models.user import User, UserRole
+from app.services import gcs_service
 from app.services.cmcp.artifact_state import ArtifactState
+from app.services.cmcp.coverage_map_service import compute_coverage_map
 
 logger = logging.getLogger(__name__)
 
@@ -349,4 +355,261 @@ def get_board_catalog(
     )
 
 
-__all__ = ["router", "BoardCatalogArtifact", "BoardCatalogResponse"]
+# ---------------------------------------------------------------------------
+# CB-CMCP-001 M3-E 3E-3 (#4660) — Signed CSV export
+# ---------------------------------------------------------------------------
+
+#: TTL for the V4 signed download URL handed back to the caller.
+#: Per spec: 1 hour (3600 seconds).
+SIGNED_CSV_TTL_SECONDS = 3600
+
+#: Hard upper bound on artifact rows in a single CSV export. Above this
+#: the endpoint returns 413 (caller should add filters / paginate via
+#: the JSON catalog). Pilot boards are <5k rows; 50k leaves headroom
+#: while preventing OOM on the in-memory CSV builder + GCS upload.
+MAX_EXPORT_ARTIFACT_ROWS = 50_000
+
+#: Characters that — at the start of a CSV cell — Excel / Google Sheets
+#: interpret as a formula. Free-text fields prefixed with one of these
+#: get a leading single-quote inserted to neutralize formula parsing.
+#: (See OWASP "CSV Injection" / "Formula Injection".)
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value: Any) -> Any:
+    """Neutralize CSV-formula injection on string cells.
+
+    Returns the value unchanged unless it's a non-empty string starting
+    with one of :data:`_CSV_FORMULA_PREFIXES`, in which case a literal
+    ``'`` is prepended so Excel / Sheets render the cell as plain text.
+    Non-string values pass through untouched.
+    """
+    if isinstance(value, str) and value and value[0] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
+class BoardCatalogExportResponse(BaseModel):
+    """Response envelope for a CSV-export request.
+
+    ``download_url`` is a TTL-limited V4 signed GCS URL pointing at the
+    just-uploaded CSV object. ``expires_at`` is the absolute UTC ISO-8601
+    timestamp at which the signed URL stops working (caller should not
+    rely on the embedded ``X-Goog-Expires`` query param).
+    """
+
+    download_url: str
+    expires_at: str
+
+
+def _build_catalog_csv_bytes(
+    *,
+    board_id: str,
+    coverage_map: dict[str, dict[int, int]],
+    artifacts: list[Any],
+) -> bytes:
+    """Render the export CSV to bytes (UTF-8).
+
+    The export is a single CSV with two stacked sections:
+
+    1. **Coverage map** — one row per (strand, grade, count) tuple. Empty
+       strands simply don't appear (matches the coverage_map_service
+       contract — see :func:`compute_coverage_map`).
+    2. **Artifact list** — one row per APPROVED artifact with the same
+       fields the REST catalog endpoint exposes (id, title, content_type,
+       state, subject_code, grade, se_codes, alignment_score, ai_engine,
+       course_id, created_at).
+
+    Sections are separated by a blank line + section-header row so the
+    file remains a valid CSV (consumers that only know the artifact
+    section can grep past the header divider).
+    """
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+
+    # Header row — board_id surfaced for caller cross-checks.
+    writer.writerow(["board_id", board_id])
+    writer.writerow([])
+
+    # Section 1 — coverage map.
+    writer.writerow(["section", "coverage_map"])
+    writer.writerow(["strand", "grade", "count"])
+    for strand in sorted(coverage_map.keys()):
+        grades = coverage_map[strand]
+        for grade in sorted(grades.keys()):
+            writer.writerow([strand, grade, grades[grade]])
+
+    # Section divider.
+    writer.writerow([])
+
+    # Section 2 — artifact list.
+    writer.writerow(["section", "artifacts"])
+    writer.writerow(
+        [
+            "id",
+            "title",
+            "content_type",
+            "state",
+            "subject_code",
+            "grade",
+            "se_codes",
+            "alignment_score",
+            "ai_engine",
+            "course_id",
+            "created_at",
+        ]
+    )
+    for art in artifacts:
+        writer.writerow(
+            [
+                art.id,
+                # Free-text fields neutralized against CSV-formula injection
+                # (OWASP) before reaching Excel / Sheets.
+                _csv_safe(art.title),
+                art.content_type,
+                art.state,
+                _csv_safe(art.subject_code or ""),
+                art.grade if art.grade is not None else "",
+                # Pipe-separate SE codes so the CSV stays one-row-per-artifact.
+                "|".join(art.se_codes) if art.se_codes else "",
+                (
+                    f"{art.alignment_score:.3f}"
+                    if art.alignment_score is not None
+                    else ""
+                ),
+                _csv_safe(art.ai_engine or ""),
+                art.course_id if art.course_id is not None else "",
+                art.created_at or "",
+            ]
+        )
+
+    return buf.getvalue().encode("utf-8")
+
+
+def _query_all_approved_artifacts(
+    db: Session, *, board_id: str
+) -> list[BoardCatalogArtifact]:
+    """Load every APPROVED artifact for a board (no pagination).
+
+    The CSV export is intentionally NOT paginated — a board admin
+    pulling a snapshot of their catalog should get the whole thing in
+    one file. We reuse the :func:`_row_to_artifact` projector so the CSV
+    columns match the JSON catalog endpoint exactly.
+    """
+    from app.models.study_guide import StudyGuide
+
+    rows = (
+        db.query(StudyGuide)
+        .filter(
+            StudyGuide.archived_at.is_(None),
+            StudyGuide.state == ArtifactState.APPROVED,
+            StudyGuide.board_id.is_not(None),
+            StudyGuide.board_id == str(board_id),
+        )
+        .order_by(StudyGuide.id.desc())
+        .all()
+    )
+    return [_row_to_artifact(r) for r in rows]
+
+
+@router.post(
+    "/{board_id}/catalog/export.csv",
+    response_model=BoardCatalogExportResponse,
+    summary="Export the board's APPROVED catalog as a TTL-limited signed CSV URL",
+)
+def export_board_catalog_csv(
+    board_id: str,
+    current_user: User = Depends(_require_board_or_admin),
+    db: Session = Depends(get_db),
+) -> BoardCatalogExportResponse:
+    """Generate a CSV of the board's catalog, upload to GCS, return a
+    1-hour signed download URL.
+
+    Auth + cross-board posture exactly mirrors :func:`get_board_catalog`:
+
+    - BOARD_ADMIN may export only their own board (mismatched / unscoped
+      → 404, no existence oracle).
+    - ADMIN may export any board.
+    - Non-(BOARD_ADMIN/ADMIN) → 403 (handled by ``_require_board_or_admin``).
+
+    The CSV stacks the 3E-2 coverage map + the 3E-1 artifact list in one
+    file. The bucket itself is private; the V4 signed URL is the only
+    handle the caller is given.
+    """
+    # ── Cross-board / scope check (mirrors get_board_catalog) ─────────
+    is_admin = current_user.has_role(UserRole.ADMIN)
+    if not is_admin:
+        caller_board = resolve_caller_board_id(current_user)
+        if caller_board is None or str(caller_board) != str(board_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Board not found",
+            )
+
+    coverage_map = compute_coverage_map(board_id, db)
+    artifacts = _query_all_approved_artifacts(db, board_id=str(board_id))
+
+    # Hard cap — protect the worker from OOM on a runaway export.
+    # Pilot boards are <5k rows today; the cap is loose enough to never
+    # bite real data while stopping the unbounded growth path.
+    if len(artifacts) > MAX_EXPORT_ARTIFACT_ROWS:
+        logger.warning(
+            "board_catalog_export over_cap board=%s artifacts=%s cap=%s",
+            board_id,
+            len(artifacts),
+            MAX_EXPORT_ARTIFACT_ROWS,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"Catalog has {len(artifacts)} artifacts; export cap is "
+                f"{MAX_EXPORT_ARTIFACT_ROWS}. Use the JSON catalog with "
+                f"filters to scope a smaller export."
+            ),
+        )
+
+    csv_bytes = _build_catalog_csv_bytes(
+        board_id=str(board_id),
+        coverage_map=coverage_map,
+        artifacts=artifacts,
+    )
+
+    # GCS object path — bucket is shared, so namespace by board + a
+    # request-scoped UUID so two concurrent exports never collide.
+    issued_at = datetime.now(tz=timezone.utc)
+    gcs_path = (
+        f"cmcp/board_catalog_exports/{board_id}/"
+        f"{issued_at.strftime('%Y%m%dT%H%M%SZ')}_{uuid.uuid4().hex}.csv"
+    )
+
+    gcs_service.upload_file(gcs_path, csv_bytes, "text/csv")
+    download_url = gcs_service.generate_signed_url(
+        gcs_path, ttl_seconds=SIGNED_CSV_TTL_SECONDS
+    )
+    expires_at = issued_at + timedelta(seconds=SIGNED_CSV_TTL_SECONDS)
+
+    logger.info(
+        "board_catalog_export board=%s user_id=%s artifacts=%s strands=%s "
+        "csv_bytes=%s gcs_path=%s",
+        board_id,
+        getattr(current_user, "id", None),
+        len(artifacts),
+        len(coverage_map),
+        len(csv_bytes),
+        gcs_path,
+    )
+
+    return BoardCatalogExportResponse(
+        download_url=download_url,
+        expires_at=expires_at.isoformat(),
+    )
+
+
+__all__ = [
+    "router",
+    "BoardCatalogArtifact",
+    "BoardCatalogResponse",
+    "BoardCatalogExportResponse",
+    "SIGNED_CSV_TTL_SECONDS",
+    "MAX_EXPORT_ARTIFACT_ROWS",
+]
