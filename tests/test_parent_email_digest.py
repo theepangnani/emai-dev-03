@@ -1300,7 +1300,19 @@ class TestDashboard:
         )
         db_session.commit()
 
-        now = datetime.now(timezone.utc)
+        # Anchor urgent times to a fixed 12:00 in the parent's timezone
+        # (Toronto by default — see #4630). Using `now + offset` from UTC
+        # is brittle: when the test runs near end-of-day in EDT, +2h falls
+        # into the NEXT local day and the task is correctly excluded from
+        # "today". Anchoring to local-noon makes the offsets land safely
+        # inside today regardless of when the suite runs.
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("America/Toronto")
+        local_today = datetime.now(tz).replace(
+            hour=12, minute=0, second=0, microsecond=0
+        )
+        now = local_today.astimezone(timezone.utc)
         # Bobby gets 2 urgent items today; Alice gets 1 urgent today + 1 in
         # 3 days (week-only). The multi-kid section ordering should put
         # Bobby first (more urgent items).
@@ -1411,7 +1423,15 @@ class TestDashboard:
         )
         db_session.commit()
 
-        now = datetime.now(timezone.utc)
+        # Anchor to local-noon so +2h reliably stays in "today" for
+        # the parent's timezone (#4630).
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("America/Toronto")
+        local_today = datetime.now(tz).replace(
+            hour=12, minute=0, second=0, microsecond=0
+        )
+        now = local_today.astimezone(timezone.utc)
         _add_task(
             db_session,
             creator=teacher,
@@ -1488,3 +1508,253 @@ class TestDashboard:
         finally:
             app.state.limiter.enabled = False
             app.state.limiter.reset()
+
+
+# ---------------------------------------------------------------------------
+# CB-EDIGEST-002 P2 (#4630): dashboard 'today' window respects parent timezone.
+# ---------------------------------------------------------------------------
+
+
+def _freeze_route_now(monkeypatch, fixed_utc: datetime):
+    """Patch ``datetime.now`` inside the route module so the dashboard
+    sees a deterministic 'now'. Other ``datetime`` behavior (constructors,
+    arithmetic, ``astimezone``) stays intact via subclassing so the
+    response shape and TZ conversions still work as in production.
+    """
+    import app.api.routes.parent_email_digest as route_module
+
+    real_dt = route_module.datetime
+
+    class _FrozenDateTime(real_dt):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                # Mirror real datetime.now(): return naive local time.
+                return fixed_utc.replace(tzinfo=None)
+            return fixed_utc.astimezone(tz)
+
+    monkeypatch.setattr(route_module, "datetime", _FrozenDateTime)
+
+
+class TestDashboardTimezone:
+    """#4630 — dashboard's today/week boundaries must use the parent's
+    configured timezone, not UTC. With UTC-only logic, every Ontario
+    parent (UTC-4 / UTC-5) saw evening deadlines vanish from urgent
+    during certain hours and tomorrow-morning tasks appear as 'today'.
+    """
+
+    def _make_parent_with_tz(self, db_session, tz_name):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address=f"tz_{tz_name.replace('/', '_')}@gmail.com",
+            google_id=f"gid_tz_{tz_name}",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(
+            ParentDigestSettings(integration_id=integ.id, timezone=tz_name)
+        )
+        db_session.commit()
+        return parent, teacher
+
+    def test_dashboard_uses_parent_timezone_for_today_window(
+        self, client, db_session, monkeypatch
+    ):
+        """Parent in EDT sees a task due 23:00 EDT (= 03:00 UTC tomorrow)
+        as urgent at 18:00 EDT (= 22:00 UTC). UTC-only logic would drop
+        it because the UTC date has already rolled.
+
+        Also asserts a task due ~01:00 EDT next day (= 05:00 UTC) is NOT
+        urgent today — pins both edges of the today_end_local boundary
+        so a half-fix that only shifts today_start can't slip through.
+        """
+        parent, teacher = self._make_parent_with_tz(
+            db_session, "America/Toronto"
+        )
+        kid_user, _ = _make_kid(
+            db_session, parent, "Theo", "tz_kid_theo@test.com"
+        )
+
+        # IN-WINDOW: 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
+        in_due = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Late EDT homework",
+            due_date=in_due,
+            source_message_id="msg-tz-1",
+        )
+        # OUT-OF-WINDOW: 2026-04-30 01:00 EDT = 2026-04-30 05:00 UTC.
+        # This is past local midnight in EDT — should be tomorrow's task.
+        out_due = datetime(2026, 4, 30, 5, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Tomorrow EDT homework",
+            due_date=out_due,
+            source_message_id="msg-tz-1-out",
+        )
+
+        # "Now" frozen at 2026-04-29 18:00 EDT = 22:00 UTC.
+        frozen_now = datetime(2026, 4, 29, 22, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        urgent = data["kids"][0]["urgent_items"]
+        urgent_ids = {item["source_email_id"] for item in urgent}
+        # Task IS in today's urgent — the EDT calendar day still ends
+        # at 03:59:59.999999 UTC tomorrow.
+        assert "msg-tz-1" in urgent_ids, (
+            "Task due 23:00 EDT must appear urgent for an EDT parent at "
+            "18:00 EDT (UTC-only logic would drop it)."
+        )
+        # Task is NOT in today's urgent — 01:00 EDT next day falls past
+        # the parent-local today_end boundary.
+        assert "msg-tz-1-out" not in urgent_ids, (
+            "Task due 01:00 EDT next day must NOT be urgent today — "
+            "asserts the today_end boundary is parent-local, not UTC."
+        )
+
+    def test_dashboard_uses_parent_timezone_falls_back_when_invalid(
+        self, client, db_session
+    ):
+        """Bad/typo'd tz string must NOT 500 — fall back to America/Toronto."""
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Bad", "tz_kid_bad@test.com")
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="tz_bad@gmail.com",
+            google_id="gid_tz_bad",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(
+            ParentDigestSettings(
+                integration_id=integ.id, timezone="Not/A/Real/Zone"
+            )
+        )
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        # 200 — defensive ZoneInfo fallback in the route.
+        assert resp.status_code == 200, resp.text
+
+    def test_dashboard_day_bucket_keys_use_parent_timezone(
+        self, client, db_session, monkeypatch
+    ):
+        """Task due 2026-04-30 09:00 EDT = 13:00 UTC. Parent in EDT.
+        weekly_deadlines bucket key MUST be the parent-local date
+        ('2026-04-30'), not the UTC date (also 04-30 here, but the
+        contract is 'parent-local'). Construct a case where they differ:
+        task due 2026-04-30 22:00 EDT = 2026-05-01 02:00 UTC. The bucket
+        must still be '2026-04-30' (parent-local), not '2026-05-01'.
+        """
+        parent, teacher = self._make_parent_with_tz(
+            db_session, "America/Toronto"
+        )
+        kid_user, _ = _make_kid(
+            db_session, parent, "Bucket", "tz_kid_bucket@test.com"
+        )
+
+        # Task due 2026-04-30 22:00 EDT = 2026-05-01 02:00 UTC.
+        due_utc = datetime(2026, 5, 1, 2, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="EDT-evening bucket task",
+            due_date=due_utc,
+            source_message_id="msg-tz-bucket",
+        )
+
+        # Freeze "now" at 2026-04-29 12:00 EDT = 16:00 UTC so the task is
+        # within the rolling 7-day window AND is in the future (excluded
+        # from urgent_items today, but inside weekly_deadlines).
+        frozen_now = datetime(2026, 4, 29, 16, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        weekly = data["kids"][0]["weekly_deadlines"]
+        bucket_days = [d["day"] for d in weekly]
+        # Parent-local date wins, NOT the UTC-rolled '2026-05-01'.
+        assert "2026-04-30" in bucket_days, (
+            f"Expected EDT-local day key 2026-04-30, got: {bucket_days}"
+        )
+        assert "2026-05-01" not in bucket_days, (
+            f"UTC-rolled day key 2026-05-01 must not be present: {bucket_days}"
+        )
+
+    def test_dashboard_default_timezone_when_no_settings(
+        self, client, db_session, monkeypatch
+    ):
+        """No ParentDigestSettings row at all → defaults to America/Toronto.
+        Mirrors test 1 but without any settings row, exercising the
+        ``parent_tz_name = "America/Toronto"`` default at the top of the
+        route.
+        """
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        kid_user, _ = _make_kid(
+            db_session, parent, "Nosettings", "tz_kid_nosettings@test.com"
+        )
+
+        # Task due 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
+        due_utc = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Default-tz task",
+            due_date=due_utc,
+            source_message_id="msg-tz-default",
+        )
+
+        # Freeze at 2026-04-29 18:00 EDT = 22:00 UTC.
+        frozen_now = datetime(2026, 4, 29, 22, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        urgent = data["kids"][0]["urgent_items"]
+        # America/Toronto fallback should treat 23:00 EDT as urgent at
+        # 18:00 EDT — same expectation as the explicit-tz test.
+        assert any(
+            item["source_email_id"] == "msg-tz-default" for item in urgent
+        ), (
+            "Default America/Toronto tz must include 23:00-EDT task as "
+            "urgent for an 18:00-EDT 'now'."
+        )
