@@ -137,9 +137,15 @@ export function BoardCatalogPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   // Export state — separate from the table query so a slow CSV doesn't
-  // block reading the table.
+  // block reading the table. ``exportFallbackUrl`` carries the
+  // signed-URL when ``window.open`` was popup-blocked (Safari etc. block
+  // popups opened after an async round-trip even with `noopener`); the
+  // user can then click the surfaced link directly to download.
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportInFlight, setExportInFlight] = useState<boolean>(false);
+  const [exportFallbackUrl, setExportFallbackUrl] = useState<string | null>(
+    null,
+  );
 
   const adminBoardOverride = searchParams.get('board_id');
   const profileBoard = userBoardId(user);
@@ -236,13 +242,25 @@ export function BoardCatalogPage() {
   const handleExport = async () => {
     if (!effectiveBoardId) return;
     setExportError(null);
+    setExportFallbackUrl(null);
     setExportInFlight(true);
     try {
       const resp = await boardCatalogApi.exportCatalogCsv(effectiveBoardId);
       // Open the signed URL in a new tab — browsers handle text/csv as a
       // download, so this triggers the file save without leaving the
-      // current view.
-      window.open(resp.download_url, '_blank', 'noopener,noreferrer');
+      // current view. Some browsers (notably Safari) treat
+      // ``window.open`` after an async round-trip as non-user-initiated
+      // and return ``null`` (popup blocked). When that happens, surface
+      // the URL as a clickable fallback so the user can finish the
+      // download with a direct click.
+      const opened = window.open(
+        resp.download_url,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      if (opened === null) {
+        setExportFallbackUrl(resp.download_url);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Export failed';
       setExportError(msg);
@@ -419,6 +437,26 @@ export function BoardCatalogPage() {
             data-testid="export-error"
           >
             <p>Export failed: {exportError}</p>
+          </div>
+        ) : null}
+        {exportFallbackUrl ? (
+          <div
+            className="board-dashboard-state-msg"
+            role="status"
+            data-testid="export-fallback"
+          >
+            <p>
+              Your browser blocked the download tab. Use this direct link
+              instead:{' '}
+              <a
+                href={exportFallbackUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="export-fallback-link"
+              >
+                Download CSV
+              </a>
+            </p>
           </div>
         ) : null}
 

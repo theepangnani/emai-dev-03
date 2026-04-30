@@ -267,9 +267,12 @@ describe('BoardCatalogPage', () => {
       download_url: 'https://signed.example.test/csv?sig=xyz',
       expires_at: '2026-04-29T11:00:00Z',
     });
+    // Stub a non-null Window-shaped return so the page treats this as a
+    // successful popup (not the popup-blocked fallback path).
+    const fakeWindow = {} as Window;
     const openSpy = vi
       .spyOn(window, 'open')
-      .mockImplementation(() => null);
+      .mockImplementation(() => fakeWindow);
 
     const user = userEvent.setup();
     renderPage(<BoardCatalogPage />);
@@ -288,7 +291,45 @@ describe('BoardCatalogPage', () => {
       '_blank',
       'noopener,noreferrer',
     );
-    // No error banner.
+    // No error banner, no fallback link — happy path.
+    expect(screen.queryByTestId('export-error')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('export-fallback')).not.toBeInTheDocument();
+  });
+
+  it('surfaces a fallback link when window.open is popup-blocked', async () => {
+    mockGetCatalog.mockResolvedValue({
+      artifacts: [sampleArtifact(1)],
+      next_cursor: null,
+    });
+    mockExportCatalogCsv.mockResolvedValue({
+      download_url: 'https://signed.example.test/csv?sig=blocked',
+      expires_at: '2026-04-29T11:00:00Z',
+    });
+    // Simulate Safari-style popup block — window.open returns null.
+    const openSpy = vi
+      .spyOn(window, 'open')
+      .mockImplementation(() => null);
+
+    const user = userEvent.setup();
+    renderPage(<BoardCatalogPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('board-catalog-table')).toBeInTheDocument();
+    });
+    await user.click(screen.getByTestId('export-csv-btn'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('export-fallback')).toBeInTheDocument();
+    });
+    const fallbackLink = screen.getByTestId(
+      'export-fallback-link',
+    ) as HTMLAnchorElement;
+    expect(fallbackLink.href).toContain(
+      'signed.example.test/csv?sig=blocked',
+    );
+    expect(openSpy).toHaveBeenCalled();
+    // The error banner should NOT appear — this is a soft-fallback path,
+    // not a hard failure.
     expect(screen.queryByTestId('export-error')).not.toBeInTheDocument();
   });
 
