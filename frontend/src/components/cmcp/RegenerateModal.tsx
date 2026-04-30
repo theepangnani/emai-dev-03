@@ -28,6 +28,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../../api/client';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import './RegenerateModal.css';
 
 // HTTP-side enums mirrored from app/schemas/cmcp.py (kept narrow + local
@@ -104,7 +105,6 @@ export function RegenerateModal({
   const [persona, setPersona] = useState<TargetPersona>(
     currentPersona ?? baseRequest.target_persona ?? 'student'
   );
-  const [notes, setNotes] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation<RegenerateResponse, Error, void>({
@@ -146,9 +146,19 @@ export function RegenerateModal({
     },
   });
 
-  if (!isOpen) return null;
-
   const isSubmitting = mutation.isPending;
+
+  // Trap keyboard focus inside the dialog + bind Escape→cancel, matching
+  // the convention shared with ConfirmModal / EditStudyGuideModal. The
+  // hook also restores focus to the previously focused element on close.
+  // Hooks must be called unconditionally — the early-``return null`` for
+  // ``!isOpen`` lives below this call. The hook itself no-ops when
+  // ``active=false``.
+  const trapRef = useFocusTrap<HTMLDivElement>(isOpen, () => {
+    if (!isSubmitting) onClose();
+  });
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +174,7 @@ export function RegenerateModal({
   return (
     <div className="modal-overlay" data-testid="cmcp-regenerate-modal-overlay">
       <div
+        ref={trapRef}
         className="modal cmcp-regenerate-modal"
         role="dialog"
         aria-modal="true"
@@ -242,20 +253,6 @@ export function RegenerateModal({
             ))}
           </fieldset>
 
-          <label className="cmcp-regenerate-notes-label">
-            Notes (optional)
-            <textarea
-              className="cmcp-regenerate-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add a note for your own records (not sent to the model)"
-              rows={3}
-              maxLength={500}
-              disabled={isSubmitting}
-              data-testid="cmcp-regenerate-notes"
-            />
-          </label>
-
           <div className="modal-actions">
             <button
               type="button"
@@ -270,6 +267,7 @@ export function RegenerateModal({
               type="submit"
               className="generate-btn"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               data-testid="cmcp-regenerate-submit"
             >
               {isSubmitting ? (

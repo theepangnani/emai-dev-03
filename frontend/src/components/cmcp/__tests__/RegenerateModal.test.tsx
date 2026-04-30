@@ -98,9 +98,28 @@ describe('RegenerateModal', () => {
     expect(screen.getByLabelText(/Student/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Parent/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Teacher/i)).toBeInTheDocument();
+  });
 
-    // Optional notes
-    expect(screen.getByTestId('cmcp-regenerate-notes')).toBeInTheDocument();
+  it('closes the modal on Escape (focus trap binding)', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    renderWithClient(
+      <RegenerateModal
+        artifactId={1}
+        baseRequest={baseRequest}
+        isOpen
+        onClose={onClose}
+        onSuccess={() => {}}
+      />
+    );
+
+    // Click inside the dialog so the focus-trap container has the active
+    // element, then press Escape. The trap binds keydown on its container
+    // and calls the onEscape callback.
+    await user.click(screen.getByLabelText(/At grade/i));
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('submits with the adjusted parameters merged into baseRequest', async () => {

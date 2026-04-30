@@ -69,28 +69,3 @@
   font-size: 12px;
   color: var(--color-text-muted, #6a6a6a);
 }
-
-.cmcp-regenerate-notes-label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text, #1a1a1a);
-}
-
-.cmcp-regenerate-notes {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border, #e0e0e0);
-  border-radius: var(--radius-sm, 8px);
-  font-family: inherit;
-  font-size: 13px;
-  resize: vertical;
-  min-height: 60px;
-}
-
-.cmcp-regenerate-notes:disabled {
-  background: var(--color-surface-disabled, #f4f4f4);
-  cursor: not-allowed;
-}
