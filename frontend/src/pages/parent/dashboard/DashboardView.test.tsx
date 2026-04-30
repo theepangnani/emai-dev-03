@@ -21,6 +21,8 @@ vi.mock('../../../context/AuthContext', () => ({
 /* ── Mock the API module ─────────────────────────────────── */
 
 const mockGetDashboard = vi.fn();
+const mockListIntegrations = vi.fn();
+const mockTriggerSync = vi.fn();
 
 // Use `vi.importActual` + spread (mock-shadow guard, #4277): mocking the
 // whole module would shadow every other export to `undefined` the moment a
@@ -32,6 +34,8 @@ vi.mock('../../../api/parentEmailDigest', async () => {
   return {
     ...actual,
     getDashboard: (...args: unknown[]) => mockGetDashboard(...args),
+    listIntegrations: (...args: unknown[]) => mockListIntegrations(...args),
+    triggerSync: (...args: unknown[]) => mockTriggerSync(...args),
   };
 });
 
@@ -62,8 +66,20 @@ vi.mock('./TodaySection', () => ({
   ),
 }));
 
+// Capture the kids prop the orchestrator passes in so #4628 regression tests
+// can assert per-day `weekday` + `is_past` were derived correctly.
+const weekGridSpy = vi.fn();
 vi.mock('./WeekGrid', () => ({
-  WeekGrid: () => <div data-testid="mock-week" />,
+  WeekGrid: (props: {
+    kids: {
+      id: number;
+      first_name: string;
+      days: { day: string; weekday: string; is_past: boolean; items: unknown[] }[];
+    }[];
+  }) => {
+    weekGridSpy(props);
+    return <div data-testid="mock-week" />;
+  },
 }));
 
 vi.mock('./DashboardHeader', () => ({
@@ -252,6 +268,187 @@ describe('DashboardView', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('dashboard-error')).toBeInTheDocument();
+    });
+  });
+
+  /* ── #4628: WeekGrid past-day + weekday derivation ──────── */
+
+  describe('#4628 — WeekGrid past-day styling', () => {
+    beforeEach(() => {
+      weekGridSpy.mockClear();
+    });
+
+    it('derives is_past=true for past days and is_past=false for future days', async () => {
+      // Use dates far enough from "now" that the assertion is stable
+      // regardless of when the test runs: 2020-01-01 is decisively past,
+      // 2099-12-31 is decisively future. Avoids any fake-timer dance that
+      // would freeze react-query's internal scheduling.
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // Backend currently sends only {day, items}; types declare
+                // weekday/is_past so cast to bypass type-checking here.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2099-12-31', items: [] } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(weekGridSpy).toHaveBeenCalled();
+      });
+
+      // Take the most recent call (guards against early calls before data loads).
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      await waitFor(() => {
+        expect(lastCall.kids.length).toBeGreaterThan(0);
+      });
+      const days = lastCall.kids[0].days;
+      expect(days[0].is_past).toBe(true);
+      expect(days[1].is_past).toBe(false);
+    });
+
+    it('derives a short weekday label client-side when the backend omits it', async () => {
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // 2020-01-01 was a Wednesday — stable across runs/locales
+                // when formatted as `toLocaleDateString('en-US', { weekday: 'short' })`.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [] } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(weekGridSpy).toHaveBeenCalled();
+      });
+
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      await waitFor(() => {
+        expect(lastCall.kids.length).toBeGreaterThan(0);
+      });
+      const days = lastCall.kids[0].days;
+      expect(days[0].weekday).toBe('Wed');
+    });
+  });
+
+  /* ── #4629: Refresh triggers Gmail sync per active integration ── */
+
+  describe('#4629 — Refresh triggers Gmail sync', () => {
+    function makeIntegration(
+      overrides: Partial<{
+        id: number;
+        is_active: boolean;
+        paused_until: string | null;
+      }> = {},
+    ) {
+      return {
+        id: overrides.id ?? 1,
+        parent_id: 1,
+        gmail_address: 'p@example.com',
+        google_id: null,
+        child_school_email: null,
+        child_first_name: null,
+        connected_at: '2026-04-01T00:00:00Z',
+        last_synced_at: null,
+        is_active: overrides.is_active ?? true,
+        paused_until: overrides.paused_until ?? null,
+        created_at: '2026-04-01T00:00:00Z',
+        updated_at: '2026-04-01T00:00:00Z',
+        monitored_emails: [],
+        whatsapp_phone: null,
+        whatsapp_verified: false,
+      };
+    }
+
+    it('calls triggerSync for every active integration but skips paused/inactive ones', async () => {
+      mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+      mockListIntegrations.mockResolvedValue({
+        data: [
+          makeIntegration({ id: 10, is_active: true, paused_until: null }),
+          makeIntegration({ id: 11, is_active: true, paused_until: null }),
+          // Paused: paused_until far in the future.
+          makeIntegration({
+            id: 12,
+            is_active: true,
+            paused_until: '2099-01-01T00:00:00Z',
+          }),
+          // Inactive: should never sync.
+          makeIntegration({ id: 13, is_active: false, paused_until: null }),
+        ],
+      });
+      mockTriggerSync.mockResolvedValue({ data: makeIntegration() });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-refresh')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('mock-refresh'));
+
+      await waitFor(() => {
+        expect(mockTriggerSync).toHaveBeenCalledTimes(2);
+      });
+      const calledIds = mockTriggerSync.mock.calls.map((args) => args[0]).sort();
+      expect(calledIds).toEqual([10, 11]);
+    });
+
+    it('still refetches the dashboard when a triggerSync call rejects', async () => {
+      mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+      mockListIntegrations.mockResolvedValue({
+        data: [
+          makeIntegration({ id: 20, is_active: true, paused_until: null }),
+          makeIntegration({ id: 21, is_active: true, paused_until: null }),
+        ],
+      });
+      // First sync rejects, second resolves — refetch must still be called.
+      mockTriggerSync.mockImplementation((id: number) =>
+        id === 20
+          ? Promise.reject(new Error('sync boom'))
+          : Promise.resolve({ data: makeIntegration() }),
+      );
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-refresh')).toBeInTheDocument();
+      });
+
+      // Mark current call count so we can verify a new fetch happened.
+      const dashboardCallsBefore = mockGetDashboard.mock.calls.length;
+
+      fireEvent.click(screen.getByTestId('mock-refresh'));
+
+      // After the click + sync resolves/rejects, react-query should refetch the dashboard,
+      // which lands a new call on `mockGetDashboard`.
+      await waitFor(() => {
+        expect(mockGetDashboard.mock.calls.length).toBeGreaterThan(dashboardCallsBefore);
+      });
+      expect(mockTriggerSync).toHaveBeenCalledTimes(2);
     });
   });
 });
