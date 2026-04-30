@@ -46,6 +46,7 @@ from __future__ import annotations
 
 import logging
 import time
+from functools import partial
 from typing import Any, Callable
 
 from sqlalchemy.exc import IntegrityError
@@ -75,6 +76,13 @@ _RETRY_BACKOFF_BASE = 0.05
 _LAST_ERROR_MAX_CHARS = 500
 
 
+# Stable error tokens persisted on dispatch failure. Promoted to
+# module-level constants so future ops dashboards / log queries can
+# match on them without hard-coding the same strings in two places.
+_ERR_ARTIFACT_NOT_FOUND = "artifact-not-found"
+_ERR_STATE_NOT_RENDERABLE = "state-not-renderable"
+
+
 def _truncate_error(exc: BaseException) -> str:
     """Return a 500-char excerpt of the exception's repr for audit."""
     text = repr(exc)
@@ -101,7 +109,7 @@ def _retry(
         try:
             fn()
             return True, attempt, None
-        except Exception as exc:  # pragma: no cover — error path
+        except Exception as exc:
             last_exc = exc
             logger.warning(
                 "cmcp.surface.dispatch attempt failed surface=%s "
@@ -347,29 +355,39 @@ _SURFACE_EMITTERS: dict[str, Callable[..., None]] = {
 }
 
 
-def _resolve_artifact_anchors(
+def _resolve_recipients(
     db: Session, artifact_id: int
-) -> tuple[int | None, int | None]:
-    """Resolve ``(parent_id, kid_id)`` for the artifact's primary recipient.
+) -> list[tuple[int | None, int | None]]:
+    """Resolve ALL ``(parent_id, kid_id)`` recipient tuples for the artifact.
 
-    M3α scope: the dispatcher records ONE audit row per surface keyed
-    on the artifact's primary recipient — for class-distribute paths
-    that's typically the artifact owner's parent + the artifact owner
-    (kid). For self-study paths ``parent_id`` and ``kid_id`` may both
-    be ``None`` (parent-self-generated artifact). Future stripes that
-    fan-out to multiple parents will iterate the parent_students join
-    here; this helper is the seam.
+    M3α scope: the dispatcher records one audit row per surface
+    *per recipient*. Co-parents (two linked parents on the same
+    student) are extremely common — the original single-parent
+    resolver silently dropped one of them, which would manifest as
+    "where's my kid's artifact?" support tickets the moment the
+    feature flag turns on for a real family. This helper iterates
+    ``parent_students`` so every linked parent gets a dispatch row.
 
-    Resolution rules:
-      * If the artifact's ``user_id`` resolves to a ``Student``, set
-        ``kid_id = student.id`` and ``parent_id`` = first linked parent
-        from ``parent_students``.
-      * Else (artifact owned by a parent or non-student user),
-        ``parent_id = artifact.user_id`` and ``kid_id = None``.
-      * If lookup raises, return ``(None, None)`` — the dispatcher
-        still persists an audit row, which surfaces the dispatch
-        without a recipient anchor. Telemetry / consumer endpoints
-        treat anchorless rows as ops-only audit (not user-visible).
+    Resolution rules (applied in order):
+      * Artifact owner resolves to a ``Student`` row →
+        return one ``(parent_id, student.id)`` tuple per linked
+        parent. If the student has zero linked parents, return one
+        ``(None, student.id)`` audit-only tuple so ops still see the
+        dispatch landed (consumer endpoints treat ``parent_id=None``
+        as not user-visible).
+      * Artifact owner is a non-student user (parent / teacher) →
+        return one ``(owner_user_id, None)`` tuple — the parent /
+        teacher is the recipient of their own self-generated
+        artifact.
+      * Artifact owner cannot be resolved → return one
+        ``(None, None)`` audit-only tuple.
+      * Any unexpected exception → return one ``(None, None)`` audit-
+        only tuple. Defence-in-depth so a SQL fault in this resolver
+        never blocks the rest of the dispatch.
+
+    Returned list always has at least one tuple — every successful
+    or failed dispatch must produce at least one audit row per
+    surface.
     """
     try:
         # Lazy import — match the rest of the CMCP service layer.
@@ -380,11 +398,11 @@ def _resolve_artifact_anchors(
             db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
         )
         if artifact is None:
-            return None, None
+            return [(None, None)]
 
         owner_user_id = artifact.user_id
         if owner_user_id is None:
-            return None, None
+            return [(None, None)]
 
         student = (
             db.query(Student).filter(Student.user_id == owner_user_id).first()
@@ -392,24 +410,30 @@ def _resolve_artifact_anchors(
         if student is None:
             # Artifact owner is not a student row — treat as parent-self
             # generated; parent_id = owner user_id, no kid.
-            return owner_user_id, None
+            return [(owner_user_id, None)]
 
-        # Find the first linked parent from parent_students.
-        link = (
+        # Iterate ALL linked parents. ``ORDER BY parent_id`` keeps the
+        # iteration order deterministic (stable retry semantics +
+        # predictable ops triage when two parents see the same row).
+        links = (
             db.query(parent_students.c.parent_id)
             .filter(parent_students.c.student_id == student.id)
-            .first()
+            .order_by(parent_students.c.parent_id.asc())
+            .all()
         )
-        parent_id = link[0] if link is not None else None
-        return parent_id, student.id
+        if not links:
+            # Student with zero linked parents — record audit-only row
+            # so ops can spot the orphan family.
+            return [(None, student.id)]
+        return [(link[0], student.id) for link in links]
     except Exception as exc:  # pragma: no cover — defence-in-depth
         logger.warning(
-            "cmcp.surface.dispatch anchor resolution failed artifact_id=%s "
+            "cmcp.surface.dispatch recipient resolution failed artifact_id=%s "
             "error=%r",
             artifact_id,
             exc,
         )
-        return None, None
+        return [(None, None)]
 
 
 def dispatch_artifact_to_surfaces(
@@ -431,11 +455,19 @@ def dispatch_artifact_to_surfaces(
         surfaces. Unknown / partial returns are intentionally
         prevented — every key in :data:`SURFACES` is always present.
 
+        For artifacts with multiple linked parents (co-parents), the
+        dispatcher writes one audit row PER (recipient, surface) pair
+        but collapses the per-surface return to ``"ok"`` only when
+        ALL recipients succeeded for that surface. Any single
+        recipient failure marks the surface ``"failed"`` in the
+        return dict — the per-recipient breakdown lives in the
+        ``cmcp_surface_dispatches`` table.
+
     Side effects:
-        * One ``cmcp_surface_dispatches`` row per surface (insert OR
-          update on the unique tuple).
-        * One ``cmcp.surface.dispatched`` log line per surface that
-          succeeded.
+        * One ``cmcp_surface_dispatches`` row per surface PER
+          recipient tuple (insert OR update on the unique tuple).
+        * One ``cmcp.surface.dispatched`` log line per surface +
+          recipient combo that succeeded.
         * Per-attempt warning logs on transient failures (info-only).
 
     Best-effort guarantee:
@@ -473,7 +505,7 @@ def dispatch_artifact_to_surfaces(
                 kid_id=None,
                 status="failed",
                 attempts=0,
-                last_error="artifact-not-found",
+                last_error=_ERR_ARTIFACT_NOT_FOUND,
             )
         return {
             SURFACE_BRIDGE: "failed",
@@ -498,7 +530,7 @@ def dispatch_artifact_to_surfaces(
                 kid_id=None,
                 status="failed",
                 attempts=0,
-                last_error=f"state-not-renderable:{state}",
+                last_error=f"{_ERR_STATE_NOT_RENDERABLE}:{state}",
             )
         return {
             SURFACE_BRIDGE: "failed",
@@ -506,68 +538,81 @@ def dispatch_artifact_to_surfaces(
             SURFACE_DIGEST: "failed",
         }
 
-    parent_id, kid_id = _resolve_artifact_anchors(db, artifact_id)
+    recipients = _resolve_recipients(db, artifact_id)
 
-    outcomes: dict[str, str] = {}
+    # Per-surface "all recipients ok" outcome. Any failure on any
+    # recipient downgrades the surface's outcome to "failed".
+    outcomes: dict[str, str] = {
+        SURFACE_BRIDGE: "ok",
+        SURFACE_DCI: "ok",
+        SURFACE_DIGEST: "ok",
+    }
     for surface in (SURFACE_BRIDGE, SURFACE_DCI, SURFACE_DIGEST):
         emitter = _SURFACE_EMITTERS[surface]
-
-        def _call(emitter=emitter, surface=surface):
-            emitter(
+        for parent_id, kid_id in recipients:
+            call = partial(
+                emitter,
                 artifact_id=artifact_id,
                 parent_id=parent_id,
                 kid_id=kid_id,
                 db=db,
             )
-
-        success, attempts_used, last_exc = _retry(
-            _call, surface=surface, artifact_id=artifact_id
-        )
-
-        if success:
-            outcomes[surface] = "ok"
-            elapsed_ms = max(
-                0, int((time.monotonic_ns() - started_at_ns) // 1_000_000)
+            success, attempts_used, last_exc = _retry(
+                call, surface=surface, artifact_id=artifact_id
             )
-            try:
-                log_dispatched(
+
+            if success:
+                elapsed_ms = max(
+                    0,
+                    int(
+                        (time.monotonic_ns() - started_at_ns) // 1_000_000
+                    ),
+                )
+                try:
+                    log_dispatched(
+                        artifact_id=artifact_id,
+                        surface=surface,
+                        latency_ms_from_approve=elapsed_ms,
+                    )
+                except Exception as exc:  # pragma: no cover — telemetry never raises
+                    logger.warning(
+                        "cmcp.surface.dispatch telemetry emit failed "
+                        "surface=%s artifact_id=%s error=%r",
+                        surface,
+                        artifact_id,
+                        exc,
+                    )
+            else:
+                outcomes[surface] = "failed"
+                # Persist the terminal failure audit row. The
+                # successful emitters above wrote their own ``ok``
+                # audit row already; for the failed (recipient,
+                # surface) pair the per-attempt emitter never reached
+                # the audit-write line, so we write the failure row
+                # here.
+                _record_dispatch(
+                    db,
                     artifact_id=artifact_id,
                     surface=surface,
-                    latency_ms_from_approve=elapsed_ms,
+                    parent_id=parent_id,
+                    kid_id=kid_id,
+                    status="failed",
+                    attempts=attempts_used,
+                    last_error=(
+                        _truncate_error(last_exc) if last_exc else None
+                    ),
                 )
-            except Exception as exc:  # pragma: no cover — telemetry must not raise
-                logger.warning(
-                    "cmcp.surface.dispatch telemetry emit failed surface=%s "
-                    "artifact_id=%s error=%r",
+                logger.error(
+                    "cmcp.surface.dispatch terminal failure surface=%s "
+                    "artifact_id=%s parent_id=%s kid_id=%s attempts=%d "
+                    "error=%r",
                     surface,
                     artifact_id,
-                    exc,
+                    parent_id,
+                    kid_id,
+                    attempts_used,
+                    last_exc,
                 )
-        else:
-            outcomes[surface] = "failed"
-            # Persist the terminal failure audit row. The successful
-            # emitters above wrote their own ``ok`` audit row already;
-            # for the failed surface the per-attempt emitter never
-            # reached the audit-write line, so we write the failure
-            # row here.
-            _record_dispatch(
-                db,
-                artifact_id=artifact_id,
-                surface=surface,
-                parent_id=parent_id,
-                kid_id=kid_id,
-                status="failed",
-                attempts=attempts_used,
-                last_error=_truncate_error(last_exc) if last_exc else None,
-            )
-            logger.error(
-                "cmcp.surface.dispatch terminal failure surface=%s "
-                "artifact_id=%s attempts=%d error=%r",
-                surface,
-                artifact_id,
-                attempts_used,
-                last_exc,
-            )
 
     return outcomes
 

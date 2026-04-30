@@ -258,6 +258,44 @@ def test_dispatch_retry_recovery(db_session, teacher_user, caplog):
     assert len(bridge_records) == 1
 
 
+def test_dispatch_audit_failure_recovers_via_retry(
+    db_session, teacher_user, monkeypatch
+):
+    """Audit-write returning None on first call → retried; recovers on 2nd."""
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp import surface_dispatcher
+
+    course = _make_course(db_session, teacher_user)
+    art = _seed_artifact(
+        db_session,
+        user_id=teacher_user.id,
+        course_id=course,
+        state=ArtifactState.APPROVED,
+    )
+
+    # Track which (artifact_id, surface) tuples have been seen so the
+    # mock only flakes the FIRST emit per tuple — subsequent retries
+    # for the same tuple succeed via the real implementation.
+    real_record = surface_dispatcher._record_dispatch
+    seen: set[tuple[int, str]] = set()
+
+    def flaky_record(db, **kwargs):
+        key = (kwargs.get("artifact_id"), kwargs.get("surface"))
+        if key not in seen:
+            seen.add(key)
+            return None  # simulates audit-write failure
+        return real_record(db, **kwargs)
+
+    monkeypatch.setattr(
+        surface_dispatcher, "_record_dispatch", flaky_record
+    )
+    outcomes = surface_dispatcher.dispatch_artifact_to_surfaces(
+        art.id, db_session
+    )
+    # Every surface recovered via retry → "ok".
+    assert outcomes == {"bridge": "ok", "dci": "ok", "digest": "ok"}
+
+
 def test_dispatch_missing_artifact_returns_all_failed(db_session):
     """No artifact row → dispatcher returns all-failed without raising."""
     from app.services.cmcp.surface_dispatcher import (
@@ -315,6 +353,64 @@ def test_dispatch_persists_audit_rows(db_session, teacher_user):
     surfaces = sorted(r.surface for r in rows)
     assert surfaces == ["bridge", "dci", "digest"]
     assert all(r.status == "ok" for r in rows)
+
+
+def test_dispatch_fans_out_to_all_linked_parents(db_session):
+    """Co-parents (two linked parents) → one audit row per parent per surface."""
+    from app.models.cmcp_surface_dispatch import CMCPSurfaceDispatch
+    from app.models.student import Student, parent_students
+    from app.models.user import UserRole
+    from app.services.cmcp.artifact_state import ArtifactState
+    from app.services.cmcp.surface_dispatcher import (
+        dispatch_artifact_to_surfaces,
+    )
+
+    # Two parents + one student linked to both.
+    parent_a = _make_user(db_session, UserRole.PARENT)
+    parent_b = _make_user(db_session, UserRole.PARENT)
+    student_user = _make_user(db_session, UserRole.STUDENT)
+    student = Student(user_id=student_user.id, grade_level=5)
+    db_session.add(student)
+    db_session.commit()
+    db_session.refresh(student)
+    db_session.execute(
+        parent_students.insert().values(
+            parent_id=parent_a.id, student_id=student.id
+        )
+    )
+    db_session.execute(
+        parent_students.insert().values(
+            parent_id=parent_b.id, student_id=student.id
+        )
+    )
+    db_session.commit()
+
+    art = _seed_artifact(
+        db_session,
+        user_id=student_user.id,  # artifact owned by the student
+        course_id=None,
+        state=ArtifactState.APPROVED,
+        requested_persona="parent",
+    )
+    outcomes = dispatch_artifact_to_surfaces(art.id, db_session)
+    assert outcomes == {"bridge": "ok", "dci": "ok", "digest": "ok"}
+
+    rows = (
+        db_session.query(CMCPSurfaceDispatch)
+        .filter(CMCPSurfaceDispatch.artifact_id == art.id)
+        .all()
+    )
+    # 2 parents × 3 surfaces = 6 audit rows.
+    assert len(rows) == 6
+    parent_ids_per_surface: dict[str, set[int]] = {}
+    for row in rows:
+        parent_ids_per_surface.setdefault(row.surface, set()).add(row.parent_id)
+    for surface in ("bridge", "dci", "digest"):
+        assert parent_ids_per_surface[surface] == {parent_a.id, parent_b.id}, (
+            f"surface {surface} missing a co-parent: {parent_ids_per_surface[surface]}"
+        )
+    # Every row carries the kid_id.
+    assert all(r.kid_id == student.id for r in rows)
 
 
 def test_dispatch_idempotent_on_redispatch(db_session, teacher_user):
