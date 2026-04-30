@@ -1,0 +1,173 @@
+/* CB-CMCP-001 M3-A 3A-3 (#4583) — SE-tag editor styles.
+ *
+ * Uses existing global tokens (--color-*, --radius-*, --font-*) defined in
+ * index.css / THEME.md. No new tokens are introduced.
+ */
+.cmcp-se-tag-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--font-sans, "DM Sans", system-ui, sans-serif);
+  font-size: 14px;
+  color: var(--color-text, #1a1a1a);
+}
+
+/* ── Chip list ─────────────────────────────────────────────────────── */
+.cmcp-se-tag-editor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 28px;
+}
+
+.cmcp-se-tag-editor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-surface-muted, #eef0f4);
+  color: var(--color-text, #1a1a1a);
+  border: 1px solid var(--color-border, #d0d4de);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cmcp-se-tag-editor-chip-code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+}
+
+.cmcp-se-tag-editor-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--color-text-muted, #5b6477);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cmcp-se-tag-editor-chip-remove:hover,
+.cmcp-se-tag-editor-chip-remove:focus-visible {
+  background: var(--color-surface, #fff);
+  color: var(--color-danger, #b3261e);
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: 1px;
+}
+
+.cmcp-se-tag-editor-empty {
+  font-style: italic;
+  color: var(--color-text-muted, #5b6477);
+  font-size: 13px;
+}
+
+/* ── Input + dropdown ──────────────────────────────────────────────── */
+.cmcp-se-tag-editor-input-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cmcp-se-tag-editor-input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  border: 1px solid var(--color-border, #d0d4de);
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1a1a1a);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+.cmcp-se-tag-editor-input:focus-visible {
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: 1px;
+  border-color: var(--color-focus, #2563eb);
+}
+
+.cmcp-se-tag-editor-helper {
+  font-size: 12px;
+  color: var(--color-text-muted, #5b6477);
+}
+
+.cmcp-se-tag-editor-listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.cmcp-se-tag-editor-suggestion {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.cmcp-se-tag-editor-suggestion:hover,
+.cmcp-se-tag-editor-suggestion-active {
+  background: var(--color-surface-muted, #eef0f4);
+}
+
+.cmcp-se-tag-editor-suggestion-code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text, #1a1a1a);
+}
+
+.cmcp-se-tag-editor-suggestion-desc {
+  font-size: 13px;
+  color: var(--color-text, #1a1a1a);
+  /* Keep long expectation text readable but capped to one line so the
+     dropdown doesn't grow unbounded. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cmcp-se-tag-editor-suggestion-strand {
+  font-size: 11px;
+  color: var(--color-text-muted, #5b6477);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cmcp-se-tag-editor-loading,
+.cmcp-se-tag-editor-no-results,
+.cmcp-se-tag-editor-error {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-text-muted, #5b6477);
+}
+
+.cmcp-se-tag-editor-error {
+  color: var(--color-danger, #b3261e);
+}

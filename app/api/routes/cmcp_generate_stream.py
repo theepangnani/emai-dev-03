@@ -99,6 +99,7 @@ from app.api.routes.cmcp_generate import (
 )
 from app.api.routes.curriculum import require_cmcp_enabled
 from app.db.database import get_db
+from app.db.database import SessionLocal
 from app.models.user import User
 from app.schemas.cmcp import (
     STUDENT_FACING_CONTENT_TYPES,
@@ -107,6 +108,10 @@ from app.schemas.cmcp import (
     TargetPersona,
 )
 from app.services.ai_service import generate_content_stream
+from app.services.cmcp.artifact_persistence import persist_cmcp_artifact
+from app.services.cmcp.class_distribution_authority import (
+    validate_class_distribution_authority,
+)
 from app.services.cmcp.generation_telemetry import emit_latency_telemetry
 from app.services.cmcp.guardrail_engine import (
     GuardrailEngine,
@@ -214,6 +219,14 @@ def generate_cmcp_stream(
             db, payload.subject_code, payload.strand_code
         )
 
+        # M3α 3B-1 (#4577): enforce D3=C class-distribution authority
+        # BEFORE opening the SSE stream so 403s surface as plain HTTP
+        # errors (matching the sync route) rather than as mid-stream
+        # error frames. No-op when ``payload.course_id`` is None.
+        validate_class_distribution_authority(
+            user=current_user, course_id=payload.course_id, db=db
+        )
+
         persona: TargetPersona = payload.target_persona or _derive_persona(
             current_user
         )
@@ -270,6 +283,11 @@ def generate_cmcp_stream(
     validator_subject_code = subject.code
 
     completion_payload: dict = {
+        # M3α prequel (#4575): populated in the done-event handler
+        # below by the persistence call. ``None`` until the row is
+        # inserted so the typed schema validates even if persistence
+        # is skipped (e.g. the request user has been deleted).
+        "id": None,
         "se_codes_targeted": se_codes_list,
         "voice_module_id": voice_module_id,
         "voice_module_hash": voice_module_hash,
@@ -299,6 +317,19 @@ def generate_cmcp_stream(
     if not student_name and current_user.email:
         student_name = current_user.email.split("@")[0]
     subject_label = subject.name
+
+    # M3α prequel (#4575): snapshot the user id + course id so the
+    # post-stream persistence call can construct + commit a row without
+    # carrying the ORM-bound ``current_user`` into the async generator
+    # (the request session may be closed by then). The persistence
+    # helper opens its own session via ``SessionLocal`` and re-loads the
+    # user row by id — far simpler than expiring + reattaching.
+    persist_user_id = current_user.id
+    persist_course_id = payload.course_id
+    persist_content_type = payload.content_type
+    persist_target_persona = persona
+    persist_voice_module_hash = voice_module_hash
+    persist_se_codes = list(se_codes)
 
     async def _maybe_emit_parent_companion(
         full_content: str,
@@ -387,6 +418,55 @@ def generate_cmcp_stream(
                     )
                     completion_payload["alignment_score"] = alignment_score
                     completion_payload["flag_for_review"] = flag_for_review
+
+                    # M3α prequel (#4575): persist the artifact row
+                    # before emitting the completion frame so the M3
+                    # surface stripes (review queue, dispatcher, parent
+                    # companion fetch) can drive their flows from a real
+                    # ``study_guides.id``. Persistence opens its own
+                    # session via ``SessionLocal`` because the request-
+                    # scoped session may be closed by the time the async
+                    # generator drains. Best-effort — a failed INSERT
+                    # must not corrupt the SSE stream; we log + ship the
+                    # completion frame with ``id=None`` so the frontend
+                    # can fall back to a not-yet-persisted UI.
+                    artifact_id: int | None = None
+                    try:
+                        _persist_db = SessionLocal()
+                        try:
+                            _user = _persist_db.query(User).filter(
+                                User.id == persist_user_id
+                            ).first()
+                            if _user is not None:
+                                _artifact = persist_cmcp_artifact(
+                                    db=_persist_db,
+                                    user=_user,
+                                    title=f"CMCP {persist_content_type}",
+                                    content=full_content,
+                                    http_content_type=persist_content_type,
+                                    target_persona=persist_target_persona,
+                                    se_codes=persist_se_codes,
+                                    voice_module_hash=persist_voice_module_hash,
+                                    envelope=None,
+                                    course_id=persist_course_id,
+                                    alignment_score=alignment_score,
+                                    parent_companion=completion_payload[
+                                        "parent_companion"
+                                    ],
+                                )
+                                artifact_id = _artifact.id
+                        finally:
+                            _persist_db.close()
+                    except Exception:
+                        logger.exception(
+                            "CMCP stream persist failed user_id=%s "
+                            "content_type=%s",
+                            persist_user_id,
+                            persist_content_type,
+                        )
+
+                    completion_payload["id"] = artifact_id
+
                     # Round-trip through the typed schema so the wire
                     # payload matches ``StreamCompletionEvent`` exactly
                     # (catches typos in payload-building via Pydantic's

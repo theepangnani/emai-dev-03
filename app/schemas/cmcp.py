@@ -223,10 +223,28 @@ class GenerationPreview(BaseModel):
     paths. Once 1E-1 ships, the route will switch to a streaming
     response and this preview model becomes the body of a future
     ``POST /api/cmcp/generate/preview`` debug endpoint.
+
+    M3α prequel (#4575)
+    -------------------
+    The ``id`` field carries the inserted ``study_guides.id`` so the
+    M3 surface stripes (review queue, self-study, dispatcher, parent
+    companion fetch) can drive their flows from a returned artifact id
+    rather than re-querying. ``None`` is returned only when the INSERT
+    is skipped or fails — see the route-handler comments.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    id: int | None = Field(
+        default=None,
+        description=(
+            "Persisted ``study_guides.id`` for the generated artifact. "
+            "Populated by the M3α prequel (#4575) — the route inserts a "
+            "row carrying all M0/M1 stamped columns after preview "
+            "construction succeeds. ``None`` only when persistence is "
+            "skipped (legacy callers) or fails."
+        ),
+    )
     prompt: str = Field(..., description="Constructed system prompt.")
     se_codes_targeted: list[str] = Field(
         default_factory=list,
@@ -295,6 +313,14 @@ class StreamCompletionEvent(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    id: int | None = Field(
+        default=None,
+        description=(
+            "M3α prequel (#4575): persisted ``study_guides.id`` for the "
+            "streamed artifact. ``None`` only when persistence is skipped "
+            "or fails — best-effort, the completion frame ships either way."
+        ),
+    )
     se_codes_targeted: list[str] = Field(
         default_factory=list,
         description="Ordered list of SE ministry codes anchored in the prompt.",
@@ -346,5 +372,36 @@ class StreamCompletionEvent(BaseModel):
             "1D-3 (#4494): True when ``alignment_score < REVIEW_THRESHOLD`` "
             "per the 1D-2 pipeline. False when the validator was skipped or "
             "the score cleared the review threshold."
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# M3α prequel (#4575) — GET /api/cmcp/artifacts/{id}/parent-companion response
+# ---------------------------------------------------------------------------
+
+
+class ParentCompanionArtifactResponse(BaseModel):
+    """Response body for ``GET /api/cmcp/artifacts/{id}/parent-companion``.
+
+    Wraps the persisted artifact's parent companion content + the
+    artifact id so callers can correlate. The route returns 422 when
+    the requested artifact's ``requested_persona != 'parent'`` (the
+    artifact is not a parent-persona artifact). ``content`` is the
+    5-section ``ParentCompanionContent`` deserialized from the row's
+    ``parent_summary`` JSON, or a minimal stub when no auto-emitted
+    parent companion exists yet (M1 sync route doesn't run the AI).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    artifact_id: int = Field(..., description="``study_guides.id``.")
+    content: ParentCompanionContent = Field(
+        ...,
+        description=(
+            "5-section parent companion content. Sourced from the row's "
+            "``parent_summary`` JSON when populated by the M1-F 1F-3 "
+            "auto-emit; otherwise a minimal stub built from the artifact "
+            "row so the page can render a degraded but well-typed view."
         ),
     )

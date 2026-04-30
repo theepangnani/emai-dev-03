@@ -104,14 +104,10 @@ const ActivityHistoryPage = lazyRetry(() => import('./pages/parent/ActivityHisto
 const ReportCardAnalysis = lazyRetry(() => import('./pages/parent/ReportCardAnalysis').then((m) => ({ default: m.ReportCardAnalysis })));
 const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage').then((m) => ({ default: m.EmailDigestPage })));
 // CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion 5-section render page; PARENT-only.
-// TODO(M3, #4531): Lazy import + route registration intentionally removed
-// from App.tsx until M3 lands `content_artifacts` persistence and a real
-// `GET /api/cmcp/artifacts/{artifact_id}/parent-companion` endpoint. M1
-// only ships parent_companion content inline on the SSE completion event,
-// so the page's data fetch would 404 in production. The page module +
-// API client (`cmcpParentCompanion.ts`) are kept on disk and unit-tested
-// with mocks so M3 can re-enable by adding the lazy import + <Route> back.
-// const ParentCompanionPage = lazyRetry(() => import('./pages/parent/ParentCompanionPage').then((m) => ({ default: m.ParentCompanionPage })));
+// M3α prequel (#4575): Re-enabled — the GET /api/cmcp/artifacts/{id}/parent-companion
+// endpoint now exists and returns the persisted parent companion content
+// (or a minimal stub for sync-route artifacts where M1 doesn't run AI).
+const ParentCompanionPage = lazyRetry(() => import('./pages/parent/ParentCompanionPage').then((m) => ({ default: m.ParentCompanionPage })));
 const GmailOAuthCallbackPage = lazyRetry(() => import('./pages/GmailOAuthCallbackPage').then((m) => ({ default: m.GmailOAuthCallbackPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
@@ -141,6 +137,8 @@ const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((
 const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeedsConsentPage').then((m) => ({ default: m.CheckinNeedsConsentPage })));
 // CB-CMCP-001 M0-B 0B-3b (#4429) — curriculum-admin review page; gated to CURRICULUM_ADMIN role + cmcp.enabled flag.
 const CEGReviewPage = lazyRetry(() => import('./pages/admin/CEGReviewPage').then((m) => ({ default: m.CEGReviewPage })));
+// CB-CMCP-001 M3-A 3A-2 (#4582) — teacher review queue page; gated to TEACHER + ADMIN + cmcp.enabled flag.
+const TeacherReviewQueuePage = lazyRetry(() => import('./pages/teacher/ReviewQueuePage').then((m) => ({ default: m.ReviewQueuePage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -259,12 +257,7 @@ function App() {
                 }
               />
               {/* CB-CMCP-001 M1-F 1F-4 (#4498) — Parent Companion 5-section render. */}
-              {/* TODO(M3, #4531): Route gated until M3 ships content_artifacts
-                  persistence + GET /api/cmcp/artifacts/{id}/parent-companion.
-                  M1 only emits parent_companion inline on the SSE completion
-                  event, so the page's data fetch would 404 in production.
-                  Re-enable this <Route> once the GET endpoint exists. */}
-              {/*
+              {/* M3α prequel (#4575): Backend endpoint now exists; route re-enabled. */}
               <Route
                 path="/parent/companion/:artifact_id"
                 element={
@@ -273,7 +266,6 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              */}
               <Route
                 path="/analytics"
                 element={
@@ -468,6 +460,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TeacherCommsPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3-A 3A-2 (#4582) — teacher review queue. */}
+              <Route
+                path="/teacher/review"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherReviewQueuePage />
                   </ProtectedRoute>
                 }
               />

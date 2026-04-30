@@ -76,6 +76,16 @@ class StudyGuide(Base):
     class_context_envelope_summary = Column(_CMCPJSONType, nullable=True)  # captured envelope (M1-B)
     requested_persona = Column(String(20), nullable=True)  # student | parent | teacher | admin
 
+    # CB-CMCP-001 M3-A 3A-1 (#4576) — Teacher Review Queue review-state metadata.
+    # ``edit_history`` is an append-only JSON array; each entry shape:
+    #   {"editor_id": int, "edit_at": "<ISO-8601 UTC>",
+    #    "before_snippet": str, "after_snippet": str}
+    # ``rejection_reason`` is required when state transitions to REJECTED.
+    edit_history = Column(_CMCPJSONType, nullable=True)
+    reviewed_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     archived_at = Column(DateTime(timezone=True), nullable=True)
 

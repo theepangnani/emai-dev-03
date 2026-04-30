@@ -97,11 +97,15 @@ def teacher_record(db_session, teacher_user):
 
 
 @pytest.fixture()
-def course_with_materials(db_session, teacher_record):
+def course_with_materials(db_session, teacher_record, teacher_user):
     """A course with one CourseContent row + one CourseAnnouncement row.
 
     Both inputs are course-level, no per-student fields — preserves the
     1B-2 privacy invariant transitively.
+
+    ``created_by_user_id=teacher_user.id`` is required by M3α 3B-1's
+    ``validate_class_distribution_authority`` guard — without it, the
+    teacher requestor cannot class-distribute and the route returns 403.
     """
     from app.models.course import Course
     from app.models.course_announcement import CourseAnnouncement
@@ -111,6 +115,7 @@ def course_with_materials(db_session, teacher_record):
         name="Envelope Test Math",
         subject="Math",
         teacher_id=teacher_record.id,
+        created_by_user_id=teacher_user.id,
         google_classroom_id=f"gc-env-{uuid4().hex[:8]}",
     )
     db_session.add(course)

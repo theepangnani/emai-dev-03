@@ -46,6 +46,9 @@ from app.api.routes import curriculum  # CB-CMCP-001 M0-B 0B-1 (#4415)
 from app.api.routes import ceg_admin_review  # CB-CMCP-001 M0-B 0B-3a (#4428)
 from app.api.routes import cmcp_generate  # CB-CMCP-001 M1-A 1A-2 (#4471)
 from app.api.routes import cmcp_generate_stream  # CB-CMCP-001 M1-E 1E-1 (#4481)
+from app.api.routes import cmcp_review  # CB-CMCP-001 M3-A 3A-1 (#4576)
+from app.api.routes import cmcp_surface_click  # CB-CMCP-001 M3-C 3C-5 (#4581)
+from app.api.routes import bridge_cmcp  # CB-CMCP-001 M3-C 3C-4 (#4587)
 from app.mcp.routes import router as mcp_router  # CB-CMCP-001 M2-A 2A-2 (#4550)
 
 # Initialize logging first (auto-determines level based on environment)
@@ -1310,6 +1313,80 @@ finally:
         _cmcp_sg_lock_conn.close()
 
 
+# CB-CMCP-001 M3-A 3A-1 (#4576) — Teacher Review Queue review-state columns.
+# Adds ``edit_history`` (JSONB on PG / JSON on SQLite — append-only edit log),
+# ``reviewed_by_user_id``, ``reviewed_at``, and ``rejection_reason``. All four
+# columns are nullable so legacy ``study_guides`` rows continue to work.
+#
+# Idempotent. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries x 5s — see CLAUDE.md migration-locking section).
+_cmcp_review_q_lock_conn = None
+_cmcp_review_q_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _cmcp_review_q_time
+        _cmcp_review_q_lock_conn = engine.connect()
+        for _cmcp_review_q_attempt in range(1, 4):
+            _cmcp_review_q_result = _cmcp_review_q_lock_conn.execute(text("SELECT pg_try_advisory_lock(4576)"))
+            _cmcp_review_q_lock_acquired = _cmcp_review_q_result.scalar()
+            if _cmcp_review_q_lock_acquired:
+                logger.info("Acquired advisory lock 4576 for study_guides review-queue migration (attempt %d)", _cmcp_review_q_attempt)
+                break
+            logger.warning("Advisory lock 4576 held by another instance (attempt %d/3), retrying in 5s...", _cmcp_review_q_attempt)
+            _cmcp_review_q_time.sleep(5)
+        if not _cmcp_review_q_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4576 after 3 attempts — running study_guides review-queue migration without lock")
+
+    _cmcp_review_q_cols_pg = [
+        ("edit_history", "JSONB"),
+        ("reviewed_by_user_id", "INTEGER"),
+        ("reviewed_at", "TIMESTAMPTZ"),
+        ("rejection_reason", "TEXT"),
+    ]
+    _cmcp_review_q_cols_sqlite = [
+        ("edit_history", "JSON"),
+        ("reviewed_by_user_id", "INTEGER"),
+        ("reviewed_at", "DATETIME"),
+        ("rejection_reason", "TEXT"),
+    ]
+    _cmcp_review_q_cols = _cmcp_review_q_cols_pg if _is_pg else _cmcp_review_q_cols_sqlite
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                for _col, _typ in _cmcp_review_q_cols:
+                    _conn.execute(text(
+                        f"ALTER TABLE study_guides ADD COLUMN IF NOT EXISTS {_col} {_typ}"
+                    ))
+            else:
+                _existing = {
+                    row[1]
+                    for row in _conn.execute(text("PRAGMA table_info(study_guides)")).fetchall()
+                }
+                for _col, _typ in _cmcp_review_q_cols:
+                    if _col in _existing:
+                        continue
+                    _conn.execute(text(
+                        f"ALTER TABLE study_guides ADD COLUMN {_col} {_typ}"
+                    ))
+            _conn.commit()
+            logger.info("study_guides review-queue migration completed (#4576)")
+        except Exception as _cmcp_review_q_col_err:
+            _conn.rollback()
+            logger.warning("study_guides review-queue migration note: %s", _cmcp_review_q_col_err)
+except Exception as _cmcp_review_q_err:
+    logger.warning("study_guides review-queue migration outer note: %s", _cmcp_review_q_err)
+finally:
+    if _cmcp_review_q_lock_conn is not None:
+        if _cmcp_review_q_lock_acquired:
+            try:
+                _cmcp_review_q_lock_conn.execute(text("SELECT pg_advisory_unlock(4576)"))
+                _cmcp_review_q_lock_conn.commit()
+            except Exception:
+                pass
+        _cmcp_review_q_lock_conn.close()
+
+
 # CB-CMCP-001 0B-3a (#4428) — extend ceg_expectations with curriculum-admin
 # review workflow columns: review_state, reviewed_by_user_id, reviewed_at,
 # review_notes, updated_at. Default ``review_state='accepted'`` so any
@@ -1470,6 +1547,104 @@ finally:
             except Exception:
                 pass
         _ur_widen_lock_conn.close()
+
+
+# CB-CMCP-001 M3-C 3C-1 (#4586) — Surface dispatcher audit table.
+# Creates ``cmcp_surface_dispatches`` (one row per artifact + surface +
+# (parent_id, kid_id) tuple). ``Base.metadata.create_all`` already
+# handles SQLite test/dev environments; the explicit CREATE keeps PG
+# Cloud Run cold starts self-describing under a single advisory-lock
+# boundary. Wrapped in try/except so startup never blocks.
+#
+# Idempotent. Wrapped in pg_try_advisory_lock for Cloud Run safety
+# (3 retries x 5s — see CLAUDE.md migration-locking section).
+_cmcp_sd_lock_conn = None
+_cmcp_sd_lock_acquired = False
+try:
+    if _is_pg:
+        import time as _cmcp_sd_time
+        _cmcp_sd_lock_conn = engine.connect()
+        for _cmcp_sd_attempt in range(1, 4):
+            _cmcp_sd_result = _cmcp_sd_lock_conn.execute(text("SELECT pg_try_advisory_lock(4586)"))
+            _cmcp_sd_lock_acquired = _cmcp_sd_result.scalar()
+            if _cmcp_sd_lock_acquired:
+                logger.info("Acquired advisory lock 4586 for cmcp_surface_dispatches migration (attempt %d)", _cmcp_sd_attempt)
+                break
+            logger.warning("Advisory lock 4586 held by another instance (attempt %d/3), retrying in 5s...", _cmcp_sd_attempt)
+            _cmcp_sd_time.sleep(5)
+        if not _cmcp_sd_lock_acquired:
+            logger.warning("Could not acquire advisory lock 4586 after 3 attempts — running cmcp_surface_dispatches migration without lock")
+
+    with engine.connect() as _conn:
+        try:
+            if _is_pg:
+                _conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS cmcp_surface_dispatches (
+                        id SERIAL PRIMARY KEY,
+                        artifact_id INTEGER NOT NULL,
+                        surface VARCHAR(16) NOT NULL,
+                        parent_id INTEGER NULL,
+                        kid_id INTEGER NULL,
+                        status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                        attempts INTEGER NOT NULL DEFAULT 1,
+                        last_error VARCHAR(500) NULL,
+                        dispatched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        CONSTRAINT uq_cmcp_surface_dispatch_tuple
+                            UNIQUE (artifact_id, surface, parent_id, kid_id)
+                    )
+                """))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_artifact_id "
+                    "ON cmcp_surface_dispatches(artifact_id)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_surface "
+                    "ON cmcp_surface_dispatches(surface)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatches_parent_id "
+                    "ON cmcp_surface_dispatches(parent_id)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatch_artifact_surface "
+                    "ON cmcp_surface_dispatches(artifact_id, surface)"
+                ))
+                _conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_cmcp_surface_dispatch_parent_surface "
+                    "ON cmcp_surface_dispatches(parent_id, surface)"
+                ))
+            else:
+                _conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS cmcp_surface_dispatches (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        artifact_id INTEGER NOT NULL,
+                        surface VARCHAR(16) NOT NULL,
+                        parent_id INTEGER NULL,
+                        kid_id INTEGER NULL,
+                        status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                        attempts INTEGER NOT NULL DEFAULT 1,
+                        last_error VARCHAR(500) NULL,
+                        dispatched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        CONSTRAINT uq_cmcp_surface_dispatch_tuple
+                            UNIQUE (artifact_id, surface, parent_id, kid_id)
+                    )
+                """))
+            _conn.commit()
+            logger.info("cmcp_surface_dispatches migration completed (#4586)")
+        except Exception as _cmcp_sd_col_err:
+            _conn.rollback()
+            logger.warning("cmcp_surface_dispatches migration note: %s", _cmcp_sd_col_err)
+except Exception as _cmcp_sd_err:
+    logger.warning("cmcp_surface_dispatches migration outer note: %s", _cmcp_sd_err)
+finally:
+    if _cmcp_sd_lock_conn is not None:
+        if _cmcp_sd_lock_acquired:
+            try:
+                _cmcp_sd_lock_conn.execute(text("SELECT pg_advisory_unlock(4586)"))
+                _cmcp_sd_lock_conn.commit()
+            except Exception:
+                pass
+        _cmcp_sd_lock_conn.close()
 
 
 # Lightweight schema migration: extracted to app/db/migrations.py (#2824)
@@ -1721,6 +1896,9 @@ app.include_router(curriculum.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-1 (#
 app.include_router(ceg_admin_review.router, prefix="/api")  # CB-CMCP-001 M0-B 0B-3a (#4428)
 app.include_router(cmcp_generate.router, prefix="/api")  # CB-CMCP-001 M1-A 1A-2 (#4471)
 app.include_router(cmcp_generate_stream.router, prefix="/api")  # CB-CMCP-001 M1-E 1E-1 (#4481)
+app.include_router(cmcp_review.router, prefix="/api")  # CB-CMCP-001 M3-A 3A-1 (#4576)
+app.include_router(cmcp_surface_click.router, prefix="/api")  # CB-CMCP-001 M3-C 3C-5 (#4581)
+app.include_router(bridge_cmcp.router, prefix="/api")  # CB-CMCP-001 M3-C 3C-4 (#4587)
 # CB-CMCP-001 M2-A 2A-2 (#4550): MCP transport router. Mounted at the
 # top-level /mcp prefix (not /api/mcp) so MCP clients can target the
 # canonical MCP path. Per-route guard ``require_mcp_enabled`` returns
