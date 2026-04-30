@@ -137,6 +137,8 @@ const ConsentScreen = lazyRetry(() => import('./pages/dci/ConsentScreen').then((
 const CheckinNeedsConsentPage = lazyRetry(() => import('./pages/dci/CheckinNeedsConsentPage').then((m) => ({ default: m.CheckinNeedsConsentPage })));
 // CB-CMCP-001 M0-B 0B-3b (#4429) — curriculum-admin review page; gated to CURRICULUM_ADMIN role + cmcp.enabled flag.
 const CEGReviewPage = lazyRetry(() => import('./pages/admin/CEGReviewPage').then((m) => ({ default: m.CEGReviewPage })));
+// CB-CMCP-001 M3-A 3A-2 (#4582) — teacher review queue page; gated to TEACHER + ADMIN + cmcp.enabled flag.
+const TeacherReviewQueuePage = lazyRetry(() => import('./pages/teacher/ReviewQueuePage').then((m) => ({ default: m.ReviewQueuePage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -458,6 +460,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TeacherCommsPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3-A 3A-2 (#4582) — teacher review queue. */}
+              <Route
+                path="/teacher/review"
+                element={
+                  <ProtectedRoute allowedRoles={['teacher', 'admin']}>
+                    <TeacherReviewQueuePage />
                   </ProtectedRoute>
                 }
               />
