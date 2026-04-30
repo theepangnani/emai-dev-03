@@ -12,7 +12,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getDashboard } from '../../../api/parentEmailDigest';
+import {
+  getDashboard,
+  listIntegrations,
+  triggerSync,
+} from '../../../api/parentEmailDigest';
 import { emit } from '../../../lib/telemetry';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -23,12 +27,20 @@ import { DashboardHeader } from './DashboardHeader';
 import { EmptyStates } from './EmptyStates';
 import type {
   DashboardResponse,
+  DayBucket,
   DrilldownItem,
   KidSection,
   UrgentItem,
 } from './types';
 
 const DASHBOARD_QUERY_KEY = ['parent', 'email-digest', 'dashboard'] as const;
+
+// Mon..Sun fallback labels — kept in lockstep with WeekGrid.WEEKDAY_FALLBACK.
+// Per WeekGrid contract, `kids[].days` is exactly Mon..Sun in order; we use
+// the column index for weekday derivation rather than `new Date(...)` to
+// avoid TZ-sensitive parsing (UTC-parsed ISO dates can land on the previous
+// weekday in negative-UTC locales).
+const WEEKDAY_FALLBACK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 export function DashboardView(): JSX.Element {
   const queryClient = useQueryClient();
@@ -47,20 +59,70 @@ export function DashboardView(): JSX.Element {
 
   // Adapt KidSection[] → KidWeekRow[] shape that <WeekGrid> expects.
   // (KidSection has `weekly_deadlines`; KidWeekRow uses `days` for the same data.)
+  // #4628: backend currently returns `{day, items}` only — derive `weekday`
+  // and `is_past` client-side so WeekGrid styles past days correctly.
+  // ISO date string comparison works because both `day` and `todayKey` are
+  // YYYY-MM-DD lexicographically sortable. `raw.day.slice(0, 10)` defends
+  // against shape drift if backend ever ships a full ISO datetime here.
   const weekGridKids = useMemo(() => {
     if (!data) return [];
+    const todayKey = new Date().toISOString().slice(0, 10);
     return data.kids.map((k: KidSection) => ({
       id: k.id,
       first_name: k.first_name,
-      days: k.weekly_deadlines,
+      days: k.weekly_deadlines.map((d, columnIndex) => {
+        // Defensive: types declare `weekday` + `is_past` required, but the
+        // backend ships `{day, items}` only today (#4628). Fill in client-side.
+        const raw = d as Partial<DayBucket> & Pick<DayBucket, 'day' | 'items'>;
+        // Use column index for the weekday fallback rather than parsing
+        // raw.day with `new Date(...)` — that's TZ-sensitive (UTC-parsed
+        // ISO dates can land on the previous weekday in negative-UTC
+        // locales). Per WeekGrid contract days[] is exactly Mon..Sun in
+        // order, so the index is the source of truth for the label.
+        const weekday =
+          raw.weekday && raw.weekday.trim()
+            ? raw.weekday
+            : (WEEKDAY_FALLBACK[columnIndex] ?? '');
+        const dayKey = raw.day.slice(0, 10);
+        const is_past =
+          typeof raw.is_past === 'boolean' ? raw.is_past : dayKey < todayKey;
+        return {
+          day: raw.day,
+          items: raw.items,
+          weekday,
+          is_past,
+        };
+      }),
     }));
   }, [data]);
 
   const closeModal = () => setSelectedItem(null);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     emit('dashboard.refresh_clicked');
-    refetch();
+    // #4629 / PRD §F4: refresh must pull Gmail before re-rendering the
+    // snapshot, otherwise we just re-read the same DB rows. Trigger a sync
+    // for every active (non-paused) integration first; sync failures must
+    // NOT block the refetch — fall back to whatever's already in the DB.
+    try {
+      const { data: integrations } = await listIntegrations();
+      const now = new Date();
+      const activeIntegrations = integrations.filter(
+        (i) =>
+          i.is_active && (!i.paused_until || new Date(i.paused_until) <= now),
+      );
+      await Promise.all(
+        activeIntegrations.map((i) =>
+          triggerSync(i.id).catch((err) => {
+            // Per-integration failure shouldn't take down the whole refresh.
+            console.warn('refresh: triggerSync failed', i.id, err);
+          }),
+        ),
+      );
+    } catch (e) {
+      console.warn('refresh: listIntegrations failed', e);
+    }
+    await refetch();
   };
 
   // TodaySection: (kid_id, item|null). null fires when "And N more →" CTA clicked.
