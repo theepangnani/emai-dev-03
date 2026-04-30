@@ -36,12 +36,15 @@
  *
  * Accessibility
  * -------------
- * - The input has an explicit ``aria-label``.
+ * - The input declares ``role="combobox"`` plus ``aria-label``,
+ *   ``aria-autocomplete="list"``, ``aria-expanded``, and ``aria-controls``
+ *   per the WAI-ARIA APG 1.2 combobox pattern (listbox below input).
  * - The suggestion list uses ``role="listbox"`` with ``role="option"``
- *   children, and the input announces ``aria-expanded`` + ``aria-controls``
- *   per the ARIA combobox pattern (1.2 simplified — listbox below input).
+ *   children.
  * - Each chip's remove button has an ``aria-label`` that includes the code
  *   so screen readers say "remove SE code A1.1" not just "remove".
+ * - The dropdown dismisses on blur (after a 150ms delay so a click on a
+ *   suggestion can fire first) so ``aria-expanded`` stays honest.
  *
  * Tokens / styling
  * ----------------
