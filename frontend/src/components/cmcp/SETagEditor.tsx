@@ -64,7 +64,10 @@ import {
 import './SETagEditor.css';
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 300;
-const MIN_QUERY_LENGTH = 1;
+// 2 chars is the standard combobox minimum (GitHub label search, Linear,
+// MUI Autocomplete). 1 char would explode the response for big subjects
+// (MATH covers G1-G8, hundreds of SE codes) and slow the dropdown render.
+const MIN_QUERY_LENGTH = 2;
 
 export interface SETagEditorProps {
   /** Current SE codes attached to the artifact. */
@@ -145,15 +148,20 @@ export function SETagEditor({
       return;
     }
 
+    // Stamp the latest scheduled query immediately so any in-flight
+    // promise compares against a stable, effect-scoped value rather than
+    // a value captured later inside the timer callback.
+    const myQuery = trimmedQuery;
+    latestQueryRef.current = myQuery;
+
     const timer = setTimeout(() => {
-      latestQueryRef.current = trimmedQuery;
       setIsLoading(true);
       setErrorMsg(null);
       curriculumApi
-        .searchExpectations(subjectCode!, trimmedQuery)
+        .searchExpectations(subjectCode!, myQuery)
         .then((resp) => {
           // Drop stale responses.
-          if (latestQueryRef.current !== trimmedQuery) return;
+          if (latestQueryRef.current !== myQuery) return;
           const rows = flattenStrandGroups(resp.strands);
           setSuggestions(rows);
           setShowDropdown(true);
@@ -161,7 +169,7 @@ export function SETagEditor({
           setIsLoading(false);
         })
         .catch((err: unknown) => {
-          if (latestQueryRef.current !== trimmedQuery) return;
+          if (latestQueryRef.current !== myQuery) return;
           // 404 from the search endpoint = "no curriculum data for that
           // subject" — render as an empty dropdown with a helper note
           // rather than a hard error.
@@ -295,7 +303,19 @@ export function SETagEditor({
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onBlur={() => {
+              // Defer slightly so a click/mousedown on a suggestion can
+              // fire its handler before we tear the dropdown down. The
+              // suggestions use onMouseDown + preventDefault, so this
+              // delay is the standard combobox idiom for blur-dismiss
+              // without losing the click.
+              setTimeout(() => {
+                setShowDropdown(false);
+                setActiveIndex(-1);
+              }, 150);
+            }}
             placeholder="Add SE code (e.g., A1.1)"
+            role="combobox"
             aria-label="Search and add SE code"
             aria-autocomplete="list"
             aria-expanded={showDropdown}

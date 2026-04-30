@@ -234,6 +234,26 @@ describe('SETagEditor', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('does NOT search on a single character (MIN_QUERY_LENGTH=2)', async () => {
+    const user = userEvent.setup();
+    mockSearchExpectations.mockResolvedValue(sampleResponse);
+
+    render(
+      <SETagEditor seCodes={[]} onChange={vi.fn()} subjectCode="MATH" />,
+    );
+    const input = screen.getByLabelText('Search and add SE code');
+    await user.type(input, 'a');
+    // Wait long enough that a debounced call would have fired.
+    await new Promise((r) => setTimeout(r, 500));
+    expect(mockSearchExpectations).not.toHaveBeenCalled();
+
+    // Adding a second character triggers the search.
+    await user.type(input, 'b');
+    await waitFor(() => {
+      expect(mockSearchExpectations).toHaveBeenCalledWith('MATH', 'ab');
+    });
+  });
+
   it('shows an error in the dropdown if the search request fails', async () => {
     const user = userEvent.setup();
     mockSearchExpectations.mockRejectedValue({
