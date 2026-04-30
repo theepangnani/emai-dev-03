@@ -375,10 +375,27 @@ def _resolve_recipients(
         ``(None, student.id)`` audit-only tuple so ops still see the
         dispatch landed (consumer endpoints treat ``parent_id=None``
         as not user-visible).
-      * Artifact owner is a non-student user (parent / teacher) →
-        return one ``(owner_user_id, None)`` tuple — the parent /
-        teacher is the recipient of their own self-generated
-        artifact.
+      * Artifact owner is a non-student user (parent / teacher) AND
+        the artifact has a ``course_id`` → enumerate ALL active
+        ``student_courses`` enrollments for that course, then for
+        each enrolled student enumerate ``parent_students`` →
+        yield one ``(parent_id, student.id)`` tuple per
+        (enrolled-student, linked-parent) pair. Co-parent fan-out
+        mirrors the Student-owned branch above. Includes one
+        ``(owner_user_id, None)`` tuple for the artifact owner so
+        the teacher/parent who authored the class-distributed
+        artifact still sees their own audit row (preserves the
+        legacy contract for the teacher's own surfaces).
+        See #4635 (CB-CMCP-001 M3α follow-up) for rationale: without
+        this fan-out, class-distributed APPROVED artifacts never
+        reach enrolled students' parents through the digest table —
+        the unified digest worker (CB-PEDI-002 V2) reads from
+        ``cmcp_surface_dispatches`` and finds zero parent rows for
+        a teacher-authored artifact under the M3α merged dispatcher.
+      * Artifact owner is a non-student user with NO ``course_id``
+        (parent-self generated, no class) → return one
+        ``(owner_user_id, None)`` tuple — the parent / teacher is
+        the recipient of their own self-generated artifact.
       * Artifact owner cannot be resolved → return one
         ``(None, None)`` audit-only tuple.
       * Any unexpected exception → return one ``(None, None)`` audit-
@@ -387,10 +404,13 @@ def _resolve_recipients(
 
     Returned list always has at least one tuple — every successful
     or failed dispatch must produce at least one audit row per
-    surface.
+    surface. Per-row visibility checks in the renderers (3C-2/3C-3)
+    still gate final delivery; the dispatcher's job is recipient
+    enumeration, not authorization.
     """
     try:
         # Lazy import — match the rest of the CMCP service layer.
+        from app.models.course import student_courses  # noqa: PLC0415
         from app.models.student import Student, parent_students  # noqa: PLC0415
         from app.models.study_guide import StudyGuide  # noqa: PLC0415
 
@@ -412,9 +432,51 @@ def _resolve_recipients(
             db.query(Student).filter(Student.user_id == owner_user_id).first()
         )
         if student is None:
-            # Artifact owner is not a student row — treat as parent-self
-            # generated; parent_id = owner user_id, no kid.
-            return [(owner_user_id, None)]
+            # Artifact owner is not a student row — teacher- or
+            # parent-authored. Two sub-cases.
+            course_id = getattr(artifact, "course_id", None)
+            if course_id is None:
+                # Parent-self / teacher-self generated, no class
+                # context → owner is the only recipient.
+                return [(owner_user_id, None)]
+
+            # Class-distributed artifact (#4635). Fan out to all
+            # enrolled students' linked parents. Single SQL join
+            # (student_courses ⋈ parent_students) keeps this O(1)
+            # query — one round-trip regardless of class size.
+            rows = (
+                db.query(
+                    parent_students.c.parent_id,
+                    student_courses.c.student_id,
+                )
+                .join(
+                    student_courses,
+                    student_courses.c.student_id
+                    == parent_students.c.student_id,
+                )
+                .filter(student_courses.c.course_id == course_id)
+                .order_by(
+                    student_courses.c.student_id.asc(),
+                    parent_students.c.parent_id.asc(),
+                )
+                .all()
+            )
+            # Owner audit row first, then dedupe (parent, kid)
+            # tuples in case the join surfaced duplicates (e.g.,
+            # legacy data with multiple parent_students rows for the
+            # same pair — uq constraint should prevent it but the
+            # dedup keeps the dispatcher tolerant).
+            recipients: list[tuple[int | None, int | None]] = [
+                (owner_user_id, None)
+            ]
+            seen: set[tuple[int, int]] = set()
+            for parent_id, student_id in rows:
+                key = (parent_id, student_id)
+                if key in seen:
+                    continue
+                seen.add(key)
+                recipients.append((parent_id, student_id))
+            return recipients
 
         # Iterate ALL linked parents. ``ORDER BY parent_id`` keeps the
         # iteration order deterministic (stable retry semantics +
@@ -566,6 +628,28 @@ def dispatch_artifact_to_surfaces(
             )
 
             if success:
+                # Success-after-retry honesty (#4633): the per-surface
+                # emitters hard-code ``attempts=1`` in their initial
+                # audit write because they have no view of the retry
+                # budget. When the call succeeds on attempt N>1, the
+                # row written on attempt N still says ``attempts=1`` —
+                # which silently hides flaky surfaces in the ops
+                # dashboard. Re-record here with the true ``attempts``
+                # so the audit column is honest. The unique tuple
+                # ``(artifact_id, surface, parent_id, kid_id)`` makes
+                # this an UPSERT — updates the row written by the
+                # emitter on its successful attempt, no duplicate row.
+                if attempts_used > 1:
+                    _record_dispatch(
+                        db,
+                        artifact_id=artifact_id,
+                        surface=surface,
+                        parent_id=parent_id,
+                        kid_id=kid_id,
+                        status="ok",
+                        attempts=attempts_used,
+                        last_error=None,
+                    )
                 elapsed_ms = max(
                     0,
                     int(

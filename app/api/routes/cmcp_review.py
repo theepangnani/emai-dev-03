@@ -59,6 +59,7 @@ from app.db.database import get_db
 from app.models.study_guide import StudyGuide
 from app.models.user import User, UserRole
 from app.schemas.cmcp import CMCPGenerateRequest
+from app.services.audit_service import log_action
 from app.services.cmcp.artifact_state import ArtifactState
 
 logger = logging.getLogger(__name__)
@@ -537,6 +538,9 @@ def patch_review_artifact(
             ),
         )
 
+    # Capture pre-mutation state for the audit row (#4631 — Bill 194).
+    previous_state = artifact.state
+
     before_snip = _snippet(artifact.content)
     after_snip = _snippet(payload.content)
 
@@ -567,6 +571,29 @@ def patch_review_artifact(
     artifact.content = payload.content
     artifact.edit_history = history
     db.add(artifact)
+    # Flush instead of commit so the audit-log INSERT below lands in the
+    # SAME outer transaction as the state mutation — matches the pattern
+    # in ``persist_cmcp_artifact`` (M3α 3B-1).
+    db.flush()
+
+    # M3α follow-up #4631 — Bill 194 audit trail for review state
+    # transitions. ``log_action`` uses a SAVEPOINT and is fail-soft, so a
+    # broken audit-log INSERT never breaks the edit. State is unchanged
+    # on PATCH so previous_state == new_state — kept for symmetry across
+    # the four review-verb audit rows.
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="cmcp.review.edited",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={
+            "previous_state": previous_state,
+            "new_state": artifact.state,
+            "edit_history_appended": True,
+            "history_len": len(history),
+        },
+    )
     db.commit()
     db.refresh(artifact)
 
@@ -616,10 +643,28 @@ def approve_review_artifact(
             ),
         )
 
+    # Capture pre-mutation state for the audit row (#4631 — Bill 194).
+    previous_state = artifact.state
+
     artifact.state = ArtifactState.APPROVED
     artifact.reviewed_by_user_id = current_user.id
     artifact.reviewed_at = datetime.now(timezone.utc)
     db.add(artifact)
+    # Flush so the audit row below joins this transaction.
+    db.flush()
+
+    # M3α follow-up #4631 — Bill 194 audit trail for the approve verdict.
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="cmcp.review.approved",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={
+            "previous_state": previous_state,
+            "new_state": artifact.state,
+        },
+    )
     db.commit()
     db.refresh(artifact)
 
@@ -678,11 +723,32 @@ def reject_review_artifact(
             ),
         )
 
+    # Capture pre-mutation state for the audit row (#4631 — Bill 194).
+    previous_state = artifact.state
+
     artifact.state = ArtifactState.REJECTED
     artifact.reviewed_by_user_id = current_user.id
     artifact.reviewed_at = datetime.now(timezone.utc)
     artifact.rejection_reason = payload.reason
     db.add(artifact)
+    # Flush so the audit row below joins this transaction.
+    db.flush()
+
+    # M3α follow-up #4631 — Bill 194 audit trail for the reject verdict.
+    # ``rejection_reason`` is captured on the audit row so compliance can
+    # see WHY the teacher rejected, not just THAT they rejected.
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="cmcp.review.rejected",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={
+            "previous_state": previous_state,
+            "new_state": artifact.state,
+            "rejection_reason": payload.reason,
+        },
+    )
     db.commit()
     db.refresh(artifact)
 
@@ -741,6 +807,12 @@ def regenerate_review_artifact(
     # mutate ``artifact.content`` below.
     before_snippet = _snippet(artifact.content)
 
+    # Capture pre-mutation state for the audit row (#4631 — Bill 194).
+    # Regenerate may be triggered from REJECTED or DRAFT (per
+    # ``_MUTABLE_REVIEW_STATES``); the resulting state is always
+    # PENDING_REVIEW, so this captures the actual state transition.
+    previous_state = artifact.state
+
     preview = generate_cmcp_preview_sync(
         payload=payload.request,
         current_user=current_user,
@@ -756,20 +828,42 @@ def regenerate_review_artifact(
     # update — leaking a fresh row is a soft cost, the artifact update
     # is the user-visible operation.
     if preview.id is not None and preview.id != artifact.id:
+        phantom_artifact_id = preview.id
+        cleanup_succeeded = False
         try:
             stale = (
                 db.query(StudyGuide)
-                .filter(StudyGuide.id == preview.id)
+                .filter(StudyGuide.id == phantom_artifact_id)
                 .first()
             )
             if stale is not None:
                 db.delete(stale)
                 db.flush()
+                # M3α IMP (#4634) — ``persist_cmcp_artifact`` already
+                # wrote a ``cmcp.artifact.created`` audit row pointing
+                # at the phantom id and committed it. Write a
+                # compensating audit entry here so the Bill 194 trail
+                # doesn't reference a deleted ``resource_id``.
+                # ``log_action`` is imported at module level (line 62);
+                # do NOT re-import locally — that shadows the binding
+                # and breaks the function-level audit row below in any
+                # code path that skips this branch.
+                log_action(
+                    db,
+                    user_id=current_user.id,
+                    action="cmcp.artifact.deleted_during_regenerate",
+                    resource_type="study_guide",
+                    resource_id=phantom_artifact_id,
+                    details={
+                        "replaces_artifact_id": artifact_id,
+                    },
+                )
+                cleanup_succeeded = True
         except Exception:
             logger.exception(
                 "cmcp.review.regenerate cleanup failed; leaking fresh row "
                 "id=%s — will be cleaned up by a future janitor",
-                preview.id,
+                phantom_artifact_id,
             )
             db.rollback()
             # Re-fetch the artifact since rollback detached it.
@@ -781,6 +875,29 @@ def regenerate_review_artifact(
             if artifact is None:
                 # Defensive — the row existed at the start of the
                 # request; vanishing mid-flight is a 500-class fault.
+                raise HTTPException(
+                    status_code=500,
+                    detail=(
+                        f"Artifact {artifact_id} disappeared during "
+                        f"regenerate cleanup"
+                    ),
+                )
+
+        # M3α IMP follow-up (#4643) — harden the delete+compensating-
+        # audit pair with an interim commit OUTSIDE the cleanup try-
+        # block. Inside the try, ``except Exception`` would swallow a
+        # commit failure + rollback the audit row, defeating #4639's
+        # guarantee. A commit failure here is a real 500 (the audit
+        # pair couldn't be hardened) and must propagate. The HTTPException
+        # raised post-commit is also outside the try so it propagates.
+        if cleanup_succeeded:
+            db.commit()
+            artifact = (
+                db.query(StudyGuide)
+                .filter(StudyGuide.id == artifact_id)
+                .first()
+            )
+            if artifact is None:
                 raise HTTPException(
                     status_code=500,
                     detail=(
@@ -824,6 +941,31 @@ def regenerate_review_artifact(
     artifact.reviewed_at = None
     artifact.rejection_reason = None
     db.add(artifact)
+    # Flush so the audit row below joins this transaction.
+    db.flush()
+
+    # M3α follow-up #4631 — Bill 194 audit trail for the regenerate verb.
+    # ``phantom_artifact_id`` is the id of the throw-away row that
+    # ``persist_cmcp_artifact`` inserts inside ``generate_cmcp_preview_sync``
+    # — captured even when its cleanup-delete happened so compliance can
+    # cross-reference the cmcp.artifact.created row in the audit table.
+    phantom_artifact_id = (
+        preview.id
+        if preview.id is not None and preview.id != artifact.id
+        else None
+    )
+    log_action(
+        db,
+        user_id=current_user.id,
+        action="cmcp.review.regenerated",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={
+            "previous_state": previous_state,
+            "new_state": artifact.state,
+            "phantom_artifact_id": phantom_artifact_id,
+        },
+    )
     db.commit()
     db.refresh(artifact)
 
