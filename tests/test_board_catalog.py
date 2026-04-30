@@ -742,21 +742,36 @@ def test_catalog_get_writes_audit_row(
     )
     assert resp.status_code == 200, resp.text
 
-    rows = (
-        db_session.query(AuditLog)
-        .filter(AuditLog.action == "cmcp.board.catalog_listed")
-        .filter(AuditLog.user_id == board_admin_tdsb.id)
-        .all()
-    )
-    assert len(rows) >= 1, "expected one cmcp.board.catalog_listed audit row"
-    latest = rows[-1]
-    assert latest.resource_type == "board_catalog"
-    details = json.loads(latest.details)
-    assert details["board_id"] == unique_board
-    assert details["page_size"] == 1
-    assert details["filters"]["subject_code"] == "MATH"
-    assert details["filters"]["content_type"] == "study_guide"
-    assert details["filters"]["state"] == "APPROVED"
+    # Force a fresh read so we see only committed rows. ``log_action``
+    # uses a SAVEPOINT and only flushes — without ``db.commit()`` in
+    # the handler, this query would return zero rows (the audit row
+    # would die with the request session). This is the regression net
+    # for the missing-commit class of bug.
+    from app.db.database import SessionLocal
+
+    fresh = SessionLocal()
+    try:
+        rows = (
+            fresh.query(AuditLog)
+            .filter(AuditLog.action == "cmcp.board.catalog_listed")
+            .filter(AuditLog.user_id == board_admin_tdsb.id)
+            .all()
+        )
+        assert len(rows) >= 1, (
+            "expected one cmcp.board.catalog_listed audit row "
+            "(visible from a fresh session — this verifies db.commit() ran)"
+        )
+        latest = rows[-1]
+        assert latest.resource_type == "board_catalog"
+        details = json.loads(latest.details)
+        assert details["board_id"] == unique_board
+        assert details["page_size"] == 1
+        assert details["role"] == "BOARD_ADMIN"
+        assert details["filters"]["subject_code"] == "MATH"
+        assert details["filters"]["content_type"] == "study_guide"
+        assert details["filters"]["state"] == "APPROVED"
+    finally:
+        fresh.close()
 
 
 def test_catalog_get_403_writes_no_audit_row(

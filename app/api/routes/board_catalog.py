@@ -345,6 +345,12 @@ def get_board_catalog(
     # trace who looked at what. ``resource_id`` is left None because
     # board_id is a string and the audit table's resource_id column is
     # Integer; the board_id is preserved in ``details`` instead.
+    #
+    # ``log_action`` uses a SAVEPOINT (``db.begin_nested``) and only
+    # flushes — the row is buffered until the outer transaction
+    # commits. ``get_db()`` does NOT auto-commit on close, so we
+    # explicitly commit here; without this, the audit row is silently
+    # dropped on session close. Same pattern as ``cmcp_review.py``.
     log_action(
         db,
         user_id=getattr(current_user, "id", None),
@@ -354,7 +360,12 @@ def get_board_catalog(
         details={
             "board_id": str(board_id),
             "page_size": len(artifacts_rows),
+            "role": getattr(
+                getattr(current_user, "role", None), "value", None
+            ),
             "filters": {
+                # ``state`` is a hardcoded invariant of this endpoint
+                # (APPROVED-only); echoed here for forensic clarity.
                 "subject_code": subject_code_norm,
                 "grade": grade,
                 "state": "APPROVED",
@@ -362,6 +373,7 @@ def get_board_catalog(
             },
         },
     )
+    db.commit()
 
     logger.info(
         "cmcp.board.catalog_listed board=%s user_id=%s role=%s page_size=%s passes=%s "
@@ -659,6 +671,9 @@ def export_board_catalog_csv(
     # ── Audit log (#4698 — Bill 194) ──────────────────────────────────
     # CSV export is the higher-risk surface (full APPROVED catalog
     # leaving the system as a file) so the audit trail is required.
+    # ``log_action`` flushes via SAVEPOINT but doesn't commit; ``get_db``
+    # never commits on its own — explicit commit required or the row
+    # is dropped on session close. Same pattern as ``cmcp_review.py``.
     log_action(
         db,
         user_id=getattr(current_user, "id", None),
@@ -670,8 +685,12 @@ def export_board_catalog_csv(
             "artifact_count": len(artifacts),
             "csv_bytes": len(csv_bytes),
             "gcs_path": gcs_path,
+            "role": getattr(
+                getattr(current_user, "role", None), "value", None
+            ),
         },
     )
+    db.commit()
 
     logger.info(
         "cmcp.board.catalog_exported board=%s user_id=%s artifacts=%s strands=%s "

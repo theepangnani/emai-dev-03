@@ -842,22 +842,36 @@ def test_export_writes_audit_row(
     )
     assert resp.status_code == 200, resp.text
 
-    rows = (
-        db_session.query(AuditLog)
-        .filter(AuditLog.action == "cmcp.board.catalog_exported")
-        .filter(AuditLog.user_id == board_admin_tdsb.id)
-        .all()
-    )
-    assert len(rows) >= 1
-    latest = rows[-1]
-    assert latest.resource_type == "board_catalog"
-    details = json.loads(latest.details)
-    assert details["board_id"] == unique_board
-    assert details["artifact_count"] == 1
-    assert details["csv_bytes"] > 0
-    assert details["gcs_path"].startswith(
-        f"cmcp/board_catalog_exports/{unique_board}/"
-    )
+    # Fresh session — only committed rows visible. ``log_action``
+    # SAVEPOINT-flushes; without an explicit ``db.commit()`` in the
+    # handler, the row would die on session close. This catches the
+    # missing-commit regression class.
+    from app.db.database import SessionLocal
+
+    fresh = SessionLocal()
+    try:
+        rows = (
+            fresh.query(AuditLog)
+            .filter(AuditLog.action == "cmcp.board.catalog_exported")
+            .filter(AuditLog.user_id == board_admin_tdsb.id)
+            .all()
+        )
+        assert len(rows) >= 1, (
+            "expected cmcp.board.catalog_exported audit row "
+            "(visible from a fresh session — verifies db.commit() ran)"
+        )
+        latest = rows[-1]
+        assert latest.resource_type == "board_catalog"
+        details = json.loads(latest.details)
+        assert details["board_id"] == unique_board
+        assert details["artifact_count"] == 1
+        assert details["csv_bytes"] > 0
+        assert details["gcs_path"].startswith(
+            f"cmcp/board_catalog_exports/{unique_board}/"
+        )
+        assert details["role"] == "BOARD_ADMIN"
+    finally:
+        fresh.close()
 
 
 def test_export_403_writes_no_audit_row(
