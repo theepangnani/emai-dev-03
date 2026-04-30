@@ -9,7 +9,7 @@ import logging
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 import requests as _requests
@@ -35,6 +35,7 @@ from app.models.parent_gmail_integration import (
     ParentDiscoveredSchoolEmail,
     SenderChildAssignment,
 )
+from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.parent_email_digest import (
     ParentGmailIntegrationResponse,
@@ -1559,7 +1560,11 @@ def _build_kid_view(
 @limiter.limit("60/minute", key_func=get_user_id_or_ip)
 def get_email_digest_dashboard(
     request: Request,
-    since: str = Query(
+    # Pass-1 review I4: validate `since` as a Literal so unknown values
+    # return 422 rather than being silently accepted. Reserved for a
+    # future 'week' / ISO-date variant — extend the Literal at that
+    # point so existing clients keep working.
+    since: Literal["today"] = Query(
         "today",
         description=(
             "Time scope for the dashboard view. Currently only 'today' is "
@@ -1574,10 +1579,6 @@ def get_email_digest_dashboard(
     Read-only; safe to poll. Powers the post-login destination at
     ``/email-digest``. See ``docs/design/CB-EDIGEST-002-prd.md`` §F1-F6.
     """
-    from sqlalchemy.orm import selectinload as _selectinload
-
-    from app.models.task import Task
-
     now = datetime.now(timezone.utc)
     # Today window: full UTC day. The frontend renders in the parent's
     # timezone — backend keeps the contract simple (UTC + ISO dates).
@@ -1609,7 +1610,7 @@ def get_email_digest_dashboard(
     if assignee_ids:
         tasks = (
             db.query(Task)
-            .options(_selectinload(Task.course))
+            .options(selectinload(Task.course))
             .filter(
                 Task.assigned_to_user_id.in_(assignee_ids),
                 Task.is_completed == False,  # noqa: E712

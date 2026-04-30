@@ -1359,6 +1359,78 @@ class TestDashboard:
         assert len(alice["weekly_deadlines"]) >= 1
         assert all("day" in d and "items" in d for d in alice["weekly_deadlines"])
 
+    def test_dashboard_tie_break_preserves_creation_order(self, client, db_session):
+        """Pass-1 review I3: when two kids have equal urgent counts, the
+        secondary order MUST be ParentChildProfile.created_at ASC.
+
+        The implementation relies on Python's stable list.sort + the
+        primary `ORDER BY created_at ASC` from the profile query. This
+        test pins that contract so a future swap to an unstable comparator
+        surfaces as a regression.
+        """
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        # Profile creation order: Casey first, then Drew. Both get exactly
+        # 1 urgent task each → tie-break by creation order.
+        kid_c_user, _ = _make_kid(
+            db_session, parent, "Casey", "dashboard_kid_casey@test.com"
+        )
+        kid_d_user, _ = _make_kid(
+            db_session, parent, "Drew", "dashboard_kid_drew@test.com"
+        )
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="tiebreak@gmail.com",
+            google_id="gid_tb",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=1,
+                channels_used="in_app",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_c_user,
+            title="Casey — task A",
+            due_date=now + timedelta(hours=2),
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_d_user,
+            title="Drew — task A",
+            due_date=now + timedelta(hours=2),
+        )
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        kids = resp.json()["kids"]
+        assert [k["first_name"] for k in kids] == ["Casey", "Drew"]
+        assert all(len(k["urgent_items"]) == 1 for k in kids)
+
     def test_dashboard_rbac_403(self, client, db_session):
         """Non-parent role gets 403 from require_role(PARENT)."""
         # Use the existing teacher seed from the shared `setup` fixture's pool.
@@ -1383,6 +1455,16 @@ class TestDashboard:
         headers = _auth(client, non_parent_email)
         resp = client.get(f"{PREFIX}/dashboard", headers=headers)
         assert resp.status_code == 403
+
+    def test_dashboard_since_validation_rejects_unknown(self, client, db_session):
+        """Pass-1 review I4: `since` is a Literal["today"]; unknown values
+        must return 422 rather than being silently accepted."""
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard?since=tomorrow", headers=headers)
+        assert resp.status_code == 422, resp.text
 
     def test_dashboard_rate_limit_60(self, client, db_session, app):
         """61st call within the same minute trips the 60/min limiter."""
