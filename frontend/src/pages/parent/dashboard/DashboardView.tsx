@@ -35,6 +35,13 @@ import type {
 
 const DASHBOARD_QUERY_KEY = ['parent', 'email-digest', 'dashboard'] as const;
 
+// Mon..Sun fallback labels — kept in lockstep with WeekGrid.WEEKDAY_FALLBACK.
+// Per WeekGrid contract, `kids[].days` is exactly Mon..Sun in order; we use
+// the column index for weekday derivation rather than `new Date(...)` to
+// avoid TZ-sensitive parsing (UTC-parsed ISO dates can land on the previous
+// weekday in negative-UTC locales).
+const WEEKDAY_FALLBACK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
+
 export function DashboardView(): JSX.Element {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -53,27 +60,32 @@ export function DashboardView(): JSX.Element {
   // Adapt KidSection[] → KidWeekRow[] shape that <WeekGrid> expects.
   // (KidSection has `weekly_deadlines`; KidWeekRow uses `days` for the same data.)
   // #4628: backend currently returns `{day, items}` only — derive `weekday`
-  // and `is_past` client-side so WeekGrid styles past days correctly. ISO
-  // date string comparison works because both `day` and `todayKey` are
-  // YYYY-MM-DD lexicographically sortable.
+  // and `is_past` client-side so WeekGrid styles past days correctly.
+  // ISO date string comparison works because both `day` and `todayKey` are
+  // YYYY-MM-DD lexicographically sortable. `raw.day.slice(0, 10)` defends
+  // against shape drift if backend ever ships a full ISO datetime here.
   const weekGridKids = useMemo(() => {
     if (!data) return [];
     const todayKey = new Date().toISOString().slice(0, 10);
     return data.kids.map((k: KidSection) => ({
       id: k.id,
       first_name: k.first_name,
-      days: k.weekly_deadlines.map((d) => {
+      days: k.weekly_deadlines.map((d, columnIndex) => {
         // Defensive: types declare `weekday` + `is_past` required, but the
         // backend ships `{day, items}` only today (#4628). Fill in client-side.
         const raw = d as Partial<DayBucket> & Pick<DayBucket, 'day' | 'items'>;
+        // Use column index for the weekday fallback rather than parsing
+        // raw.day with `new Date(...)` — that's TZ-sensitive (UTC-parsed
+        // ISO dates can land on the previous weekday in negative-UTC
+        // locales). Per WeekGrid contract days[] is exactly Mon..Sun in
+        // order, so the index is the source of truth for the label.
         const weekday =
           raw.weekday && raw.weekday.trim()
             ? raw.weekday
-            : new Date(raw.day + 'T00:00').toLocaleDateString('en-US', {
-                weekday: 'short',
-              });
+            : (WEEKDAY_FALLBACK[columnIndex] ?? '');
+        const dayKey = raw.day.slice(0, 10);
         const is_past =
-          typeof raw.is_past === 'boolean' ? raw.is_past : raw.day < todayKey;
+          typeof raw.is_past === 'boolean' ? raw.is_past : dayKey < todayKey;
         return {
           day: raw.day,
           items: raw.items,

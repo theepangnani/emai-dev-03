@@ -306,15 +306,18 @@ describe('DashboardView', () => {
 
       renderWithProviders(<DashboardView />);
 
+      // Single waitFor that re-evaluates the call list each poll so we don't
+      // freeze on a stale snapshot of weekGridSpy.mock.calls (mutation-test
+      // guard: a regression that ships an early empty render would otherwise
+      // silently lock up here instead of failing).
       await waitFor(() => {
-        expect(weekGridSpy).toHaveBeenCalled();
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
       });
 
-      // Take the most recent call (guards against early calls before data loads).
       const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
-      await waitFor(() => {
-        expect(lastCall.kids.length).toBeGreaterThan(0);
-      });
       const days = lastCall.kids[0].days;
       expect(days[0].is_past).toBe(true);
       expect(days[1].is_past).toBe(false);
@@ -329,10 +332,17 @@ describe('DashboardView', () => {
               first_name: 'Alex',
               urgent_items: [],
               weekly_deadlines: [
-                // 2020-01-01 was a Wednesday — stable across runs/locales
-                // when formatted as `toLocaleDateString('en-US', { weekday: 'short' })`.
+                // Per WeekGrid contract days[] is Mon..Sun in order. The
+                // orchestrator derives the weekday from the column index
+                // (TZ-stable) — so column 0 → Mon, column 1 → Tue, etc.
+                // The actual `day` value is irrelevant for the label test;
+                // only the index position matters.
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 { day: '2020-01-01', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-02', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-08', items: [] } as any,
               ],
               all_clear: false,
             },
@@ -343,15 +353,52 @@ describe('DashboardView', () => {
       renderWithProviders(<DashboardView />);
 
       await waitFor(() => {
-        expect(weekGridSpy).toHaveBeenCalled();
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
       });
 
       const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
-      await waitFor(() => {
-        expect(lastCall.kids.length).toBeGreaterThan(0);
-      });
       const days = lastCall.kids[0].days;
-      expect(days[0].weekday).toBe('Wed');
+      // Column-index → Mon..Sun fallback (matches WeekGrid.computeWeekdayLabel).
+      expect(days[0].weekday).toBe('Mon');
+      expect(days[1].weekday).toBe('Tue');
+      expect(days[2].weekday).toBe('Wed');
+    });
+
+    it('honors backend-provided weekday when present (does not overwrite)', async () => {
+      // If a future backend version starts shipping `weekday`, the
+      // orchestrator must pass it through unmodified.
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [], weekday: 'Tue' } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      const days = lastCall.kids[0].days;
+      expect(days[0].weekday).toBe('Tue'); // server value wins over column-index fallback
     });
   });
 
