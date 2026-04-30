@@ -1,0 +1,218 @@
+/* CB-EDIGEST-002 E3 (#4591) — WeekGrid styles. Bridge skin. */
+
+.weekgrid {
+  width: 100%;
+  font-family: inherit;
+  color: var(--bridge-ink, #1c1a16);
+}
+
+.weekgrid-empty {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--bridge-muted, #6b645b);
+  font-size: 0.9rem;
+  background: var(--bridge-paper, #fbf8f2);
+  border: 1px dashed var(--bridge-hair, #e5ddd1);
+  border-radius: 8px;
+}
+
+/* ---------- Desktop grid ---------- */
+
+.weekgrid-desktop {
+  display: grid;
+  grid-template-columns: minmax(80px, 100px) repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  background: var(--bridge-card, #fff);
+  border: 1px solid var(--bridge-hair, #e5ddd1);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.weekgrid-header {
+  display: contents;
+}
+
+.weekgrid-header-name {
+  /* Empty top-left cell */
+}
+
+.weekgrid-header-day {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bridge-muted, #6b645b);
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.weekgrid-row {
+  display: contents;
+}
+
+.weekgrid-row-name {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--bridge-ink, #1c1a16);
+  padding: 6px 8px;
+  border-right: 1px solid var(--bridge-hair, #e5ddd1);
+}
+
+.weekgrid-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 64px;
+  padding: 6px;
+  background: var(--bridge-paper, #fbf8f2);
+  border: 1px solid var(--bridge-hair, #e5ddd1);
+  border-radius: 6px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.weekgrid-cell:hover,
+.weekgrid-cell:focus-visible {
+  background: var(--bridge-rail, #ece4d6);
+  border-color: var(--bridge-rust, #b04a2c);
+  outline: none;
+}
+
+.weekgrid-cell-past {
+  opacity: 0.5;
+}
+
+.weekgrid-cell-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--bridge-rust, #b04a2c);
+  color: #fff;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+
+.weekgrid-cell-count-past {
+  text-decoration: line-through;
+  background: var(--bridge-muted, #6b645b);
+}
+
+.weekgrid-cell-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weekgrid-cell-item {
+  font-size: 0.78rem;
+  color: var(--bridge-ink-2, #3a3630);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekgrid-cell-overflow {
+  color: var(--bridge-muted, #6b645b);
+  font-style: italic;
+}
+
+.weekgrid-cell-empty {
+  color: var(--bridge-muted, #6b645b);
+  font-size: 0.9rem;
+  text-align: center;
+  align-self: center;
+  margin: auto;
+}
+
+/* ---------- Mobile vertical day-list ---------- */
+
+.weekgrid-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weekgrid-mobile-day {
+  background: var(--bridge-card, #fff);
+  border: 1px solid var(--bridge-hair, #e5ddd1);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.weekgrid-mobile-day-heading {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bridge-muted, #6b645b);
+}
+
+.weekgrid-mobile-kid-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weekgrid-mobile-kid {
+  margin: 0;
+}
+
+.weekgrid-mobile-kid-button {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bridge-paper, #fbf8f2);
+  border: 1px solid var(--bridge-hair, #e5ddd1);
+  border-radius: 8px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.weekgrid-mobile-kid-button:hover,
+.weekgrid-mobile-kid-button:focus-visible {
+  border-color: var(--bridge-rust, #b04a2c);
+  outline: none;
+}
+
+.weekgrid-mobile-kid-button-past {
+  opacity: 0.5;
+}
+
+.weekgrid-mobile-kid-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-right: 4px;
+}
+
+@media (max-width: 767px) {
+  .weekgrid-desktop {
+    /* Desktop layout is suppressed at <768px because the component
+       switches to .weekgrid-mobile via JS, but provide a sane
+       fallback in case JS is delayed. */
+    grid-template-columns: 1fr;
+  }
+}

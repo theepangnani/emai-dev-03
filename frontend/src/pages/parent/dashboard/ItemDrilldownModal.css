@@ -1,0 +1,213 @@
+/* Stripe E4 (CB-EDIGEST-002) — ItemDrilldownModal styles.
+ * Builds on the shared `.modal-overlay` / `.modal` rules in Dashboard.css.
+ * Only the inside-modal layout + actions are scoped here. */
+
+.idm-modal {
+  max-width: 640px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.idm-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-md, 16px);
+  padding: var(--space-lg, 20px) var(--space-lg, 20px) var(--space-md, 16px);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.idm-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs, 6px);
+  min-width: 0;
+}
+
+.idm-title {
+  font-size: 1.125rem;
+  line-height: 1.35;
+  margin: 0;
+  word-break: break-word;
+}
+
+.idm-due-pill {
+  display: inline-block;
+  width: max-content;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--color-primary-soft, #e0f2fe);
+  color: var(--color-primary-strong, #0369a1);
+}
+
+.idm-close {
+  background: transparent;
+  border: 0;
+  padding: 4px 10px;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--color-text-secondary, #6b7280);
+  border-radius: 6px;
+}
+
+.idm-close:hover:not(:disabled) {
+  background: var(--color-surface-muted, #f3f4f6);
+  color: var(--color-text, #111827);
+}
+
+.idm-close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.idm-body {
+  padding: var(--space-md, 16px) var(--space-lg, 20px) var(--space-lg, 20px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md, 16px);
+}
+
+.idm-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm, 10px);
+}
+
+.idm-section-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.idm-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.idm-meta-row {
+  display: contents;
+}
+
+.idm-meta dt {
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.idm-meta dd {
+  margin: 0;
+  color: var(--color-text, #111827);
+  word-break: break-word;
+}
+
+.idm-email-body {
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: var(--space-md, 14px);
+  background: var(--color-surface-muted, #f9fafb);
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.idm-email-body--loading {
+  color: var(--color-text-secondary, #6b7280);
+  font-style: italic;
+}
+
+.idm-email-empty,
+.idm-email-error {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #6b7280);
+  margin: 0;
+}
+
+.idm-error {
+  background: var(--color-danger-soft, #fee2e2);
+  color: var(--color-danger-strong, #991b1b);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.idm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm, 8px);
+  justify-content: flex-end;
+  padding-top: var(--space-sm, 8px);
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.idm-btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--color-surface, #ffffff);
+  color: var(--color-text, #111827);
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+
+.idm-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.idm-btn--primary {
+  background: var(--color-primary, #2563eb);
+  color: #ffffff;
+  border-color: var(--color-primary, #2563eb);
+}
+
+.idm-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-strong, #1d4ed8);
+}
+
+.idm-btn--secondary {
+  background: var(--color-surface, #ffffff);
+  border-color: var(--color-border, #d1d5db);
+  color: var(--color-text, #111827);
+}
+
+.idm-btn--secondary:hover:not(:disabled) {
+  background: var(--color-surface-muted, #f3f4f6);
+}
+
+.idm-btn--tertiary {
+  background: transparent;
+  color: var(--color-text-secondary, #6b7280);
+  border-color: transparent;
+}
+
+.idm-btn--tertiary:hover:not(:disabled) {
+  background: var(--color-surface-muted, #f3f4f6);
+  color: var(--color-text, #111827);
+}
+
+@media (max-width: 640px) {
+  .idm-modal {
+    max-width: none;
+  }
+
+  .idm-actions {
+    justify-content: stretch;
+  }
+
+  .idm-actions .idm-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+}

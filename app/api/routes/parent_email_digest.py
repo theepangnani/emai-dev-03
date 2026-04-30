@@ -9,8 +9,9 @@ import logging
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests as _requests
 from jose import jwt, JWTError
@@ -35,6 +36,7 @@ from app.models.parent_gmail_integration import (
     ParentDiscoveredSchoolEmail,
     SenderChildAssignment,
 )
+from app.models.task import Task
 from app.models.user import User, UserRole
 from app.schemas.parent_email_digest import (
     ParentGmailIntegrationResponse,
@@ -56,6 +58,10 @@ from app.schemas.parent_email_digest import (
     DiscoveredSchoolEmailResponse,
     DiscoveredAssignBody,
     DiscoveredAssignResponse,
+    DashboardResponse,
+    DashboardKidView,
+    DashboardUrgentItem,
+    DashboardWeeklyDay,
 )
 from app.core.encryption import encrypt_token
 from app.services.gmail_oauth_service import get_gmail_auth_url, exchange_gmail_code
@@ -1403,6 +1409,321 @@ def dismiss_discovered_school_email(
         raise HTTPException(status_code=404, detail="Discovered email not found")
     db.delete(discovery)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Email Digest Dashboard (CB-EDIGEST-002 E1, #4589)
+#
+# Single aggregated read-only endpoint powering the parent dashboard at
+# `/email-digest`. Combines:
+#   - per-kid urgent items (Tasks due today or overdue, not completed)
+#   - per-kid weekly deadlines (Mon-Sun grid for the current week)
+#   - empty-state sentinels (no_kids / paused / auth_expired / first_run / calm)
+#   - last_digest_at + refreshed_at timestamps
+#
+# Designed for high polling frequency (60/min) — no AI calls, no Gmail
+# fetches; reads only from existing tables.
+# ---------------------------------------------------------------------------
+
+
+def _dashboard_empty_state(
+    db: Session,
+    *,
+    parent_id: int,
+    profile_count: int,
+    integrations: list[ParentGmailIntegration],
+    now: datetime,
+    has_any_urgent: bool,
+) -> Optional[str]:
+    """Resolve the dashboard's empty_state per the priority list.
+
+    Priority order (first match wins):
+      1. ``no_kids`` — 0 ParentChildProfile rows for the parent.
+      2. ``paused`` — every integration is inactive OR currently paused.
+      3. ``auth_expired`` — reserved sentinel (no token-failure column exists
+         yet on ParentGmailIntegration; we never return this today). Filed as
+         a follow-up so the contract is stable while detection lands.
+      4. ``first_run`` — no DigestDeliveryLog row has ever been written for
+         this parent.
+      5. ``calm`` — kids exist but none have urgent items today.
+      6. ``None`` — normal content renders.
+    """
+    if profile_count == 0:
+        return "no_kids"
+
+    # Treat an integration as "paused" if either (a) it has been deactivated
+    # (is_active=False) or (b) paused_until is set and still in the future.
+    if integrations:
+        all_paused = True
+        for integ in integrations:
+            if not integ.is_active:
+                continue
+            paused_until = integ.paused_until
+            if paused_until is not None:
+                # Tolerate naive datetimes from SQLite by promoting to UTC.
+                if paused_until.tzinfo is None:
+                    paused_until = paused_until.replace(tzinfo=timezone.utc)
+                if paused_until > now:
+                    continue
+            all_paused = False
+            break
+        if all_paused:
+            return "paused"
+    else:
+        # No integrations at all is treated as paused — the dashboard cannot
+        # surface fresh data without at least one connected mailbox.
+        return "paused"
+
+    # auth_expired detection is intentionally a no-op until a failure column
+    # exists on ParentGmailIntegration. See follow-up on the PR for tracking.
+
+    has_log = (
+        db.query(DigestDeliveryLog.id)
+        .filter(DigestDeliveryLog.parent_id == parent_id)
+        .first()
+        is not None
+    )
+    if not has_log:
+        return "first_run"
+
+    if not has_any_urgent:
+        return "calm"
+
+    return None
+
+
+def _build_kid_view(
+    *,
+    profile: ParentChildProfile,
+    tasks_for_kid: list,
+    today_end_utc: datetime,
+    week_start_utc: datetime,
+    week_end_utc: datetime,
+    parent_tz: ZoneInfo,
+) -> DashboardKidView:
+    """Shape a kid's tasks into the dashboard's per-kid response payload.
+
+    `tasks_for_kid` must already be filtered to the kid's assignee_id and
+    pre-loaded with the ``course`` relationship. The function does NO DB
+    work — partitions tasks by today vs. week and builds the day buckets.
+
+    ``parent_tz`` is used to compute the day-bucket key in the parent's
+    local zone so a task due 9 PM EDT on the 30th doesn't bucket into
+    "May 1" because the UTC date has already rolled (#4630).
+    """
+    urgent_items: list[DashboardUrgentItem] = []
+    week_buckets: dict[str, list[DashboardUrgentItem]] = {}
+
+    for task in tasks_for_kid:
+        due = task.due_date
+        if due is None:
+            # Tasks without a due date can't be scheduled into today/week.
+            continue
+        if due.tzinfo is None:
+            due_utc = due.replace(tzinfo=timezone.utc)
+        else:
+            due_utc = due.astimezone(timezone.utc)
+
+        item = DashboardUrgentItem(
+            id=str(task.id),
+            title=task.title,
+            due_date=due_utc,
+            course_or_context=(task.course.name if task.course else task.category),
+            source_email_id=task.source_message_id,
+        )
+
+        # Urgent = due today or overdue (and still open — caller filters
+        # is_completed/archived_at upstream).
+        if due_utc <= today_end_utc:
+            urgent_items.append(item)
+
+        # Weekly bucket: the calendar day key is computed in the parent's
+        # local timezone so it lines up with the date the parent sees on
+        # their calendar (#4630). The response stays timezone-stable
+        # because each ``due_date`` is still emitted in UTC.
+        if week_start_utc <= due_utc <= week_end_utc:
+            day_key = due_utc.astimezone(parent_tz).date().isoformat()
+            week_buckets.setdefault(day_key, []).append(item)
+
+    # Stable ordering inside each bucket: earliest due first, then title.
+    urgent_items.sort(key=lambda i: (i.due_date or today_end_utc, i.title))
+    weekly_deadlines = [
+        DashboardWeeklyDay(
+            day=day,
+            items=sorted(items, key=lambda i: (i.due_date or today_end_utc, i.title)),
+        )
+        for day, items in sorted(week_buckets.items())
+    ]
+
+    return DashboardKidView(
+        id=profile.id,
+        first_name=profile.first_name,
+        urgent_items=urgent_items,
+        weekly_deadlines=weekly_deadlines,
+        all_clear=(len(urgent_items) == 0),
+    )
+
+
+@router.get("/dashboard", response_model=DashboardResponse)
+@limiter.limit("60/minute", key_func=get_user_id_or_ip)
+def get_email_digest_dashboard(
+    request: Request,
+    # Pass-1 review I4: validate `since` as a Literal so unknown values
+    # return 422 rather than being silently accepted. Reserved for a
+    # future 'week' / ISO-date variant — extend the Literal at that
+    # point so existing clients keep working.
+    since: Literal["today"] = Query(
+        "today",
+        description=(
+            "Time scope for the dashboard view. Currently only 'today' is "
+            "supported; reserved for a future 'week' / ISO-date variant."
+        ),
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.PARENT)),
+) -> DashboardResponse:
+    """Aggregated parent dashboard view — urgent today + week + empty states.
+
+    Read-only; safe to poll. Powers the post-login destination at
+    ``/email-digest``. See ``docs/design/CB-EDIGEST-002-prd.md`` §F1-F6.
+    """
+    # Resolve parent timezone (#4630). Every Ontario user is on UTC-4/-5,
+    # so computing today/week boundaries in UTC drops evening deadlines
+    # from the urgent list and shows next-morning tasks as "today" during
+    # certain hours. Look up the configured timezone from this parent's
+    # most-recently-updated ParentDigestSettings row (a parent may have
+    # multiple Gmail integrations + settings; the latest-updated one
+    # reflects the timezone the parent actually configured most
+    # recently — undefined `.first()` ordering would silently pick
+    # whichever row the planner returned). Fall back to America/Toronto
+    # (the install default) if missing or invalid.
+    parent_tz_name = "America/Toronto"
+    digest_settings_row = (
+        db.query(ParentDigestSettings)
+        .join(
+            ParentGmailIntegration,
+            ParentGmailIntegration.id == ParentDigestSettings.integration_id,
+        )
+        .filter(ParentGmailIntegration.parent_id == current_user.id)
+        .order_by(ParentDigestSettings.updated_at.desc())
+        .first()
+    )
+    if digest_settings_row and digest_settings_row.timezone:
+        parent_tz_name = digest_settings_row.timezone
+
+    try:
+        parent_tz = ZoneInfo(parent_tz_name)
+    except Exception:  # noqa: BLE001 — never 500 on garbage tz strings
+        # Defensive fallback. ``ZoneInfo`` raises ``ZoneInfoNotFoundError``
+        # for unknown zones and ``ValueError`` for empty strings, but the
+        # underlying tzdata library can also raise ``OSError`` /
+        # ``KeyError`` for corrupt installs. Catch broadly + log so a bad
+        # input never breaks the whole dashboard.
+        logger.warning(
+            "dashboard_invalid_timezone parent_id=%s tz=%r — falling back",
+            current_user.id,
+            parent_tz_name,
+        )
+        parent_tz = ZoneInfo("America/Toronto")
+
+    now_local = datetime.now(parent_tz)
+    today_start_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end_local = today_start_local + timedelta(days=1) - timedelta(microseconds=1)
+    # Week window: rolling 7 days starting today. Matches PRD §F2 ("this
+    # week's deadlines"); past-week styling is a frontend concern.
+    week_end_local = (today_start_local + timedelta(days=7)) - timedelta(microseconds=1)
+
+    # Convert to UTC once for DB filtering + comparison; response stays
+    # in UTC (the contract callers already rely on).
+    today_start = today_start_local.astimezone(timezone.utc)
+    today_end = today_end_local.astimezone(timezone.utc)
+    week_end = week_end_local.astimezone(timezone.utc)
+    now = now_local.astimezone(timezone.utc)
+
+    # Profiles + integrations are needed for both content and empty-state
+    # resolution; load both regardless of the eventual return path so the
+    # priority logic always has full inputs.
+    profiles = (
+        db.query(ParentChildProfile)
+        .filter(ParentChildProfile.parent_id == current_user.id)
+        .order_by(ParentChildProfile.created_at.asc())
+        .all()
+    )
+    integrations = (
+        db.query(ParentGmailIntegration)
+        .filter(ParentGmailIntegration.parent_id == current_user.id)
+        .all()
+    )
+
+    # Pull every relevant Task for the parent's kids in one query, then
+    # partition in Python — avoids N+1 across kids.
+    assignee_ids = [p.student_id for p in profiles if p.student_id is not None]
+    tasks_by_assignee: dict[int, list] = {aid: [] for aid in assignee_ids}
+    if assignee_ids:
+        tasks = (
+            db.query(Task)
+            .options(selectinload(Task.course))
+            .filter(
+                Task.assigned_to_user_id.in_(assignee_ids),
+                Task.is_completed == False,  # noqa: E712
+                Task.archived_at.is_(None),
+                Task.due_date.isnot(None),
+                Task.due_date <= week_end,
+            )
+            .all()
+        )
+        for t in tasks:
+            tasks_by_assignee.setdefault(t.assigned_to_user_id, []).append(t)
+
+    # Build per-kid views. Profiles without a linked student_id render with
+    # an empty bucket — the dashboard still shows the kid card, just no
+    # data until the link is established.
+    kids: list[DashboardKidView] = []
+    for profile in profiles:
+        kid_tasks = (
+            tasks_by_assignee.get(profile.student_id, [])
+            if profile.student_id is not None
+            else []
+        )
+        kids.append(
+            _build_kid_view(
+                profile=profile,
+                tasks_for_kid=kid_tasks,
+                today_end_utc=today_end,
+                week_start_utc=today_start,
+                week_end_utc=week_end,
+                parent_tz=parent_tz,
+            )
+        )
+
+    # PRD §F6 — kid section with most urgent items first; ties break by
+    # creation order (already the input order).
+    kids.sort(key=lambda k: -len(k.urgent_items))
+
+    has_any_urgent = any(len(k.urgent_items) > 0 for k in kids)
+    empty_state = _dashboard_empty_state(
+        db,
+        parent_id=current_user.id,
+        profile_count=len(profiles),
+        integrations=integrations,
+        now=now,
+        has_any_urgent=has_any_urgent,
+    )
+
+    last_log = (
+        db.query(DigestDeliveryLog.delivered_at)
+        .filter(DigestDeliveryLog.parent_id == current_user.id)
+        .order_by(DigestDeliveryLog.delivered_at.desc())
+        .first()
+    )
+    last_digest_at = last_log[0] if last_log else None
+
+    return DashboardResponse(
+        kids=kids,
+        empty_state=empty_state,
+        refreshed_at=now,
+        last_digest_at=last_digest_at,
+    )
 
 
 # ---------------------------------------------------------------------------

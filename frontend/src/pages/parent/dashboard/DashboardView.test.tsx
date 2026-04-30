@@ -1,0 +1,501 @@
+/**
+ * Tests for DashboardView orchestrator (CB-EDIGEST-002 — #4594, stripe E6).
+ *
+ * Sibling components (TodaySection, WeekGrid, ItemDrilldownModal,
+ * DashboardHeader, EmptyStates) ship in their own stripes — we stub them
+ * here via `vi.mock` so this stripe is independently verifiable.
+ */
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { renderWithProviders } from '../../../test/helpers';
+import type { DashboardResponse } from './types';
+
+/* ── Mock useAuth (DashboardView reads parent name for greeting) ── */
+
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 1, full_name: 'Test Parent', role: 'parent' },
+  }),
+}));
+
+/* ── Mock the API module ─────────────────────────────────── */
+
+const mockGetDashboard = vi.fn();
+const mockListIntegrations = vi.fn();
+const mockTriggerSync = vi.fn();
+
+// Use `vi.importActual` + spread (mock-shadow guard, #4277): mocking the
+// whole module would shadow every other export to `undefined` the moment a
+// future stripe imports a second symbol from `parentEmailDigest` here.
+vi.mock('../../../api/parentEmailDigest', async () => {
+  const actual = await vi.importActual<typeof import('../../../api/parentEmailDigest')>(
+    '../../../api/parentEmailDigest',
+  );
+  return {
+    ...actual,
+    getDashboard: (...args: unknown[]) => mockGetDashboard(...args),
+    listIntegrations: (...args: unknown[]) => mockListIntegrations(...args),
+    triggerSync: (...args: unknown[]) => mockTriggerSync(...args),
+  };
+});
+
+/* ── Stub sibling components (E2-E5 ship in parallel PRs) ── */
+
+vi.mock('./TodaySection', () => ({
+  TodaySection: ({
+    kids,
+    onItemClick,
+  }: {
+    kids: { id: number; first_name: string; urgent_items: { id: string; title: string }[] }[];
+    onItemClick: (kid_id: number, item: { id: string; title: string } | null) => void;
+  }) => (
+    <div data-testid="mock-today">
+      {kids.map((k) =>
+        k.urgent_items.map((it) => (
+          <button
+            key={it.id}
+            type="button"
+            data-testid={`mock-today-item-${it.id}`}
+            onClick={() => onItemClick(k.id, it as never)}
+          >
+            {it.title}
+          </button>
+        )),
+      )}
+    </div>
+  ),
+}));
+
+// Capture the kids prop the orchestrator passes in so #4628 regression tests
+// can assert per-day `weekday` + `is_past` were derived correctly.
+const weekGridSpy = vi.fn();
+vi.mock('./WeekGrid', () => ({
+  WeekGrid: (props: {
+    kids: {
+      id: number;
+      first_name: string;
+      days: { day: string; weekday: string; is_past: boolean; items: unknown[] }[];
+    }[];
+  }) => {
+    weekGridSpy(props);
+    return <div data-testid="mock-week" />;
+  },
+}));
+
+vi.mock('./DashboardHeader', () => ({
+  DashboardHeader: ({ onRefresh }: { onRefresh: () => void }) => (
+    <div data-testid="mock-header">
+      <button type="button" data-testid="mock-refresh" onClick={onRefresh}>
+        Refresh
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('./ItemDrilldownModal', () => ({
+  ItemDrilldownModal: ({
+    open,
+    item,
+    onClose,
+    onMarkDone,
+  }: {
+    open: boolean;
+    item: { id: string; title: string } | null;
+    onClose: () => void;
+    onMarkDone: (item_id: string) => Promise<void>;
+  }) => {
+    if (!open || !item) return null;
+    return (
+      <div data-testid="mock-modal" data-item-id={item.id}>
+        <span data-testid="mock-modal-title">{item.title}</span>
+        <button type="button" data-testid="mock-modal-close" onClick={onClose}>
+          Close
+        </button>
+        <button
+          type="button"
+          data-testid="mock-modal-mark-done"
+          onClick={() => onMarkDone(item.id)}
+        >
+          Mark done
+        </button>
+      </div>
+    );
+  },
+}));
+
+vi.mock('./EmptyStates', () => ({
+  EmptyStates: ({ kind }: { kind: string }) => (
+    <div data-testid="mock-empty" data-kind={kind} />
+  ),
+}));
+
+/* Pull in DashboardView AFTER vi.mock declarations so the mocks bind. */
+import { DashboardView } from './DashboardView';
+
+/* ── Fixtures ────────────────────────────────────────────── */
+
+function makeResponse(overrides: Partial<DashboardResponse> = {}): DashboardResponse {
+  return {
+    kids: [
+      {
+        id: 1,
+        first_name: 'Alex',
+        urgent_items: [
+          {
+            id: 'u1',
+            title: 'Math homework due',
+            due_date: '2026-04-29',
+            course_or_context: 'Math 7',
+            source_email_id: 'e1',
+          },
+        ],
+        weekly_deadlines: [],
+        all_clear: false,
+      },
+    ],
+    empty_state: null,
+    refreshed_at: '2026-04-28T12:00:00Z',
+    last_digest_at: '2026-04-28T07:00:00Z',
+    ...overrides,
+  };
+}
+
+/* ── Tests ───────────────────────────────────────────────── */
+
+describe('DashboardView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    if (typeof window !== 'undefined') {
+      window.__cb_telemetry__ = [];
+    }
+  });
+
+  it('shows a loading state then renders the kid grid', async () => {
+    mockGetDashboard.mockReturnValue(
+      new Promise((resolve) => {
+        setTimeout(() => resolve({ data: makeResponse() }), 0);
+      }),
+    );
+
+    renderWithProviders(<DashboardView />);
+
+    expect(screen.getByTestId('dashboard-loading')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('mock-header')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-today')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-week')).toBeInTheDocument();
+    expect(mockGetDashboard).toHaveBeenCalledWith('today');
+  });
+
+  it('renders EmptyStates with the server-provided kind when empty_state is non-null', async () => {
+    mockGetDashboard.mockResolvedValue({
+      data: makeResponse({ empty_state: 'calm', kids: [] }),
+    });
+
+    renderWithProviders(<DashboardView />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-empty')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('mock-empty').getAttribute('data-kind')).toBe('calm');
+    expect(screen.queryByTestId('mock-today')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mock-week')).not.toBeInTheDocument();
+  });
+
+  it('opens the drilldown modal when an item is clicked in TodaySection', async () => {
+    mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+
+    renderWithProviders(<DashboardView />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-today-item-u1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('mock-today-item-u1'));
+
+    expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-modal').getAttribute('data-item-id')).toBe('u1');
+    expect(screen.getByTestId('mock-modal-title')).toHaveTextContent('Math homework due');
+  });
+
+  it('Mark done in the modal closes it and invalidates the dashboard query', async () => {
+    mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+
+    const { queryClient } = renderWithProviders(<DashboardView />);
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-today-item-u1')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('mock-today-item-u1'));
+    expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mock-modal-mark-done'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mock-modal')).not.toBeInTheDocument();
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['parent', 'email-digest', 'dashboard'],
+    });
+  });
+
+  it('emits dashboard.page_view on mount', async () => {
+    mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+
+    renderWithProviders(<DashboardView />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+
+    const events = window.__cb_telemetry__ ?? [];
+    expect(events.some((e) => e.event === 'dashboard.page_view')).toBe(true);
+    // Mutation-test guard: `page_view` must fire exactly once per mount, not
+    // re-fire on refetch. Catches regressions where the emit() is moved out
+    // of the empty-deps effect and accidentally double-fires.
+    const pageViewEvents = events.filter((e) => e.event === 'dashboard.page_view');
+    expect(pageViewEvents).toHaveLength(1);
+  });
+
+  it('renders an error state when the request fails', async () => {
+    mockGetDashboard.mockRejectedValue(new Error('boom'));
+
+    renderWithProviders(<DashboardView />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-error')).toBeInTheDocument();
+    });
+  });
+
+  /* ── #4628: WeekGrid past-day + weekday derivation ──────── */
+
+  describe('#4628 — WeekGrid past-day styling', () => {
+    beforeEach(() => {
+      weekGridSpy.mockClear();
+    });
+
+    it('derives is_past=true for past days and is_past=false for future days', async () => {
+      // Use dates far enough from "now" that the assertion is stable
+      // regardless of when the test runs: 2020-01-01 is decisively past,
+      // 2099-12-31 is decisively future. Avoids any fake-timer dance that
+      // would freeze react-query's internal scheduling.
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // Backend currently sends only {day, items}; types declare
+                // weekday/is_past so cast to bypass type-checking here.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2099-12-31', items: [] } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      // Single waitFor that re-evaluates the call list each poll so we don't
+      // freeze on a stale snapshot of weekGridSpy.mock.calls (mutation-test
+      // guard: a regression that ships an early empty render would otherwise
+      // silently lock up here instead of failing).
+      await waitFor(() => {
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      const days = lastCall.kids[0].days;
+      expect(days[0].is_past).toBe(true);
+      expect(days[1].is_past).toBe(false);
+    });
+
+    it('derives a short weekday label client-side when the backend omits it', async () => {
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // Per WeekGrid contract days[] is Mon..Sun in order. The
+                // orchestrator derives the weekday from the column index
+                // (TZ-stable) — so column 0 → Mon, column 1 → Tue, etc.
+                // The actual `day` value is irrelevant for the label test;
+                // only the index position matters.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-02', items: [] } as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-08', items: [] } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      const days = lastCall.kids[0].days;
+      // Column-index → Mon..Sun fallback (matches WeekGrid.computeWeekdayLabel).
+      expect(days[0].weekday).toBe('Mon');
+      expect(days[1].weekday).toBe('Tue');
+      expect(days[2].weekday).toBe('Wed');
+    });
+
+    it('honors backend-provided weekday when present (does not overwrite)', async () => {
+      // If a future backend version starts shipping `weekday`, the
+      // orchestrator must pass it through unmodified.
+      mockGetDashboard.mockResolvedValue({
+        data: makeResponse({
+          kids: [
+            {
+              id: 1,
+              first_name: 'Alex',
+              urgent_items: [],
+              weekly_deadlines: [
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                { day: '2020-01-01', items: [], weekday: 'Tue' } as any,
+              ],
+              all_clear: false,
+            },
+          ],
+        }),
+      });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        const calls = weekGridSpy.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        const last = calls[calls.length - 1][0];
+        expect(last.kids.length).toBeGreaterThan(0);
+      });
+
+      const lastCall = weekGridSpy.mock.calls[weekGridSpy.mock.calls.length - 1][0];
+      const days = lastCall.kids[0].days;
+      expect(days[0].weekday).toBe('Tue'); // server value wins over column-index fallback
+    });
+  });
+
+  /* ── #4629: Refresh triggers Gmail sync per active integration ── */
+
+  describe('#4629 — Refresh triggers Gmail sync', () => {
+    function makeIntegration(
+      overrides: Partial<{
+        id: number;
+        is_active: boolean;
+        paused_until: string | null;
+      }> = {},
+    ) {
+      return {
+        id: overrides.id ?? 1,
+        parent_id: 1,
+        gmail_address: 'p@example.com',
+        google_id: null,
+        child_school_email: null,
+        child_first_name: null,
+        connected_at: '2026-04-01T00:00:00Z',
+        last_synced_at: null,
+        is_active: overrides.is_active ?? true,
+        paused_until: overrides.paused_until ?? null,
+        created_at: '2026-04-01T00:00:00Z',
+        updated_at: '2026-04-01T00:00:00Z',
+        monitored_emails: [],
+        whatsapp_phone: null,
+        whatsapp_verified: false,
+      };
+    }
+
+    it('calls triggerSync for every active integration but skips paused/inactive ones', async () => {
+      mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+      mockListIntegrations.mockResolvedValue({
+        data: [
+          makeIntegration({ id: 10, is_active: true, paused_until: null }),
+          makeIntegration({ id: 11, is_active: true, paused_until: null }),
+          // Paused: paused_until far in the future.
+          makeIntegration({
+            id: 12,
+            is_active: true,
+            paused_until: '2099-01-01T00:00:00Z',
+          }),
+          // Inactive: should never sync.
+          makeIntegration({ id: 13, is_active: false, paused_until: null }),
+        ],
+      });
+      mockTriggerSync.mockResolvedValue({ data: makeIntegration() });
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-refresh')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('mock-refresh'));
+
+      await waitFor(() => {
+        expect(mockTriggerSync).toHaveBeenCalledTimes(2);
+      });
+      const calledIds = mockTriggerSync.mock.calls.map((args) => args[0]).sort();
+      expect(calledIds).toEqual([10, 11]);
+    });
+
+    it('still refetches the dashboard when a triggerSync call rejects', async () => {
+      mockGetDashboard.mockResolvedValue({ data: makeResponse() });
+      mockListIntegrations.mockResolvedValue({
+        data: [
+          makeIntegration({ id: 20, is_active: true, paused_until: null }),
+          makeIntegration({ id: 21, is_active: true, paused_until: null }),
+        ],
+      });
+      // First sync rejects, second resolves — refetch must still be called.
+      mockTriggerSync.mockImplementation((id: number) =>
+        id === 20
+          ? Promise.reject(new Error('sync boom'))
+          : Promise.resolve({ data: makeIntegration() }),
+      );
+
+      renderWithProviders(<DashboardView />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mock-refresh')).toBeInTheDocument();
+      });
+
+      // Mark current call count so we can verify a new fetch happened.
+      const dashboardCallsBefore = mockGetDashboard.mock.calls.length;
+
+      fireEvent.click(screen.getByTestId('mock-refresh'));
+
+      // After the click + sync resolves/rejects, react-query should refetch the dashboard,
+      // which lands a new call on `mockGetDashboard`.
+      await waitFor(() => {
+        expect(mockGetDashboard.mock.calls.length).toBeGreaterThan(dashboardCallsBefore);
+      });
+      expect(mockTriggerSync).toHaveBeenCalledTimes(2);
+    });
+  });
+});

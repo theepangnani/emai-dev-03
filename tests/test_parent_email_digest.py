@@ -973,3 +973,788 @@ class TestSenderNameFilter:
             me.get("sender_name") == "Name Only Sender" and me.get("email_address") is None
             for me in resp.json()
         )
+
+
+# ---------------------------------------------------------------------------
+# Email Digest Dashboard (CB-EDIGEST-002 E1, #4589)
+# ---------------------------------------------------------------------------
+
+
+DASHBOARD_PARENT_EMAIL = "dashboard_parent@test.com"
+DASHBOARD_TEACHER_EMAIL = "dashboard_teacher@test.com"
+
+
+def _make_dashboard_parent(db_session):
+    """Create a dedicated parent + teacher for dashboard tests.
+
+    Isolated from the shared `setup` fixture so empty-state tests can drive
+    the no_kids / paused / first_run conditions independently of the other
+    suite data.
+    """
+    from app.core.security import get_password_hash
+    from app.models.user import User, UserRole
+
+    parent = (
+        db_session.query(User).filter(User.email == DASHBOARD_PARENT_EMAIL).first()
+    )
+    if parent is None:
+        hashed = get_password_hash(PASSWORD)
+        parent = User(
+            email=DASHBOARD_PARENT_EMAIL,
+            full_name="Dashboard Parent",
+            role=UserRole.PARENT,
+            hashed_password=hashed,
+        )
+        db_session.add(parent)
+        db_session.commit()
+        db_session.refresh(parent)
+
+    teacher = (
+        db_session.query(User).filter(User.email == DASHBOARD_TEACHER_EMAIL).first()
+    )
+    if teacher is None:
+        hashed = get_password_hash(PASSWORD)
+        teacher = User(
+            email=DASHBOARD_TEACHER_EMAIL,
+            full_name="Dashboard Teacher",
+            role=UserRole.TEACHER,
+            hashed_password=hashed,
+        )
+        db_session.add(teacher)
+        db_session.commit()
+        db_session.refresh(teacher)
+
+    return parent, teacher
+
+
+def _make_kid(db_session, parent, first_name, email):
+    """Create a Student User + ParentChildProfile bound to `parent`."""
+    from app.core.security import get_password_hash
+    from app.models.parent_gmail_integration import ParentChildProfile
+    from app.models.user import User, UserRole
+
+    kid_user = db_session.query(User).filter(User.email == email).first()
+    if kid_user is None:
+        kid_user = User(
+            email=email,
+            full_name=first_name,
+            role=UserRole.STUDENT,
+            hashed_password=get_password_hash(PASSWORD),
+        )
+        db_session.add(kid_user)
+        db_session.commit()
+        db_session.refresh(kid_user)
+
+    profile = (
+        db_session.query(ParentChildProfile)
+        .filter(
+            ParentChildProfile.parent_id == parent.id,
+            ParentChildProfile.student_id == kid_user.id,
+        )
+        .first()
+    )
+    if profile is None:
+        profile = ParentChildProfile(
+            parent_id=parent.id,
+            student_id=kid_user.id,
+            first_name=first_name,
+        )
+        db_session.add(profile)
+        db_session.commit()
+        db_session.refresh(profile)
+    return kid_user, profile
+
+
+def _add_task(
+    db_session,
+    *,
+    creator,
+    assignee,
+    title,
+    due_date,
+    source_message_id=None,
+):
+    """Insert a Task assigned to `assignee` with the given due_date."""
+    from app.models.task import Task
+
+    task = Task(
+        created_by_user_id=creator.id,
+        assigned_to_user_id=assignee.id,
+        title=title,
+        due_date=due_date,
+        priority="medium",
+        is_completed=False,
+        source="email_digest",
+        source_message_id=source_message_id,
+    )
+    db_session.add(task)
+    db_session.commit()
+    db_session.refresh(task)
+    return task
+
+
+def _purge_dashboard_state(db_session, parent_id):
+    """Reset all CB-EDIGEST-002 inputs for `parent_id`.
+
+    Called at the top of every dashboard test so tests can run in any order
+    under the session-scoped DB fixture without inheriting tasks / profiles
+    / integrations / logs from sibling tests.
+    """
+    from app.models.parent_gmail_integration import (
+        DigestDeliveryLog,
+        ParentChildProfile,
+        ParentGmailIntegration,
+    )
+    from app.models.task import Task
+
+    profiles = (
+        db_session.query(ParentChildProfile)
+        .filter(ParentChildProfile.parent_id == parent_id)
+        .all()
+    )
+    student_ids = [p.student_id for p in profiles if p.student_id is not None]
+    if student_ids:
+        db_session.query(Task).filter(
+            Task.assigned_to_user_id.in_(student_ids)
+        ).delete(synchronize_session=False)
+
+    db_session.query(ParentChildProfile).filter(
+        ParentChildProfile.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.query(DigestDeliveryLog).filter(
+        DigestDeliveryLog.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.query(ParentGmailIntegration).filter(
+        ParentGmailIntegration.parent_id == parent_id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+class TestDashboard:
+    """GET /api/parent/email-digest/dashboard — CB-EDIGEST-002 E1 (#4589)."""
+
+    def test_dashboard_no_kids(self, client, db_session):
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "no_kids"
+        assert data["kids"] == []
+        assert data["last_digest_at"] is None
+        assert data["refreshed_at"] is not None
+
+    def test_dashboard_all_paused(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Avery", "dashboard_kid_avery@test.com")
+
+        # Two integrations: one inactive, one paused into the future.
+        integ_a = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="paused_a@gmail.com",
+            google_id="gid_a",
+            access_token="t",
+            refresh_token="r",
+            is_active=False,
+        )
+        integ_b = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="paused_b@gmail.com",
+            google_id="gid_b",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+            paused_until=datetime.now(timezone.utc) + timedelta(days=14),
+        )
+        db_session.add_all([integ_a, integ_b])
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ_a.id))
+        db_session.add(ParentDigestSettings(integration_id=integ_b.id))
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "paused"
+
+    def test_dashboard_first_run(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Riley", "dashboard_kid_riley@test.com")
+
+        # Active integration, no DigestDeliveryLog row yet.
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="firstrun@gmail.com",
+            google_id="gid_fr",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "first_run"
+        assert data["last_digest_at"] is None
+
+    def test_dashboard_all_clear(self, client, db_session):
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Sky", "dashboard_kid_sky@test.com")
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="calm@gmail.com",
+            google_id="gid_calm",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=2,
+                digest_content="Calm digest",
+                channels_used="in_app,email",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["empty_state"] == "calm"
+        assert len(data["kids"]) == 1
+        assert data["kids"][0]["all_clear"] is True
+        assert data["kids"][0]["urgent_items"] == []
+        assert data["last_digest_at"] is not None
+
+    def test_dashboard_normal_multi_kid(self, client, db_session):
+        """Multi-kid normal path: empty_state=null + ordering by urgent count."""
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        kid_a_user, profile_a = _make_kid(
+            db_session, parent, "Alice", "dashboard_kid_alice@test.com"
+        )
+        kid_b_user, profile_b = _make_kid(
+            db_session, parent, "Bobby", "dashboard_kid_bobby@test.com"
+        )
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="multi@gmail.com",
+            google_id="gid_multi",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=3,
+                channels_used="in_app",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        # Anchor urgent times to a fixed 12:00 in the parent's timezone
+        # (Toronto by default — see #4630). Using `now + offset` from UTC
+        # is brittle: when the test runs near end-of-day in EDT, +2h falls
+        # into the NEXT local day and the task is correctly excluded from
+        # "today". Anchoring to local-noon makes the offsets land safely
+        # inside today regardless of when the suite runs.
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("America/Toronto")
+        local_today = datetime.now(tz).replace(
+            hour=12, minute=0, second=0, microsecond=0
+        )
+        now = local_today.astimezone(timezone.utc)
+        # Bobby gets 2 urgent items today; Alice gets 1 urgent today + 1 in
+        # 3 days (week-only). The multi-kid section ordering should put
+        # Bobby first (more urgent items).
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_a_user,
+            title="Alice — read chapter 3",
+            due_date=now + timedelta(hours=4),
+            source_message_id="msg-a-1",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_a_user,
+            title="Alice — book report",
+            due_date=now + timedelta(days=3),
+            source_message_id="msg-a-2",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_b_user,
+            title="Bobby — math worksheet",
+            due_date=now + timedelta(hours=2),
+            source_message_id="msg-b-1",
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_b_user,
+            title="Bobby — overdue spelling",
+            due_date=now - timedelta(hours=6),
+            source_message_id="msg-b-2",
+        )
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+
+        assert data["empty_state"] is None
+        assert len(data["kids"]) == 2
+        # PRD §F6 — kid with most urgent items first.
+        assert data["kids"][0]["first_name"] == "Bobby"
+        assert data["kids"][1]["first_name"] == "Alice"
+
+        bobby = data["kids"][0]
+        alice = data["kids"][1]
+        assert len(bobby["urgent_items"]) == 2
+        assert bobby["all_clear"] is False
+        assert all(item["source_email_id"] for item in bobby["urgent_items"])
+
+        assert len(alice["urgent_items"]) == 1
+        # Alice has 1 urgent (today) + 1 future weekly task → 2 weekly buckets.
+        assert len(alice["weekly_deadlines"]) >= 1
+        assert all("day" in d and "items" in d for d in alice["weekly_deadlines"])
+
+    def test_dashboard_tie_break_preserves_creation_order(self, client, db_session):
+        """Pass-1 review I3 + pass-2 mutation hardening: when two kids have
+        equal urgent counts, the secondary order MUST be
+        ParentChildProfile.created_at ASC.
+
+        Names chosen so creation order (Zara → Aiden) is the OPPOSITE of
+        alphabetical order — distinguishes the stable creation-order
+        contract from an accidental swap to alphabetical sort. The
+        implementation relies on Python's stable list.sort + the primary
+        `ORDER BY created_at ASC` from the profile query.
+        """
+        from app.models.parent_gmail_integration import (
+            DigestDeliveryLog,
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        # Profile creation order: Zara first, then Aiden. Both get exactly
+        # 1 urgent task each → tie-break by creation order, NOT
+        # alphabetical (which would put Aiden first).
+        kid_c_user, _ = _make_kid(
+            db_session, parent, "Zara", "dashboard_kid_zara@test.com"
+        )
+        kid_d_user, _ = _make_kid(
+            db_session, parent, "Aiden", "dashboard_kid_aiden@test.com"
+        )
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="tiebreak@gmail.com",
+            google_id="gid_tb",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(ParentDigestSettings(integration_id=integ.id))
+        db_session.add(
+            DigestDeliveryLog(
+                parent_id=parent.id,
+                integration_id=integ.id,
+                email_count=1,
+                channels_used="in_app",
+                status="delivered",
+            )
+        )
+        db_session.commit()
+
+        # Anchor to local-noon so +2h reliably stays in "today" for
+        # the parent's timezone (#4630).
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo("America/Toronto")
+        local_today = datetime.now(tz).replace(
+            hour=12, minute=0, second=0, microsecond=0
+        )
+        now = local_today.astimezone(timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_c_user,
+            title="Zara — task A",
+            due_date=now + timedelta(hours=2),
+        )
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_d_user,
+            title="Aiden — task A",
+            due_date=now + timedelta(hours=2),
+        )
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        kids = resp.json()["kids"]
+        # Zara was created first → must come first under stable
+        # tie-break, even though "Aiden" sorts alphabetically before "Zara".
+        assert [k["first_name"] for k in kids] == ["Zara", "Aiden"]
+        assert all(len(k["urgent_items"]) == 1 for k in kids)
+
+    def test_dashboard_rbac_403(self, client, db_session):
+        """Non-parent role gets 403 from require_role(PARENT)."""
+        # Use the existing teacher seed from the shared `setup` fixture's pool.
+        from app.core.security import get_password_hash
+        from app.models.user import User, UserRole
+
+        non_parent_email = "dashboard_non_parent@test.com"
+        existing = (
+            db_session.query(User).filter(User.email == non_parent_email).first()
+        )
+        if existing is None:
+            db_session.add(
+                User(
+                    email=non_parent_email,
+                    full_name="Dashboard Student",
+                    role=UserRole.STUDENT,
+                    hashed_password=get_password_hash(PASSWORD),
+                )
+            )
+            db_session.commit()
+
+        headers = _auth(client, non_parent_email)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 403
+
+    def test_dashboard_since_validation_rejects_unknown(self, client, db_session):
+        """Pass-1 review I4: `since` is a Literal["today"]; unknown values
+        must return 422 rather than being silently accepted."""
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard?since=tomorrow", headers=headers)
+        assert resp.status_code == 422, resp.text
+
+    def test_dashboard_rate_limit_60(self, client, db_session, app):
+        """61st call within the same minute trips the 60/min limiter."""
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        app.state.limiter.enabled = True
+        app.state.limiter.reset()
+        try:
+            for _ in range(60):
+                resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+                assert resp.status_code == 200, resp.text
+            resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+            assert resp.status_code == 429
+        finally:
+            app.state.limiter.enabled = False
+            app.state.limiter.reset()
+
+
+# ---------------------------------------------------------------------------
+# CB-EDIGEST-002 P2 (#4630): dashboard 'today' window respects parent timezone.
+# ---------------------------------------------------------------------------
+
+
+def _freeze_route_now(monkeypatch, fixed_utc: datetime):
+    """Patch ``datetime.now`` inside the route module so the dashboard
+    sees a deterministic 'now'. Other ``datetime`` behavior (constructors,
+    arithmetic, ``astimezone``) stays intact via subclassing so the
+    response shape and TZ conversions still work as in production.
+    """
+    import app.api.routes.parent_email_digest as route_module
+
+    real_dt = route_module.datetime
+
+    class _FrozenDateTime(real_dt):
+        @classmethod
+        def now(cls, tz=None):
+            if tz is None:
+                # Mirror real datetime.now(): return naive local time.
+                return fixed_utc.replace(tzinfo=None)
+            return fixed_utc.astimezone(tz)
+
+    monkeypatch.setattr(route_module, "datetime", _FrozenDateTime)
+
+
+class TestDashboardTimezone:
+    """#4630 — dashboard's today/week boundaries must use the parent's
+    configured timezone, not UTC. With UTC-only logic, every Ontario
+    parent (UTC-4 / UTC-5) saw evening deadlines vanish from urgent
+    during certain hours and tomorrow-morning tasks appear as 'today'.
+    """
+
+    def _make_parent_with_tz(self, db_session, tz_name):
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address=f"tz_{tz_name.replace('/', '_')}@gmail.com",
+            google_id=f"gid_tz_{tz_name}",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(
+            ParentDigestSettings(integration_id=integ.id, timezone=tz_name)
+        )
+        db_session.commit()
+        return parent, teacher
+
+    def test_dashboard_uses_parent_timezone_for_today_window(
+        self, client, db_session, monkeypatch
+    ):
+        """Parent in EDT sees a task due 23:00 EDT (= 03:00 UTC tomorrow)
+        as urgent at 18:00 EDT (= 22:00 UTC). UTC-only logic would drop
+        it because the UTC date has already rolled.
+
+        Also asserts a task due ~01:00 EDT next day (= 05:00 UTC) is NOT
+        urgent today — pins both edges of the today_end_local boundary
+        so a half-fix that only shifts today_start can't slip through.
+        """
+        parent, teacher = self._make_parent_with_tz(
+            db_session, "America/Toronto"
+        )
+        kid_user, _ = _make_kid(
+            db_session, parent, "Theo", "tz_kid_theo@test.com"
+        )
+
+        # IN-WINDOW: 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
+        in_due = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Late EDT homework",
+            due_date=in_due,
+            source_message_id="msg-tz-1",
+        )
+        # OUT-OF-WINDOW: 2026-04-30 01:00 EDT = 2026-04-30 05:00 UTC.
+        # This is past local midnight in EDT — should be tomorrow's task.
+        out_due = datetime(2026, 4, 30, 5, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Tomorrow EDT homework",
+            due_date=out_due,
+            source_message_id="msg-tz-1-out",
+        )
+
+        # "Now" frozen at 2026-04-29 18:00 EDT = 22:00 UTC.
+        frozen_now = datetime(2026, 4, 29, 22, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        urgent = data["kids"][0]["urgent_items"]
+        urgent_ids = {item["source_email_id"] for item in urgent}
+        # Task IS in today's urgent — the EDT calendar day still ends
+        # at 03:59:59.999999 UTC tomorrow.
+        assert "msg-tz-1" in urgent_ids, (
+            "Task due 23:00 EDT must appear urgent for an EDT parent at "
+            "18:00 EDT (UTC-only logic would drop it)."
+        )
+        # Task is NOT in today's urgent — 01:00 EDT next day falls past
+        # the parent-local today_end boundary.
+        assert "msg-tz-1-out" not in urgent_ids, (
+            "Task due 01:00 EDT next day must NOT be urgent today — "
+            "asserts the today_end boundary is parent-local, not UTC."
+        )
+
+    def test_dashboard_uses_parent_timezone_falls_back_when_invalid(
+        self, client, db_session
+    ):
+        """Bad/typo'd tz string must NOT 500 — fall back to America/Toronto."""
+        from app.models.parent_gmail_integration import (
+            ParentDigestSettings,
+            ParentGmailIntegration,
+        )
+
+        parent, _teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        _make_kid(db_session, parent, "Bad", "tz_kid_bad@test.com")
+
+        integ = ParentGmailIntegration(
+            parent_id=parent.id,
+            gmail_address="tz_bad@gmail.com",
+            google_id="gid_tz_bad",
+            access_token="t",
+            refresh_token="r",
+            is_active=True,
+        )
+        db_session.add(integ)
+        db_session.flush()
+        db_session.add(
+            ParentDigestSettings(
+                integration_id=integ.id, timezone="Not/A/Real/Zone"
+            )
+        )
+        db_session.commit()
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        # 200 — defensive ZoneInfo fallback in the route.
+        assert resp.status_code == 200, resp.text
+
+    def test_dashboard_day_bucket_keys_use_parent_timezone(
+        self, client, db_session, monkeypatch
+    ):
+        """Task due 2026-04-30 09:00 EDT = 13:00 UTC. Parent in EDT.
+        weekly_deadlines bucket key MUST be the parent-local date
+        ('2026-04-30'), not the UTC date (also 04-30 here, but the
+        contract is 'parent-local'). Construct a case where they differ:
+        task due 2026-04-30 22:00 EDT = 2026-05-01 02:00 UTC. The bucket
+        must still be '2026-04-30' (parent-local), not '2026-05-01'.
+        """
+        parent, teacher = self._make_parent_with_tz(
+            db_session, "America/Toronto"
+        )
+        kid_user, _ = _make_kid(
+            db_session, parent, "Bucket", "tz_kid_bucket@test.com"
+        )
+
+        # Task due 2026-04-30 22:00 EDT = 2026-05-01 02:00 UTC.
+        due_utc = datetime(2026, 5, 1, 2, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="EDT-evening bucket task",
+            due_date=due_utc,
+            source_message_id="msg-tz-bucket",
+        )
+
+        # Freeze "now" at 2026-04-29 12:00 EDT = 16:00 UTC so the task is
+        # within the rolling 7-day window AND is in the future (excluded
+        # from urgent_items today, but inside weekly_deadlines).
+        frozen_now = datetime(2026, 4, 29, 16, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        weekly = data["kids"][0]["weekly_deadlines"]
+        bucket_days = [d["day"] for d in weekly]
+        # Parent-local date wins, NOT the UTC-rolled '2026-05-01'.
+        assert "2026-04-30" in bucket_days, (
+            f"Expected EDT-local day key 2026-04-30, got: {bucket_days}"
+        )
+        assert "2026-05-01" not in bucket_days, (
+            f"UTC-rolled day key 2026-05-01 must not be present: {bucket_days}"
+        )
+
+    def test_dashboard_default_timezone_when_no_settings(
+        self, client, db_session, monkeypatch
+    ):
+        """No ParentDigestSettings row at all → defaults to America/Toronto.
+        Mirrors test 1 but without any settings row, exercising the
+        ``parent_tz_name = "America/Toronto"`` default at the top of the
+        route.
+        """
+        parent, teacher = _make_dashboard_parent(db_session)
+        _purge_dashboard_state(db_session, parent.id)
+        kid_user, _ = _make_kid(
+            db_session, parent, "Nosettings", "tz_kid_nosettings@test.com"
+        )
+
+        # Task due 2026-04-29 23:00 EDT = 2026-04-30 03:00 UTC.
+        due_utc = datetime(2026, 4, 30, 3, 0, 0, tzinfo=timezone.utc)
+        _add_task(
+            db_session,
+            creator=teacher,
+            assignee=kid_user,
+            title="Default-tz task",
+            due_date=due_utc,
+            source_message_id="msg-tz-default",
+        )
+
+        # Freeze at 2026-04-29 18:00 EDT = 22:00 UTC.
+        frozen_now = datetime(2026, 4, 29, 22, 0, 0, tzinfo=timezone.utc)
+        _freeze_route_now(monkeypatch, frozen_now)
+
+        headers = _auth(client, DASHBOARD_PARENT_EMAIL)
+        resp = client.get(f"{PREFIX}/dashboard", headers=headers)
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["kids"]) == 1
+        urgent = data["kids"][0]["urgent_items"]
+        # America/Toronto fallback should treat 23:00 EDT as urgent at
+        # 18:00 EDT — same expectation as the explicit-tz test.
+        assert any(
+            item["source_email_id"] == "msg-tz-default" for item in urgent
+        ), (
+            "Default America/Toronto tz must include 23:00-EDT task as "
+            "urgent for an 18:00-EDT 'now'."
+        )
