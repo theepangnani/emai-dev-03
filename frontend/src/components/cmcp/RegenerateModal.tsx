@@ -24,11 +24,20 @@
  * - Submission disables the form + shows a spinner; failure surfaces an
  *   inline error inside the modal so the teacher can retry without
  *   losing their tweaks (no toast — the modal owns its own UX).
+ *
+ * CB-CMCP-001 M3β 3F-2 (#4661) — Pick-SEs toggle.
+ * - Optional "Pick SEs" toggle reveals an embedded ``<CurriculumBrowser />``
+ *   so the teacher can multi-pick SE codes explicitly. Selected codes
+ *   flow into the payload as ``target_se_codes`` on the inner
+ *   ``CMCPGenerateRequest``. When the toggle is OFF (or the toggle is ON
+ *   but no SEs are selected) the field is omitted entirely so the
+ *   existing grade/subject/strand resolution path keeps working.
  */
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { CurriculumBrowser } from './CurriculumBrowser';
 import './RegenerateModal.css';
 
 // HTTP-side enums mirrored from app/schemas/cmcp.py (kept narrow + local
@@ -53,6 +62,14 @@ export interface CMCPGenerateRequestPayload {
   difficulty?: HTTPDifficulty;
   target_persona?: TargetPersona | null;
   course_id?: number | null;
+  /**
+   * Optional explicit SE codes the teacher picked via the
+   * ``<CurriculumBrowser />`` (3F-1). When supplied, the backend uses
+   * these instead of resolving SEs from grade/subject/strand. Omitted
+   * from the wire when empty so the existing resolution path keeps
+   * working unchanged.
+   */
+  target_se_codes?: string[];
 }
 
 export interface RegenerateResponse {
@@ -105,17 +122,44 @@ export function RegenerateModal({
   const [persona, setPersona] = useState<TargetPersona>(
     currentPersona ?? baseRequest.target_persona ?? 'student'
   );
+  // 3F-2 (#4661) — Pick-SEs toggle + selection. Initialised from
+  // ``baseRequest.target_se_codes`` so the modal can be re-opened on a
+  // previously SE-targeted regenerate without losing the picks. When the
+  // toggle is OFF the selection is preserved in state but NOT sent on
+  // the wire, so flipping back ON restores the prior chips without a
+  // re-pick.
+  const [pickSEs, setPickSEs] = useState<boolean>(
+    Array.isArray(baseRequest.target_se_codes) &&
+      baseRequest.target_se_codes.length > 0
+  );
+  const [seCodes, setSeCodes] = useState<string[]>(
+    baseRequest.target_se_codes ?? []
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const mutation = useMutation<RegenerateResponse, Error, void>({
     mutationFn: async () => {
-      const payload = {
-        request: {
-          ...baseRequest,
-          difficulty,
-          target_persona: persona,
-        },
+      // Strip the ``target_se_codes`` carried over from ``baseRequest``
+      // so the toggle state owns the wire payload — otherwise an
+      // OFF-toggle regenerate would still ship the parent's seeded
+      // codes (defeats the toggle).
+      const {
+        target_se_codes: _baseTargetSeCodes,
+        ...baseWithoutSeCodes
+      } = baseRequest;
+      void _baseTargetSeCodes;
+      const innerRequest: CMCPGenerateRequestPayload = {
+        ...baseWithoutSeCodes,
+        difficulty,
+        target_persona: persona,
       };
+      // Only attach target_se_codes when the teacher explicitly picked
+      // some via the toggle. Empty / OFF → omit so the existing
+      // grade/subject/strand resolution path keeps working.
+      if (pickSEs && seCodes.length > 0) {
+        innerRequest.target_se_codes = seCodes;
+      }
+      const payload = { request: innerRequest };
       const res = await api.post<RegenerateResponse>(
         `/api/cmcp/review/${artifactId}/regenerate`,
         payload,
@@ -251,6 +295,57 @@ export function RegenerateModal({
                 </span>
               </label>
             ))}
+          </fieldset>
+
+          <fieldset
+            className="cmcp-regenerate-fieldset"
+            disabled={isSubmitting}
+            data-testid="cmcp-regenerate-se-fieldset"
+          >
+            <legend>Curriculum expectations</legend>
+            <label
+              className="cmcp-regenerate-toggle"
+              htmlFor="cmcp-regen-pick-ses"
+            >
+              <input
+                type="checkbox"
+                id="cmcp-regen-pick-ses"
+                data-testid="cmcp-regenerate-pick-ses-toggle"
+                checked={pickSEs}
+                onChange={(e) => setPickSEs(e.target.checked)}
+              />
+              <span className="cmcp-regenerate-radio-label">
+                <span className="cmcp-regenerate-radio-name">
+                  Pick SEs explicitly
+                </span>
+                <span className="cmcp-regenerate-radio-helper">
+                  Override the grade/subject/strand SE resolution with a
+                  hand-picked list of curriculum expectations.
+                </span>
+              </span>
+            </label>
+            {pickSEs && (
+              <div
+                className="cmcp-regenerate-se-picker"
+                data-testid="cmcp-regenerate-se-picker"
+              >
+                <CurriculumBrowser
+                  initialSelection={seCodes}
+                  grade={baseRequest.grade}
+                  onSelectionChange={setSeCodes}
+                />
+                <p
+                  className="cmcp-regenerate-se-summary"
+                  data-testid="cmcp-regenerate-se-summary"
+                >
+                  {seCodes.length === 0
+                    ? 'No SE codes selected — toggle off or pick at least one.'
+                    : `${seCodes.length} SE code${
+                        seCodes.length === 1 ? '' : 's'
+                      } will be sent.`}
+                </p>
+              </div>
+            )}
           </fieldset>
 
           <div className="modal-actions">

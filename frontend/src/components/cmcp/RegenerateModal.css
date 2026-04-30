@@ -12,6 +12,14 @@
   width: 92%;
 }
 
+/* When the SE picker is visible, the embedded CurriculumBrowser needs
+ * extra horizontal room to render the subject column + tree side-by-
+ * side without wrapping. We widen the modal only while the picker is
+ * mounted so the default tweak-only flow stays compact. */
+.cmcp-regenerate-modal:has(.cmcp-regenerate-se-picker) {
+  max-width: 960px;
+}
+
 .cmcp-regenerate-form {
   display: flex;
   flex-direction: column;
@@ -68,4 +76,36 @@
 .cmcp-regenerate-radio-helper {
   font-size: 12px;
   color: var(--color-text-muted, #6a6a6a);
+}
+
+/* 3F-2 (#4661) — Pick-SEs toggle + embedded curriculum browser. */
+.cmcp-regenerate-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 4px;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.cmcp-regenerate-toggle:hover {
+  background: var(--color-surface-hover, #f4f4f4);
+}
+
+.cmcp-regenerate-toggle input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.cmcp-regenerate-se-picker {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cmcp-regenerate-se-summary {
+  font-size: 12px;
+  color: var(--color-text-muted, #6a6a6a);
+  margin: 0;
 }
