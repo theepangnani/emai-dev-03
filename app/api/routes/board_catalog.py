@@ -63,11 +63,10 @@ from app.mcp.tools.list_catalog import (
     _decode_cursor,
     _encode_cursor,
     _post_filter_rows,
-    _se_grade,
-    _se_subject,
 )
 from app.models.user import User, UserRole
 from app.services import gcs_service
+from app.services.cmcp._artifact_views import cmcp_artifact_summary_v1
 from app.services.cmcp.artifact_state import ArtifactState
 from app.services.cmcp.coverage_map_service import compute_coverage_map
 
@@ -151,28 +150,18 @@ def _row_to_artifact(row: Any) -> BoardCatalogArtifact:
     """Project a ``StudyGuide`` row to the public artifact summary.
 
     The board catalog payload is intentionally similar to the MCP
-    ``list_catalog`` summary (so clients can share parsing) but adds
+    ``list_catalog`` summary (so clients can share parsing) and includes
     ``alignment_score`` + ``ai_engine`` per #4653's metadata list.
+
+    Delegates to the shared :func:`cmcp_artifact_summary_v1` projector
+    in :mod:`app.services.cmcp._artifact_views` (#4701) so the public
+    summary shape can't drift between the MCP + REST surfaces. The
+    extra ``guide_type`` key returned by the projector is silently
+    dropped by Pydantic (``BoardCatalogArtifact`` only declares
+    ``content_type``).
     """
-    created_at = row.created_at.isoformat() if row.created_at else None
-    alignment = row.alignment_score
-    if alignment is not None:
-        # ``alignment_score`` is stored as Numeric — coerce to float so
-        # the JSON response is a plain number, not a Decimal string.
-        alignment = float(alignment)
-    return BoardCatalogArtifact(
-        id=row.id,
-        title=row.title,
-        content_type=row.guide_type,
-        state=row.state,
-        subject_code=_se_subject(row.se_codes),
-        grade=_se_grade(row.se_codes),
-        se_codes=list(row.se_codes) if row.se_codes else [],
-        alignment_score=alignment,
-        ai_engine=row.ai_engine,
-        course_id=row.course_id,
-        created_at=created_at,
-    )
+    summary = cmcp_artifact_summary_v1(row)
+    return BoardCatalogArtifact(**summary)
 
 
 # ---------------------------------------------------------------------------
