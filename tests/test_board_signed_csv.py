@@ -662,3 +662,296 @@ def test_export_over_cap_returns_413(monkeypatch):
     assert excinfo.value.status_code == 413
     fake_gcs.upload_file.assert_not_called()
     fake_gcs.generate_signed_url.assert_not_called()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Expanded CSV-injection coverage (#4700) — content_type / state /
+# board_id / SE-codes / subject_code all run through `_csv_safe`.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_safe_row_neutralizes_every_string_cell():
+    """`_safe_row` runs every string positional through `_csv_safe`."""
+    from app.api.routes.board_catalog import _safe_row
+
+    row = _safe_row("=BAD", 42, "+plus", None, "@at", "ok", 3.14)
+    assert row == ["'=BAD", 42, "'+plus", None, "'@at", "ok", 3.14]
+
+
+def test_export_csv_neutralizes_formula_in_content_type_and_state(
+    monkeypatch,
+):
+    """A malicious payload in `content_type` / `state` / `subject_code`
+    / `ai_engine` / `se_codes` is neutralized in the rendered CSV.
+
+    Before #4700 the CSV writer passed `art.content_type` and
+    `art.state` raw — a future model tweak that lets either become
+    user-controlled (or a leak through an attacker-controlled value)
+    would have been exploitable. This test injects a malicious payload
+    into each previously-unsanitized non-title field and asserts the
+    leading single-quote is present in the rendered cell.
+    """
+    from app.api.routes import board_catalog as bc_module
+
+    fake_gcs = MagicMock()
+    captured: dict = {}
+
+    def _capture_upload(path, data, content_type):
+        captured["path"] = path
+        captured["data"] = data
+        captured["content_type"] = content_type
+
+    fake_gcs.upload_file.side_effect = _capture_upload
+    fake_gcs.generate_signed_url.return_value = "https://stub.test/x"
+    monkeypatch.setattr(bc_module, "gcs_service", fake_gcs)
+    monkeypatch.setattr(
+        bc_module, "compute_coverage_map", lambda board_id, db: {}
+    )
+    # Skip audit — irrelevant to this assertion + avoids needing a real DB.
+    monkeypatch.setattr(
+        bc_module, "log_action", lambda *a, **kw: None
+    )
+
+    malicious = SimpleNamespace(
+        id=42,
+        title="Plain title",
+        # `=cmd|...!A1` is the canonical OWASP CSV-injection payload
+        # (Excel will execute it on open).
+        content_type='=cmd|"/c calc"!A1',
+        state="+evil_state",
+        subject_code="-malicious_subject",
+        grade=None,
+        se_codes=["@evil_code"],
+        alignment_score=None,
+        ai_engine="=HYPERLINK(\"x\",\"y\")",
+        course_id=None,
+        created_at=None,
+    )
+    monkeypatch.setattr(
+        bc_module,
+        "_query_all_approved_artifacts",
+        lambda db, *, board_id: [malicious],
+    )
+
+    db = MagicMock()
+    user = _board_admin_mock(board_id="TDSB")
+
+    bc_module.export_board_catalog_csv(
+        board_id="TDSB", current_user=user, db=db
+    )
+
+    csv_text = captured["data"].decode("utf-8")
+    # Each previously-raw cell now starts with `'` so Excel/Sheets
+    # render as literal text instead of executing the formula.
+    assert "'=cmd" in csv_text  # content_type neutralized
+    assert "'+evil_state" in csv_text  # state neutralized
+    assert "'-malicious_subject" in csv_text  # subject_code
+    assert "'@evil_code" in csv_text  # se_codes pipe-string
+    assert "'=HYPERLINK" in csv_text  # ai_engine neutralized
+    # Critical: the un-prefixed (raw) form must NOT appear in any cell.
+    # csv.writer wraps formula-trigger cells in quotes, so a raw form
+    # would show as `"=cmd|...` (no leading `'`). The neutralized form
+    # is `"'=cmd|...`. Ensure the unsafe cell shape never leaks.
+    assert '"=cmd' not in csv_text
+    assert '"+evil_state' not in csv_text
+    assert '"-malicious_subject' not in csv_text
+    assert '"@evil_code' not in csv_text
+
+
+def test_export_csv_neutralizes_formula_in_board_id_header(monkeypatch):
+    """A malicious payload in `board_id` (path param) is neutralized
+    in the header row.
+
+    `board_id` flows from the URL path into the header row "as-is" —
+    `["board_id", board_id]`. Before #4700 this was raw. Even though
+    a path param is normally controlled, defense-in-depth says any
+    string cell that could ever come from a request must run through
+    `_csv_safe`.
+    """
+    from app.api.routes import board_catalog as bc_module
+
+    fake_gcs = MagicMock()
+    captured: dict = {}
+
+    def _capture_upload(path, data, content_type):
+        captured["data"] = data
+
+    fake_gcs.upload_file.side_effect = _capture_upload
+    fake_gcs.generate_signed_url.return_value = "https://stub.test/x"
+    monkeypatch.setattr(bc_module, "gcs_service", fake_gcs)
+    monkeypatch.setattr(
+        bc_module, "compute_coverage_map", lambda board_id, db: {}
+    )
+    monkeypatch.setattr(
+        bc_module, "_query_all_approved_artifacts", lambda db, *, board_id: []
+    )
+    monkeypatch.setattr(bc_module, "log_action", lambda *a, **kw: None)
+
+    db = MagicMock()
+    # ADMIN bypasses cross-board check so we can pass an arbitrary path value.
+    admin = _board_admin_mock(is_admin=True, board_id=None)
+
+    bc_module.export_board_catalog_csv(
+        board_id="=DANGER", current_user=admin, db=db
+    )
+
+    csv_text = captured["data"].decode("utf-8")
+    # Header row starts with the literal `'=DANGER` (single-quote prefix).
+    assert "'=DANGER" in csv_text
+    # The unsanitized form (`"=DANGER` with double-quote wrapping, which
+    # csv.writer applies to formula cells) must NOT appear.
+    assert '"=DANGER' not in csv_text
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Audit log (#4698) — Bill 194: CSV export writes a
+# `cmcp.board.catalog_exported` row with the board_id, artifact_count,
+# csv_bytes, and gcs_path captured in details.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_export_writes_audit_row(
+    client,
+    cmcp_flag_on,
+    db_session,
+    board_admin_tdsb,
+    patch_resolve_board,
+    mock_gcs,
+):
+    """A successful CSV export writes a `cmcp.board.catalog_exported`
+    audit row with the board_id + artifact_count + csv_bytes + gcs_path.
+    """
+    import json
+
+    from app.models.audit_log import AuditLog
+
+    unique_board = f"AUDIT_{uuid4().hex[:6].upper()}"
+    patch_resolve_board({board_admin_tdsb.id: unique_board})
+
+    _seed_artifact(
+        db_session,
+        user_id=board_admin_tdsb.id,
+        title="Auditable export row",
+        state="APPROVED",
+        board_id=unique_board,
+    )
+
+    headers = _auth(client, board_admin_tdsb.email)
+    resp = client.post(
+        f"/api/board/{unique_board}/catalog/export.csv", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Read from a fresh ``SessionLocal()`` for cross-session sanity.
+    # The pool-sharing semantics in SQLAlchemy mean this isn't a
+    # mutation-test against a missing ``db.commit()`` (a fresh session
+    # backed by the same engine pool can still see SAVEPOINT-flushed
+    # rows). The explicit commit in the handler is convention-aligned
+    # with ``cmcp_review.py`` and required for production durability.
+    from app.db.database import SessionLocal
+
+    fresh = SessionLocal()
+    try:
+        rows = (
+            fresh.query(AuditLog)
+            .filter(AuditLog.action == "cmcp.board.catalog_exported")
+            .filter(AuditLog.user_id == board_admin_tdsb.id)
+            .all()
+        )
+        assert len(rows) >= 1, (
+            "expected cmcp.board.catalog_exported audit row "
+            "(visible from a fresh session — verifies db.commit() ran)"
+        )
+        latest = rows[-1]
+        assert latest.resource_type == "board_catalog"
+        details = json.loads(latest.details)
+        assert details["board_id"] == unique_board
+        assert details["artifact_count"] == 1
+        assert details["csv_bytes"] > 0
+        assert details["gcs_path"].startswith(
+            f"cmcp/board_catalog_exports/{unique_board}/"
+        )
+        assert details["role"] == "BOARD_ADMIN"
+    finally:
+        fresh.close()
+
+
+def test_export_403_writes_no_audit_row(
+    client,
+    cmcp_flag_on,
+    db_session,
+    parent_user,
+    mock_gcs,
+):
+    """A 403'd export must NOT emit `cmcp.board.catalog_exported`."""
+    from app.models.audit_log import AuditLog
+
+    pre_count = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "cmcp.board.catalog_exported")
+        .count()
+    )
+    headers = _auth(client, parent_user.email)
+    resp = client.post(
+        "/api/board/TDSB/catalog/export.csv", headers=headers
+    )
+    assert resp.status_code == 403
+    post_count = (
+        db_session.query(AuditLog)
+        .filter(AuditLog.action == "cmcp.board.catalog_exported")
+        .count()
+    )
+    assert post_count == pre_count
+
+
+def test_export_413_writes_no_audit_row(monkeypatch):
+    """An over-cap export hits 413 BEFORE the audit / GCS calls.
+
+    The audit row + GCS upload + signed URL all live below the 413 check
+    — exercising the cap path must not produce an audit entry (otherwise
+    a probe could spam the table).
+    """
+    from fastapi import HTTPException
+
+    from app.api.routes import board_catalog as bc_module
+
+    fake_gcs = MagicMock()
+    monkeypatch.setattr(bc_module, "gcs_service", fake_gcs)
+    audit_calls: list = []
+    monkeypatch.setattr(
+        bc_module, "log_action", lambda *a, **kw: audit_calls.append(kw)
+    )
+    monkeypatch.setattr(
+        bc_module, "compute_coverage_map", lambda board_id, db: {}
+    )
+    over_cap = bc_module.MAX_EXPORT_ARTIFACT_ROWS + 1
+    fake_artifact = SimpleNamespace(
+        id=1,
+        title="x",
+        content_type="study_guide",
+        state="APPROVED",
+        subject_code=None,
+        grade=None,
+        se_codes=[],
+        alignment_score=None,
+        ai_engine=None,
+        course_id=None,
+        created_at=None,
+    )
+    monkeypatch.setattr(
+        bc_module,
+        "_query_all_approved_artifacts",
+        lambda db, *, board_id: [fake_artifact] * over_cap,
+    )
+
+    db = MagicMock()
+    user = _board_admin_mock(board_id="TDSB")
+
+    with pytest.raises(HTTPException) as excinfo:
+        bc_module.export_board_catalog_csv(
+            board_id="TDSB", current_user=user, db=db
+        )
+    assert excinfo.value.status_code == 413
+    assert audit_calls == [], (
+        "413 path must not emit an audit log entry"
+    )

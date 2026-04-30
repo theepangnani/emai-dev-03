@@ -66,6 +66,7 @@ from app.mcp.tools.list_catalog import (
 )
 from app.models.user import User, UserRole
 from app.services import gcs_service
+from app.services.audit_service import log_action
 from app.services.cmcp._artifact_views import cmcp_artifact_summary_v1
 from app.services.cmcp.artifact_state import ArtifactState
 from app.services.cmcp.coverage_map_service import compute_coverage_map
@@ -339,8 +340,43 @@ def get_board_catalog(
             cursor_anchor.created_at, cursor_anchor.id
         )
 
+    # ── Audit log (#4698 — Bill 194) ──────────────────────────────────
+    # Record every catalog read so a board admin / regulator can later
+    # trace who looked at what. ``resource_id`` is left None because
+    # board_id is a string and the audit table's resource_id column is
+    # Integer; the board_id is preserved in ``details`` instead.
+    #
+    # ``log_action`` uses a SAVEPOINT (``db.begin_nested``) and only
+    # flushes — the row is buffered until the outer transaction
+    # commits. ``get_db()`` does NOT auto-commit on close, so we
+    # explicitly commit here; without this, the audit row is silently
+    # dropped on session close. Same pattern as ``cmcp_review.py``.
+    log_action(
+        db,
+        user_id=getattr(current_user, "id", None),
+        action="cmcp.board.catalog_listed",
+        resource_type="board_catalog",
+        resource_id=None,
+        details={
+            "board_id": str(board_id),
+            "page_size": len(artifacts_rows),
+            "role": getattr(
+                getattr(current_user, "role", None), "value", None
+            ),
+            "filters": {
+                # ``state`` is a hardcoded invariant of this endpoint
+                # (APPROVED-only); echoed here for forensic clarity.
+                "subject_code": subject_code_norm,
+                "grade": grade,
+                "state": "APPROVED",
+                "content_type": content_type_norm,
+            },
+        },
+    )
+    db.commit()
+
     logger.info(
-        "board_catalog board=%s user_id=%s role=%s page_size=%s passes=%s "
+        "cmcp.board.catalog_listed board=%s user_id=%s role=%s page_size=%s passes=%s "
         "db_exhausted=%s",
         board_id,
         getattr(current_user, "id", None),
@@ -348,6 +384,17 @@ def get_board_catalog(
         len(artifacts_rows),
         passes,
         db_exhausted,
+        extra={
+            "event": "cmcp.board.catalog_listed",
+            "board_id": str(board_id),
+            "user_id": getattr(current_user, "id", None),
+            "role": getattr(
+                getattr(current_user, "role", None), "value", None
+            ),
+            "page_size": len(artifacts_rows),
+            "passes": passes,
+            "db_exhausted": db_exhausted,
+        },
     )
 
     return BoardCatalogResponse(
@@ -390,6 +437,20 @@ def _csv_safe(value: Any) -> Any:
     return value
 
 
+def _safe_row(*values: Any) -> list[Any]:
+    """Apply :func:`_csv_safe` to every string value in a CSV row.
+
+    Wraps :func:`_csv_safe` for use with ``csv.writer.writerow`` so that
+    every string cell in the export — not just free-text title /
+    subject_code / ai_engine — is neutralized against CSV-formula
+    injection. Non-string values (ints, floats, ``None``) pass through
+    untouched. (#4700: previously only a hand-picked subset of cells
+    went through ``_csv_safe``; ``content_type``, ``state``, the
+    ``board_id`` header cell, and the SE-codes pipe-string were raw.)
+    """
+    return [_csv_safe(v) if isinstance(v, str) else v for v in values]
+
+
 class BoardCatalogExportResponse(BaseModel):
     """Response envelope for a CSV-export request.
 
@@ -428,25 +489,35 @@ def _build_catalog_csv_bytes(
     buf = io.StringIO()
     writer = csv.writer(buf)
 
-    # Header row — board_id surfaced for caller cross-checks.
-    writer.writerow(["board_id", board_id])
+    # Every string cell goes through :func:`_safe_row` so CSV-formula
+    # injection (OWASP) is neutralized regardless of which column the
+    # attacker controls. Static label cells like ``"section"`` /
+    # ``"coverage_map"`` benignly pass through unchanged because they
+    # don't start with one of the formula-trigger prefixes — but
+    # routing them through the helper is cheap and means a future
+    # column addition can't be accidentally raw.
+
+    # Header row — board_id surfaced for caller cross-checks. Even
+    # though board_id is a controlled identifier, it ultimately comes
+    # from the request path and is sanitized defensively (#4700).
+    writer.writerow(_safe_row("board_id", board_id))
     writer.writerow([])
 
     # Section 1 — coverage map.
-    writer.writerow(["section", "coverage_map"])
-    writer.writerow(["strand", "grade", "count"])
+    writer.writerow(_safe_row("section", "coverage_map"))
+    writer.writerow(_safe_row("strand", "grade", "count"))
     for strand in sorted(coverage_map.keys()):
         grades = coverage_map[strand]
         for grade in sorted(grades.keys()):
-            writer.writerow([strand, grade, grades[grade]])
+            writer.writerow(_safe_row(strand, grade, grades[grade]))
 
     # Section divider.
     writer.writerow([])
 
     # Section 2 — artifact list.
-    writer.writerow(["section", "artifacts"])
+    writer.writerow(_safe_row("section", "artifacts"))
     writer.writerow(
-        [
+        _safe_row(
             "id",
             "title",
             "content_type",
@@ -458,18 +529,19 @@ def _build_catalog_csv_bytes(
             "ai_engine",
             "course_id",
             "created_at",
-        ]
+        )
     )
     for art in artifacts:
         writer.writerow(
-            [
+            _safe_row(
                 art.id,
-                # Free-text fields neutralized against CSV-formula injection
-                # (OWASP) before reaching Excel / Sheets.
-                _csv_safe(art.title),
+                # Free-text + previously-raw fields all run through the
+                # same OWASP CSV-injection neutralizer (#4700 expanded
+                # the set: content_type / state were raw before).
+                art.title,
                 art.content_type,
                 art.state,
-                _csv_safe(art.subject_code or ""),
+                art.subject_code or "",
                 art.grade if art.grade is not None else "",
                 # Pipe-separate SE codes so the CSV stays one-row-per-artifact.
                 "|".join(art.se_codes) if art.se_codes else "",
@@ -478,10 +550,10 @@ def _build_catalog_csv_bytes(
                     if art.alignment_score is not None
                     else ""
                 ),
-                _csv_safe(art.ai_engine or ""),
+                art.ai_engine or "",
                 art.course_id if art.course_id is not None else "",
                 art.created_at or "",
-            ]
+            )
         )
 
     return buf.getvalue().encode("utf-8")
@@ -555,10 +627,17 @@ def export_board_catalog_csv(
     # bite real data while stopping the unbounded growth path.
     if len(artifacts) > MAX_EXPORT_ARTIFACT_ROWS:
         logger.warning(
-            "board_catalog_export over_cap board=%s artifacts=%s cap=%s",
+            "cmcp.board.catalog_export_over_cap board=%s artifacts=%s cap=%s",
             board_id,
             len(artifacts),
             MAX_EXPORT_ARTIFACT_ROWS,
+            extra={
+                "event": "cmcp.board.catalog_export_over_cap",
+                "board_id": str(board_id),
+                "user_id": getattr(current_user, "id", None),
+                "artifact_count": len(artifacts),
+                "cap": MAX_EXPORT_ARTIFACT_ROWS,
+            },
         )
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -589,8 +668,32 @@ def export_board_catalog_csv(
     )
     expires_at = issued_at + timedelta(seconds=SIGNED_CSV_TTL_SECONDS)
 
+    # ── Audit log (#4698 — Bill 194) ──────────────────────────────────
+    # CSV export is the higher-risk surface (full APPROVED catalog
+    # leaving the system as a file) so the audit trail is required.
+    # ``log_action`` flushes via SAVEPOINT but doesn't commit; ``get_db``
+    # never commits on its own — explicit commit required or the row
+    # is dropped on session close. Same pattern as ``cmcp_review.py``.
+    log_action(
+        db,
+        user_id=getattr(current_user, "id", None),
+        action="cmcp.board.catalog_exported",
+        resource_type="board_catalog",
+        resource_id=None,
+        details={
+            "board_id": str(board_id),
+            "artifact_count": len(artifacts),
+            "csv_bytes": len(csv_bytes),
+            "gcs_path": gcs_path,
+            "role": getattr(
+                getattr(current_user, "role", None), "value", None
+            ),
+        },
+    )
+    db.commit()
+
     logger.info(
-        "board_catalog_export board=%s user_id=%s artifacts=%s strands=%s "
+        "cmcp.board.catalog_exported board=%s user_id=%s artifacts=%s strands=%s "
         "csv_bytes=%s gcs_path=%s",
         board_id,
         getattr(current_user, "id", None),
@@ -598,6 +701,15 @@ def export_board_catalog_csv(
         len(coverage_map),
         len(csv_bytes),
         gcs_path,
+        extra={
+            "event": "cmcp.board.catalog_exported",
+            "board_id": str(board_id),
+            "user_id": getattr(current_user, "id", None),
+            "artifact_count": len(artifacts),
+            "strand_count": len(coverage_map),
+            "csv_bytes": len(csv_bytes),
+            "gcs_path": gcs_path,
+        },
     )
 
     return BoardCatalogExportResponse(
