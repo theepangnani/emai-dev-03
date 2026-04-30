@@ -3,6 +3,11 @@
 CB-CMCP-001 M2-B 2B-2 (#4553) — fetch a single ``study_guides`` row by id
 with FR-05-aligned visibility checks.
 
+CB-CMCP-001 M3α 3B-3 (#4585) — SELF_STUDY artifacts (D3=C parent/student
+self-initiated) are visible only to the requestor + their parent/child
+family pair. They are NOT visible to the broader class roster, the
+course teacher, BOARD_ADMIN, or CURRICULUM_ADMIN.
+
 Storage note (M3 dependency)
 ----------------------------
 Per locked decision D2=B and ``requirements/features-part7.md §6.150``,
@@ -62,6 +67,23 @@ CURRICULUM_ADMIN         all artifacts (catalog + curriculum work needs
                          cross-board read).
 ADMIN                    all artifacts.
 ======================  ================================================
+
+SELF_STUDY override (3B-3 / #4585)
+----------------------------------
+When ``artifact.state == 'SELF_STUDY'`` (D3=C parent/student self-init),
+the matrix above is *narrowed* to a family-only window:
+
+- The requestor (``artifact.user_id == user.id``) — always.
+- If the requestor is a STUDENT, that student's linked PARENTS (via
+  ``parent_students``) — so a parent can see their kid's self-study
+  artifact.
+- If the requestor is a PARENT, that parent's linked CHILDREN'S user
+  ids — so a child can see their parent's self-study artifact (rare in
+  practice, but the relationship is symmetric).
+- ADMIN — kept as the catch-all override (debug + ops).
+- CURRICULUM_ADMIN, BOARD_ADMIN, TEACHER (incl. course teacher) →
+  DENIED. SELF_STUDY is not class-distributable; the class roster +
+  ministry roles don't need read access to private learner artifacts.
 """
 from __future__ import annotations
 
@@ -95,6 +117,94 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
+def _self_study_family_can_view(
+    artifact: Any, user: Any, db: Session
+) -> bool:
+    """Family-only visibility check for SELF_STUDY artifacts (3B-3 / #4585).
+
+    SELF_STUDY artifacts (D3=C self-initiated by parent or student) are
+    private to a family pair. This helper returns True iff:
+
+    - ``user`` is the requestor (``artifact.user_id == user.id``), OR
+    - ``user`` is a PARENT linked to the artifact owner via the
+      ``parent_students`` association (parent sees a child's
+      SELF_STUDY), OR
+    - ``user`` is a STUDENT whose linked PARENT owns the artifact
+      (child sees a parent's SELF_STUDY).
+
+    BOARD_ADMIN, CURRICULUM_ADMIN, and TEACHER are intentionally NOT
+    granted access — SELF_STUDY is a private learner workspace and the
+    class/board roster has no audit need on it. ADMIN is checked
+    *before* this helper is consulted so the catch-all bypass still
+    works for ops/debug. This matches the M3α 3B-3 acceptance:
+
+      "Visible only to requestor + their parent/child. Not the broader
+       class roster, not BOARD_ADMIN."
+
+    Implementation note (#4613 review): collapsed to a single JOIN per
+    role-branch (instead of the original 3-step chain owner-lookup →
+    parent_students → Student.user_id). The JOIN itself encodes the
+    "owner is a Student linked to caller as parent" predicate, so the
+    explicit ``owner.has_role(STUDENT)`` check from the previous
+    revision is unnecessary — only Student rows can be the join target
+    on the kid side.
+    """
+    from app.models.student import Student, parent_students
+    from app.models.user import UserRole
+
+    # Creator always sees their own artifact.
+    if artifact.user_id == user.id:
+        return True
+
+    # Only family roles (PARENT/STUDENT) can pick up access via the
+    # family override — everyone else short-circuits to False here so
+    # we don't issue any DB calls. ADMIN is handled *before* this
+    # helper is consulted (in ``_user_can_view``); BOARD_ADMIN +
+    # CURRICULUM_ADMIN + TEACHER never have a family-pair grant for a
+    # SELF_STUDY row.
+    is_parent_caller = user.has_role(UserRole.PARENT)
+    is_student_caller = user.has_role(UserRole.STUDENT)
+    if not (is_parent_caller or is_student_caller):
+        return False
+
+    # PARENT caller — grant if the artifact owner is a linked child.
+    # One JOIN: ``parent_students`` ↔ ``Student``, filtered to caller's
+    # parent_id and the artifact owner's user_id. ``.first()`` returns
+    # the row iff the link exists.
+    if is_parent_caller:
+        match = (
+            db.query(Student.user_id)
+            .join(
+                parent_students,
+                parent_students.c.student_id == Student.id,
+            )
+            .filter(parent_students.c.parent_id == user.id)
+            .filter(Student.user_id == artifact.user_id)
+            .first()
+        )
+        if match is not None:
+            return True
+
+    # STUDENT caller — grant if the artifact owner is a linked parent.
+    # One JOIN: ``Student`` ↔ ``parent_students``, filtered to caller's
+    # student row and the artifact owner's user_id (matched as parent).
+    if is_student_caller:
+        match = (
+            db.query(parent_students.c.parent_id)
+            .join(
+                Student,
+                Student.id == parent_students.c.student_id,
+            )
+            .filter(Student.user_id == user.id)
+            .filter(parent_students.c.parent_id == artifact.user_id)
+            .first()
+        )
+        if match is not None:
+            return True
+
+    return False
+
+
 def _user_can_view(artifact: Any, user: Any, db: Session) -> bool:
     """Apply the FR-05-aligned visibility matrix.
 
@@ -103,6 +213,13 @@ def _user_can_view(artifact: Any, user: Any, db: Session) -> bool:
     ``user.has_role(...)`` so multi-role users get the union of their
     roles' permissions (matches the existing
     :func:`can_access_parent_companion` semantics).
+
+    SELF_STUDY override (#4585): when the artifact is in the SELF_STUDY
+    state, only the requestor + their parent/child family pair (and
+    ADMIN as catch-all) get access — TEACHER / BOARD_ADMIN /
+    CURRICULUM_ADMIN are denied. The override is applied BEFORE the
+    standard matrix below so non-family roles don't pick up access via
+    the broader rules (e.g. CURRICULUM_ADMIN's "see everything").
     """
     # Lazy imports — keep the tool module importable without dragging in
     # the SQLAlchemy model layer at import time, mirrors how
@@ -111,11 +228,26 @@ def _user_can_view(artifact: Any, user: Any, db: Session) -> bool:
     from app.models.student import Student, parent_students
     from app.models.teacher import Teacher
     from app.models.user import UserRole
+    from app.services.cmcp.artifact_state import ArtifactState
 
-    # ADMIN + CURRICULUM_ADMIN are the catch-all "see everything" roles.
-    # Checked first so multi-role admins skip the heavier joins below.
+    # ADMIN is the only catch-all that survives SELF_STUDY narrowing —
+    # ops + debug visibility on private learner artifacts is intentional.
+    # CURRICULUM_ADMIN does NOT get this bypass because SELF_STUDY is
+    # not curriculum work; class-distributable APPROVED artifacts are
+    # the curriculum admin's domain.
     if user.has_role(UserRole.ADMIN):
         return True
+
+    # SELF_STUDY override — narrow to family + creator. Applied before
+    # the standard matrix so e.g. CURRICULUM_ADMIN doesn't see SELF_STUDY
+    # via the catch-all, and TEACHER doesn't see it via the course link.
+    if artifact.state == ArtifactState.SELF_STUDY:
+        return _self_study_family_can_view(artifact, user, db)
+
+    # Non-SELF_STUDY: the standard FR-05 matrix.
+    # CURRICULUM_ADMIN is the catch-all "see everything" role for
+    # non-SELF_STUDY artifacts (catalog + curriculum work needs
+    # cross-board read).
     if user.has_role(UserRole.CURRICULUM_ADMIN):
         return True
 
