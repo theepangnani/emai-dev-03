@@ -276,6 +276,29 @@ def update_task(
             db.commit()
             task = db.query(Task).options(*_task_eager_options()).filter(Task.id == task.id).first()
 
+            # CB-CMCP-001 M3-D 3D-2 (#4659) — award XP when a student
+            # completes an artifact assigned via 3D-1's fan-out. Best-effort
+            # try/except so an XP-side failure never breaks the Task PATCH.
+            if (
+                data.is_completed
+                and current_user.role == UserRole.STUDENT
+                and task.source == "cmcp_artifact"
+                and task.study_guide_id is not None
+            ):
+                try:
+                    from app.services.cmcp.xp_eligibility import (
+                        award_xp_for_completed_artifact,
+                    )
+
+                    award_xp_for_completed_artifact(
+                        artifact_id=task.study_guide_id,
+                        student_user_id=current_user.id,
+                        task_source=task.source,
+                        db=db,
+                    )
+                except Exception:
+                    pass  # Never break primary action
+
             # Notify the task creator (parent) when assignee completes the task
             if data.is_completed and task.created_by_user_id and task.created_by_user_id != current_user.id:
                 try:
