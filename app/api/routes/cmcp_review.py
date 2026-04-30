@@ -844,8 +844,10 @@ def regenerate_review_artifact(
                 # at the phantom id and committed it. Write a
                 # compensating audit entry here so the Bill 194 trail
                 # doesn't reference a deleted ``resource_id``.
-                from app.services.audit_service import log_action
-
+                # ``log_action`` is imported at module level (line 62);
+                # do NOT re-import locally — that shadows the binding
+                # and breaks the function-level audit row below in any
+                # code path that skips this branch.
                 log_action(
                     db,
                     user_id=current_user.id,

@@ -116,6 +116,11 @@ def _seed_artifact(
 ):
     from app.models.study_guide import StudyGuide
 
+    # Use a uniquely-suffixed SE code by default so seeded rows don't
+    # collide with other tests' class-context resolvers (the resolver
+    # joins on the JSON array of SE codes, not on subject_id, so a bare
+    # "B2.1" leaks across tests via the session-scoped DB).
+    default_se = f"FANOUT-{uuid4().hex[:6]}.1"
     artifact = StudyGuide(
         user_id=user_id,
         course_id=course_id,
@@ -124,7 +129,7 @@ def _seed_artifact(
         guide_type="quiz",
         state=state,
         requested_persona=requested_persona,
-        se_codes=se_codes or ["B2.1"],
+        se_codes=se_codes or [default_se],
         voice_module_hash="b" * 64,
     )
     db_session.add(artifact)
