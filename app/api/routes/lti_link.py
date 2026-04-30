@@ -345,7 +345,17 @@ def lti_launch(
         # Defense-in-depth — unreachable today (the STUDENT-role gate
         # above 404s any non-STUDENT kid_id), but keeps the redirect
         # consistent with the docstring's role-aware contract if a
-        # future stripe relaxes the kid_id role check.
+        # future stripe relaxes the kid_id role check. Emit a WARNING
+        # so a regression that DOES reach this branch surfaces in
+        # production logs instead of silently routing the launch to
+        # the parent-companion view (Pass-1 review S-2).
+        logger.warning(
+            "lti.launch.non_student_kid_redirect_path artifact_id=%s "
+            "kid_id=%s role=%s",
+            artifact.id,
+            token_kid_id,
+            getattr(kid_user, "role", None),
+        )
         redirect_url = f"/parent/companion/{artifact.id}"
 
     return RedirectResponse(url=redirect_url, status_code=302)

@@ -514,7 +514,11 @@ def test_flag_off_with_invalid_signature_returns_403(
     A probing caller comparing 401-vs-403 between bad-signature
     requests can't infer whether the flag is ON or OFF — both
     code paths return the same 403 when the flag is OFF, because the
-    flag check fires before signature verification.
+    flag check fires before signature verification. The 403 detail
+    must be IDENTICAL to the flag-off+valid-sig case (the companion
+    test above) — otherwise a future change could leak "Invalid LTI
+    token" through this path and pass the test silently. Pass-1 review
+    I-1 mutation-test guard on the no-oracle contract.
     """
     artifact = _seed_artifact(db_session, student_user.id)
     try:
@@ -528,6 +532,7 @@ def test_flag_off_with_invalid_signature_returns_403(
             follow_redirects=False,
         )
         assert resp.status_code == 403
+        assert resp.json()["detail"] == "CB-CMCP-001 is not enabled"
     finally:
         _cleanup_artifact(db_session, artifact.id)
 

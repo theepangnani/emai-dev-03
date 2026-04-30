@@ -83,6 +83,15 @@ function ArtifactBody({ artifact }: ArtifactBodyProps) {
         <h1>{artifact.title}</h1>
       </header>
       <section data-testid="student-artifact-content">
+        {/*
+          TODO(M4): study-guide-typed artifacts ship as Markdown — render
+          via the project's existing markdown helper instead of <pre> so
+          headings/lists/inline code surface correctly. The minimal <pre>
+          treatment is intentional for M3β so the LTI happy path lands on
+          something that loads + displays the content; UX polish is
+          tracked under M4 per the LTI redirect-fix brief (Pass-1 review
+          S-1).
+        */}
         <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
           {artifact.content}
         </pre>
