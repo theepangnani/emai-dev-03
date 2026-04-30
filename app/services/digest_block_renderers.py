@@ -402,6 +402,9 @@ def render_cb_cmcp_artifact_summary(
         "open_link": open_link,
         "kid_name": kid_name,
     }
+    # Legacy structured render log — kept for backwards-compat with any
+    # extractors that already match ``digest.cmcp_summary.rendered``. Do
+    # not remove without coordinating with the metrics pipeline.
     logger.info(
         "digest.cmcp_summary.rendered artifact_id=%s parent_id=%s kid_name=%s state=%s",
         artifact_id,
@@ -414,6 +417,21 @@ def render_cb_cmcp_artifact_summary(
             "parent_id": parent_id,
             "state": state,
         },
+    )
+
+    # Canonical surface-telemetry render line (3C-5). The M3 acceptance
+    # metric "render rate per surface" is derived from this event. The
+    # parent (the digest recipient) is the viewer — pass ``parent_id``
+    # as ``user_id``.
+    from app.services.cmcp.surface_telemetry import (  # noqa: PLC0415
+        SURFACE_DIGEST,
+        log_rendered,
+    )
+
+    log_rendered(
+        artifact_id=artifact_id,
+        surface=SURFACE_DIGEST,
+        user_id=parent_id,
     )
     return block
 

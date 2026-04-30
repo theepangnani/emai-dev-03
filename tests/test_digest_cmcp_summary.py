@@ -29,6 +29,7 @@ by the visibility helpers (linked-children + course enrollment).
 """
 from __future__ import annotations
 
+import logging
 from uuid import uuid4
 
 import pytest
@@ -336,3 +337,98 @@ def test_description_falls_back_to_title_when_content_blank(db_session):
     )
     assert block is not None
     assert block["description"] == "Just the title"
+
+
+# ---------------------------------------------------------------------------
+# Surface telemetry (3C-5)
+# ---------------------------------------------------------------------------
+
+
+def test_render_emits_cmcp_surface_rendered_log(db_session, caplog):
+    """Renderer must emit the canonical ``cmcp.surface.rendered``
+    structured log line so the M3 acceptance "render rate per surface"
+    metric extractor sees the digest surface render. ``surface=digest``
+    and ``user_id`` is the parent (the digest recipient = the viewer)."""
+    parent = _make_parent(db_session)
+    kid_user, kid_student = _make_kid(db_session)
+    _link_parent_child(db_session, parent, kid_student)
+
+    artifact = _make_artifact(
+        db_session,
+        user_id=kid_user.id,
+        state=ArtifactState.APPROVED,
+    )
+
+    caplog.set_level(
+        logging.INFO, logger="app.services.cmcp.surface_telemetry"
+    )
+    block = render_cb_cmcp_artifact_summary(
+        artifact.id, parent.id, kid_user.id, db_session
+    )
+    assert block is not None
+
+    matches = [
+        rec
+        for rec in caplog.records
+        if getattr(rec, "event", None) == "cmcp.surface.rendered"
+    ]
+    assert len(matches) == 1
+    rec = matches[0]
+    assert rec.artifact_id == artifact.id
+    assert rec.surface == "digest"
+    assert rec.user_id == parent.id
+
+
+def test_render_no_surface_telemetry_when_block_omitted(db_session, caplog):
+    """When the renderer returns None (visibility skip), no
+    ``cmcp.surface.rendered`` line should be emitted — render-rate must
+    only count actual user-visible renders, not skipped blocks."""
+    family_a_parent = _make_parent(db_session, full_name="Family A")
+    kid_a_user, kid_a_student = _make_kid(db_session)
+    _link_parent_child(db_session, family_a_parent, kid_a_student)
+    artifact = _make_artifact(
+        db_session, user_id=kid_a_user.id, state=ArtifactState.APPROVED
+    )
+
+    family_b_parent = _make_parent(db_session, full_name="Family B")
+
+    caplog.set_level(
+        logging.INFO, logger="app.services.cmcp.surface_telemetry"
+    )
+    result = render_cb_cmcp_artifact_summary(
+        artifact.id, family_b_parent.id, kid_a_user.id, db_session
+    )
+    assert result is None
+
+    matches = [
+        rec
+        for rec in caplog.records
+        if getattr(rec, "event", None) == "cmcp.surface.rendered"
+    ]
+    assert len(matches) == 0
+
+
+def test_render_legacy_digest_summary_event_still_emitted(db_session, caplog):
+    """Backwards-compat: the legacy ``digest.cmcp_summary.rendered``
+    event must still fire alongside the new canonical event."""
+    parent = _make_parent(db_session)
+    kid_user, kid_student = _make_kid(db_session)
+    _link_parent_child(db_session, parent, kid_student)
+    artifact = _make_artifact(
+        db_session, user_id=kid_user.id, state=ArtifactState.APPROVED
+    )
+
+    caplog.set_level(
+        logging.INFO, logger="app.services.digest_block_renderers"
+    )
+    block = render_cb_cmcp_artifact_summary(
+        artifact.id, parent.id, kid_user.id, db_session
+    )
+    assert block is not None
+
+    legacy = [
+        rec
+        for rec in caplog.records
+        if getattr(rec, "event", None) == "digest.cmcp_summary.rendered"
+    ]
+    assert len(legacy) == 1
