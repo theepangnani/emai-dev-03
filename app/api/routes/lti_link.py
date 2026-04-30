@@ -54,9 +54,24 @@ Validation order (mirrors M3α visibility helpers)
    for artifact 7 cannot be replayed against artifact 8.
 6. Artifact lookup → 404 if missing.
 7. Kid user lookup → 404 if the ``kid_id`` doesn't resolve to a User row.
-8. Visibility: artifact must be visible to the resolved kid user via
+8. Kid role: the resolved user MUST have the ``STUDENT`` role → 404
+   otherwise. This is the "kid_id" name promise to board IT — the
+   token can only assert a student identity, not an admin one. Without
+   this gate, a board (intentionally or by mistake) issuing a token
+   with ``kid_id`` set to an ADMIN/CURRICULUM_ADMIN user id would have
+   ``_user_can_view`` short-circuit ``True`` and grant cross-tenant
+   access via the role bypass.
+9. Visibility: artifact must be visible to the resolved kid user via
    the M3α ``_user_can_view`` helper → 404 otherwise (collapsed with
    unknown-id to avoid the existence oracle on the public LTI surface).
+
+Rate limiting
+-------------
+30/minute per client IP via slowapi (mirrors auth.py public surfaces:
+register/forgot-password 3/min, login 5/min, unsubscribe 5/min). The
+endpoint is intentionally auth-free, so we bound HMAC-verification +
+DB-touch traffic against probe abuse. 30/min comfortably accommodates
+a class of 30 launching the same artifact in one minute.
 
 On success: 302 redirect to ``/parent/companion/{artifact_id}`` —
 matches the canonical artifact-view path used by the rest of the M3
@@ -80,12 +95,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.rate_limit import limiter
 from app.db.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -155,7 +171,9 @@ def _decode_lti_token(signed_token: str) -> dict[str, Any]:
     status_code=302,
     response_class=RedirectResponse,
 )
+@limiter.limit("30/minute")
 def lti_launch(
+    request: Request,
     artifact_id: int = Query(
         ...,
         description="study_guides.id of the artifact the LMS link points to",
@@ -197,7 +215,7 @@ def lti_launch(
     # doesn't pin the pre-reload mapper registry. Mirrors the lazy
     # `_user_can_view` import below.
     from app.models.study_guide import StudyGuide
-    from app.models.user import User
+    from app.models.user import User, UserRole
 
     artifact = (
         db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
@@ -212,6 +230,20 @@ def lti_launch(
         # Collapsed with unknown-artifact 404 to avoid the existence
         # oracle — a probing caller learns "either the artifact or the
         # kid id is wrong" without which-one-failed signal.
+        raise HTTPException(
+            status_code=404, detail=f"Artifact {artifact_id} not found"
+        )
+
+    # Tighten the ``kid_id`` claim contract: the token must assert a
+    # STUDENT identity. Without this gate, a board issuing a token with
+    # ``kid_id`` set to an ADMIN / CURRICULUM_ADMIN user id would have
+    # ``_user_can_view`` short-circuit ``True`` via the role bypass and
+    # grant cross-tenant launch access. This matches the docstring
+    # framing ("the kid the artifact is launching for") and the M3-E
+    # use case (LMS launches the in-app companion view for a student).
+    # Collapsed to the same generic 404 to avoid leaking which check
+    # failed.
+    if not kid_user.has_role(UserRole.STUDENT):
         raise HTTPException(
             status_code=404, detail=f"Artifact {artifact_id} not found"
         )
@@ -232,12 +264,18 @@ def lti_launch(
 
     logger.info(
         "lti.launch.ok artifact_id=%s kid_id=%s",
-        artifact_id,
+        artifact.id,
         token_kid_id,
     )
 
+    # Use ``artifact.id`` (the verified row's id) rather than the query
+    # parameter when constructing the redirect target — matches the
+    # ``cmcp_surface_click`` convention and avoids reflecting unverified
+    # query input into the Location header. Functionally equivalent on
+    # the happy path (``token_artifact_id == artifact_id == artifact.id``
+    # by this point) but obviously safe at a glance.
     return RedirectResponse(
-        url=f"/parent/companion/{artifact_id}", status_code=302
+        url=f"/parent/companion/{artifact.id}", status_code=302
     )
 
 

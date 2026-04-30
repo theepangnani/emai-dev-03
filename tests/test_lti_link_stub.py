@@ -2,13 +2,19 @@
 
 Covers
 ------
-- Valid signed token → 302 redirect to ``/parent/companion/{id}``.
+- Valid signed token (kid is a STUDENT, owns the artifact) → 302
+  redirect to ``/parent/companion/{id}``.
 - Invalid signature → 401.
 - Expired token → 401.
-- Unknown artifact → 404.
 - Wrong-type token (e.g. an access token) → 401.
 - ``artifact_id`` query mismatch with token claim → 401.
-- Kid has no visibility on the artifact → 404 (no existence leak).
+- Garbage non-JWT token → 401.
+- Bool ``artifact_id`` claim (subclass of int) → 401.
+- Unknown artifact → 404.
+- Unknown kid → 404 (collapsed with unknown-artifact).
+- Kid claim resolves to a non-STUDENT user (e.g. a PARENT) → 404
+  (collapsed). The "kid_id" name promise is enforced.
+- Kid (STUDENT) has no visibility on the artifact → 404 (no leak).
 
 The endpoint is auth-free (JWT signature is the authorization proof),
 so no ``Authorization`` header is sent on these requests — the
@@ -59,6 +65,22 @@ def other_parent(db_session):
     from app.models.user import UserRole
 
     return _make_user(db_session, UserRole.PARENT)
+
+
+@pytest.fixture()
+def student_user(db_session):
+    """A STUDENT user — the "kid" the LTI launch represents."""
+    from app.models.user import UserRole
+
+    return _make_user(db_session, UserRole.STUDENT)
+
+
+@pytest.fixture()
+def unrelated_student(db_session):
+    """A STUDENT with no family link to ``parent_user``."""
+    from app.models.user import UserRole
+
+    return _make_user(db_session, UserRole.STUDENT)
 
 
 def _seed_artifact(db_session, user_id: int):
@@ -119,11 +141,14 @@ def _sign_token(
 # ─────────────────────────────────────────────────────────────────────
 
 
-def test_valid_token_returns_302_redirect(client, db_session, parent_user):
-    artifact = _seed_artifact(db_session, parent_user.id)
+def test_valid_token_returns_302_redirect(
+    client, db_session, student_user
+):
+    """Happy path: STUDENT kid owns the artifact → 302 redirect."""
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         token = _sign_token(
-            artifact_id=artifact.id, kid_id=parent_user.id
+            artifact_id=artifact.id, kid_id=student_user.id
         )
         resp = client.get(
             f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
@@ -144,15 +169,15 @@ def test_valid_token_returns_302_redirect(client, db_session, parent_user):
 
 
 def test_invalid_signature_returns_401(
-    client, db_session, parent_user
+    client, db_session, student_user
 ):
-    artifact = _seed_artifact(db_session, parent_user.id)
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         # Sign with a different secret → signature won't verify against
         # the configured one.
         bad_token = _sign_token(
             artifact_id=artifact.id,
-            kid_id=parent_user.id,
+            kid_id=student_user.id,
             secret="not-the-real-secret-key",
         )
         resp = client.get(
@@ -165,12 +190,12 @@ def test_invalid_signature_returns_401(
         _cleanup_artifact(db_session, artifact.id)
 
 
-def test_expired_token_returns_401(client, db_session, parent_user):
-    artifact = _seed_artifact(db_session, parent_user.id)
+def test_expired_token_returns_401(client, db_session, student_user):
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         expired = _sign_token(
             artifact_id=artifact.id,
-            kid_id=parent_user.id,
+            kid_id=student_user.id,
             expires_in_minutes=-1,  # already expired
         )
         resp = client.get(
@@ -184,14 +209,14 @@ def test_expired_token_returns_401(client, db_session, parent_user):
 
 
 def test_wrong_token_type_returns_401(
-    client, db_session, parent_user
+    client, db_session, student_user
 ):
     """A standard access-token JWT replayed against /lti/launch → 401."""
-    artifact = _seed_artifact(db_session, parent_user.id)
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         wrong_type = _sign_token(
             artifact_id=artifact.id,
-            kid_id=parent_user.id,
+            kid_id=student_user.id,
             token_type="access",  # not lti_launch
         )
         resp = client.get(
@@ -204,14 +229,14 @@ def test_wrong_token_type_returns_401(
 
 
 def test_query_artifact_id_mismatch_returns_401(
-    client, db_session, parent_user
+    client, db_session, student_user
 ):
     """Token issued for artifact A cannot be replayed against artifact B."""
-    artifact_a = _seed_artifact(db_session, parent_user.id)
-    artifact_b = _seed_artifact(db_session, parent_user.id)
+    artifact_a = _seed_artifact(db_session, student_user.id)
+    artifact_b = _seed_artifact(db_session, student_user.id)
     try:
         token = _sign_token(
-            artifact_id=artifact_a.id, kid_id=parent_user.id
+            artifact_id=artifact_a.id, kid_id=student_user.id
         )
         # Replay against artifact_b's URL
         resp = client.get(
@@ -224,11 +249,42 @@ def test_query_artifact_id_mismatch_returns_401(
         _cleanup_artifact(db_session, artifact_b.id)
 
 
-def test_garbage_token_returns_401(client, db_session, parent_user):
-    artifact = _seed_artifact(db_session, parent_user.id)
+def test_garbage_token_returns_401(client, db_session, student_user):
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         resp = client.get(
             f"/api/lti/launch?artifact_id={artifact.id}&signed_token=not.a.jwt",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 401
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
+
+
+def test_bool_artifact_id_claim_returns_401(
+    client, db_session, student_user
+):
+    """``bool`` is a subclass of ``int`` in Python — must be rejected.
+
+    Mutation-test guard: without the explicit ``isinstance(..., bool)``
+    rejection in ``_decode_lti_token``, ``True`` would pass the int
+    check and load row id=1 by silent coercion.
+    """
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        # Hand-roll a token with bool artifact_id (test helper takes int)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+        bad_payload = {
+            "artifact_id": True,
+            "kid_id": student_user.id,
+            "exp": expire,
+            "type": LTI_LAUNCH_TOKEN_TYPE,
+        }
+        bad_token = jwt.encode(
+            bad_payload, settings.secret_key, algorithm=settings.algorithm
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={bad_token}",
             follow_redirects=False,
         )
         assert resp.status_code == 401
@@ -241,10 +297,12 @@ def test_garbage_token_returns_401(client, db_session, parent_user):
 # ─────────────────────────────────────────────────────────────────────
 
 
-def test_unknown_artifact_returns_404(client, db_session, parent_user):
+def test_unknown_artifact_returns_404(
+    client, db_session, student_user
+):
     """Token references a study_guides.id that doesn't exist."""
     bogus_id = 99_999_999
-    token = _sign_token(artifact_id=bogus_id, kid_id=parent_user.id)
+    token = _sign_token(artifact_id=bogus_id, kid_id=student_user.id)
     resp = client.get(
         f"/api/lti/launch?artifact_id={bogus_id}&signed_token={token}",
         follow_redirects=False,
@@ -252,9 +310,9 @@ def test_unknown_artifact_returns_404(client, db_session, parent_user):
     assert resp.status_code == 404
 
 
-def test_unknown_kid_returns_404(client, db_session, parent_user):
+def test_unknown_kid_returns_404(client, db_session, student_user):
     """``kid_id`` claim references a User row that doesn't exist."""
-    artifact = _seed_artifact(db_session, parent_user.id)
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         token = _sign_token(
             artifact_id=artifact.id, kid_id=99_999_999
@@ -268,16 +326,44 @@ def test_unknown_kid_returns_404(client, db_session, parent_user):
         _cleanup_artifact(db_session, artifact.id)
 
 
-def test_no_visibility_returns_404(
-    client, db_session, parent_user, other_parent
+def test_non_student_kid_returns_404(
+    client, db_session, parent_user, student_user
 ):
-    """Kid in token has no visibility on the artifact → collapsed 404."""
-    # Artifact owned by other_parent; kid_id in token is an unrelated parent
-    # who is not linked to other_parent. M3α visibility helper denies.
-    artifact = _seed_artifact(db_session, other_parent.id)
+    """``kid_id`` resolving to a non-STUDENT (e.g. PARENT) → collapsed 404.
+
+    Mutation-test guard: without the explicit STUDENT-role check, a
+    board-issued token with ``kid_id`` pointing at a PARENT/ADMIN/etc.
+    User would inherit that role's visibility bypass and grant launch
+    access. The "kid_id" name promise — only students — is enforced
+    here.
+    """
+    artifact = _seed_artifact(db_session, student_user.id)
     try:
         token = _sign_token(
             artifact_id=artifact.id, kid_id=parent_user.id
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 404
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
+
+
+def test_no_visibility_returns_404(
+    client, db_session, unrelated_student, other_parent
+):
+    """STUDENT kid has no visibility on a different family's artifact → 404.
+
+    Artifact owned by ``other_parent``; ``kid_id`` is a STUDENT with no
+    parent_students link to ``other_parent``. The M3α visibility
+    helper's family-pair check denies.
+    """
+    artifact = _seed_artifact(db_session, other_parent.id)
+    try:
+        token = _sign_token(
+            artifact_id=artifact.id, kid_id=unrelated_student.id
         )
         resp = client.get(
             f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
