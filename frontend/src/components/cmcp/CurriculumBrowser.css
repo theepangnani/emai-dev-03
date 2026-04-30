@@ -1,0 +1,374 @@
+/* CB-CMCP-001 M3-F 3F-1 (#4656) — CurriculumBrowser styles.
+ *
+ * Uses existing global tokens (--color-*, --radius-*, --font-*) from the
+ * Bridge theme (index.css / THEME.md). No new tokens are introduced.
+ */
+.cmcp-curriculum-browser {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 16px;
+  font-family: var(--font-sans, "DM Sans", system-ui, sans-serif);
+  font-size: 14px;
+  color: var(--color-text, #1a1a1a);
+}
+
+@media (max-width: 720px) {
+  .cmcp-curriculum-browser {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Subject column ────────────────────────────────────────────────── */
+.cmcp-curriculum-browser-subjects {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #fff);
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.cmcp-curriculum-browser-subjects-heading {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #5b6477);
+  padding: 4px 8px;
+  margin: 0;
+}
+
+.cmcp-curriculum-browser-subject-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--color-text, #1a1a1a);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.cmcp-curriculum-browser-subject-button:hover,
+.cmcp-curriculum-browser-subject-button:focus-visible {
+  background: var(--color-surface-muted, #eef0f4);
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+.cmcp-curriculum-browser-subject-button-active {
+  background: var(--color-surface-muted, #eef0f4);
+  font-weight: 600;
+}
+
+.cmcp-curriculum-browser-subject-count {
+  font-size: 11px;
+  color: var(--color-text-muted, #5b6477);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Detail column ─────────────────────────────────────────────────── */
+.cmcp-curriculum-browser-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0; /* allow children to shrink inside the grid track */
+}
+
+.cmcp-curriculum-browser-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cmcp-curriculum-browser-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cmcp-curriculum-browser-view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-sm, 8px);
+  overflow: hidden;
+}
+
+.cmcp-curriculum-browser-view-toggle-btn {
+  padding: 4px 10px;
+  border: none;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1a1a1a);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cmcp-curriculum-browser-view-toggle-btn:hover,
+.cmcp-curriculum-browser-view-toggle-btn:focus-visible {
+  background: var(--color-surface-muted, #eef0f4);
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+.cmcp-curriculum-browser-view-toggle-btn-active {
+  background: var(--color-surface-muted, #eef0f4);
+  font-weight: 600;
+}
+
+/* ── Tree view ─────────────────────────────────────────────────────── */
+.cmcp-curriculum-browser-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #fff);
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.cmcp-curriculum-browser-strand {
+  border-bottom: 1px solid var(--color-border, #d0d4de);
+}
+
+.cmcp-curriculum-browser-strand:last-child {
+  border-bottom: none;
+}
+
+.cmcp-curriculum-browser-strand-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text, #1a1a1a);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cmcp-curriculum-browser-strand-toggle:hover,
+.cmcp-curriculum-browser-strand-toggle:focus-visible {
+  background: var(--color-surface-muted, #eef0f4);
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: -2px;
+}
+
+.cmcp-curriculum-browser-strand-caret {
+  font-size: 10px;
+  color: var(--color-text-muted, #5b6477);
+  width: 12px;
+  display: inline-block;
+}
+
+.cmcp-curriculum-browser-strand-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-muted, #5b6477);
+  font-variant-numeric: tabular-nums;
+}
+
+.cmcp-curriculum-browser-expectations {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+.cmcp-curriculum-browser-expectation {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 12px 6px 36px;
+  cursor: pointer;
+}
+
+.cmcp-curriculum-browser-expectation:hover,
+.cmcp-curriculum-browser-expectation-selected {
+  background: var(--color-surface-muted, #eef0f4);
+}
+
+.cmcp-curriculum-browser-expectation-checkbox {
+  margin: 0;
+}
+
+.cmcp-curriculum-browser-expectation-code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cmcp-curriculum-browser-expectation-desc {
+  font-size: 13px;
+  color: var(--color-text, #1a1a1a);
+}
+
+/* ── Table view ────────────────────────────────────────────────────── */
+.cmcp-curriculum-browser-table-wrap {
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #fff);
+  max-height: 480px;
+  overflow: auto;
+}
+
+.cmcp-curriculum-browser-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cmcp-curriculum-browser-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface-muted, #eef0f4);
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #5b6477);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border, #d0d4de);
+  font-weight: 600;
+}
+
+.cmcp-curriculum-browser-table tbody td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--color-border, #d0d4de);
+  vertical-align: top;
+}
+
+.cmcp-curriculum-browser-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.cmcp-curriculum-browser-table tbody tr.cmcp-curriculum-browser-row-selected {
+  background: var(--color-surface-muted, #eef0f4);
+}
+
+.cmcp-curriculum-browser-table-checkbox-cell {
+  width: 32px;
+}
+
+.cmcp-curriculum-browser-table-code-cell {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Chip area ─────────────────────────────────────────────────────── */
+.cmcp-curriculum-browser-chips-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #d0d4de);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #fff);
+}
+
+.cmcp-curriculum-browser-chips-heading {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #5b6477);
+  margin: 0;
+}
+
+.cmcp-curriculum-browser-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 24px;
+}
+
+.cmcp-curriculum-browser-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-surface-muted, #eef0f4);
+  color: var(--color-text, #1a1a1a);
+  border: 1px solid var(--color-border, #d0d4de);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cmcp-curriculum-browser-chip-code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+}
+
+.cmcp-curriculum-browser-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--color-text-muted, #5b6477);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cmcp-curriculum-browser-chip-remove:hover,
+.cmcp-curriculum-browser-chip-remove:focus-visible {
+  background: var(--color-surface, #fff);
+  color: var(--color-danger, #b3261e);
+  outline: 2px solid var(--color-focus, #2563eb);
+  outline-offset: 1px;
+}
+
+.cmcp-curriculum-browser-chips-empty {
+  font-style: italic;
+  font-size: 13px;
+  color: var(--color-text-muted, #5b6477);
+}
+
+/* ── Empty / loading / error states ────────────────────────────────── */
+.cmcp-curriculum-browser-empty,
+.cmcp-curriculum-browser-loading,
+.cmcp-curriculum-browser-error {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted, #5b6477);
+  border: 1px dashed var(--color-border, #d0d4de);
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-surface, #fff);
+}
+
+.cmcp-curriculum-browser-error {
+  color: var(--color-danger, #b3261e);
+  border-color: var(--color-danger, #b3261e);
+  border-style: solid;
+}
