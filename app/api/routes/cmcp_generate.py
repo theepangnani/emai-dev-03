@@ -72,6 +72,7 @@ from app.schemas.cmcp import (
     HTTPContentType,
     HTTPDifficulty,
     ParentCompanionArtifactResponse,
+    StudentArtifactViewResponse,
     TargetPersona,
 )
 from app.services.cmcp.artifact_persistence import persist_cmcp_artifact
@@ -586,4 +587,64 @@ def get_artifact_parent_companion(
     return ParentCompanionArtifactResponse(
         artifact_id=artifact.id,
         content=content,
+    )
+
+
+# ---------------------------------------------------------------------------
+# M3β follow-up #4694 — GET /api/cmcp/artifacts/{id}/student-view
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/artifacts/{artifact_id}/student-view",
+    response_model=StudentArtifactViewResponse,
+)
+def get_artifact_student_view(
+    artifact_id: int,
+    current_user: User = Depends(require_cmcp_enabled),
+    db: Session = Depends(get_db),
+) -> StudentArtifactViewResponse:
+    """Return a minimal student-facing projection of *artifact_id*.
+
+    Companion to the LTI launch redirect (#4694) — the LMS-launching
+    student lands on ``/student/artifact/{id}`` and that page calls
+    this endpoint to render title + content. Visibility mirrors the
+    M3α matrix (creator + linked parents + course teacher + admin /
+    curriculum admin / board admin with matching board_id), so a
+    parent or teacher hitting the URL sees their family's / class's
+    artifacts and a STUDENT sees only what they can already see in
+    the app today. 404 collapses "no row" + "no access" to avoid the
+    existence oracle on what is, like the LTI redirect target,
+    indirectly reachable to any authenticated user with a guessable
+    artifact id.
+
+    Unlike ``/parent-companion``, this endpoint does NOT require
+    ``requested_persona == 'student'`` — a STUDENT launching a parent-
+    persona artifact (e.g. via a board IT misconfiguration) still
+    sees the raw content, and the higher-level surfaces (Parent
+    Companion page, persona-specific shells) are responsible for the
+    persona-correct rendering.
+    """
+    # Lazy import to mirror ``get_artifact_parent_companion`` and avoid
+    # the cmcp_generate ↔ mcp.tools circular at module-load time.
+    from app.mcp.tools.get_artifact import _user_can_view
+
+    artifact = (
+        db.query(StudyGuide).filter(StudyGuide.id == artifact_id).first()
+    )
+    if artifact is None:
+        raise HTTPException(
+            status_code=404, detail=f"Artifact {artifact_id} not found"
+        )
+
+    if not _user_can_view(artifact, current_user, db):
+        raise HTTPException(
+            status_code=404, detail=f"Artifact {artifact_id} not found"
+        )
+
+    return StudentArtifactViewResponse(
+        artifact_id=artifact.id,
+        title=artifact.title,
+        content=artifact.content,
+        guide_type=artifact.guide_type,
     )

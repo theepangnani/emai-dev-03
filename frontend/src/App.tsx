@@ -108,6 +108,8 @@ const EmailDigestPage = lazyRetry(() => import('./pages/parent/EmailDigestPage')
 // endpoint now exists and returns the persisted parent companion content
 // (or a minimal stub for sync-route artifacts where M1 doesn't run AI).
 const ParentCompanionPage = lazyRetry(() => import('./pages/parent/ParentCompanionPage').then((m) => ({ default: m.ParentCompanionPage })));
+// CB-CMCP-001 M3β follow-up #4694 — student-facing artifact view, redirect target for LTI launches.
+const StudentArtifactPage = lazyRetry(() => import('./pages/student/StudentArtifactPage').then((m) => ({ default: m.StudentArtifactPage })));
 const GmailOAuthCallbackPage = lazyRetry(() => import('./pages/GmailOAuthCallbackPage').then((m) => ({ default: m.GmailOAuthCallbackPage })));
 const ReadinessCheckPage = lazyRetry(() => import('./pages/ReadinessCheckPage').then((m) => ({ default: m.ReadinessCheckPage })));
 const WalletPage = lazyRetry(() => import('./pages/WalletPage'));
@@ -267,6 +269,15 @@ function App() {
                 element={
                   <ProtectedRoute allowedRoles={['parent']}>
                     <ParentCompanionPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* CB-CMCP-001 M3β follow-up #4694 — student-facing artifact view (LTI launch target). */}
+              <Route
+                path="/student/artifact/:artifact_id"
+                element={
+                  <ProtectedRoute allowedRoles={['student']}>
+                    <StudentArtifactPage />
                   </ProtectedRoute>
                 }
               />

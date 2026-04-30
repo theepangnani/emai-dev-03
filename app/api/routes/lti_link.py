@@ -73,9 +73,36 @@ endpoint is intentionally auth-free, so we bound HMAC-verification +
 DB-touch traffic against probe abuse. 30/min comfortably accommodates
 a class of 30 launching the same artifact in one minute.
 
-On success: 302 redirect to ``/parent/companion/{artifact_id}`` —
-matches the canonical artifact-view path used by the rest of the M3
-surface stripes.
+On success: 302 redirect to a role-appropriate artifact view —
+``/student/artifact/{artifact_id}`` when the resolved kid is a
+STUDENT (the M3-E primary use case per #4655), or
+``/parent/companion/{artifact_id}`` if a future stripe lands a
+PARENT-token surface. Today the kid_id contract is STUDENT-only
+(see #4694) so the LTI surface always lands on
+``/student/artifact/...``.
+
+Feature flag (CB-CMCP-001 #4695)
+--------------------------------
+Gated by the standard CMCP kill switch — ``cmcp.enabled`` (default
+OFF). The flag check fires *before* JWT validation so flipping the
+flag OFF returns 403 for every shape of request (good signature,
+bad signature, expired, garbage), preventing flag-state probing via
+401/403 deltas. JWT signature failures + flag-on still surface as
+401 — the existing token-validation contract is unchanged when the
+flag is ON.
+
+Audit trail (CB-CMCP-001 #4699)
+-------------------------------
+Every successful LTI launch writes a ``cmcp.lti.launched`` row via
+:func:`app.services.audit_service.log_action`, attributed to the
+resolved STUDENT user (``token_kid_id``). LTI launches are
+cross-tenant access events (a board's IT identity asserts a kid
+identity), so the audit row is the durable record Bill 194
+breach-response procedures need. Failed launches (401/403/404)
+intentionally do NOT write audit rows — those are routine probing
+noise on a public surface; if attack-signal collection becomes
+useful, layer slowapi rate-limit telemetry instead of widening the
+audit surface.
 
 Out of scope
 ------------
@@ -103,6 +130,8 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.db.database import get_db
+from app.services.audit_service import log_action
+from app.services.feature_flag_service import require_cmcp_enabled_no_auth
 
 logger = logging.getLogger(__name__)
 
@@ -197,6 +226,12 @@ def lti_launch(
     launches are anonymous from the LMS perspective and pick up the
     user identity inside the redirected frontend route.
     """
+    # CB-CMCP-001 #4695 — kill-switch gate fires *before* token
+    # validation so flag-OFF returns 403 for every request shape (good
+    # sig, bad sig, expired, garbage). Flipping ``cmcp.enabled`` OFF
+    # must disable LTI, not just the authenticated surfaces.
+    require_cmcp_enabled_no_auth(db=db)
+
     payload = _decode_lti_token(signed_token)
 
     token_artifact_id = payload["artifact_id"]
@@ -262,21 +297,58 @@ def lti_launch(
             status_code=404, detail=f"Artifact {artifact_id} not found"
         )
 
+    # CB-CMCP-001 #4699 — durable audit row for the cross-tenant
+    # access event. Attributed to the resolved STUDENT (``token_kid_id``)
+    # because that's the identity the board's token asserted. ``details``
+    # records the token type so future audit consumers can distinguish
+    # LTI from other launch surfaces.
+    log_action(
+        db,
+        user_id=token_kid_id,
+        action="cmcp.lti.launched",
+        resource_type="study_guide",
+        resource_id=artifact.id,
+        details={"board_token_type": "lti_launch", "kid_id": token_kid_id},
+    )
+
+    # CB-CMCP-001 #4703 — structured-event INFO matching the M3 telemetry
+    # convention (``cmcp.<area>.<verb>`` under ``extra.event``). The
+    # human-readable format string is preserved so existing log-line
+    # parsers don't break; aggregators that pivot on ``event`` get the
+    # structured field for free.
     logger.info(
         "lti.launch.ok artifact_id=%s kid_id=%s",
         artifact.id,
         token_kid_id,
+        extra={
+            "event": "cmcp.lti.launched",
+            "artifact_id": artifact.id,
+            "kid_id": token_kid_id,
+        },
     )
 
-    # Use ``artifact.id`` (the verified row's id) rather than the query
+    # CB-CMCP-001 #4694 — role-aware redirect. The kid_id contract is
+    # STUDENT-only today (validated above), so a STUDENT lands on the
+    # student-accessible artifact view. The PARENT branch is a
+    # forward-compat hatch for a future stripe that lands a PARENT-token
+    # surface; until then it's unreachable on this route.
+    #
+    # Uses ``artifact.id`` (the verified row's id) rather than the query
     # parameter when constructing the redirect target — matches the
     # ``cmcp_surface_click`` convention and avoids reflecting unverified
     # query input into the Location header. Functionally equivalent on
     # the happy path (``token_artifact_id == artifact_id == artifact.id``
     # by this point) but obviously safe at a glance.
-    return RedirectResponse(
-        url=f"/parent/companion/{artifact.id}", status_code=302
-    )
+    if kid_user.has_role(UserRole.STUDENT):
+        redirect_url = f"/student/artifact/{artifact.id}"
+    else:
+        # Defense-in-depth — unreachable today (the STUDENT-role gate
+        # above 404s any non-STUDENT kid_id), but keeps the redirect
+        # consistent with the docstring's role-aware contract if a
+        # future stripe relaxes the kid_id role check.
+        redirect_url = f"/parent/companion/{artifact.id}"
+
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 
 __all__ = ["router", "LTI_LAUNCH_TOKEN_TYPE"]

@@ -3,7 +3,8 @@
 Covers
 ------
 - Valid signed token (kid is a STUDENT, owns the artifact) → 302
-  redirect to ``/parent/companion/{id}``.
+  redirect to ``/student/artifact/{id}`` (M3β follow-up #4694 — was
+  ``/parent/companion/{id}`` before the role-aware redirect fix).
 - Invalid signature → 401.
 - Expired token → 401.
 - Wrong-type token (e.g. an access token) → 401.
@@ -15,6 +16,13 @@ Covers
 - Kid claim resolves to a non-STUDENT user (e.g. a PARENT) → 404
   (collapsed). The "kid_id" name promise is enforced.
 - Kid (STUDENT) has no visibility on the artifact → 404 (no leak).
+
+M3β follow-up additions (#4694 / #4695 / #4699 / #4703)
+-------------------------------------------------------
+- Flag-OFF + valid signature → 403 (kill-switch).
+- Flag-OFF + invalid signature → 403 (no flag-state oracle).
+- Successful launch writes a ``cmcp.lti.launched`` audit row
+  attributed to the resolved STUDENT user.
 
 The endpoint is auth-free (JWT signature is the authorization proof),
 so no ``Authorization`` header is sent on these requests — the
@@ -31,6 +39,66 @@ from jose import jwt
 from app.core.config import settings
 from app.api.routes.lti_link import LTI_LAUNCH_TOKEN_TYPE
 from conftest import PASSWORD
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Flag fixture — ``cmcp.enabled`` ON for every route-level test
+# (M3β follow-up #4695 — the LTI launch endpoint now respects the
+# CMCP kill switch).
+# ─────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture()
+def cmcp_flag_on(db_session):
+    """Flip ``cmcp.enabled`` ON for the test, OFF after.
+
+    The conftest reset shim (#4415) flips ``cmcp.enabled`` OFF between
+    tests. Without this fixture, every existing LTI test would now hit
+    the new 403 kill-switch gate instead of the original 401/404 codes.
+    Tests that need flag-OFF behavior consume the explicit
+    ``cmcp_flag_off`` fixture (declared below) which leaves the flag
+    in its default-OFF state.
+    """
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "cmcp.enabled")
+        .first()
+    )
+    assert flag is not None, "cmcp.enabled flag must be seeded"
+    flag.enabled = True
+    db_session.commit()
+    yield flag
+    db_session.refresh(flag)
+    flag.enabled = False
+    db_session.commit()
+
+
+@pytest.fixture()
+def cmcp_flag_off(db_session):
+    """Ensure ``cmcp.enabled`` is OFF for the test.
+
+    The conftest reset shim already flips the flag OFF between tests,
+    so this fixture is just an explicit no-op marker so flag-OFF tests
+    declare their intent in the signature. Calls ``seed_features`` to
+    guarantee the row exists (matching the ``cmcp_flag_on`` setup).
+    """
+    from app.models.feature_flag import FeatureFlag
+    from app.services.feature_seed_service import seed_features
+
+    seed_features(db_session)
+    flag = (
+        db_session.query(FeatureFlag)
+        .filter(FeatureFlag.key == "cmcp.enabled")
+        .first()
+    )
+    assert flag is not None, "cmcp.enabled flag must be seeded"
+    flag.enabled = False
+    db_session.commit()
+    return flag
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -142,9 +210,16 @@ def _sign_token(
 
 
 def test_valid_token_returns_302_redirect(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
-    """Happy path: STUDENT kid owns the artifact → 302 redirect."""
+    """Happy path: STUDENT kid owns the artifact → 302 redirect.
+
+    M3β follow-up #4694 — the redirect target is now
+    ``/student/artifact/{id}`` (was ``/parent/companion/{id}`` before
+    the role-aware redirect fix; the parent-only frontend route was
+    rejecting the STUDENT-validated launches at the protected-route
+    gate).
+    """
     artifact = _seed_artifact(db_session, student_user.id)
     try:
         token = _sign_token(
@@ -157,7 +232,7 @@ def test_valid_token_returns_302_redirect(
         assert resp.status_code == 302
         assert (
             resp.headers["location"]
-            == f"/parent/companion/{artifact.id}"
+            == f"/student/artifact/{artifact.id}"
         )
     finally:
         _cleanup_artifact(db_session, artifact.id)
@@ -169,7 +244,7 @@ def test_valid_token_returns_302_redirect(
 
 
 def test_invalid_signature_returns_401(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
     artifact = _seed_artifact(db_session, student_user.id)
     try:
@@ -190,7 +265,9 @@ def test_invalid_signature_returns_401(
         _cleanup_artifact(db_session, artifact.id)
 
 
-def test_expired_token_returns_401(client, db_session, student_user):
+def test_expired_token_returns_401(
+    client, db_session, student_user, cmcp_flag_on
+):
     artifact = _seed_artifact(db_session, student_user.id)
     try:
         expired = _sign_token(
@@ -209,7 +286,7 @@ def test_expired_token_returns_401(client, db_session, student_user):
 
 
 def test_wrong_token_type_returns_401(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
     """A standard access-token JWT replayed against /lti/launch → 401."""
     artifact = _seed_artifact(db_session, student_user.id)
@@ -229,7 +306,7 @@ def test_wrong_token_type_returns_401(
 
 
 def test_query_artifact_id_mismatch_returns_401(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
     """Token issued for artifact A cannot be replayed against artifact B."""
     artifact_a = _seed_artifact(db_session, student_user.id)
@@ -249,7 +326,9 @@ def test_query_artifact_id_mismatch_returns_401(
         _cleanup_artifact(db_session, artifact_b.id)
 
 
-def test_garbage_token_returns_401(client, db_session, student_user):
+def test_garbage_token_returns_401(
+    client, db_session, student_user, cmcp_flag_on
+):
     artifact = _seed_artifact(db_session, student_user.id)
     try:
         resp = client.get(
@@ -262,7 +341,7 @@ def test_garbage_token_returns_401(client, db_session, student_user):
 
 
 def test_bool_artifact_id_claim_returns_401(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
     """``bool`` is a subclass of ``int`` in Python — must be rejected.
 
@@ -298,7 +377,7 @@ def test_bool_artifact_id_claim_returns_401(
 
 
 def test_unknown_artifact_returns_404(
-    client, db_session, student_user
+    client, db_session, student_user, cmcp_flag_on
 ):
     """Token references a study_guides.id that doesn't exist."""
     bogus_id = 99_999_999
@@ -310,7 +389,9 @@ def test_unknown_artifact_returns_404(
     assert resp.status_code == 404
 
 
-def test_unknown_kid_returns_404(client, db_session, student_user):
+def test_unknown_kid_returns_404(
+    client, db_session, student_user, cmcp_flag_on
+):
     """``kid_id`` claim references a User row that doesn't exist."""
     artifact = _seed_artifact(db_session, student_user.id)
     try:
@@ -327,7 +408,7 @@ def test_unknown_kid_returns_404(client, db_session, student_user):
 
 
 def test_non_student_kid_returns_404(
-    client, db_session, parent_user, student_user
+    client, db_session, parent_user, student_user, cmcp_flag_on
 ):
     """``kid_id`` resolving to a non-STUDENT (e.g. PARENT) → collapsed 404.
 
@@ -352,7 +433,7 @@ def test_non_student_kid_returns_404(
 
 
 def test_no_visibility_returns_404(
-    client, db_session, unrelated_student, other_parent
+    client, db_session, unrelated_student, other_parent, cmcp_flag_on
 ):
     """STUDENT kid has no visibility on a different family's artifact → 404.
 
@@ -392,3 +473,192 @@ def test_missing_artifact_id_returns_422(client):
         "/api/lti/launch?signed_token=foo", follow_redirects=False
     )
     assert resp.status_code == 422
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CB-CMCP-001 M3β follow-up #4695 — kill-switch gate
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_flag_off_with_valid_signature_returns_403(
+    client, db_session, student_user, cmcp_flag_off
+):
+    """Flag OFF + valid signature → 403 (kill switch).
+
+    The flag check fires *before* token validation, so the same 403
+    fires whether the token is valid or not (covered separately in
+    ``test_flag_off_with_invalid_signature_returns_403``). Asserts the
+    kill-switch's primary correctness bar: turning ``cmcp.enabled``
+    OFF actually disables LTI launches.
+    """
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        token = _sign_token(
+            artifact_id=artifact.id, kid_id=student_user.id
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "CB-CMCP-001 is not enabled"
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
+
+
+def test_flag_off_with_invalid_signature_returns_403(
+    client, db_session, student_user, cmcp_flag_off
+):
+    """Flag OFF + bad signature → 403 (no flag-state oracle).
+
+    A probing caller comparing 401-vs-403 between bad-signature
+    requests can't infer whether the flag is ON or OFF — both
+    code paths return the same 403 when the flag is OFF, because the
+    flag check fires before signature verification.
+    """
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        bad_token = _sign_token(
+            artifact_id=artifact.id,
+            kid_id=student_user.id,
+            secret="not-the-real-secret-key",
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={bad_token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 403
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
+
+
+def test_flag_on_with_invalid_signature_still_returns_401(
+    client, db_session, student_user, cmcp_flag_on
+):
+    """Flag ON + bad sig → 401 (existing token-validation contract).
+
+    Mutation-test guard for the kill-switch ordering: with the flag ON,
+    the standard 401 path for invalid signatures must still fire.
+    Without this we couldn't distinguish "flag check is correctly
+    short-circuiting" from "flag check is silently always firing".
+    """
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        bad_token = _sign_token(
+            artifact_id=artifact.id,
+            kid_id=student_user.id,
+            secret="not-the-real-secret-key",
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={bad_token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 401
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CB-CMCP-001 M3β follow-up #4699 — audit row written on success
+# ─────────────────────────────────────────────────────────────────────
+
+
+def test_successful_launch_writes_audit_row(
+    client, db_session, student_user, cmcp_flag_on
+):
+    """Successful LTI launch → ``cmcp.lti.launched`` audit row.
+
+    Bill 194 audit-trail correctness: a cross-tenant LTI launch is
+    durable in the audit log, attributed to the resolved STUDENT, with
+    the artifact id as the resource and ``board_token_type`` recorded
+    in details.
+    """
+    import json
+
+    from app.models.audit_log import AuditLog
+
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        token = _sign_token(
+            artifact_id=artifact.id, kid_id=student_user.id
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 302
+
+        # Audit rows are committed in a SAVEPOINT inside the same
+        # request transaction; refresh the session view before query.
+        # Filter by ``user_id`` (the resolved STUDENT) too — SQLite can
+        # reuse ``study_guides.id`` across tests in the session-scoped
+        # DB, so an audit row from an earlier test would otherwise
+        # collide on ``resource_id``.
+        db_session.commit()
+        rows = (
+            db_session.query(AuditLog)
+            .filter(AuditLog.action == "cmcp.lti.launched")
+            .filter(AuditLog.resource_id == artifact.id)
+            .filter(AuditLog.user_id == student_user.id)
+            .all()
+        )
+        assert len(rows) == 1, (
+            f"Expected exactly one cmcp.lti.launched row for user "
+            f"{student_user.id} / artifact {artifact.id}, got {len(rows)}"
+        )
+        row = rows[0]
+        assert row.user_id == student_user.id
+        assert row.resource_type == "study_guide"
+        # ``details`` is JSON-serialized; parse + assert shape.
+        details = json.loads(row.details)
+        assert details["board_token_type"] == "lti_launch"
+        assert details["kid_id"] == student_user.id
+    finally:
+        # Clean up the audit row(s) we wrote so other tests in this
+        # session don't see leakage.
+        db_session.query(AuditLog).filter(
+            AuditLog.action == "cmcp.lti.launched",
+            AuditLog.resource_id == artifact.id,
+            AuditLog.user_id == student_user.id,
+        ).delete(synchronize_session=False)
+        db_session.commit()
+        _cleanup_artifact(db_session, artifact.id)
+
+
+def test_failed_launch_does_not_write_audit_row(
+    client, db_session, student_user, cmcp_flag_on
+):
+    """Failed LTI launch (bad sig) → NO audit row.
+
+    Mutation-test guard: without the explicit "only on success"
+    placement of ``log_action``, a regression that moves the call
+    earlier (e.g. into a try/finally) would silently fill the audit
+    log with probing-noise rows. Confirms the audit surface is
+    success-only as documented.
+    """
+    from app.models.audit_log import AuditLog
+
+    artifact = _seed_artifact(db_session, student_user.id)
+    try:
+        bad_token = _sign_token(
+            artifact_id=artifact.id,
+            kid_id=student_user.id,
+            secret="not-the-real-secret-key",
+        )
+        resp = client.get(
+            f"/api/lti/launch?artifact_id={artifact.id}&signed_token={bad_token}",
+            follow_redirects=False,
+        )
+        assert resp.status_code == 401
+
+        db_session.commit()
+        rows = (
+            db_session.query(AuditLog)
+            .filter(AuditLog.action == "cmcp.lti.launched")
+            .filter(AuditLog.resource_id == artifact.id)
+            .filter(AuditLog.user_id == student_user.id)
+            .all()
+        )
+        assert rows == []
+    finally:
+        _cleanup_artifact(db_session, artifact.id)
