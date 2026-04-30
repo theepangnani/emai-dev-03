@@ -8,6 +8,8 @@
  * extra global CSS — all visual treatment is inline + tokenized.
  */
 import type { JSX } from 'react';
+import { Link } from 'react-router-dom';
+import { emit } from '../../../lib/telemetry';
 
 interface DashboardHeaderProps {
   parentName: string;
@@ -65,6 +67,25 @@ function RefreshIcon(): JSX.Element {
   );
 }
 
+function SettingsIcon(): JSX.Element {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+    </svg>
+  );
+}
+
 function Spinner(): JSX.Element {
   return (
     <svg
@@ -100,7 +121,17 @@ export function DashboardHeader({
 
   return (
     <header className="edigest-dashboard-header">
-      <style>{`@keyframes edigest-spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes edigest-spin { to { transform: rotate(360deg); } }
+        .edigest-dashboard-header__settings:hover {
+          background: var(--bridge-hover, #f5f0e6);
+          color: var(--bridge-ink, #1c1a16);
+        }
+        .edigest-dashboard-header__settings:focus-visible {
+          outline: 2px solid var(--bridge-accent, #1c1a16);
+          outline-offset: 2px;
+        }
+      `}</style>
       <div className="edigest-dashboard-header__text">
         <h1
           className="edigest-dashboard-header__title"
@@ -128,32 +159,65 @@ export function DashboardHeader({
           {relative ? `Last updated ${relative}` : 'Not refreshed yet'}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={isRefreshing}
-        aria-busy={isRefreshing}
-        aria-label={isRefreshing ? 'Refreshing digest' : 'Refresh digest'}
-        className="edigest-dashboard-header__refresh"
+      <div
+        className="edigest-dashboard-header__controls"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '10px 16px',
-          fontFamily: '"DM Sans", system-ui, sans-serif',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: 'var(--bridge-ink, #1c1a16)',
-          background: 'var(--bridge-card, #ffffff)',
-          border: '1px solid var(--bridge-hair, #e5ddd1)',
-          borderRadius: '8px',
-          cursor: isRefreshing ? 'not-allowed' : 'pointer',
-          opacity: isRefreshing ? 0.7 : 1,
         }}
       >
-        {isRefreshing ? <Spinner /> : <RefreshIcon />}
-        <span>{isRefreshing ? 'Updating...' : 'Refresh'}</span>
-      </button>
+        <Link
+          to="/email-digest/settings"
+          aria-label="Open digest settings"
+          className="edigest-dashboard-header__settings"
+          onClick={() => emit('dashboard.settings_click')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px 14px',
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'var(--bridge-muted, #6b645b)',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            cursor: 'pointer',
+          }}
+        >
+          <SettingsIcon />
+          <span>Settings</span>
+        </Link>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          aria-busy={isRefreshing}
+          aria-label={isRefreshing ? 'Refreshing digest' : 'Refresh digest'}
+          className="edigest-dashboard-header__refresh"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 16px',
+            fontFamily: '"DM Sans", system-ui, sans-serif',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'var(--bridge-ink, #1c1a16)',
+            background: 'var(--bridge-card, #ffffff)',
+            border: '1px solid var(--bridge-hair, #e5ddd1)',
+            borderRadius: '8px',
+            cursor: isRefreshing ? 'not-allowed' : 'pointer',
+            opacity: isRefreshing ? 0.7 : 1,
+          }}
+        >
+          {isRefreshing ? <Spinner /> : <RefreshIcon />}
+          <span>{isRefreshing ? 'Updating...' : 'Refresh'}</span>
+        </button>
+      </div>
     </header>
   );
 }

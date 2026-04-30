@@ -1,7 +1,20 @@
 /** CB-EDIGEST-002 E5 (#4593) — DashboardHeader unit tests. */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { DashboardHeader } from './DashboardHeader';
+
+// DashboardHeader renders <Link to="..."> so all tests need a router context.
+function renderWithRouter(ui: ReactElement) {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
+beforeEach(() => {
+  // #4690 — Reset the telemetry accumulator so the click-emits test starts
+  // from a known empty state regardless of prior test ordering.
+  if (typeof window !== 'undefined') window.__cb_telemetry__ = [];
+});
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,7 +26,7 @@ describe('DashboardHeader', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-29T12:00:00Z'));
     const five = new Date('2026-04-29T11:55:00Z').toISOString();
-    render(
+    renderWithRouter(
       <DashboardHeader
         parentName="Theepan"
         lastRefreshedAt={five}
@@ -27,7 +40,7 @@ describe('DashboardHeader', () => {
 
   it('calls onRefresh when the refresh button is clicked', () => {
     const onRefresh = vi.fn();
-    render(
+    renderWithRouter(
       <DashboardHeader
         parentName="Maya"
         lastRefreshedAt={null}
@@ -40,7 +53,7 @@ describe('DashboardHeader', () => {
   });
 
   it('disables the button and shows the Updating spinner state when isRefreshing=true', () => {
-    render(
+    renderWithRouter(
       <DashboardHeader
         parentName="Maya"
         lastRefreshedAt={null}
@@ -55,7 +68,7 @@ describe('DashboardHeader', () => {
   });
 
   it('enables the button when isRefreshing=false', () => {
-    render(
+    renderWithRouter(
       <DashboardHeader
         parentName="Maya"
         lastRefreshedAt={null}
@@ -66,5 +79,38 @@ describe('DashboardHeader', () => {
     const btn = screen.getByRole('button', { name: /refresh digest/i });
     expect(btn).not.toBeDisabled();
     expect(screen.getByText(/^Refresh$/)).toBeInTheDocument();
+  });
+
+  // #4682 — Settings link must be rendered next to Refresh so parents can
+  // reach the settings UI when the dashboard flag is ON.
+  it('renders a Settings link pointing to /email-digest/settings', () => {
+    renderWithRouter(
+      <DashboardHeader
+        parentName="Maya"
+        lastRefreshedAt={null}
+        isRefreshing={false}
+        onRefresh={() => {}}
+      />,
+    );
+    const link = screen.getByRole('link', { name: /open digest settings/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', '/email-digest/settings');
+  });
+
+  // #4690 — Settings link click must emit dashboard.settings_click telemetry
+  // matching the existing dashboard.page_view / dashboard.refresh_clicked pattern.
+  it('emits dashboard.settings_click telemetry on Settings link click', () => {
+    if (typeof window !== 'undefined') window.__cb_telemetry__ = [];
+    renderWithRouter(
+      <DashboardHeader
+        parentName="Maya"
+        lastRefreshedAt={null}
+        isRefreshing={false}
+        onRefresh={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('link', { name: /open digest settings/i }));
+    const events = window.__cb_telemetry__ ?? [];
+    expect(events.some((e) => e.event === 'dashboard.settings_click')).toBe(true);
   });
 });

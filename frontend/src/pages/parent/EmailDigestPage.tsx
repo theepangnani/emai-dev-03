@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import {
@@ -108,17 +108,36 @@ function senderKidNames(
  *    back to the legacy view. Flipping this flag remounts the page so each
  *    branch is a separate component (avoids rules-of-hooks issues when the
  *    cached flag value changes).
+ *  - `/email-digest/settings` sub-path (#4682) escapes the dashboard branch
+ *    so parents can still reach the legacy/unified settings UI when the
+ *    dashboard flag is ON. The dashboard intentionally has no settings UI;
+ *    this sub-route is the canonical settings entry point.
+ *  - DashboardView is wrapped in `<DashboardLayout>` (#4681) so the
+ *    sidebar/nav/logo chrome stay consistent with the rest of the app —
+ *    legacy and unified branches already wrap.
  */
 export function EmailDigestPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const unifiedEnabled = useFeatureFlagEnabled('parent.unified_digest_v2');
   const dashboardEnabled = useFeatureFlagEnabled('email_digest_dashboard_v1');
   const legacyForced = searchParams.get('legacy') === '1';
+  // Match the bare settings path OR any nested sub-route (e.g.
+  // /email-digest/settings/whatsapp), but NOT flat siblings like
+  // /email-digest/settings-billing — #4689 tightened this from a naive
+  // startsWith to avoid false-positives on hypothetical sibling routes.
+  const isSettingsPath =
+    location.pathname === '/email-digest/settings' ||
+    location.pathname.startsWith('/email-digest/settings/');
   if (legacyForced) {
     return <EmailDigestPageLegacy />;
   }
-  if (dashboardEnabled) {
-    return <DashboardView />;
+  if (dashboardEnabled && !isSettingsPath) {
+    return (
+      <DashboardLayout>
+        <DashboardView />
+      </DashboardLayout>
+    );
   }
   return unifiedEnabled ? <EmailDigestPageUnified /> : <EmailDigestPageLegacy />;
 }
